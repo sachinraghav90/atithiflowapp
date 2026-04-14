@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,7 +27,7 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover";
 import { format } from "date-fns";
-import { CalendarIcon, Download, FilterX, RefreshCcw } from "lucide-react";
+import { CalendarIcon, Download, Eye, FilterX, History, RefreshCcw } from "lucide-react";
 import DatePicker from 'react-datepicker'
 import { toast } from "react-toastify";
 import { normalizeNumberInput } from "@/utils/normalizeTextInput";
@@ -656,20 +656,49 @@ export default function LaundryOrdersManagement() {
     };
 
     return (
-        <>
-            <section className="flex-1 overflow-y-auto p-6 lg:p-8 space-y-6">
+        <div className="h-full flex flex-col overflow-hidden">
+            <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8 space-y-6">
                 {/* Header */}
-                <div className="flex justify-between items-center">
-                    <div>
-                        <h1 className="text-2xl font-bold">Laundry Orders</h1>
-                        <p className="text-sm text-muted-foreground">
-                            Track & manage laundry processing
-                        </p>
-                    </div>
+                <div className="flex flex-col gap-4">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h1 className="text-2xl font-bold">Laundry Orders</h1>
+                            <p className="text-sm text-muted-foreground">
+                                Track & manage laundry processing
+                            </p>
+                        </div>
 
-                    {permission?.can_create && <Button variant="hero" onClick={() => setSheetOpen(true)}>
-                        Create Order
-                    </Button>}
+                        <div className="flex items-center gap-3">
+                            {isMultiProperty && (
+                                <div className="flex items-center h-9 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
+                                    <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border">
+                                        PROPERTY
+                                    </span>
+                                    <NativeSelect
+                                        className="flex-1 bg-transparent px-2 focus:outline-none focus:ring-0 text-sm h-full truncate cursor-pointer"
+                                        value={selectedPropertyId}
+                                        onChange={(e) => {
+                                            setSelectedPropertyId(e.target.value);
+                                            setOrdersPage(1);
+                                            setAuditPage(1);
+                                        }}
+                                    >
+                                        <option value="" disabled>Select Property</option>
+                                        {myProperties?.properties?.map((p: any) => (
+                                            <option key={p.id} value={p.id}>
+                                                {p.brand_name}
+                                            </option>
+                                        ))}
+                                    </NativeSelect>
+                                </div>
+                            )}
+
+                            {/* Create Order Button */}
+                            <Button variant="hero" className="h-9" onClick={() => setSheetOpen(true)}>
+                                + Create Order
+                            </Button>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="border-b border-border flex">
@@ -704,23 +733,7 @@ export default function LaundryOrdersManagement() {
                     <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
                         <div className="w-full">
                             <GridToolbar className="border-b-0">
-                                <GridToolbarRow className={isMultiProperty ? "md:grid-cols-[repeat(4,1fr)_auto]" : "md:grid-cols-[repeat(3,1fr)_auto]"}>
-                                    {isMultiProperty && (
-                                        <GridToolbarSelect
-                                            label="PROPERTY"
-                                            value={selectedPropertyId}
-                                            onChange={(value) => {
-                                                setSelectedPropertyId(value);
-                                                setOrdersPage(1);
-                                                setAuditPage(1);
-                                            }}
-                                            options={myProperties?.properties?.map((property) => ({
-                                                label: property.brand_name,
-                                                value: property.id,
-                                            })) ?? []}
-                                        />
-                                    )}
-
+                                <GridToolbarRow className="gap-2">
                                     <GridToolbarSearch
                                         value={searchInput}
                                         onChange={setSearchInput}
@@ -728,7 +741,6 @@ export default function LaundryOrdersManagement() {
                                             setSearchQuery(searchInput.trim());
                                             setOrdersPage(1);
                                         }}
-                                        placeholder="Search Laundry Orders..."
                                     />
 
                                     <GridToolbarSelect
@@ -764,7 +776,7 @@ export default function LaundryOrdersManagement() {
                                     />
 
                                     <GridToolbarActions
-                                        className="gap-1"
+                                        className="gap-1 justify-end"
                                         actions={[
                                             {
                                                 key: "export",
@@ -802,7 +814,8 @@ export default function LaundryOrdersManagement() {
                                     },
                                     {
                                         label: "No. of Items",
-                                        cellClassName: "font-medium",
+                                        headClassName: "text-center",
+                                        cellClassName: "text-center font-medium",
                                         render: (order: LaundryOrder) => `${order.items?.length ?? 0} item(s)`,
                                     },
                                     {
@@ -812,6 +825,8 @@ export default function LaundryOrdersManagement() {
                                     },
                                     {
                                         label: "Laundry Status",
+                                        headClassName: "text-center",
+                                        cellClassName: "text-center",
                                         render: (order: LaundryOrder) => (
                                             <span
                                                 className={cn(
@@ -825,6 +840,8 @@ export default function LaundryOrdersManagement() {
                                     },
                                     {
                                         label: "Vendor Status",
+                                        headClassName: "text-center",
+                                        cellClassName: "text-center",
                                         render: (order: LaundryOrder) => (
                                             <span
                                                 className={cn(
@@ -855,35 +872,48 @@ export default function LaundryOrdersManagement() {
                                 loading={ordersLoading}
                                 emptyText="No laundry orders found"
                                 minWidth="900px"
+                                actionClassName="text-center w-[92px]"
                                 className="mt-0"
                                 actions={(order: LaundryOrder) => (
-                                    <div className="flex gap-2">
-                                        <Button
-                                            size="sm"
-                                            variant="heroOutline"
-                                            onClick={() =>
-                                                setViewItemsModal({
-                                                    open: true,
-                                                    editMode: false,
-                                                    order: order
-                                                })
-                                            }
-                                        >
-                                            Summary
-                                        </Button>
+                                    <div className="flex gap-1 justify-center">
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-8 w-8 text-primary hover:bg-primary/10 transition-colors"
+                                                    onClick={() =>
+                                                        setViewItemsModal({
+                                                            open: true,
+                                                            editMode: false,
+                                                            order: order
+                                                        })
+                                                    }
+                                                >
+                                                    <Eye className="w-4 h-4" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>Order Summary</TooltipContent>
+                                        </Tooltip>
 
-                                        <Button
-                                            size="sm"
-                                            variant="heroOutline"
-                                            onClick={() => {
-                                                setHistoryModal({
-                                                    open: true,
-                                                    order
-                                                });
-                                            }}
-                                        >
-                                            History
-                                        </Button>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-8 w-8 text-primary hover:bg-primary/10 transition-colors"
+                                                    onClick={() => {
+                                                        setHistoryModal({
+                                                            open: true,
+                                                            order
+                                                        });
+                                                    }}
+                                                >
+                                                    <History className="w-4 h-4" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>View Log History</TooltipContent>
+                                        </Tooltip>
                                     </div>
                                 )}
                                 enablePagination={!!data?.pagination}
@@ -907,23 +937,7 @@ export default function LaundryOrdersManagement() {
                     <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
                         <div className="w-full">
                             <GridToolbar className="border-b-0">
-                                <GridToolbarRow className={isMultiProperty ? "md:grid-cols-[repeat(4,1fr)_auto]" : "md:grid-cols-[repeat(3,1fr)_auto]"}>
-                                    {isMultiProperty && (
-                                        <GridToolbarSelect
-                                            label="PROPERTY"
-                                            value={selectedPropertyId}
-                                            onChange={(value) => {
-                                                setSelectedPropertyId(value);
-                                                setOrdersPage(1);
-                                                setAuditPage(1);
-                                            }}
-                                            options={myProperties?.properties?.map((property) => ({
-                                                label: property.brand_name,
-                                                value: property.id,
-                                            })) ?? []}
-                                        />
-                                    )}
-
+                                <GridToolbarRow className="gap-2">
                                     <GridToolbarSearch
                                         value={auditSearchInput}
                                         onChange={setAuditSearchInput}
@@ -931,7 +945,6 @@ export default function LaundryOrdersManagement() {
                                             setAuditSearchQuery(auditSearchInput.trim());
                                             setAuditPage(1);
                                         }}
-                                        placeholder="Search History..."
                                     />
 
                                     <GridToolbarSelect
@@ -950,8 +963,10 @@ export default function LaundryOrdersManagement() {
                                         ]}
                                     />
 
+                                    <div className="w-full" /> {/* Empty col 3 */}
+
                                     <GridToolbarActions
-                                        className="gap-1"
+                                        className="gap-1 justify-end"
                                         actions={[
                                             {
                                                 key: "export",
@@ -990,6 +1005,8 @@ export default function LaundryOrdersManagement() {
                                     {
                                         label: "Action",
                                         key: "event_type",
+                                        headClassName: "text-center",
+                                        cellClassName: "text-center font-medium",
                                     },
                                     {
                                         label: "Change",
@@ -1015,19 +1032,19 @@ export default function LaundryOrdersManagement() {
                                     },
                                     {
                                         label: "User",
-                                        cellClassName: "text-muted-foreground",
+                                        cellClassName: "text-muted-foreground whitespace-nowrap",
                                         render: (audit) => `${audit.user_first_name} ${audit.user_last_name}`,
                                     },
                                     {
                                         label: "Date",
-                                        cellClassName: "text-muted-foreground",
+                                        cellClassName: "text-muted-foreground whitespace-nowrap text-xs",
                                         render: (audit) => new Date(audit.created_on as string).toLocaleString(),
                                     },
                                 ] as ColumnDef[]}
                                 data={filteredAuditLogs}
                                 loading={logsFetching}
                                 emptyText="No audit logs found"
-                                minWidth="700px"
+                                minWidth="900px"
                                 className="mt-0"
                                 enablePagination={!!logs?.pagination}
                                 paginationProps={{
@@ -1629,7 +1646,7 @@ export default function LaundryOrdersManagement() {
                 </DialogContent>
             </Dialog>
 
-        </>
+        </div>
     );
 }
 

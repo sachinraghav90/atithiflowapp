@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { NativeSelect } from "@/components/ui/native-select";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -395,170 +396,217 @@ export default function StaffManagement() {
             console.error(err);
         }
     };
-
     return (
-        <>
+        <div className="h-full flex flex-col overflow-hidden">
             <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold">Staff Directory</h1>
                     <p className="text-sm text-muted-foreground">
                         Manage your hotel staff and their roles
                     </p>
                 </div>
-                {permission?.can_create && (
-                    <Button
-                        onClick={() => {
-                            setMode("add");
-                            setStaff(STAFF_INITIAL_VALUE);
-                            setFormErrors({});
-                            setSheetOpen(true);
-                        }}
-                    >
-                        Add Staff
-                    </Button>
-                )}
-            </div>
 
-                <div className="grid-header border rounded-[5px] overflow-hidden px-4 py-2 mt-4 bg-muted/20 flex flex-col flex-1 min-h-0">
-                    <GridToolbar className="mb-2">
-                        {(isSuperAdmin || isOwner) && (
-                            <GridToolbarSelect
-                                label="PROPERTY"
+                <div className="flex items-center gap-3">
+                    {isMultiProperty && (
+                        <div className="flex items-center h-9 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
+                            <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border uppercase">
+                                Property
+                            </span>
+                            <NativeSelect
+                                className="flex-1 bg-transparent px-2 focus:outline-none focus:ring-0 text-sm h-full truncate cursor-pointer"
                                 value={selectedPropertyId}
-                                onChange={setSelectedPropertyId}
-                                className="min-w-[220px]"
-                                options={[
-                                    { label: "Select Property", value: "", disabled: true },
-                                    ...(myProperties?.properties?.map((property: { id: string; brand_name: string }) => ({
-                                        label: property.brand_name,
-                                        value: property.id,
-                                    })) ?? []),
-                                ]}
-                            />
-                        )}
-
-                        <GridToolbarSearch
-                            value={search}
-                            onChange={setSearch}
-                            placeholder="Search staff name, email..."
-                        />
-
-                        <GridToolbarSelect
-                            label="STATUS"
-                            value={statusFilter}
-                            onChange={setStatusFilter}
-                            className="min-w-[180px]"
-                            options={[
-                                { label: "All", value: "" },
-                                { label: "Active", value: "active" },
-                                { label: "Inactive", value: "inactive" },
-                            ]}
-                        />
-
-                        <GridToolbarActions
-                            actions={[
-                                {
-                                    key: "reset",
-                                    label: "Reset Filters",
-                                    icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
-                                    onClick: resetFiltersHandler,
-                                },
-                                {
-                                    key: "refresh",
-                                    label: "Refresh Data",
-                                    icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
-                                    onClick: refreshTable,
-                                    disabled: isFetching,
-                                },
-                            ]}
-                        />
-                    </GridToolbar>
-
-                    <AppDataGrid
-                    columns={[
-                        {
-                            label: "Name",
-                            cellClassName: "font-medium",
-                            render: (s: Staff) => `${s.salutation} ${s.first_name} ${s.last_name}`,
-                        },
-                        {
-                            label: "Email",
-                            key: "email",
-                        },
-                        {
-                            label: "Designation",
-                            key: "designation",
-                        },
-                        {
-                            label: "Status",
-                            render: (s: Staff) => (
-                                <span
-                                    className={cn(
-                                        "px-3 py-1 text-xs font-semibold rounded-[3px]",
-                                        getStatusColor(s.status, "staff")
-                                    )}
-                                >
-                                    {s.status}
-                                </span>
-                            ),
-                        },
-                    ] as ColumnDef[]}
-                    data={staffRows}
-                    loading={isLoading}
-                    emptyText="No staff added yet"
-                    minWidth="700px"
-                    rowKey={(s: Staff, idx: number) => s.id ?? idx}
-                    actionLabel=""
-                    actionClassName="text-center w-[112px]"
-                    actions={(s: Staff) => (
-                        <div className="flex justify-center gap-2">
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
-                                        aria-label={`View and edit details for ${s.first_name} ${s.last_name}`}
-                                        onClick={() => openStaffDetails(s)}
-                                    >
-                                        <Pencil className="w-4 h-4 mx-auto" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>View / Edit Details</TooltipContent>
-                            </Tooltip>
-
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        size="icon"
-                                        variant="outline"
-                                        className="h-8 w-8 rounded-[3px]"
-                                        onClick={() => openPasswordModal(s)}
-                                        aria-label={`Update password for ${s.first_name} ${s.last_name}`}
-                                    >
-                                        <KeyRound className="h-4 w-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Update Password</TooltipContent>
-                            </Tooltip>
+                                onChange={(e) => {
+                                    setSelectedPropertyId(e.target.value);
+                                    resetPage();
+                                }}
+                            >
+                                <option value="" disabled>Select Property</option>
+                                {myProperties?.properties?.map((property: { id: string; brand_name: string }) => (
+                                    <option key={property.id} value={property.id}>
+                                        {property.brand_name}
+                                    </option>
+                                ))}
+                            </NativeSelect>
                         </div>
                     )}
-                    enablePagination={!!staffData?.pagination}
-                    paginationProps={{
-                        page,
-                        totalPages: staffData?.pagination?.totalPages ?? 1,
-                        setPage,
-                        disabled: !staffData,
-                        totalRecords: staffData?.pagination?.totalItems ?? staffData?.pagination?.total ?? staffData?.data?.length ?? 0,
-                        limit,
-                        onLimitChange: handleLimitChange,
-                    }}
-                />
+
+                    {permission?.can_create && (
+                        <Button
+                            className="h-9"
+                            onClick={() => {
+                                setMode("add");
+                                setStaff(STAFF_INITIAL_VALUE);
+                                setFormErrors({});
+                                setSheetOpen(true);
+                            }}
+                        >
+                            Add Staff
+                        </Button>
+                    )}
+                </div>
+            </div>
+
+                <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
+                    <div className="w-full">
+                        <GridToolbar className="border-b-0">
+                            <GridToolbarRow className="gap-2">
+                                <GridToolbarSearch
+                                    value={search}
+                                    onChange={setSearch}
+                                    placeholder="Search staff name, email..."
+                                />
+
+                                <GridToolbarSelect
+                                    label="STATUS"
+                                    value={statusFilter}
+                                    onChange={setStatusFilter}
+                                    options={[
+                                        { label: "Any", value: "" },
+                                        ...STAFF_STATUSES.map((s) => ({ label: s, value: s })),
+                                    ]}
+                                />
+
+                                <div className="w-full" /> {/* Empty col 3 */}
+
+                                <GridToolbarActions
+                                    className="gap-1 justify-end"
+                                    actions={[
+                                        {
+                                            key: "reset",
+                                            label: "Reset Filters",
+                                            icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: resetFiltersHandler,
+                                        },
+                                        {
+                                            key: "refresh",
+                                            label: "Refresh Data",
+                                            icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: refreshTable,
+                                            disabled: isFetching,
+                                        },
+                                    ]}
+                                />
+                            </GridToolbarRow>
+                        </GridToolbar>
+
+                        <AppDataGrid
+                            columns={[
+                                {
+                                    label: "Name",
+                                    cellClassName: "font-medium",
+                                    render: (s: Staff) => (
+                                        <div className="flex items-center gap-3">
+                                            <Avatar className="h-8 w-8 rounded-[3px] border border-border">
+                                                <AvatarImage src={s.image || ""}/>
+                                                <AvatarFallback className="rounded-[3px] bg-primary/10 text-primary font-bold text-[10px]">
+                                                    {s.first_name?.[0]}{s.last_name?.[0]}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-semibold">{s.first_name} {s.last_name}</span>
+                                                <span className="text-xs text-muted-foreground leading-none">{s.email || "No email"}</span>
+                                            </div>
+                                        </div>
+                                    ),
+                                },
+                                {
+                                    label: "Contact",
+                                    cellClassName: "text-xs",
+                                    render: (s: Staff) => (
+                                        <div className="flex flex-col gap-0.5">
+                                            <div className="flex items-center gap-1">
+                                                <Phone className="h-3 w-3 text-muted-foreground" />
+                                                <span>{s.phone}</span>
+                                            </div>
+                                        </div>
+                                    ),
+                                },
+                                {
+                                    label: "Property",
+                                    cellClassName: "text-xs",
+                                    render: (s: Staff) => (
+                                        <div className="flex flex-col">
+                                            <span className="font-medium text-foreground">
+                                                {s.properties?.[0]?.brand_name || "-"}
+                                            </span>
+                                        </div>
+                                    ),
+                                },
+                                {
+                                    label: "Role",
+                                    cellClassName: "text-xs capitalize",
+                                    render: (s: Staff) => s.roles?.[0]?.name || "-",
+                                },
+                                {
+                                    label: "Status",
+                                    render: (s: Staff) => (
+                                        <span
+                                            className={cn(
+                                                "px-3 py-1 text-xs font-semibold rounded-[3px]",
+                                                getStatusColor(s.status, "staff")
+                                            )}
+                                        >
+                                            {s.status}
+                                        </span>
+                                    ),
+                                },
+                            ] as ColumnDef[]}
+                            data={staffRows}
+                            loading={isLoading}
+                            emptyText="No staff added yet"
+                            minWidth="700px"
+                            rowKey={(s: Staff, idx: number) => s.id ?? idx}
+                            actionLabel=""
+                            actionClassName="text-center w-[112px]"
+                            actions={(s: Staff) => (
+                                <div className="flex justify-center gap-2">
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                size="icon"
+                                                variant="ghost"
+                                                className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                                aria-label={`View and edit details for ${s.first_name} ${s.last_name}`}
+                                                onClick={() => openStaffDetails(s)}
+                                            >
+                                                <Pencil className="w-4 h-4 mx-auto" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>View / Edit Details</TooltipContent>
+                                    </Tooltip>
+
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                size="icon"
+                                                variant="outline"
+                                                className="h-8 w-8 rounded-[3px]"
+                                                onClick={() => openPasswordModal(s)}
+                                                aria-label={`Update password for ${s.first_name} ${s.last_name}`}
+                                            >
+                                                <KeyRound className="h-4 w-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Update Password</TooltipContent>
+                                    </Tooltip>
+                                </div>
+                            )}
+                            enablePagination={!!staffData?.pagination}
+                            paginationProps={{
+                                page,
+                                totalPages: staffData?.pagination?.totalPages ?? 1,
+                                setPage,
+                                disabled: !staffData,
+                                totalRecords: staffData?.pagination?.totalItems ?? staffData?.pagination?.total ?? staffData?.data?.length ?? 0,
+                                limit,
+                                onLimitChange: handleLimitChange,
+                            }}
+                        />
+                    </div>
                 </div>
             </section>
-
-            <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+    <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
                 <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto">
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
@@ -806,7 +854,7 @@ export default function StaffManagement() {
                 </DialogContent>
             </Dialog>
 
-        </>
+        </div>
     );
 }
 

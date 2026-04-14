@@ -784,39 +784,46 @@ export default function PropertyManagement() {
                     </Button>}
 
                 </div>
-                <div className="grid-header border rounded-[5px] overflow-hidden px-4 py-2 mt-4 bg-muted/20 flex flex-col flex-1 min-h-0">
-                    <GridToolbar className="mb-2">
-                        <GridToolbarSearch
-                            value={search}
-                            onChange={setSearch}
-                            placeholder="Search properties..."
-                        />
+                <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
+                    <div className="w-full">
+                        <GridToolbar className="border-b-0">
+                            <GridToolbarRow className="gap-2">
+                                <GridToolbarSearch
+                                    value={search}
+                                    onChange={setSearch}
+                                    placeholder="Search property name, city, state..."
+                                />
 
-                        <GridToolbarSelect
-                            label="STATUS"
-                            value="all"
-                            onChange={() => { }}
-                            className="min-w-[160px]"
-                            options={[{ label: "All", value: "all" }]}
-                        />
+                                <GridToolbarSelect
+                                    label="STATUS"
+                                    value="all"
+                                    onChange={() => { }}
+                                    options={[{ label: "All Status", value: "all" }]}
+                                />
 
-                        <GridToolbarActions
-                            actions={[
-                                {
-                                    key: "reset",
-                                    label: "Reset Filters",
-                                    icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
-                                    onClick: resetFiltersHandler,
-                                },
-                                {
-                                    key: "refresh",
-                                    label: "Refresh Data",
-                                    icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
-                                    onClick: refreshTable,
-                                },
-                            ]}
-                        />
-                    </GridToolbar>
+                                <div className="w-full" /> {/* Empty col 3 */}
+
+                                <GridToolbarActions
+                                    className="gap-1 justify-end"
+                                    actions={[
+                                        {
+                                            key: "reset",
+                                            label: "Reset Filters",
+                                            icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: resetFiltersHandler,
+                                        },
+                                        {
+                                            key: "refresh",
+                                            label: "Refresh Data",
+                                            icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: refreshTable,
+                                            disabled: propertiesFetching,
+                                        },
+                                    ]}
+                                />
+                            </GridToolbarRow>
+                        </GridToolbar>
+                    </div>
 
                     <AppDataGrid
                     columns={[

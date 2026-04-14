@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
-import { GridToolbar, GridToolbarActions, GridToolbarSearch, GridToolbarSelect } from "@/components/ui/grid-toolbar";
+import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarDatePicker, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
 import {
     Dialog,
     DialogContent,
@@ -51,7 +51,7 @@ import LaundryEmbedded from "@/components/layout/LaundryEmbedded";
 import BookingLogsEmbedded from "@/components/layout/BookingLogsEmbedded";
 import RestaurantOrdersEmbedded from "@/components/layout/RestaurantOrdersEmbedded";
 import { exportToExcel } from "@/utils/exportToExcel";
-import { Download, FilterX, Pencil, RefreshCcw } from "lucide-react";
+import { Download, Eye, FilterX, Pencil, RefreshCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getStatusColor } from "@/constants/statusColors";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -100,6 +100,7 @@ export default function BookingsManagement() {
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(10);
     const [propertyId, setPropertyId] = useState<number | undefined>();
+    const [searchInput, setSearchInput] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
 
     const [fromDate, setFromDate] = useState<string>(todayISO());
@@ -514,85 +515,9 @@ export default function BookingsManagement() {
                     </div>
 
                     {/* Right: Actions */}
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                        <Button
-                            size="sm"
-                            variant="heroOutline"
-                            onClick={() => navigate("/reservation")}
-                        >
-                            + New Booking
-                        </Button>
-                    </div>
-                </div>
-
-                <div className="grid-header border rounded-[5px] overflow-hidden px-4 py-2 mt-4 bg-muted/20 flex flex-col flex-1 min-h-0">
-                    <GridToolbar className="mb-3">
-                        <GridToolbarSearch
-                            value={searchQuery}
-                            onChange={setSearchQuery}
-                            placeholder="Search Bookings..."
-                        />
-
-                        <GridToolbarSelect
-                            label="SCOPE"
-                            value={scope}
-                            onChange={(value) => {
-                                setScope(value);
-                                setPage(1);
-                            }}
-                            className="min-w-[180px]"
-                            options={[
-                                { label: "Upcoming", value: "upcoming" },
-                                { label: "Past", value: "past" },
-                                { label: "All", value: "all" },
-                            ]}
-                        />
-
-                        <GridToolbarSelect
-                            label="STATUS"
-                            value={status}
-                            onChange={(value) => {
-                                setStatus(value);
-                                setPage(1);
-                            }}
-                            className="min-w-[180px]"
-                            options={[
-                                { label: "CONFIRMED", value: "CONFIRMED" },
-                                { label: "CHECKED IN", value: "CHECKED_IN" },
-                                { label: "CHECKED OUT", value: "CHECKED_OUT" },
-                                { label: "CANCELLED", value: "CANCELLED" },
-                                { label: "NO SHOW", value: "NO_SHOW" },
-                            ]}
-                        />
-
-                        <GridToolbarActions
-                            actions={[
-                                {
-                                    key: "export",
-                                    label: "Export Bookings",
-                                    icon: <Download className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
-                                    onClick: exportBookingsSheet,
-                                },
-                                {
-                                    key: "reset",
-                                    label: "Reset Filters",
-                                    icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
-                                    onClick: resetFiltersHandler,
-                                },
-                                {
-                                    key: "refresh",
-                                    label: "Refresh Data",
-                                    icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
-                                    onClick: refreshTable,
-                                    disabled: bookingsFetching,
-                                },
-                            ]}
-                        />
-                    </GridToolbar>
-
-                    <div className="flex flex-wrap items-center gap-3 w-full mb-2">
+                    <div className="flex items-center gap-3 flex-shrink-0">
                         {(isSuperAdmin || isOwner) && (
-                            <div className="flex items-center h-8 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[220px]">
+                            <div className="flex items-center h-9 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
                                 <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border">
                                     PROPERTY
                                 </span>
@@ -614,55 +539,119 @@ export default function BookingsManagement() {
                             </div>
                         )}
 
-                        <div className="flex items-center h-8 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[200px]">
-                            <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border">
-                                FROM
-                            </span>
-                            <DatePicker
-                                selected={parseDate(fromDate)}
-                                placeholderText="dd-mm-yyyy"
-                                onChange={(date) => {
-                                    setPage(1);
-                                    setFromDate(formatDate(date));
-                                }}
-                                dateFormat="dd-MM-yyyy"
-                                customInput={
-                                    <Input
-                                        readOnly
-                                        className="h-8 border-0 rounded-none bg-transparent px-2 text-sm shadow-none focus-visible:ring-0"
-                                    />
-                                }
-                            />
-                        </div>
+                        <Button
+                            size="sm"
+                            variant="heroOutline"
+                            onClick={() => navigate("/reservation")}
+                        >
+                            + New Booking
+                        </Button>
+                    </div>
+                </div>
 
-                        <div className="flex items-center h-8 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[200px]">
-                            <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border">
-                                TO
-                            </span>
-                            <DatePicker
-                                selected={parseDate(toDate)}
-                                placeholderText="dd-mm-yyyy"
-                                onChange={(date) => {
-                                    setPage(1);
-                                    setToDate(formatDate(date));
-                                }}
-                                dateFormat="dd-MM-yyyy"
-                                minDate={fromDate ? new Date(fromDate) : undefined}
-                                disabled={!fromDate}
-                                customInput={
-                                    <Input
-                                        readOnly
-                                        className="h-8 border-0 rounded-none bg-transparent px-2 text-sm shadow-none focus-visible:ring-0"
-                                    />
-                                }
-                            />
-                        </div>
+                <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
+                    <div className="w-full">
+                        <GridToolbar className="flex flex-col border-b-0">
+                            {/* Row 1 */}
+                            <GridToolbarRow className="gap-2">
+                                <GridToolbarSearch
+                                    value={searchInput}
+                                    onChange={setSearchInput}
+                                    onSearch={() => {
+                                        setSearchQuery(searchInput.trim());
+                                        setPage(1);
+                                    }}
+                                />
+
+                                <GridToolbarSelect
+                                    label="SCOPE"
+                                    value={scope}
+                                    onChange={(value) => {
+                                        setScope(value);
+                                        setPage(1);
+                                    }}
+                                    options={[
+                                        { label: "Any", value: "" },
+                                        { label: "Upcoming", value: "upcoming" },
+                                        { label: "Past", value: "past" },
+                                        { label: "All", value: "all" },
+                                    ]}
+                                />
+
+                                <GridToolbarSelect
+                                    label="STATUS"
+                                    value={status}
+                                    onChange={(value) => {
+                                        setStatus(value);
+                                        setPage(1);
+                                    }}
+                                    options={[
+                                        { label: "Any", value: "" },
+                                        ...BOOKING_STATUSES.map((s) => ({ label: s, value: s })),
+                                    ]}
+                                />
+
+                                <GridToolbarActions
+                                    className="gap-1 justify-end"
+                                    actions={[
+                                        {
+                                            key: "export",
+                                            label: "Export Bookings",
+                                            icon: <Download className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: exportBookingsSheet,
+                                        },
+                                        {
+                                            key: "reset",
+                                            label: "Reset Filters",
+                                            icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: resetFiltersHandler,
+                                        },
+                                        {
+                                            key: "refresh",
+                                            label: "Refresh Data",
+                                            icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: refreshTable,
+                                            disabled: bookingsFetching,
+                                        },
+                                    ]}
+                                />
+                            </GridToolbarRow>
+
+                            {/* Row 2 */}
+                            <GridToolbarRow className="gap-2">
+                                <GridToolbarDatePicker
+                                    label="FROM"
+                                    value={parseDate(fromDate)}
+                                    onChange={(date) => {
+                                        setPage(1);
+                                        setFromDate(formatDate(date));
+                                    }}
+                                />
+
+                                <GridToolbarDatePicker
+                                    label="TO"
+                                    value={parseDate(toDate)}
+                                    onChange={(date) => {
+                                        setPage(1);
+                                        setToDate(formatDate(date));
+                                    }}
+                                    minDate={fromDate ? new Date(fromDate) : undefined}
+                                    disabled={!fromDate}
+                                />
+
+                                <GridToolbarSpacer /> {/* Col 3 Spacer */}
+                                <GridToolbarSpacer type="actions" /> {/* Col 4 Spacer */}
+                            </GridToolbarRow>
+                        </GridToolbar>
                     </div>
 
-                    <AppDataGrid
+                    <div className="px-2 pb-2">
+                        <AppDataGrid
                     columns={[
                         {
                             label: "Status",
+                            headClassName: "text-center",
+                            cellClassName: "text-center",
                             render: (b: any) => (
                                 <span className={cn(
                                     "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
@@ -674,24 +663,30 @@ export default function BookingsManagement() {
                         },
                         {
                             label: "Arrival",
-                            cellClassName: "font-medium",
+                            headClassName: "text-center",
+                            cellClassName: "text-center font-medium text-xs whitespace-nowrap",
                             render: (b: any) => formatToDDMMYYYY(b.estimated_arrival)
                         },
                         {
                             label: "Departure",
-                            cellClassName: "font-medium",
+                            headClassName: "text-center",
+                            cellClassName: "text-center font-medium text-xs whitespace-nowrap",
                             render: (b: any) => formatToDDMMYYYY(b.estimated_departure)
                         },
                         {
                             label: "Room number(s)",
+                            headClassName: "text-center",
+                            cellClassName: "text-center",
                             render: (b: any) => (
-                                <div className="max-w-[150px] truncate" title={b.room_numbers.toString()}>
+                                <div className="max-w-[150px] truncate mx-auto" title={b.room_numbers.toString()}>
                                     {b.room_numbers.slice(0, 4).toString()}{b.room_numbers.length > 4 ? "..." : ""}
                                 </div>
                             )
                         },
                         {
                             label: "Pickup / Drop",
+                            headClassName: "text-center",
+                            cellClassName: "text-center",
                             render: (b: any) => `${b.pickup ? "Yes" : "No"} / ${b.drop ? "Yes" : "No"}`
                         }
                     ] as ColumnDef<any>[]}
@@ -700,21 +695,21 @@ export default function BookingsManagement() {
                     emptyText="No bookings found"
                     minWidth="800px"
                     actionLabel=""
-                    actionClassName="text-center w-[72px]"
+                    actionClassName="text-center w-[60px]"
                     actions={(b: any) => (
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <Button
                                     size="icon"
                                     variant="ghost"
-                                    className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                    className="h-8 w-8 text-primary hover:bg-primary/10 transition-colors"
                                     onClick={() => handleManage(b.id)}
                                     aria-label={`View booking ${b.id}`}
                                 >
-                                    <Pencil className="w-4 h-4 mx-auto" />
+                                    <Eye className="w-4 h-4" />
                                 </Button>
                             </TooltipTrigger>
-                            <TooltipContent>View / Edit Details</TooltipContent>
+                            <TooltipContent>View Booking Details</TooltipContent>
                         </Tooltip>
                     )}
                     enablePagination={!!bookings?.pagination}
@@ -732,7 +727,8 @@ export default function BookingsManagement() {
                     }}
                     />
                 </div>
-            </section>
+            </div>
+        </section>
 
             {/* Booking Details (Read-only) */}
             <Sheet open={detailsOpen} onOpenChange={setDetailsOpen}>

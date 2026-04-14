@@ -65,7 +65,6 @@ type Enquiry = {
         no_of_rooms: number;
     }[];
 
-    // legacy fields (can remove later if backend removes)
     room_type?: string | null;
     no_of_rooms?: number | null;
 
@@ -88,39 +87,6 @@ type Enquiry = {
     updated_on?: string | null;
 };
 
-function statusBadge(status: EnquiryStatus) {
-    switch (status) {
-        case "open":
-            return "bg-blue-100 text-blue-700";
-        case "follow_up":
-            return "bg-yellow-100 text-yellow-800";
-        case "reserved":
-            return "bg-purple-100 text-purple-700";
-        case "booked":
-            return "bg-green-100 text-green-700";
-        case "closed":
-            return "bg-gray-100 text-gray-700";
-        case "cancelled":
-            return "bg-red-100 text-red-700";
-        default:
-            return "bg-muted";
-    }
-}
-
-
-function buildUpdateEnquiryStatusPayload(
-    status: EnquiryStatus,
-    followUpDate?: string,
-    comment?: string
-) {
-    return {
-        status,
-        ...(followUpDate && { follow_up_date: followUpDate }),
-        ...(comment && { comment }),
-    };
-}
-
-
 export default function EnquiriesManagement() {
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
     const [page, setPage] = useState(1);
@@ -132,6 +98,7 @@ export default function EnquiriesManagement() {
     const [followUpDate, setFollowUpDate] = useState("");
     const [comment, setComment] = useState("");
     const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
+    const [searchInput, setSearchInput] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState<EnquiryStatus | "">("");
 
@@ -187,25 +154,25 @@ export default function EnquiriesManagement() {
     };
 
     const handleUpdate = async () => {
-        const payload = buildUpdateEnquiryStatusPayload(
+        if (!selected) return;
+
+        const payload = {
             status,
-            followUpDate,
-            comment
-        );
+            ...(followUpDate && { follow_up_date: followUpDate }),
+            ...(comment && { comment }),
+        };
 
         const promise = updateEnquiry({ id: selected.id, payload }).unwrap()
 
         await toast.promise(promise, {
-            error: "Error updating query",
+            error: "Error updating enquiry",
             pending: "Updating please wait",
-            success: "Query updated successfully"
+            success: "Enquiry updated successfully"
         })
 
         setOpen(false);
     };
 
-    // Hook handles all initialization logic now
-    
     function handleBook(enquiry: Enquiry) {
         navigate("/reservation", {
             state: {
@@ -216,15 +183,12 @@ export default function EnquiriesManagement() {
         });
     }
 
-
     const pathname = useLocation().pathname
     const { permission } = usePermission(pathname)
     const { permission: bookingPermission } = usePermission("/bookings", { autoRedirect: false })
 
     const resetFiltersHandler = () => {
-        if (myProperties?.properties?.[0]?.id) {
-            setSelectedPropertyId(myProperties.properties[0].id);
-        }
+        setSearchInput("");
         setSearchQuery("");
         setStatusFilter("");
         setPage(1);
@@ -257,53 +221,61 @@ export default function EnquiriesManagement() {
     return (
         <div className="h-full flex flex-col overflow-hidden">
             <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8 space-y-6">
-                {/* Header */}
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="shrink-0">
-                        <h1 className="text-2xl font-bold">Enquiries</h1>
+                    <div className="flex flex-col">
+                        <h1 className="text-2xl font-bold leading-tight">Enquiries</h1>
                         <p className="text-sm text-muted-foreground">
                             Track and manage customer enquiries
                         </p>
                     </div>
 
-                    {permission?.can_create && <Button
-                        variant="heroOutline"
-                        onClick={() => {
-                            navigate("/create-enquiry")
-                        }}
-                    >
-                        New Enquiry
-                    </Button>}
+                    <div className="flex items-center gap-3">
+                        {isMultiProperty && (
+                            <div className="flex items-center h-9 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
+                                <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border uppercase">
+                                    Property
+                                </span>
+                                <NativeSelect
+                                    className="flex-1 bg-transparent px-2 focus:outline-none focus:ring-0 text-sm h-full truncate cursor-pointer"
+                                    value={selectedPropertyId ?? ""}
+                                    onChange={(e) => {
+                                        setSelectedPropertyId(Number(e.target.value) || null);
+                                        setPage(1);
+                                    }}
+                                >
+                                    <option value="" disabled>Select Property</option>
+                                    {myProperties?.properties?.map((p: any) => (
+                                        <option key={p.id} value={p.id}>
+                                            {p.brand_name}
+                                        </option>
+                                    ))}
+                                </NativeSelect>
+                            </div>
+                        )}
 
+                        {permission?.can_create && (
+                            <Button
+                                variant="heroOutline"
+                                className="h-9"
+                                onClick={() => navigate("/create-enquiry")}
+                            >
+                                + New Enquiry
+                            </Button>
+                        )}
+                    </div>
                 </div>
 
-
-                <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col flex-1 min-h-0 overflow-hidden">
+                <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
                     <div className="w-full">
-                        <GridToolbar>
-                            <GridToolbarRow className={isMultiProperty ? "md:grid-cols-[repeat(3,1fr)_auto]" : "md:grid-cols-[repeat(2,1fr)_auto]"}>
-                                {isMultiProperty && (
-                                    <GridToolbarSelect
-                                        label="PROPERTY"
-                                        value={selectedPropertyId ?? ""}
-                                        onChange={(value) => {
-                                            setSelectedPropertyId(Number(value) || null);
-                                            setPage(1);
-                                        }}
-                                        options={[
-                                            { label: "--Please Select--", value: "", disabled: true },
-                                            ...(myProperties?.properties?.map((p: any) => ({
-                                                label: p.brand_name,
-                                                value: p.id,
-                                            })) ?? []),
-                                        ]}
-                                    />
-                                )}
-
+                        <GridToolbar className="border-b-0">
+                            <GridToolbarRow className="gap-2">
                                 <GridToolbarSearch
-                                    value={searchQuery}
-                                    onChange={setSearchQuery}
-                                    placeholder="Search enquiries..."
+                                    value={searchInput}
+                                    onChange={setSearchInput}
+                                    onSearch={() => {
+                                        setSearchQuery(searchInput.trim());
+                                        setPage(1);
+                                    }}
                                 />
 
                                 <GridToolbarSelect
@@ -324,7 +296,10 @@ export default function EnquiriesManagement() {
                                     ]}
                                 />
 
+                                <div className="w-full" /> {/* Empty col 3 */}
+
                                 <GridToolbarActions
+                                    className="gap-1 justify-end"
                                     actions={[
                                         {
                                             key: "export",
@@ -350,55 +325,53 @@ export default function EnquiriesManagement() {
                         </GridToolbar>
                     </div>
 
-                    <AppDataGrid
-                        columns={[
-                            {
-                                label: "Name",
-                                key: "guest_name",
-                                cellClassName: "font-medium",
-                            },
-                            {
-                                label: "Contact",
-                                key: "mobile",
-                                cellClassName: "font-semibold",
-                            },
-                            {
-                                label: "Offer Amount",
-                                key: "offer_amount",
-                                cellClassName: "font-medium",
-                            },
-                            {
-                                label: "Quote Amount",
-                                key: "quote_amount",
-                                cellClassName: "font-medium",
-                            },
-                            {
-                                label: "CheckIn",
-                                cellClassName: "font-medium",
-                                render: (e) => e.check_in ? new Date(e.check_in as string).toLocaleDateString() : "-",
-                            },
-                            {
-                                label: "CheckOut",
-                                cellClassName: "font-medium",
-                                render: (e) => e.check_out ? new Date(e.check_out as string).toLocaleDateString() : "-",
-                            },
-                            {
-                                label: "FollowUp",
-                                cellClassName: "font-medium",
-                                render: (e) => e.follow_up_date ? new Date(e.follow_up_date as string).toLocaleDateString() : "",
-                            },
-                        ] as ColumnDef[]}
-                        data={filteredEnquiries}
-                        loading={enquiryLoading}
-                        emptyText="No enquiries found"
-                        actionLabel=""
-                        actionClassName="text-center w-[110px]"
-                        actions={
-                            permission?.can_create
-                                ? (e) => {
-                                    const enquiry = e as unknown as Enquiry;
-                                    return (
-                                    <div className="flex justify-center gap-2">
+                    <div className="px-2 pb-2">
+                        <AppDataGrid
+                            columns={[
+                                {
+                                    label: "Name",
+                                    key: "guest_name",
+                                    cellClassName: "font-medium",
+                                },
+                                {
+                                    label: "Contact",
+                                    key: "mobile",
+                                    cellClassName: "font-semibold",
+                                },
+                                {
+                                    label: "Offer Amount",
+                                    key: "offer_amount",
+                                    cellClassName: "font-medium",
+                                },
+                                {
+                                    label: "Quote Amount",
+                                    key: "quote_amount",
+                                    cellClassName: "font-medium",
+                                },
+                                {
+                                    label: "CheckIn",
+                                    cellClassName: "font-medium",
+                                    render: (e) => (e as Enquiry).check_in ? new Date((e as Enquiry).check_in as string).toLocaleDateString() : "-",
+                                },
+                                {
+                                    label: "CheckOut",
+                                    cellClassName: "font-medium",
+                                    render: (e) => (e as Enquiry).check_out ? new Date((e as Enquiry).check_out as string).toLocaleDateString() : "-",
+                                },
+                                {
+                                    label: "FollowUp",
+                                    cellClassName: "font-medium",
+                                    render: (e) => (e as Enquiry).follow_up_date ? new Date((e as Enquiry).follow_up_date as string).toLocaleDateString() : "",
+                                },
+                            ] as ColumnDef<Enquiry>[]}
+                            data={filteredEnquiries}
+                            loading={enquiryLoading}
+                            actionClassName="text-center w-[90px]"
+                            className="mt-0"
+                            actions={(e) => {
+                                const enquiry = e as Enquiry;
+                                return (
+                                    <div className="flex justify-center gap-1">
                                         <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <Button
@@ -432,24 +405,23 @@ export default function EnquiriesManagement() {
                                             </Tooltip>
                                         )}
                                     </div>
-                                    );
-                                }
-                                : undefined
-                        }
-                        enablePagination={!!enquiries?.pagination}
-                        paginationProps={{
-                            page,
-                            totalPages: enquiries?.pagination?.totalPages ?? 1,
-                            setPage,
-                            disabled: !enquiries,
-                            totalRecords: enquiries?.pagination?.totalItems ?? enquiries?.pagination?.total ?? enquiries?.data?.length ?? 0,
-                            limit,
-                            onLimitChange: (value) => {
-                                setLimit(value);
-                                setPage(1);
-                            },
-                        }}
-                    />
+                                );
+                            }}
+                            enablePagination={!!enquiries?.pagination}
+                            paginationProps={{
+                                page,
+                                totalPages: enquiries?.pagination?.totalPages ?? 1,
+                                setPage,
+                                disabled: !enquiries,
+                                totalRecords: enquiries?.pagination?.totalItems ?? enquiries?.pagination?.total ?? enquiries?.data?.length ?? 0,
+                                limit,
+                                onLimitChange: (value) => {
+                                    setLimit(value);
+                                    setPage(1);
+                                },
+                            }}
+                        />
+                    </div>
                 </div>
             </section>
 
@@ -465,11 +437,9 @@ export default function EnquiriesManagement() {
 
                             {/* LEFT — READ ONLY DETAILS */}
                             <div className="space-y-5">
-
-                                {/* Guest Info */}
                                 <div>
                                     <Label>Guest Info</Label>
-                                    <p className="font-medium">{selected.guest_name}</p>
+                                    <p className="font-medium text-base">{selected.guest_name}</p>
                                     <p className="text-muted-foreground">
                                         {selected.mobile} • {selected.email || "No email"}
                                     </p>
@@ -478,10 +448,9 @@ export default function EnquiriesManagement() {
                                     </p>
                                 </div>
 
-                                {/* Stay Details */}
                                 <div>
                                     <Label>Stay Details</Label>
-                                    <p>
+                                    <p className="font-medium">
                                         {selected.check_in
                                             ? new Date(selected.check_in).toLocaleDateString()
                                             : "—"}
@@ -495,81 +464,53 @@ export default function EnquiriesManagement() {
                                     </p>
                                 </div>
 
-                                {/* Room Selection */}
                                 <div>
                                     <Label>Room Selection</Label>
-
                                     <div className="space-y-2 mt-1">
-
                                         {selected.room_details?.length ? (
-
                                             selected.room_details.map((room, i) => (
-
                                                 <div
                                                     key={i}
                                                     className="flex justify-between border rounded p-2 bg-muted/20"
                                                 >
                                                     <span>{room.room_type}</span>
-
                                                     <span className="font-medium">
                                                         {room.no_of_rooms} room
                                                         {room.no_of_rooms > 1 ? "s" : ""}
                                                     </span>
                                                 </div>
-
                                             ))
-
                                         ) : (
-                                            <p className="text-muted-foreground text-sm">
-                                                No room selected
-                                            </p>
+                                            <p className="text-muted-foreground text-sm">No room selected</p>
                                         )}
-
                                     </div>
                                 </div>
 
-                                {/* Guest Composition */}
                                 <div>
                                     <Label>Guest Composition</Label>
-                                    <p className="text-muted-foreground">
-                                        Total: {selected.total_members || 0} |
-                                        Seniors: {selected.senior_citizens || 0} |
-                                        Children: {selected.child || 0} |
-                                        Specially Abled: {selected.specially_abled || 0}
+                                    <p className="text-muted-foreground border rounded p-2 bg-muted/20">
+                                        Total: <span className="text-foreground font-medium">{selected.total_members || 0}</span> |
+                                        Seniors: <span className="text-foreground font-medium">{selected.senior_citizens || 0}</span> |
+                                        Children: <span className="text-foreground font-medium">{selected.child || 0}</span> |
+                                        Specially Abled: <span className="text-foreground font-medium">{selected.specially_abled || 0}</span>
                                     </p>
                                 </div>
 
-                                {/* Pricing */}
                                 <div>
                                     <Label>Pricing</Label>
-                                    <p>Quote: {selected.quote_amount ? `₹${selected.quote_amount}` : "—"}</p>
-                                    <p>Offer: {selected.offer_amount ? `₹${selected.offer_amount}` : "—"}</p>
+                                    <div className="flex gap-4">
+                                        <p>Quote: <span className="font-medium">{selected.quote_amount ? `₹${selected.quote_amount}` : "—"}</span></p>
+                                        <p>Offer: <span className="font-medium text-primary">{selected.offer_amount ? `₹${selected.offer_amount}` : "—"}</span></p>
+                                    </div>
                                 </div>
-
-                                {/* Additional */}
-                                <div>
-                                    <Label>Additional Info</Label>
-                                    <p className="text-muted-foreground">
-                                        Source: {selected.source}
-                                    </p>
-                                    <p className="text-muted-foreground">
-                                        Contact Method: {selected.contact_method}
-                                    </p>
-                                    <p className="text-muted-foreground">
-                                        Agent Type: {selected.agent_type || "—"}
-                                    </p>
-                                </div>
-
                             </div>
 
-
                             {/* RIGHT — EDITABLE */}
-                            <div className="space-y-4">
-
+                            <div className="space-y-4 border-l pl-6 border-border">
                                 <div>
-                                    <Label>Status</Label>
+                                    <Label className="text-primary font-bold">Update Lead Status</Label>
                                     <NativeSelect
-                                        className="w-full h-10 rounded-[3px] border px-3 text-sm"
+                                        className="w-full h-10 rounded-[3px] border px-3 text-sm mt-1"
                                         value={status}
                                         onChange={(e) =>
                                             setStatus(e.target.value as EnquiryStatus)
@@ -583,10 +524,11 @@ export default function EnquiriesManagement() {
                                 </div>
 
                                 {status === "follow_up" && (
-                                    <div>
+                                    <div className="animate-in fade-in duration-300">
                                         <Label>Follow-up Date</Label>
                                         <Input
                                             type="datetime-local"
+                                            className="mt-1 h-10 rounded-[3px]"
                                             value={followUpDate}
                                             onChange={(e) => setFollowUpDate(e.target.value)}
                                         />
@@ -594,18 +536,18 @@ export default function EnquiriesManagement() {
                                 )}
 
                                 <div>
-                                    <Label>Comment</Label>
+                                    <Label>Internal Notes</Label>
                                     <textarea
-                                        className="w-full min-h-[100px] rounded-[3px] border px-3 py-2 text-sm"
+                                        className="w-full min-h-[120px] rounded-[3px] border px-3 py-2 text-sm mt-1 focus:ring-1 focus:ring-primary outline-none transition-all"
                                         value={comment}
                                         onChange={(e) => setComment(e.target.value)}
-                                        placeholder="Add internal note..."
+                                        placeholder="Add a reason or next steps..."
                                     />
                                 </div>
 
                                 <Button
-                                    variant="heroOutline"
-                                    className="w-full"
+                                    variant="hero"
+                                    className="w-full h-11"
                                     onClick={handleUpdate}
                                 >
                                     Update Enquiry
@@ -618,5 +560,3 @@ export default function EnquiriesManagement() {
         </div>
     );
 }
-
-

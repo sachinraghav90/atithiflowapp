@@ -21,6 +21,7 @@ import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
 import { cn } from "@/lib/utils";
 import { getStatusColor } from "@/constants/statusColors";
 import { useGridPagination } from "@/hooks/useGridPagination";
+import { NativeSelect } from "@/components/ui/native-select";
 
 const ORDER_STATUSES = ["New", "Preparing", "Ready", "Delivered", "Cancelled"];
 const PAYMENT_STATUSES = ["Pending", "Paid", "Failed", "Refunded"];
@@ -76,15 +77,15 @@ export function OrdersManagement() {
     /* ============================
        ORDERS QUERY (PAGINATED)
     ============================ */
-  const { data, isLoading, isFetching: ordersFetching, refetch } = useGetPropertyOrdersQuery(
-    {
-        propertyId: selectedPropertyId,
-        page,
-        limit,        // ← dynamic now
-        status: statusFilter || undefined
-    },
-    { skip: !isLoggedIn || !selectedPropertyId }
-);
+    const { data, isLoading, isFetching: ordersFetching, refetch } = useGetPropertyOrdersQuery(
+        {
+            propertyId: selectedPropertyId,
+            page,
+            limit,
+            status: statusFilter || undefined
+        },
+        { skip: !isLoggedIn || !selectedPropertyId }
+    );
 
 
     /* ============================
@@ -117,7 +118,6 @@ export function OrdersManagement() {
     }, [data?.data, paymentFilter, searchQuery]);
 
     // ################# Export Orders to Sheet #################
-    // Function to handle export
     const exportOrdersSheet = async () => {
         if (exportingOrders) return;
 
@@ -155,6 +155,7 @@ export function OrdersManagement() {
         setStatusFilter("");
         setPaymentFilter("");
     };
+
     const refreshTable = async () => {
         if (ordersFetching) return;
         const toastId = toast.loading("Refreshing data...");
@@ -172,34 +173,8 @@ export function OrdersManagement() {
 
     const orderColumns = useMemo<ColumnDef<Order>[]>(() => [
         {
-            label: "",
-            headClassName: "w-[60px] text-center",
-            cellClassName: "text-center",
-            render: (order) => (
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
-                            aria-label={`View and edit details for order #${order.id}`}
-                            onMouseEnter={() => prefetchOrder(order.id)}
-                            onFocus={() => prefetchOrder(order.id)}
-                            onClick={() => {
-                                setSelectedOrderId(order.id);
-                                setItemsOpen(true);
-                            }}
-                        >
-                            <Pencil className="w-4 h-4 mx-auto" />
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>View / Edit Details</TooltipContent>
-                </Tooltip>
-            ),
-        },
-        {
             label: "Order",
-            cellClassName: "text-center",
+            cellClassName: "font-medium",
             render: (order) => `#${order.id}`,
         },
         {
@@ -245,7 +220,7 @@ export function OrdersManagement() {
         },
         {
             label: "Order Time",
-            cellClassName: "text-xs",
+            cellClassName: "text-xs text-muted-foreground",
             render: (order) => new Date(order.order_date).toLocaleString(),
         },
     ], [prefetchOrder]);
@@ -253,145 +228,173 @@ export function OrdersManagement() {
     return (
         <div className="h-full flex flex-col overflow-hidden">
             <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8 space-y-6">
-            {/* LEFT — TITLE */}
-            <div className="flex items-center justify-between w-full">
-
-                {/* LEFT — TITLE */}
-                <div className="flex flex-col">
-                    <h1 className="text-2xl font-bold leading-tight">Orders</h1>
-                    <p className="text-sm text-muted-foreground">
-                        Restaurant & room service orders
-                    </p>
-                </div>
-
-                {/* RIGHT — BUTTONS */}
-                <div className="flex items-center gap-3 ml-auto">
-
-                    {canAccessDeliveryFeatures && (
-                        <Button
-                            variant="heroOutline"
-                            className="h-10"
-                            onClick={() => setSheetOpen(true)}
-                        >
-                            Manage Delivery Partners
-                        </Button>
-                    )}
-
-                    {canAccessDeliveryFeatures && (
-                        <Button
-                            variant="hero"
-                            className="h-10"
-                            onClick={() => setCreateOpen(true)}
-                        >
-                            + Delivery Partner
-                        </Button>
-                    )}
-
-                    {canCreateOrders && (
-                        <Button
-                            variant="heroOutline"
-                            className="h-10"
-                            onClick={() => navigate("/create-order")}
-                        >
-                            New Order
-                        </Button>
-                    )}
-
-                </div>
-
-            </div>
-
-            <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
-                <div className="w-full">
-                    <GridToolbar>
-                        <GridToolbarRow className={isMultiProperty ? "md:grid-cols-[repeat(4,1fr)_auto]" : "md:grid-cols-[repeat(3,1fr)_auto]"}>
-                            {isMultiProperty && (
-                                <GridToolbarSelect
-                                    label="PROPERTY"
+                <div className="flex items-center justify-between w-full">
+                    <div className="flex flex-col">
+                        <h1 className="text-2xl font-bold leading-tight">Orders</h1>
+                        <p className="text-sm text-muted-foreground">
+                            Restaurant & room service orders
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        {isMultiProperty && (
+                            <div className="flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
+                                <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border uppercase">
+                                    Property
+                                </span>
+                                <NativeSelect
+                                    className="flex-1 bg-transparent px-2 focus:outline-none focus:ring-0 text-sm h-full truncate cursor-pointer"
                                     value={selectedPropertyId ?? ""}
-                                    onChange={(value) => setSelectedPropertyId(Number(value) || null)}
-                                    options={myProperties?.properties?.map((property: { id: number; brand_name: string }) => ({
-                                        label: property.brand_name,
-                                        value: property.id,
-                                    })) ?? []}
-                                />
-                            )}
+                                    onChange={(e) => setSelectedPropertyId(Number(e.target.value) || null)}
+                                >
+                                    <option value="" disabled>Select Property</option>
+                                    {myProperties?.properties?.map((property: { id: number; brand_name: string }) => (
+                                        <option key={property.id} value={property.id}>
+                                            {property.brand_name}
+                                        </option>
+                                    ))}
+                                </NativeSelect>
+                            </div>
+                        )}
 
-                            <GridToolbarSearch
-                                value={searchInput}
-                                onChange={setSearchInput}
-                                onSearch={() => {
-                                    setSearchQuery(searchInput.trim());
-                                    resetPage();
-                                }}
-                                placeholder="Search Orders..."
-                            />
+                        {canAccessDeliveryFeatures && (
+                            <Button
+                                variant="heroOutline"
+                                className="h-10"
+                                onClick={() => setSheetOpen(true)}
+                            >
+                                Manage Delivery Partners
+                            </Button>
+                        )}
 
-                            <GridToolbarSelect
-                                label="PAYMENT"
-                                value={paymentFilter}
-                                onChange={setPaymentFilter}
-                                options={[
-                                    { label: "Any", value: "" },
-                                    ...PAYMENT_STATUSES.map((s) => ({ label: s, value: s })),
-                                ]}
-                            />
+                        {canAccessDeliveryFeatures && (
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="hero"
+                                    className="h-10"
+                                    onClick={() => setCreateOpen(true)}
+                                >
+                                    + Delivery Partner
+                                </Button>
+                            </div>
+                        )}
 
-                            <GridToolbarSelect
-                                label="STATUS"
-                                value={statusFilter}
-                                onChange={setStatusFilter}
-                                options={[
-                                    { label: "Any", value: "" },
-                                    ...ORDER_STATUSES.map((s) => ({ label: s, value: s })),
-                                ]}
-                            />
-
-                            <GridToolbarActions
-                                actions={[
-                                    {
-                                        key: "export",
-                                        label: "Export Orders",
-                                        icon: <Download className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
-                                        onClick: exportOrdersSheet,
-                                    },
-                                    {
-                                        key: "reset",
-                                        label: "Reset Filters",
-                                        icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
-                                        onClick: resetFiltersHandler,
-                                    },
-                                    {
-                                        key: "refresh",
-                                        label: "Refresh Data",
-                                        icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
-                                        onClick: refreshTable,
-                                        disabled: ordersFetching,
-                                    },
-                                ]}
-                            />
-                        </GridToolbarRow>
-                    </GridToolbar>
+                        {canCreateOrders && (
+                            <Button
+                                variant="heroOutline"
+                                className="h-10"
+                                onClick={() => navigate("/create-order")}
+                            >
+                                New Order
+                            </Button>
+                        )}
+                    </div>
                 </div>
 
-                <AppDataGrid
-                    columns={orderColumns}
-                    data={filteredOrders}
-                    rowKey={(order) => order.id}
-                    loading={isLoading}
-                    emptyText="No orders found"
-                    enablePagination={Boolean(data?.pagination)}
-                    paginationProps={data?.pagination ? {
-                        page,
-                        totalPages: data.pagination.totalPages,
-                        setPage,
-                        totalRecords: data.pagination.totalItems ?? data.pagination.total ?? data.data?.length ?? 0,
-                        limit,
-                        onLimitChange: handleLimitChange,
-                    } : undefined}
-                />
-            </div>
+                <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
+                    <div className="w-full">
+                        <GridToolbar className="border-b-0">
+                            <GridToolbarRow className="gap-2">
+                                <GridToolbarSearch
+                                    value={searchInput}
+                                    onChange={setSearchInput}
+                                    onSearch={() => {
+                                        setSearchQuery(searchInput.trim());
+                                        resetPage();
+                                    }}
+                                />
+
+                                <GridToolbarSelect
+                                    label="PAYMENT"
+                                    value={paymentFilter}
+                                    onChange={setPaymentFilter}
+                                    options={[
+                                        { label: "Any", value: "" },
+                                        ...PAYMENT_STATUSES.map((s) => ({ label: s, value: s })),
+                                    ]}
+                                />
+
+                                <GridToolbarSelect
+                                    label="STATUS"
+                                    value={statusFilter}
+                                    onChange={setStatusFilter}
+                                    options={[
+                                        { label: "Any", value: "" },
+                                        ...ORDER_STATUSES.map((s) => ({ label: s, value: s })),
+                                    ]}
+                                />
+
+                                <GridToolbarActions
+                                    className="gap-1 justify-end"
+                                    actions={[
+                                        {
+                                            key: "export",
+                                            label: "Export Orders",
+                                            icon: <Download className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: exportOrdersSheet,
+                                        },
+                                        {
+                                            key: "reset",
+                                            label: "Reset Filters",
+                                            icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: resetFiltersHandler,
+                                        },
+                                        {
+                                            key: "refresh",
+                                            label: "Refresh Data",
+                                            icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: refreshTable,
+                                            disabled: ordersFetching,
+                                        },
+                                    ]}
+                                />
+                            </GridToolbarRow>
+                        </GridToolbar>
+                    </div>
+
+                    <div className="px-2 pb-2">
+                        <AppDataGrid
+                            columns={orderColumns}
+                            data={filteredOrders}
+                            rowKey={(order) => order.id}
+                            loading={isLoading || ordersFetching}
+                            emptyText="No orders found"
+                            actionClassName="text-center w-[60px]"
+                            actions={(order) => (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                            aria-label={`View and edit details for order #${order.id}`}
+                                            onMouseEnter={() => prefetchOrder(order.id)}
+                                            onFocus={() => prefetchOrder(order.id)}
+                                            onClick={() => {
+                                                setSelectedOrderId(order.id);
+                                                setItemsOpen(true);
+                                            }}
+                                        >
+                                            <Pencil className="w-4 h-4 mx-auto" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>View / Edit Details</TooltipContent>
+                                </Tooltip>
+                            )}
+                            enablePagination={Boolean(data?.pagination)}
+                            paginationProps={data?.pagination ? {
+                                page,
+                                totalPages: data.pagination.totalPages,
+                                setPage,
+                                disabled: ordersFetching,
+                                totalRecords: data.pagination.totalItems ?? data.pagination.total ?? data.data?.length ?? 0,
+                                limit,
+                                onLimitChange: handleLimitChange,
+                            } : undefined}
+                        />
+                    </div>
+                </div>
             </section>
+
             <OrderItemsModal
                 orderId={selectedOrderId}
                 open={itemsOpen}

@@ -1,7 +1,9 @@
 import * as React from "react"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { NativeSelect } from "@/components/ui/native-select"
 
 /* ------------------------------------------------------------------ */
 /*  Base Primitives                                                    */
@@ -117,6 +119,8 @@ export type AppDataGridProps<T = Record<string, unknown>> = {
     actions?: (row: T, index: number) => React.ReactNode
     /** Action column header label (defaults to "Action") */
     actionLabel?: string
+    /** Render action column at the beginning of the table instead of the end */
+    prefixActions?: boolean
     /** Action column header/cell className */
     actionClassName?: string
     /** Enable pagination */
@@ -151,7 +155,22 @@ function DataGridPagination({
     disabled = false,
 }: PaginationProps) {
     const [inputValue, setInputValue] = useState(String(page))
+    const menuRef = useRef<HTMLDivElement>(null)
     const [rowsMenuOpen, setRowsMenuOpen] = useState(false)
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setRowsMenuOpen(false)
+            }
+        }
+        if (rowsMenuOpen) {
+            document.addEventListener("mousedown", handleClickOutside)
+        }
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside)
+        }
+    }, [rowsMenuOpen])
 
     useEffect(() => {
         setInputValue(String(page))
@@ -180,23 +199,23 @@ function DataGridPagination({
     }
 
     return (
-        <div className="flex items-center justify-end gap-2 px-3 py-2 border-t border-border text-xs text-muted-foreground bg-gray-50">
+        <div className="flex items-center justify-end gap-2 px-3 py-2 border-t border-border text-xs text-foreground bg-[#E1F3F8]">
             {onLimitChange && (
-                <div className="relative flex items-center">
+                <div className="relative flex items-center" ref={menuRef}>
                     <button
                         type="button"
                         onClick={() => setRowsMenuOpen((open) => !open)}
                         disabled={disabled}
-                        className="flex items-center gap-1 h-7 rounded-full border border-border bg-background px-2.5 text-xs font-medium text-foreground shadow-sm hover:bg-muted/50 transition-colors disabled:cursor-not-allowed"
+                        className="flex items-center gap-1.5 h-7 rounded-[3px] border border-[#5EB5C9]/50 bg-background px-2.5 text-[11px] font-bold text-foreground shadow-sm hover:bg-muted/50 transition-colors disabled:cursor-not-allowed"
                         aria-label="Change rows per page"
                     >
-                        <span className="text-muted-foreground">Rows</span>
+                        <span className="text-foreground/70 uppercase tracking-tight">Rows:</span>
                         <span>{limit}</span>
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 20 20"
                             fill="currentColor"
-                            className="w-3 h-3 text-muted-foreground"
+                            className="w-3.5 h-3.5 text-foreground/50 ml-0.5"
                             aria-hidden="true"
                         >
                             <path
@@ -208,18 +227,18 @@ function DataGridPagination({
                     </button>
 
                     {rowsMenuOpen && (
-                        <div className="absolute bottom-7 left-0 z-20 w-[160px] rounded-[5px] border border-border bg-background p-1 shadow-md">
-                            <div className="grid grid-cols-4 gap-0.5">
-                                {[5, 10, 25, 50].map((value) => (
+                        <div className="absolute bottom-9 left-0 z-20 w-[160px] rounded-none border border-border bg-background shadow-lg animate-in slide-in-from-bottom-1 duration-200">
+                            <div className="grid grid-cols-4 items-center">
+                                {[10, 25, 50, 100].map((value) => (
                                     <button
                                         key={value}
                                         type="button"
                                         onClick={() => handleLimitSelect(String(value))}
                                         className={cn(
-                                            "h-7 rounded-[3px] text-xs font-semibold transition-colors border border-border",
+                                            "h-7 w-full rounded-none text-[10px] font-bold transition-all border-r border-border/40 last:border-r-0",
                                             limit === value
-                                                ? "bg-primary text-primary-foreground border-primary"
-                                                : "bg-background text-muted-foreground hover:bg-muted/60"
+                                                ? "bg-primary text-primary-foreground"
+                                                : "bg-background text-foreground hover:bg-muted"
                                         )}
                                     >
                                         {value}
@@ -229,7 +248,7 @@ function DataGridPagination({
                         </div>
                     )}
 
-                    <div className="h-4 w-px bg-border ml-0.5" />
+                    <div className="h-4 w-px bg-foreground/20 ml-1.5 mr-0.5" />
                 </div>
             )}
 
@@ -237,7 +256,7 @@ function DataGridPagination({
             <Button
                 size="sm"
                 variant="outline"
-                className="h-7 w-7 rounded-[3px] text-xs"
+                className="h-7 w-8 rounded-[3px] text-xs bg-background text-foreground border-border hover:bg-muted transition-colors shadow-sm font-bold"
                 disabled={page === 1 || disabled}
                 onClick={() => setPage((p: number) => p - 1)}
             >
@@ -245,9 +264,9 @@ function DataGridPagination({
             </Button>
 
             {/* Page X of Y */}
-            <div className="flex items-center gap-1.5">
-                <span className="text-xs font-medium">Page</span>
-                <input
+            <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-tight text-foreground/70 mr-1">Page</span>
+                <Input
                     type="number"
                     min={1}
                     max={totalPages}
@@ -255,16 +274,16 @@ function DataGridPagination({
                     onChange={(e) => setInputValue(e.target.value)}
                     onBlur={handleInputBlur}
                     onKeyDown={handleKeyDown}
-                    className="w-9 h-7 text-center border border-border rounded-[3px] text-xs font-medium bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-11 h-7 text-center border-[#5EB5C9]/50 rounded-[3px] text-xs font-bold bg-background text-foreground shadow-inner p-0 focus-visible:ring-1 focus-visible:ring-primary"
                 />
-                <span className="text-xs font-medium">of {totalPages}</span>
+                <span className="text-[11px] font-bold uppercase tracking-tight text-foreground/70 ml-1">of {totalPages}</span>
             </div>
 
             {/* Next */}
             <Button
                 size="sm"
                 variant="outline"
-                className="h-7 w-7 rounded-[3px] text-xs"
+                className="h-7 w-8 rounded-[3px] text-xs bg-background text-foreground border-border hover:bg-muted transition-colors shadow-sm font-bold"
                 disabled={page >= totalPages || disabled}
                 onClick={() => setPage((p: number) => p + 1)}
             >
@@ -274,9 +293,9 @@ function DataGridPagination({
             {/* Divider + Record count */}
             {typeof totalRecords === "number" && (
                 <>
-                    <div className="h-4 w-px bg-border" />
-                    <span className="inline-flex items-center h-7 px-2.5 rounded-[3px] border border-border bg-background text-xs font-medium text-foreground">
-                        Total {totalRecords}
+                    <div className="h-4 w-px bg-foreground/20 ml-1 mr-1" />
+                    <span className="inline-flex items-center h-7 px-3 rounded-[3px] border border-[#5EB5C9]/50 bg-background text-[11px] font-bold text-[#2A9AB7] shadow-sm">
+                         Total {totalRecords}
                     </span>
                 </>
             )}
@@ -297,8 +316,9 @@ function AppDataGrid<T extends Record<string, unknown>>({
     loading = false,
     emptyText = "No data found",
     actions,
-    actionLabel = "Action",
-    actionClassName = "text-right",
+    actionLabel = "",
+    prefixActions = true,
+    actionClassName,
     enablePagination = false,
     paginationProps,
     minWidth = "800px",
@@ -312,7 +332,7 @@ function AppDataGrid<T extends Record<string, unknown>>({
     return (
         <div
             className={cn(
-                "grid-header-inside-table border rounded-[5px] overflow-hidden mt-2 flex flex-col flex-1 min-h-0 bg-background",
+                "grid-header-inside-table border rounded-[5px] overflow-hidden mt-0 flex flex-col flex-1 min-h-0 bg-background",
                 className
             )}
         >
@@ -323,6 +343,11 @@ function AppDataGrid<T extends Record<string, unknown>>({
                         {/* ---- HEAD ---- */}
                         <DataGridHeader>
                             <tr>
+                                {actions && prefixActions && (
+                                    <DataGridHead className={cn(actionClassName)}>
+                                        {actionLabel}
+                                    </DataGridHead>
+                                )}
                                 {columns.map((col, i) => (
                                     <DataGridHead
                                         key={col.key ?? `col-${i}`}
@@ -331,8 +356,7 @@ function AppDataGrid<T extends Record<string, unknown>>({
                                         {col.label}
                                     </DataGridHead>
                                 ))}
-
-                                {actions && (
+                                {actions && !prefixActions && (
                                     <DataGridHead className={cn(actionClassName)}>
                                         {actionLabel}
                                     </DataGridHead>
@@ -389,6 +413,11 @@ function AppDataGrid<T extends Record<string, unknown>>({
                                             )}
                                             {...extraProps}
                                         >
+                                            {actions && prefixActions && (
+                                                <DataGridCell className={cn(actionClassName)}>
+                                                    {actions(row, idx)}
+                                                </DataGridCell>
+                                            )}
                                             {columns.map((col, ci) => (
                                                 <DataGridCell
                                                     key={col.key ?? `cell-${ci}`}
@@ -404,8 +433,7 @@ function AppDataGrid<T extends Record<string, unknown>>({
                                                             : "—"}
                                                 </DataGridCell>
                                             ))}
-
-                                            {actions && (
+                                            {actions && !prefixActions && (
                                                 <DataGridCell
                                                     className={cn(actionClassName)}
                                                 >

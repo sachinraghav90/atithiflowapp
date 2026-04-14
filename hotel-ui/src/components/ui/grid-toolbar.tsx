@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { NativeSelect } from "@/components/ui/native-select";
+import DatePicker from "react-datepicker";
 
 /* ================= TYPES ================= */
 
@@ -28,7 +29,7 @@ type GridToolbarSearchProps = {
   value: string;
   onChange: (value: string) => void;
   onSearch: () => void;
-  placeholder: string;
+  placeholder?: string;
   className?: string;
 };
 
@@ -60,7 +61,7 @@ export function GridToolbar({ children, className }: GridToolbarProps) {
   return (
     <div
       className={cn(
-        "w-full border-b border-border",
+        "w-full border-b border-border pt-1.5",
         className
       )}
     >
@@ -75,9 +76,9 @@ export function GridToolbarRow({ children, className }: GridToolbarRowProps) {
   return (
     <div
       className={cn(
-        "grid items-center gap-3 p-2 w-full",
-        // Desktop grid alignment: 4 equal columns + 1 auto column for icons
-        "grid-cols-1 md:grid-cols-[repeat(4,minmax(0,1fr))_auto]",
+        "grid items-center gap-2 px-2 pb-1.5 pt-0 w-full",
+        // Standard 4-Column Symmetry: 3 equal fluid columns + 1 compact action column
+        "grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto]",
         className
       )}
     >
@@ -92,7 +93,7 @@ export function GridToolbarSearch({
   value,
   onChange,
   onSearch,
-  placeholder,
+  placeholder = "search here...",
   className,
 }: GridToolbarSearchProps) {
   return (
@@ -104,6 +105,11 @@ export function GridToolbarSearch({
           <Input
             value={value}
             onChange={(e) => onChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                onSearch?.();
+              }
+            }}
             placeholder={placeholder}
             className="pl-9 h-8 text-sm rounded-lg border border-border bg-background shadow-sm w-full focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-border"
           />
@@ -144,7 +150,7 @@ export function GridToolbarSelect({
       {/* LABEL */}
       <label
         htmlFor={selectId}
-        className="px-3 bg-muted/40 text-muted-foreground text-[10px] font-bold uppercase tracking-wider whitespace-nowrap flex items-center border-r border-border h-full"
+        className="px-3 bg-muted/40 text-muted-foreground text-[10px] font-bold uppercase tracking-wider whitespace-nowrap flex items-center border-r border-border h-full min-w-[80px] justify-center"
       >
         {label}
       </label>
@@ -178,7 +184,7 @@ export function GridToolbarActions({
   className,
 }: GridToolbarActionsProps) {
   return (
-    <div className={cn("flex items-center h-8 gap-2 justify-end", className)}>
+    <div className={cn("flex items-center h-8 gap-1 justify-end", className)}>
       {actions.map((action) => (
         <Tooltip key={action.key}>
           <TooltipTrigger asChild>
@@ -201,3 +207,72 @@ export function GridToolbarActions({
     </div>
   );
 }
+
+/* ================= DATE PICKER ================= */
+
+type GridToolbarDatePickerProps = {
+  label: string;
+  value: Date | null;
+  onChange: (date: Date | null) => void;
+  className?: string;
+  placeholder?: string;
+  minDate?: Date;
+  disabled?: boolean;
+};
+
+export function GridToolbarDatePicker({
+  label,
+  value,
+  onChange,
+  className,
+  placeholder = "dd-mm-yyyy",
+  minDate,
+  disabled
+}: GridToolbarDatePickerProps) {
+  return (
+    <div
+      className={cn(
+        "flex items-center h-8 border border-border bg-background rounded-lg text-sm overflow-hidden shadow-sm w-full",
+        disabled && "opacity-50 cursor-not-allowed",
+        className
+      )}
+    >
+      <span className="px-3 bg-muted/40 text-muted-foreground text-[10px] font-bold uppercase tracking-wider whitespace-nowrap flex items-center border-r border-border h-full min-w-[80px] justify-center">
+        {label}
+      </span>
+      <DatePicker
+        selected={value}
+        onChange={onChange}
+        placeholderText={placeholder}
+        dateFormat="dd-MM-yyyy"
+        minDate={minDate}
+        disabled={disabled}
+        customInput={
+          <Input
+            readOnly
+            className="h-full border-0 rounded-none bg-transparent px-2 text-sm shadow-none focus-visible:ring-0 w-full cursor-pointer"
+          />
+        }
+      />
+    </div>
+  );
+}
+
+/* ================= SPACER ================= */
+
+type GridToolbarSpacerProps = {
+  type?: "fluid" | "actions";
+  className?: string;
+};
+
+export function GridToolbarSpacer({ type = "fluid", className }: GridToolbarSpacerProps) {
+  return (
+    <div 
+      className={cn(
+        type === "fluid" ? "w-full" : "w-[104px]", 
+        className
+      )} 
+    />
+  );
+}
+

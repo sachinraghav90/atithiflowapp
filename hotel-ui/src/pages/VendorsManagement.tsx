@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { NativeSelect } from "@/components/ui/native-select";
 import Sidebar from "@/components/layout/Sidebar";
 import AppHeader from "@/components/layout/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -210,74 +211,88 @@ export default function VendorsManagement() {
         setSheetOpen(true);
     };
 
+
     /* ---------------- UI ---------------- */
     return (
         <div className="h-full flex flex-col overflow-hidden">
             <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8 space-y-6">
-                {/* Header */}
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold">Vendors</h1>
-                        <p className="text-sm text-muted-foreground">
-                            Manage suppliers & vendors
-                        </p>
+                        <p className="text-sm text-muted-foreground">Manage suppliers & vendors</p>
                     </div>
 
-                    {permission?.can_create && <Button variant="hero" onClick={openAdd}>
-                        Add Vendor
-                    </Button>}
-                </div>
-
-                <div className="grid-header border rounded-[5px] overflow-hidden px-4 py-2 mt-4 bg-muted/20 flex flex-col flex-1 min-h-0">
-                    <GridToolbar className="mb-2">
-                        {(isOwner || isSuperAdmin) && (
-                            <GridToolbarSelect
-                                label="PROPERTY"
-                                value={selectedPropertyId}
-                                onChange={setSelectedPropertyId}
-                                className="min-w-[220px]"
-                                options={[
-                                    { label: "Select Property", value: "", disabled: true },
-                                    ...(myProperties?.properties?.map((p: { id: string; brand_name: string }) => ({
-                                        label: p.brand_name,
-                                        value: p.id,
-                                    })) ?? []),
-                                ]}
-                            />
+                    <div className="flex items-center gap-3">
+                        {isMultiProperty && (
+                            <div className="flex items-center h-9 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
+                                <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border uppercase">
+                                    Property
+                                </span>
+                                <NativeSelect
+                                    className="flex-1 bg-transparent px-2 focus:outline-none focus:ring-0 text-sm h-full truncate cursor-pointer"
+                                    value={selectedPropertyId}
+                                    onChange={(e) => {
+                                        setSelectedPropertyId(e.target.value);
+                                        resetPage();
+                                    }}
+                                >
+                                    <option value="" disabled>Select Property</option>
+                                    {myProperties?.properties?.map((p: any) => (
+                                        <option key={p.id} value={p.id}>
+                                            {p.brand_name}
+                                        </option>
+                                    ))}
+                                </NativeSelect>
+                            </div>
                         )}
 
-                        <GridToolbarSearch
-                            value={search}
-                            onChange={setSearch}
-                            placeholder="Search vendors..."
-                        />
+                        {permission?.can_create && (
+                            <Button variant="hero" className="h-9" onClick={openAdd}>
+                                Add Vendor
+                            </Button>
+                        )}
+                    </div>
+                </div>
 
-                        <GridToolbarSelect
-                            label="STATUS"
-                            value="all"
-                            onChange={() => { }}
-                            className="min-w-[160px]"
-                            options={[{ label: "All", value: "all" }]}
-                        />
 
-                        <GridToolbarActions
-                            actions={[
-                                {
-                                    key: "reset",
-                                    label: "Reset Filters",
-                                    icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
-                                    onClick: resetFiltersHandler,
-                                },
-                                {
-                                    key: "refresh",
-                                    label: "Refresh Data",
-                                    icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
-                                    onClick: refreshTable,
-                                    disabled: isFetching,
-                                },
-                            ]}
-                        />
-                    </GridToolbar>
+                <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
+                    <div className="w-full">
+                        <GridToolbar className="border-b-0">
+                            <GridToolbarRow className="gap-2">
+                                <GridToolbarSearch
+                                    value={search}
+                                    onChange={setSearch}
+                                    placeholder="Search vendor name, email..."
+                                    onSearch={() => {
+                                        setSearchQuery(search.trim());
+                                        resetPage();
+                                    }}
+                                />
+
+                                <div className="w-full" /> {/* Empty col 2 */}
+                                <div className="w-full" /> {/* Empty col 3 */}
+
+                                <GridToolbarActions
+                                    className="gap-1 justify-end"
+                                    actions={[
+                                        {
+                                            key: "reset",
+                                            label: "Reset Filters",
+                                            icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: resetFiltersHandler,
+                                        },
+                                        {
+                                            key: "refresh",
+                                            label: "Refresh Data",
+                                            icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: refreshTable,
+                                            disabled: isFetching,
+                                        },
+                                    ]}
+                                />
+                            </GridToolbarRow>
+                        </GridToolbar>
+                    </div>
 
                     <AppDataGrid
                     columns={[
