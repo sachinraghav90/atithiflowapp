@@ -1,0 +1,4 @@
+project_id = "atithiflow"
+
+[functions.verify-recaptcha]
+verify_jwt = false

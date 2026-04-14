@@ -1,0 +1,132 @@
+@import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* AtithiFlow Brand Colors - Light Theme */
+    /* --background: 0 0% 100%; */
+    --background: 195 52% 92%;
+    --foreground: 203 12% 27%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 203 12% 27%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 203 12% 27%;
+
+    /* AtithiFlow Blue #22A0BD */
+    --primary: 189 69% 44%;
+    --primary-foreground: 0 0% 100%;
+
+    /* AtithiFlow Green #4FCD84 */
+    --secondary: 145 53% 56%;
+    --secondary-foreground: 0 0% 100%;
+
+    /* Off-white for sections */
+    --muted: 0 0% 97%;
+    --muted-foreground: 203 12% 45%;
+
+    /* Light accent */
+    --accent: 189 69% 96%;
+    --accent-foreground: 189 69% 35%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 195 35% 70%;    /* soft blue-gray */
+    --input: 195 30% 80%;
+
+    --ring: 189 69% 44%;
+
+    --radius: 0.375rem;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 203 12% 27%;
+    --sidebar-primary: 189 69% 44%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 145 53% 56%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: 189 69% 44%;
+
+    --chart-1: 189 69% 44%;
+    --chart-2: 145 53% 56%;
+    --chart-3: 189 69% 35%;
+    --chart-4: 145 53% 45%;
+    --chart-5: 203 12% 45%;
+
+    --font-sans: "Open Sans", ui-sans-serif, system-ui, sans-serif;
+
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.05);
+    --shadow: 0 1px 3px 0 hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.1), 0 2px 4px -2px hsl(0 0% 0% / 0.1);
+    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.1), 0 4px 6px -4px hsl(0 0% 0% / 0.1);
+  }
+
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Hide scrollbar but allow scrolling */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  /* IE & Edge */
+  scrollbar-width: none;
+  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+  /* Chrome, Safari */
+}
+.grid{
+  border-color: #dce9e8; /* or #d8edeb */
+}
+/* Header */
+.grid-header {
+  background-color: #e8f9f9;
+  color: #1a1a1a;
+ /* or #d8edeb for warmer mint */
+}
+.editIcon{
+  background-color: #22A0BD;
+  color: white;
+}
+.grid-header-inside-table{
+  background-color:hsl(var(--primary));   
+  color: #1a1a1a;
+}
+.border-r{
+  border-color: #dce9e8; /* or #d8edeb */
+}
+/* Alternate rows */
+.grid-row:nth-child(odd) {
+  background-color: #f5fbfb;
+}
+
+.grid-row:nth-child(even) {
+  background-color: #ffffff;
+}
+
+/* Cell borders */
+.grid-cell {
+  border-right: 1px solid #dce9e8; /* or #d8edeb */
+}
+
+.grid-row {
+  border-bottom: 1px solid #dce9e8; /* or #d8edeb */
+}
