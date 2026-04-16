@@ -31,7 +31,7 @@ import PropertyCorporate from "@/components/property-form/sections/PropertyCorpo
 
 import { usePermission } from "@/rbac/usePermission";
 import PropertyViewSection from "@/components/PropertyViewSection";
-import { GridToolbar, GridToolbarActions, GridToolbarSearch, GridToolbarSelect } from "@/components/ui/grid-toolbar";
+import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { getStatusColor } from "@/constants/statusColors";
@@ -762,9 +762,9 @@ export default function PropertyManagement() {
     return (
         <div className="h-full flex flex-col overflow-hidden">
             <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8 space-y-6">
-                <div className="mb-6 flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold text-foreground">Properties</h1>
+                <div className="flex items-center justify-between w-full">
+                    <div className="flex flex-col">
+                        <h1 className="text-2xl font-bold leading-tight">Properties</h1>
                         <p className="text-sm text-muted-foreground mt-1">
                             Manage your hotels and property-level configuration.
                         </p>
@@ -801,7 +801,7 @@ export default function PropertyManagement() {
                                     options={[{ label: "All Status", value: "all" }]}
                                 />
 
-                                <div className="w-full" /> {/* Empty col 3 */}
+                                <GridToolbarSpacer />
 
                                 <GridToolbarActions
                                     className="gap-1 justify-end"
@@ -825,8 +825,9 @@ export default function PropertyManagement() {
                         </GridToolbar>
                     </div>
 
-                    <AppDataGrid
-                    columns={[
+                    <div className="px-2 pb-2">
+                        <AppDataGrid
+                            columns={[
                         {
                             label: "Property",
                             cellClassName: "font-medium",
@@ -928,6 +929,7 @@ export default function PropertyManagement() {
                         }
                     }}
                 />
+                    </div>
                 </div>
             </section>
 

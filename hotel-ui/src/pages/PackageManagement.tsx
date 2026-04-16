@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/sheet";
 import { NativeSelect } from "@/components/ui/native-select";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
+import { exportToExcel } from "@/utils/exportToExcel";
 import { useAppSelector } from "@/redux/hook";
 import { useCreatePackageMutation, useGetMyPropertiesQuery, useGetPackageByIdQuery, useGetPackagesByPropertyQuery, useUpdatePackageMutation, useUpdatePackagesBulkMutation } from "@/redux/services/hmsApi";
 import { toast } from "react-toastify";
@@ -22,10 +23,12 @@ import { useLocation } from "react-router-dom";
 import { usePermission } from "@/rbac/usePermission";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { FilterX, Pencil, RefreshCcw } from "lucide-react";
+import { Download, FilterX, Pencil, RefreshCcw } from "lucide-react";
 import { getStatusColor } from "@/constants/statusColors";
-import { GridToolbar, GridToolbarActions, GridToolbarSearch, GridToolbarSelect } from "@/components/ui/grid-toolbar";
+import { GridToolbar, GridToolbarActions, GridToolbarSearch, GridToolbarSelect, GridToolbarRow } from "@/components/ui/grid-toolbar";
 import { filterGridRowsByQuery } from "@/utils/filterGridRows";
+import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
+import { useGridPagination } from "@/hooks/useGridPagination";
 
 /* -------------------- Types -------------------- */
 type PackageListItem = {
@@ -47,11 +50,17 @@ type PackageDetail = {
 export default function PackageManagement() {
     const [sheetOpen, setSheetOpen] = useState(false);
     const [mode, setMode] = useState<"add" | "edit">("add");
-    const [selectedPropertyId, setSelectedPropertyId] = useState<string>("");
-    const [page, setPage] = useState(1);
-    const [limit, setLimit] = useState(9);
+    const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
+    const { myProperties, isMultiProperty } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
+
+    const [searchInput, setSearchInput] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
+    const [typeFilter, setTypeFilter] = useState("");
+
+    const { page, limit, setPage, resetPage, handleLimitChange } = useGridPagination({
+        resetDeps: [selectedPropertyId, statusFilter, typeFilter, searchQuery],
+    });
 
     const [selectedPackage, setSelectedPackage] = useState<PackageDetail>({
         package_name: "",
@@ -66,9 +75,6 @@ export default function PackageManagement() {
 
 
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
-    const { data: properties, isLoading: propertiesLoading } = useGetMyPropertiesQuery(undefined, {
-        skip: !isLoggedIn
-    })
 
     const {
         data: packages,
@@ -76,7 +82,7 @@ export default function PackageManagement() {
         isFetching: packagesFetching,
         isUninitialized: packageUninitialized,
         refetch: refetchPackages
-    } = useGetPackagesByPropertyQuery({ propertyId: selectedPropertyId, page, limit }, {
+    } = useGetPackagesByPropertyQuery({ propertyId: String(selectedPropertyId), page, limit }, {
         skip: !isLoggedIn || !selectedPropertyId
     })
 
@@ -133,7 +139,7 @@ export default function PackageManagement() {
         setFormErrors({});
 
         const payload = {
-            propertyId: selectedPropertyId,
+            propertyId: String(selectedPropertyId),
             packageName: selectedPackage.package_name,
             description: selectedPackage.description,
             basePrice: selectedPackage.base_price,
@@ -171,7 +177,7 @@ export default function PackageManagement() {
             base_price: Number(base_price),
         }));
 
-        const promise = updatePackagesBulk({ packages: payload, propertyId: selectedPropertyId }).unwrap()
+        const promise = updatePackagesBulk({ packages: payload, propertyId: String(selectedPropertyId) }).unwrap()
 
         toast.promise(promise, {
             pending: "Updating plans...",
@@ -192,21 +198,11 @@ export default function PackageManagement() {
         setSelectedPackage(selectedPackage)
     }, [selectedPackageData, packageLoading])
 
-    useEffect(() => {
-        if (propertiesLoading || !properties || !Array.isArray(properties?.properties)) return
-        const propertyId = properties?.properties[0]?.id
-        setSelectedPropertyId(propertyId)
-    }, [properties])
-
     const packageRows = useMemo(() => packages?.packages ?? [], [packages?.packages]);
     const totalPages = packages?.pagination?.totalPages ?? 1;
 
     const pathname = useLocation().pathname
     const { permission } = usePermission(pathname)
-
-    useEffect(() => {
-        setPage(1);
-    }, [selectedPropertyId]);
 
     const refreshTable = async () => {
         if (packagesFetching) return;
@@ -222,13 +218,30 @@ export default function PackageManagement() {
         }
     };
 
-    const resetFiltersHandler = () => {
-        if (properties?.properties?.[0]?.id) {
-            setSelectedPropertyId(properties.properties[0].id);
+    const exportPlansSheet = () => {
+        if (!filteredPackageRows.length) {
+            toast.info("No plans available to export");
+            return;
         }
+
+        const formatted = filteredPackageRows.map((pkg) => ({
+            PLAN_NAME: pkg.package_name,
+            DESCRIPTION: pkg.description || "-",
+            TYPE: pkg.system_generated ? "System" : "Custom",
+            BASE_PRICE: Number(pkg.base_price).toFixed(),
+            STATUS: pkg.is_active ? "Active" : "Inactive",
+        }));
+
+        exportToExcel(formatted, "Plans.xlsx");
+        toast.success("Export completed");
+    };
+
+    const resetFiltersHandler = () => {
+        setSearchInput("");
         setSearchQuery("");
         setStatusFilter("");
-        setPage(1);
+        setTypeFilter("");
+        resetPage();
     };
 
     const filteredPackageRows = useMemo(() => {
@@ -236,21 +249,84 @@ export default function PackageManagement() {
             ? packageRows.filter((pkg) => String(pkg.is_active) === statusFilter)
             : packageRows;
 
-        return filterGridRowsByQuery(statusFiltered, searchQuery, [
+        const typeFiltered = typeFilter
+            ? statusFiltered.filter((pkg) => (typeFilter === "system" ? pkg.system_generated : !pkg.system_generated))
+            : statusFiltered;
+
+        return filterGridRowsByQuery(typeFiltered, searchQuery, [
             (pkg) => pkg.package_name,
             (pkg) => pkg.description,
             (pkg) => pkg.base_price,
             (pkg) => pkg.is_active ? "Active" : "Inactive",
+            (pkg) => pkg.system_generated ? "System" : "Custom",
         ]);
-    }, [packageRows, searchQuery, statusFilter]);
+    }, [packageRows, searchQuery, statusFilter, typeFilter]);
+
+    const packageColumns = useMemo<ColumnDef<PackageDetail>[]>(() => [
+        {
+            label: "Plan Name",
+            cellClassName: "font-medium",
+            render: (pkg) => pkg.package_name,
+        },
+        {
+            label: "Description",
+            cellClassName: "text-muted-foreground max-w-[320px] text-sm",
+            render: (pkg) => pkg.description || "-",
+        },
+        {
+            label: "Type",
+            headClassName: "text-center",
+            cellClassName: "text-center",
+            render: (pkg) => (
+                <span className="inline-flex min-w-[84px] justify-center px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {pkg.system_generated ? "System" : "Custom"}
+                </span>
+            ),
+        },
+        {
+            label: "Base Price",
+            headClassName: "text-center",
+            cellClassName: "text-center font-medium",
+            render: (pkg) =>
+                isPriceEditMode ? (
+                    <div className="flex justify-center">
+                        <Input
+                            type="text"
+                            className="h-8 w-24 text-center"
+                            value={editedPrices[pkg.id!] ?? Number(pkg.base_price).toString()}
+                            onChange={(e) => handlePriceChange(pkg.id!, e.target.value)}
+                        />
+                    </div>
+                ) : (
+                    <span className="inline-flex min-w-[72px] justify-center rounded-[3px] bg-muted/40 px-3 py-1 text-sm font-semibold">
+                        {Number(pkg.base_price).toFixed()}
+                    </span>
+                ),
+        },
+        {
+            label: "Status",
+            headClassName: "text-center",
+            cellClassName: "text-center",
+            render: (pkg) => (
+                <span
+                    className={cn(
+                        "inline-flex min-w-[88px] justify-center px-3 py-1 text-xs font-semibold rounded-[3px]",
+                        getStatusColor(pkg.is_active ? "active" : "inactive", "toggle")
+                    )}
+                >
+                    {pkg.is_active ? "Active" : "Inactive"}
+                </span>
+            ),
+        },
+    ], [editedPrices, isPriceEditMode]);
 
     return (
         <div className="h-full flex flex-col overflow-hidden">
             <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8 space-y-6">
                 {/* Header */}
-                <div className="mb-6 flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold text-foreground">
+                <div className="flex items-center justify-between w-full">
+                    <div className="flex flex-col">
+                        <h1 className="text-2xl font-bold leading-tight text-foreground">
                             Plans
                         </h1>
                         <p className="text-sm text-muted-foreground">
@@ -258,219 +334,202 @@ export default function PackageManagement() {
                         </p>
                     </div>
 
-                    <div className="flex gap-2">
-                        {!isPriceEditMode && permission?.can_create &&
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                        {isMultiProperty && (
+                            <div className="flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
+                                <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border uppercase">
+                                    Property
+                                </span>
+                                <NativeSelect
+                                    className="flex-1 bg-transparent px-2 focus:outline-none focus:ring-0 text-sm h-full truncate cursor-pointer"
+                                    value={selectedPropertyId ?? ""}
+                                    onChange={(e) => setSelectedPropertyId(Number(e.target.value) || null)}
+                                >
+                                    <option value="" disabled>Select Property</option>
+                                    {myProperties?.properties?.map((property: { id: number; brand_name: string }) => (
+                                        <option key={property.id} value={property.id}>
+                                            {property.brand_name}
+                                        </option>
+                                    ))}
+                                </NativeSelect>
+                            </div>
+                        )}
+                        {permission?.can_create &&
                             <>
                                 <Button
                                     variant="heroOutline"
-                                    // disabled={!(isSuperAdmin || isOwner || isAdmin)}
+                                    className="h-10"
                                     onClick={() => {
+                                        if (isPriceEditMode) {
+                                            setIsPriceEditMode(false);
+                                            setEditedPrices({});
+                                            return;
+                                        }
+
                                         setIsPriceEditMode(true);
                                         setEditedPrices({});
                                     }}
                                 >
-                                    Edit Prices
+                                    {isPriceEditMode ? "Cancel Edit" : "Edit Prices"}
                                 </Button>
-                                <Button variant="hero" onClick={handleOpenAdd}>
-                                    Add Plan
-                                </Button>
-                            </>
-                        }
-
-                        {isPriceEditMode && (
-                            <>
                                 <Button
                                     variant="hero"
-                                    disabled={!hasPriceChanges}
+                                    className="h-10"
+                                    onClick={handleOpenAdd}
+                                    disabled={isPriceEditMode}
+                                >
+                                    Add Plan
+                                </Button>
+                                <Button
+                                    variant="hero"
+                                    className="h-10"
+                                    disabled={!isPriceEditMode || !hasPriceChanges}
                                     onClick={handleBulkPriceUpdate}
                                 >
                                     Update Prices
                                 </Button>
-                                <Button
-                                    variant="hero"
-                                    // disabled={!hasPriceChanges}
-                                    onClick={() => {
-                                        setIsPriceEditMode(false);
-                                        setEditedPrices({});
-                                    }}
-                                >
-                                    Cancel
-                                </Button>
                             </>
-                        )}
+                        }
                     </div>
 
                 </div>
 
-                <div className="grid-header border rounded-[5px] overflow-hidden px-4 py-2 mt-4 bg-muted/20 flex flex-col flex-1 min-h-0">
-                    <GridToolbar className="mb-2">
-                        {(isSuperAdmin || isOwner) && <GridToolbarSelect
-                            label="PROPERTY"
-                            value={selectedPropertyId}
-                            onChange={setSelectedPropertyId}
-                            className="min-w-[220px]"
-                            options={[
-                                { label: "--Please Select--", value: "", disabled: true },
-                                ...(!propertiesLoading
-                                    ? (properties?.properties?.map((property) => ({
-                                        label: property.brand_name,
-                                        value: property.id,
-                                    })) ?? [])
-                                    : []),
-                            ]}
-                        />}
+                <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
+                    <div className="w-full">
+                        <GridToolbar className="border-b-0">
+                            <GridToolbarRow className="gap-2">
+                                <GridToolbarSearch
+                                    value={searchInput}
+                                    onChange={(value) => {
+                                        setSearchInput(value);
+                                        if (!value.trim()) {
+                                            setSearchQuery("");
+                                            resetPage();
+                                        }
+                                    }}
+                                    onSearch={() => {
+                                        setSearchQuery(searchInput.trim());
+                                        resetPage();
+                                    }}
+                                    placeholder="Search plans..."
+                                />
 
-                        <GridToolbarSearch
-                            value={searchQuery}
-                            onChange={setSearchQuery}
-                            placeholder="Search plans..."
+                                <GridToolbarSelect
+                                    label="TYPE"
+                                    value={typeFilter}
+                                    onChange={setTypeFilter}
+                                    className="min-w-[160px]"
+                                    options={[
+                                        { label: "Any", value: "" },
+                                        { label: "System", value: "system" },
+                                        { label: "Custom", value: "custom" },
+                                    ]}
+                                />
+
+                                <GridToolbarSelect
+                                    label="STATUS"
+                                    value={statusFilter}
+                                    onChange={setStatusFilter}
+                                    className="min-w-[180px]"
+                                    options={[
+                                        { label: "Any", value: "" },
+                                        { label: "Active", value: "true" },
+                                        { label: "Inactive", value: "false" },
+                                    ]}
+                                />
+
+                                <GridToolbarActions
+                                    className="gap-1 justify-end"
+                                    actions={[
+                                        {
+                                            key: "export",
+                                            label: "Export Plans",
+                                            icon: <Download className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: exportPlansSheet,
+                                        },
+                                        {
+                                            key: "reset",
+                                            label: "Reset Filters",
+                                            icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: resetFiltersHandler,
+                                        },
+                                        {
+                                            key: "refresh",
+                                            label: "Refresh Data",
+                                            icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: refreshTable,
+                                            disabled: packagesFetching,
+                                        },
+                                    ]}
+                                />
+                            </GridToolbarRow>
+                        </GridToolbar>
+                    </div>
+
+                    <div className="px-2 pb-2">
+                        <AppDataGrid
+                            columns={packageColumns}
+                            data={!packageUninitialized && !packagesLoading ? filteredPackageRows : []}
+                            rowKey={(pkg) => pkg.id ?? pkg.package_name}
+                            loading={packagesLoading || packagesFetching}
+                            emptyText="No plans found"
+                            actionClassName="text-center w-[60px]"
+                            actions={(pkg) => (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                            aria-label={`Edit plan ${pkg.package_name}`}
+                                            onClick={() => handleOpenEdit({ id: String(pkg.id), package_name: pkg.package_name })}
+                                        >
+                                            <Pencil className="w-4 h-4 mx-auto" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>View / Edit Plan</TooltipContent>
+                                </Tooltip>
+                            )}
+                            enablePagination={Boolean(packages?.pagination)}
+                            paginationProps={packages?.pagination ? {
+                                page,
+                                totalPages,
+                                setPage,
+                                disabled: packagesFetching,
+                                totalRecords: packages.pagination.totalItems ?? packages.pagination.total ?? packageRows.length,
+                                limit,
+                                onLimitChange: handleLimitChange,
+                            } : undefined}
                         />
+                    </div>
 
-                        <GridToolbarSelect
-                            label="STATUS"
-                            value={statusFilter}
-                            onChange={setStatusFilter}
-                            className="min-w-[180px]"
-                            options={[
-                                { label: "Any", value: "" },
-                                { label: "Active", value: "true" },
-                                { label: "Inactive", value: "false" },
-                            ]}
-                        />
-
-                        <GridToolbarActions
-                            actions={[
-                                {
-                                    key: "reset",
-                                    label: "Reset Filters",
-                                    icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
-                                    onClick: resetFiltersHandler,
-                                },
-                                {
-                                    key: "refresh",
-                                    label: "Refresh Data",
-                                    icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
-                                    onClick: refreshTable,
-                                },
-                            ]}
-                        />
-                    </GridToolbar>
-
-                    <AppDataGrid
-                    columns={[
-                        {
-                            label: "Plan Name",
-                            key: "package_name",
-                            cellClassName: "font-medium",
-                        },
-                        {
-                            label: "Description",
-                            key: "description",
-                            cellClassName: "font-medium",
-                        },
-                        {
-                            label: "Base Price",
-                            cellClassName: "font-medium",
-                            render: (pkg: PackageDetail) =>
-                                isPriceEditMode ? (
-                                    <Input
-                                        type="text"
-                                        className="h-8"
-                                        value={editedPrices[pkg.id!] ?? Number(pkg.base_price).toString()}
-                                        onChange={(e) => handlePriceChange(pkg.id!, e.target.value)}
-                                    />
-                                ) : (
-                                    Number(pkg.base_price).toFixed()
-                                ),
-                        },
-                        {
-                            label: "Status",
-                            render: (pkg: PackageDetail) => (
-                                <span
-                                    className={cn(
-                                        "px-3 py-1 rounded-[3px] text-xs font-semibold",
-                                        getStatusColor(pkg.is_active ? "active" : "inactive", "toggle")
-                                    )}
-                                >
-                                    {pkg.is_active ? "Active" : "Inactive"}
-                                </span>
-                            ),
-                        },
-                    ] as ColumnDef[]}
-                    data={!packageUninitialized && !packagesLoading ? filteredPackageRows : []}
-                    loading={packagesLoading}
-                    emptyText="No plans found"
-                    minWidth="760px"
-                    enablePagination
-                    paginationProps={{
-                        page,
-                        totalPages,
-                        setPage,
-                        totalRecords: packages?.pagination?.total ?? packageRows.length,
-                        limit,
-                        onLimitChange: (value) => {
-                            setLimit(value);
-                            setPage(1);
-                        },
-                        disabled: packagesLoading || packagesFetching,
-                    }}
-                    actionLabel=""
-                    actionClassName="text-center w-[72px]"
-                    actions={(pkg: PackageListItem) => (
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
-                                    onClick={() => handleOpenEdit(pkg)}
-                                    aria-label={`View and edit details for plan ${pkg.package_name}`}
-                                >
-                                    <Pencil className="w-4 h-4 mx-auto" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>View / Edit Details</TooltipContent>
-                        </Tooltip>
-                    )}
-                    />
                 </div>
             </section>
 
-            {/* -------------------- Add / Edit Sheet -------------------- */}
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
                 <SheetContent
-                    className="
-                            fixed
-                            left-1/2
-                            top-1/2
-                            -translate-x-1/2
-                            -translate-y-1/2
-                            w-full
-                            sm:max-w-xl
-                            max-h-[88vh]
-                            overflow-y-auto
-                            rounded-[5px]
-                            scrollbar-hide
-                        ">
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="space-y-6"
-                    >
-                        <SheetHeader>
-                            <SheetTitle>
-                                {mode === "add"
-                                    ? "Add plan"
-                                    : "Edit plan"}
-                            </SheetTitle>
-                        </SheetHeader>
+                    side="right"
+                    className="w-full sm:max-w-xl overflow-y-auto scrollbar-hide"
+                >
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="space-y-6"
+                        >
+                            <SheetHeader>
+                                <SheetTitle>
+                                    {mode === "add"
+                                        ? "Add plan"
+                                        : "Edit plan"}
+                                </SheetTitle>
+                            </SheetHeader>
 
-                        {/* Package Name */}
-                        <div className="space-y-2">
-                            <Label>Plan Name</Label>
-                            {(mode === "edit" && selectedPackage?.system_generated) ?
-                                <p
-                                    className="
+                            {/* Package Name */}
+                            <div className="space-y-2">
+                                <Label>Plan Name</Label>
+                                {(mode === "edit" && selectedPackage?.system_generated) ?
+                                    <p
+                                        className="
                                         h-10
                                         w-full
                                         rounded-[3px]
@@ -483,118 +542,116 @@ export default function PackageManagement() {
                                         cursor-default
                                         select-text
                                     "
-                                >
-                                    {selectedPackage?.package_name}
-                                </p> :
+                                    >
+                                        {selectedPackage?.package_name}
+                                    </p> :
+                                    <Input
+                                        className={submitted && formErrors.package_name ? "border-red-500" : ""}
+                                        value={selectedPackage?.package_name}
+                                        onChange={(e) => {
+                                            const next = e.target.value;
+                                            if (isWithinCharLimit(next, 50)) {
+                                                setSelectedPackage(prev => ({
+                                                    ...prev,
+                                                    package_name: normalizeTextInput(next),
+                                                }));
+                                                setFormErrors(prev => ({ ...prev, package_name: "" }));
+                                            }
+                                        }}
+                                    />
+                                }
+                            </div>
+
+                            {/* Description */}
+                            <div className="space-y-2">
+                                <Label>Description</Label>
+                                {(mode === "edit" && selectedPackage?.system_generated) ?
+                                    <p
+                                        className="
+                                        h-10
+                                        w-full
+                                        rounded-[3px]
+                                        bg-background
+                                        px-3
+                                        flex
+                                        items-center
+                                        text-sm
+                                        text-foreground
+                                        cursor-default
+                                        select-text
+                                    "
+                                    >
+                                        {selectedPackage?.description}
+                                    </p>
+                                    : <textarea
+                                        // readOnly={!(isSuperAdmin || isOwner || isAdmin) || (mode === "edit" && selectedPackage?.system_generated)}
+                                        className="w-full min-h-[100px] rounded-[3px] border border-border bg-background px-3 py-2 text-sm"
+                                        value={selectedPackage?.description}
+                                        onChange={(e) => {
+                                            const next = e.target.value
+                                            if (isWithinCharLimit(next, 50)) {
+                                                setSelectedPackage((prev) => ({
+                                                    ...prev,
+                                                    description: normalizeTextInput(e.target.value),
+                                                }))
+                                            }
+                                        }}
+                                    />}
+                            </div>
+
+                            {/* Price */}
+                            <div className="space-y-2">
+                                <Label>Base Price</Label>
                                 <Input
-                                    className={submitted && formErrors.package_name ? "border-red-500" : ""}
-                                    value={selectedPackage?.package_name}
+                                    type="text"
+                                    className={submitted && formErrors.base_price ? "border-red-500" : ""}
+                                    value={selectedPackage?.base_price}
                                     onChange={(e) => {
-                                        const next = e.target.value;
-                                        if (isWithinCharLimit(next, 50)) {
-                                            setSelectedPackage(prev => ({
-                                                ...prev,
-                                                package_name: normalizeTextInput(next),
-                                            }));
-                                            setFormErrors(prev => ({ ...prev, package_name: "" }));
-                                        }
+                                        setSelectedPackage(prev => ({
+                                            ...prev,
+                                            base_price: normalizeNumberInput(e.target.value).toString(),
+                                        }));
+                                        setFormErrors(prev => ({ ...prev, base_price: "" }));
                                     }}
                                 />
-                            }
+                            </div>
 
-                        </div>
+                            {/* Active */}
+                            {!selectedPackage?.system_generated && <div className="flex items-center gap-2">
+                                <Switch
+                                    // disabled={!(isSuperAdmin || isOwner || isAdmin)}
+                                    checked={selectedPackage?.is_active}
+                                    onCheckedChange={(v) =>
+                                        setSelectedPackage((prev) => ({
+                                            ...prev,
+                                            is_active: v,
+                                        }))
+                                    }
+                                />
+                                <Label>Active</Label>
+                            </div>}
 
-                        {/* Description */}
-                        <div className="space-y-2">
-                            <Label>Description</Label>
-                            {(mode === "edit" && selectedPackage?.system_generated) ?
-                                <p
-                                    className="
-                                        h-10
-                                        w-full
-                                        rounded-[3px]
-                                        bg-background
-                                        px-3
-                                        flex
-                                        items-center
-                                        text-sm
-                                        text-foreground
-                                        cursor-default
-                                        select-text
-                                    "
+                            {/* Actions */}
+                            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                                <Button
+                                    variant="heroOutline"
+                                    onClick={() => setSheetOpen(false)}
                                 >
-                                    {selectedPackage?.description}
-                                </p>
-                                : <textarea
-                                    // readOnly={!(isSuperAdmin || isOwner || isAdmin) || (mode === "edit" && selectedPackage?.system_generated)}
-                                    className="w-full min-h-[100px] rounded-[3px] border border-border bg-background px-3 py-2 text-sm"
-                                    value={selectedPackage?.description}
-                                    onChange={(e) => {
-                                        const next = e.target.value
-                                        if (isWithinCharLimit(next, 50)) {
-                                            setSelectedPackage((prev) => ({
-                                                ...prev,
-                                                description: normalizeTextInput(e.target.value),
-                                            }))
-                                        }
-                                    }
-                                    }
-                                />}
-                        </div>
+                                    Cancel
+                                </Button>
 
-                        {/* Price */}
-                        <div className="space-y-2">
-                            <Label>Base Price</Label>
-                            <Input
-                                type="text"
-                                className={submitted && formErrors.base_price ? "border-red-500" : ""}
-                                value={selectedPackage?.base_price}
-                                onChange={(e) => {
-                                    setSelectedPackage(prev => ({
-                                        ...prev,
-                                        base_price: normalizeNumberInput(e.target.value).toString(),
-                                    }));
-                                    setFormErrors(prev => ({ ...prev, base_price: "" }));
-                                }}
-                            />
-                        </div>
-
-                        {/* Active */}
-                        {!selectedPackage?.system_generated && <div className="flex items-center gap-2">
-                            <Switch
-                                // disabled={!(isSuperAdmin || isOwner || isAdmin)}
-                                checked={selectedPackage?.is_active}
-                                onCheckedChange={(v) =>
-                                    setSelectedPackage((prev) => ({
-                                        ...prev,
-                                        is_active: v,
-                                    }))
-                                }
-                            />
-                            <Label>Active</Label>
-                        </div>}
-
-                        {/* Actions */}
-                        <div className="flex justify-end gap-3 pt-4 border-t border-border">
-                            <Button
-                                variant="heroOutline"
-                                onClick={() => setSheetOpen(false)}
-                            >
-                                Cancel
-                            </Button>
-
-                            <Button variant="hero"
-                                // disabled={!selectedPackage?.base_price || !selectedPackage?.package_name}
-                                onClick={handleSubmit}>
-                                {mode === "add"
-                                    ? "Create Plan"
-                                    : "Save Changes"}
-                            </Button>
-                        </div>
-                    </motion.div>
+                                <Button variant="hero"
+                                    // disabled={!selectedPackage?.base_price || !selectedPackage?.package_name}
+                                    onClick={handleSubmit}>
+                                    {mode === "add"
+                                        ? "Create Plan"
+                                        : "Save Changes"}
+                                </Button>
+                            </div>
+                        </motion.div>
                 </SheetContent>
             </Sheet>
-        </div >
+        </div>
     );
 }
 

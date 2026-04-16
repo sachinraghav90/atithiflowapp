@@ -21,7 +21,7 @@ import { usePermission } from "@/rbac/usePermission";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Pencil, RefreshCcw, FilterX, Download } from "lucide-react";
+import { Pencil, RefreshCcw, FilterX, Download, Eye } from "lucide-react";
 
 type InventoryItem = {
     id: string;
@@ -152,6 +152,11 @@ export default function InventoryMaster() {
         setMode("edit");
     };
 
+    const openView = (item: InventoryItem) => {
+        setSelected(item);
+        setMode("view");
+    };
+
     const pathname = useLocation().pathname
     const { permission } = usePermission(pathname)
 
@@ -197,6 +202,13 @@ export default function InventoryMaster() {
     useEffect(() => {
         setPage(1);
     }, [selectedPropertyId]);
+
+    useEffect(() => {
+        if (searchInput.trim() === "") {
+            setSearchQuery("");
+            setPage(1);
+        }
+    }, [searchInput]);
 
     return (
         <div className="h-full flex flex-col overflow-hidden bg-[#f8fafc]">
@@ -399,28 +411,44 @@ export default function InventoryMaster() {
                                 },
                                 disabled: inventoryLoading || inventoryFetching,
                             }}
-                            actionLabel="Action"
-                            actionClassName="text-center w-[100px]"
+                            actionLabel=""
+                            actionClassName="text-center w-[96px]"
                             actions={
-                                permission?.can_create
-                                    ? (item: InventoryItem) => (
-                                        <div className="flex justify-center">
+                                (item: InventoryItem) => (
+                                    <div className="flex items-center justify-center gap-2">
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                                    aria-label={`View details for inventory ${item.name}`}
+                                                    onClick={() => openView(item)}
+                                                >
+                                                    <Eye className="w-4 h-4 mx-auto" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>View Details</TooltipContent>
+                                        </Tooltip>
+
+                                        {permission?.can_create && (
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
                                                     <Button
                                                         size="icon"
                                                         variant="ghost"
-                                                        className="h-8 w-8 hover:bg-muted transition-colors rounded-lg border border-transparent hover:border-border"
+                                                        className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                                        aria-label={`Edit details for inventory ${item.name}`}
                                                         onClick={() => openEdit(item)}
                                                     >
-                                                        <Pencil className="w-4 h-4 text-muted-foreground hover:text-foreground" />
+                                                        <Pencil className="w-4 h-4 mx-auto" />
                                                     </Button>
                                                 </TooltipTrigger>
-                                                <TooltipContent side="left">Edit Details</TooltipContent>
+                                                <TooltipContent>Edit Details</TooltipContent>
                                             </Tooltip>
-                                        </div>
-                                    )
-                                    : undefined
+                                        )}
+                                    </div>
+                                )
                             }
                         />
                     </div>
@@ -457,17 +485,34 @@ export default function InventoryMaster() {
                                     <p className="capitalize">{selected.use_type}</p>
                                 </div>
 
+                                <div>
+                                    <Label>Status</Label>
+                                    <p>{selected.is_active ? "Active" : "Inactive"}</p>
+                                </div>
+
+                                <div>
+                                    <Label>Created On</Label>
+                                    <p>{new Date(selected.created_on).toLocaleDateString("en-GB")}</p>
+                                </div>
+
+                                {permission?.can_create && (
+                                    <Button
+                                        variant="hero"
+                                        className="w-full"
+                                        onClick={() => openEdit(selected)}
+                                    >
+                                        Edit Inventory
+                                    </Button>
+                                )}
                             </div>
-
                         )}
-
-
+                        
                         {(mode === "edit" || mode === "add") && (
-
+                        
                             <div className="space-y-4">
-
+                        
                                 <div className="grid grid-cols-2 gap-4">
-
+                        
                                     {/* TYPE */}
                                     <div>
                                         <Label htmlFor="inventory-type">Inventory Type*</Label>
@@ -489,7 +534,7 @@ export default function InventoryMaster() {
                                             ))}
                                         </NativeSelect>
                                     </div>
-
+                        
                                     {/* USE TYPE */}
                                     <div>
                                         <Label htmlFor="inventory-use-type">Use Type*</Label>
@@ -507,7 +552,7 @@ export default function InventoryMaster() {
                                             <option value="usable">Usable</option>
                                         </NativeSelect>
                                     </div>
-
+                        
                                     {/* NAME */}
                                     <div className="col-span-2">
                                         <Label htmlFor="inventory-name">Name*</Label>
@@ -532,7 +577,7 @@ export default function InventoryMaster() {
                                         <Label>Active</Label>
                                     </div>}
                                 </div>
-
+                        
                                 <Button
                                     variant="hero"
                                     className="w-full"
@@ -540,11 +585,11 @@ export default function InventoryMaster() {
                                 >
                                     {mode === "add" ? "Create Inventory" : "Save Changes"}
                                 </Button>
-
+                        
                             </div>
-
+                        
                         )}
-
+                        
                     </DialogContent>
                 </Dialog>
             </div>

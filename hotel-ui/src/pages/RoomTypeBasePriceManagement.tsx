@@ -17,8 +17,11 @@ import { normalizeNumberInput } from "@/utils/normalizeTextInput";
 import { useLocation } from "react-router-dom";
 import { usePermission } from "@/rbac/usePermission";
 import { exportToExcel } from "@/utils/exportToExcel";
-import { Download } from "lucide-react";
+import { Download, FilterX, RefreshCcw } from "lucide-react";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
+import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
+import { useGridPagination } from "@/hooks/useGridPagination";
+import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 
 /* ---------------- Types ---------------- */
 type RateRow = {
@@ -31,13 +34,14 @@ type RateRow = {
 
 /* ---------------- Component ---------------- */
 export default function RoomTypeBasePriceManagement() {
-    const [propertyId, setPropertyId] = useState<number | undefined>();
+    const [propertyId, setPropertyId] = useState<number | null>(null);
+    const { myProperties, isMultiProperty } = useAutoPropertySelect(propertyId, setPropertyId);
 
     const [rows, setRows] = useState<RateRow[]>([]);
-    const [page, setPage] = useState(1);
-    const [limit, setLimit] = useState(9);
     const [editMode, setEditMode] = useState(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
+    const [searchInput, setSearchInput] = useState("");
+    const [searchQuery, setSearchQuery] = useState("");
     const [filterCategory, setFilterCategory] = useState("");
     const [filterBedType, setFilterBedType] = useState("");
     const [filterAcType, setFilterAcType] = useState("");
@@ -45,15 +49,17 @@ export default function RoomTypeBasePriceManagement() {
     const isSuperAdmin = useAppSelector(selectIsSuperAdmin)
     const isOwner = useAppSelector(selectIsOwner)
 
-    const { data: properties, isLoading: propertiesLoading, isUninitialized: propertiesUninitialized } = useGetMyPropertiesQuery(undefined, {
-        skip: !isLoggedIn
-    })
+    const { page, limit, setPage, resetPage, handleLimitChange } = useGridPagination({
+        initialLimit: 10,
+        resetDeps: [propertyId, filterCategory, filterBedType, filterAcType, searchQuery],
+    });
 
     const {
         data: roomTypesData,
         isLoading: roomTypesLoading,
         isFetching: roomTypesFetching,
-        isUninitialized: roomTypesUninitialized
+        isUninitialized: roomTypesUninitialized,
+        refetch: refetchRoomTypes
     } = useGetRoomTypesQuery({
         propertyId,
         page,
@@ -74,12 +80,6 @@ export default function RoomTypeBasePriceManagement() {
         }))
         setRows(nextRows);
     }, [roomTypesData, roomTypesLoading, roomTypesUninitialized]);
-
-    useEffect(() => {
-        if (!propertyId && properties?.properties?.length > 0) {
-            setPropertyId(properties.properties[0].id);
-        }
-    }, [properties]);
 
     const [updateRoomTypes] = useUpdateRoomTypesMutation()
 
@@ -129,10 +129,6 @@ export default function RoomTypeBasePriceManagement() {
 
     const totalPages = roomTypesData?.pagination?.totalPages ?? 1;
 
-    useEffect(() => {
-        setPage(1);
-    }, [propertyId, filterCategory, filterBedType, filterAcType]);
-
     const updateRoomRates = () => {
 
         const promise = updateRoomTypes({ payload }).unwrap()
@@ -149,7 +145,39 @@ export default function RoomTypeBasePriceManagement() {
     const pathname = useLocation().pathname
     const { permission } = usePermission(pathname)
 
-    const formatted = roomTypesData?.data?.map(r => ({
+    const filteredRows = useMemo(() => {
+        if (!searchQuery) return rows;
+        const q = searchQuery.toLowerCase();
+        return rows.filter((r) =>
+            r.room_category_name?.toLowerCase().includes(q) ||
+            r.bed_type_name?.toLowerCase().includes(q) ||
+            r.ac_type_name?.toLowerCase().includes(q)
+        );
+    }, [rows, searchQuery]);
+
+    const resetFiltersHandler = () => {
+        setSearchInput("");
+        setSearchQuery("");
+        setFilterCategory("");
+        setFilterBedType("");
+        setFilterAcType("");
+        resetPage();
+    };
+
+    const refreshTable = async () => {
+        if (roomTypesFetching) return;
+        const toastId = toast.loading("Refreshing prices...");
+        try {
+            await refetchRoomTypes();
+            toast.dismiss(toastId);
+            toast.success("Prices refreshed");
+        } catch {
+            toast.dismiss(toastId);
+            toast.error("Failed to refresh prices");
+        }
+    };
+
+    const formatted = roomTypesData?.data?.map((r: RateRow) => ({
         // ID: r.id,
         // Property: r.property_id,
         Category: r.room_category_name,
@@ -162,27 +190,53 @@ export default function RoomTypeBasePriceManagement() {
 
     // exportToExcel(formatted, "room-categories.xlsx");
 
+    const exportDataSheet = () => {
+        if (!formatted?.length) return toast.error("No data to export");
+        exportToExcel(formatted, "room-categories.xlsx", "Room Categories");
+    };
 
     /* ---------- UI ---------- */
     return (
         <div className="h-full flex flex-col overflow-hidden">
             <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8 space-y-6">
                 {/* Header */}
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center justify-between w-full">
                     {/* Left: Title */}
-                    <div>
-                        <h1 className="text-2xl font-bold">Room Category</h1>
+                    <div className="flex flex-col">
+                        <h1 className="text-2xl font-bold leading-tight">Room Category</h1>
                         <p className="text-sm text-muted-foreground">
                             Manage base pricing per room configuration
                         </p>
                     </div>
 
                     {/* Right: Actions */}
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                        {/* PROPERTY */}
+                        {isMultiProperty && (
+                            <div className="flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
+                                <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border uppercase">
+                                    Property
+                                </span>
+                                <NativeSelect
+                                    className="flex-1 bg-transparent px-2 focus:outline-none focus:ring-0 text-sm h-full truncate cursor-pointer"
+                                    value={propertyId ?? ""}
+                                    onChange={(e) => setPropertyId(+e.target.value)}
+                                >
+                                    <option value="" disabled>Select Property</option>
+                                    {myProperties?.properties?.map((property: { id: number; brand_name: string }) => (
+                                        <option key={property.id} value={property.id}>
+                                            {property.brand_name}
+                                        </option>
+                                    ))}
+                                </NativeSelect>
+                            </div>
+                        )}
+
                         {permission?.can_create && (
                             !editMode ? (
                                 <Button
                                     variant="hero"
+                                    className="h-10"
                                     onClick={() => setEditMode(true)}
                                 >
                                     Edit Prices
@@ -191,6 +245,7 @@ export default function RoomTypeBasePriceManagement() {
                                 <>
                                     <Button
                                         variant="heroOutline"
+                                        className="h-10"
                                         onClick={() => {
                                             setRows(
                                                 (roomTypesData?.data ?? []).map((row: RateRow) => ({
@@ -206,6 +261,7 @@ export default function RoomTypeBasePriceManagement() {
 
                                     <Button
                                         variant="hero"
+                                        className="h-10"
                                         disabled={updatedRates.length === 0}
                                         onClick={() => setConfirmOpen(true)}
                                     >
@@ -214,93 +270,99 @@ export default function RoomTypeBasePriceManagement() {
                                 </>
                             )
                         )}
-                        <Download
-                            color="hsl(189.29deg 68.89% 44.12%)"
-                            className="cursor-pointer"
-                            onClick={() =>
-                                exportToExcel(
-                                    formatted,
-                                    "room-categories.xlsx",
-                                    "Room Categories"
-                                )
-                            } />
                     </div>
                 </div>
 
-                <div className="grid-header border rounded-[5px] overflow-hidden px-4 py-2 mt-4 bg-muted/20 flex flex-col flex-1 min-h-0">
-                <div className="mb-4 flex flex-wrap gap-4 items-end [&>div]:w-[220px]">
+                <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
+                    <div className="w-full">
+                        <GridToolbar className="flex flex-col border-b-0">
+                            <GridToolbarRow className="gap-2">
+                                <GridToolbarSearch
+                                    value={searchInput}
+                                    onChange={(val) => {
+                                        setSearchInput(val);
+                                        if (val.trim() === "") {
+                                            setSearchQuery("");
+                                            resetPage();
+                                        }
+                                    }}
+                                    onSearch={() => {
+                                        setSearchQuery(searchInput.trim());
+                                        resetPage();
+                                    }}
+                                />
 
-                    {/* PROPERTY */}
-                    {(isSuperAdmin || isOwner) && (
-                        <div className="max-w-sm space-y-2">
-                            <Label>Property</Label>
-                            <NativeSelect
-                                className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
-                                value={propertyId}
-                                onChange={(e) => setPropertyId(+e.target.value)}
-                            >
-                                <option value="" disabled>Select Property</option>
+                                <GridToolbarSelect
+                                    label="CATEGORY"
+                                    value={filterCategory}
+                                    onChange={setFilterCategory}
+                                    options={[
+                                        { label: "Any", value: "" },
+                                        ...categoryOptions.map(v => ({ label: v, value: v }))
+                                    ]}
+                                />
 
-                                {properties?.properties?.map((property) => (
-                                    <option key={property.id} value={property.id}>
-                                        {property.brand_name}
-                                    </option>
-                                ))}
-                            </NativeSelect>
-                        </div>
-                    )}
+                                <GridToolbarSelect
+                                    label="BED TYPE"
+                                    value={filterBedType}
+                                    onChange={setFilterBedType}
+                                    options={[
+                                        { label: "Any", value: "" },
+                                        ...bedOptions.map(v => ({ label: v, value: v }))
+                                    ]}
+                                />
 
-                    {/* ROOM CATEGORY */}
-                    <div className="space-y-2">
-                        <Label>Room Category</Label>
-                        <NativeSelect
-                            className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
-                            value={filterCategory}
-                            onChange={(e) => setFilterCategory(e.target.value)}
-                        >
-                            <option value="">All</option>
-                            {categoryOptions?.map(v => (
-                                <option key={v} value={v}>{v}</option>
-                            ))}
-                        </NativeSelect>
+                                <GridToolbarActions
+                                    className="gap-1 justify-end"
+                                    actions={[
+                                        {
+                                            key: "export",
+                                            label: "Export Rates",
+                                            icon: <Download className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: exportDataSheet,
+                                        },
+                                        {
+                                            key: "reset",
+                                            label: "Reset Filters",
+                                            icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: resetFiltersHandler,
+                                        },
+                                        {
+                                            key: "refresh",
+                                            label: "Refresh Data",
+                                            icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: refreshTable,
+                                            disabled: roomTypesFetching,
+                                        },
+                                    ]}
+                                />
+                            </GridToolbarRow>
+
+                            <GridToolbarRow className="gap-2">
+                                <GridToolbarSelect
+                                    label="AC TYPE"
+                                    value={filterAcType}
+                                    onChange={setFilterAcType}
+                                    options={[
+                                        { label: "Any", value: "" },
+                                        ...acOptions.map(v => ({ label: v, value: v }))
+                                    ]}
+                                />
+
+                                <GridToolbarSpacer />
+                                <GridToolbarSpacer />
+                                <GridToolbarSpacer type="actions" />
+                            </GridToolbarRow>
+                        </GridToolbar>
                     </div>
 
-                    {/* BED TYPE */}
-                    <div className="space-y-2">
-                        <Label>Bed Type</Label>
-                        <NativeSelect
-                            className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
-                            value={filterBedType}
-                            onChange={(e) => setFilterBedType(e.target.value)}
-                        >
-                            <option value="">All</option>
-                            {bedOptions?.map(v => (
-                                <option key={v} value={v}>{v}</option>
-                            ))}
-                        </NativeSelect>
-                    </div>
-
-                    {/* AC TYPE */}
-                    <div className="space-y-2">
-                        <Label>AC Type</Label>
-                        <NativeSelect
-                            className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
-                            value={filterAcType}
-                            onChange={(e) => setFilterAcType(e.target.value)}
-                        >
-                            <option value="">All</option>
-                            {acOptions?.map(v => (
-                                <option key={v} value={v}>{v}</option>
-                            ))}
-                        </NativeSelect>
-                    </div>
-
-                </div>
-                <AppDataGrid
+                    <div className="px-2 pb-2">
+                    <AppDataGrid
                     columns={[
                         {
                             label: "Room Category",
                             key: "room_category_name",
+                            cellClassName: "font-medium",
                         },
                         {
                             label: "AC Type",
@@ -312,13 +374,16 @@ export default function RoomTypeBasePriceManagement() {
                         },
                         {
                             label: "Base Price",
+                            headClassName: "text-center",
+                            cellClassName: "text-center font-medium",
                             render: (r: RateRow) =>
                                 !editMode ? (
-                                    <span>{r.base_price || 0}</span>
+                                    <span className="px-2 py-1 bg-muted/50 rounded text-sm text-foreground">{r.base_price || 0}</span>
                                 ) : (
                                     <Input
                                         type="text"
                                         min={0}
+                                        className="h-8 max-w-[120px] mx-auto text-center font-semibold focus-visible:ring-1 focus-visible:ring-primary"
                                         value={r.base_price || 0}
                                         onChange={(e) =>
                                             updatePrice(
@@ -330,7 +395,7 @@ export default function RoomTypeBasePriceManagement() {
                                 ),
                         },
                     ] as ColumnDef[]}
-                    data={rows}
+                    data={filteredRows}
                     loading={roomTypesLoading}
                     emptyText="No room categories found"
                     minWidth="760px"
@@ -341,13 +406,11 @@ export default function RoomTypeBasePriceManagement() {
                         setPage,
                         totalRecords: roomTypesData?.pagination?.total ?? rows.length,
                         limit,
-                        onLimitChange: (value) => {
-                            setLimit(value);
-                            setPage(1);
-                        },
+                        onLimitChange: handleLimitChange,
                         disabled: roomTypesLoading || roomTypesFetching,
                     }}
                 />
+                    </div>
                 </div>
             </section>
 

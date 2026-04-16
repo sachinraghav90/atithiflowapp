@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { NativeSelect } from "@/components/ui/native-select";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -12,9 +13,8 @@ import {
     SheetTitle,
 } from "@/components/ui/sheet";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
-import { GridToolbar, GridToolbarActions, GridToolbarSearch, GridToolbarSelect } from "@/components/ui/grid-toolbar";
-import { FilterX, Image as ImageIcon, KeyRound, Pencil, RefreshCcw } from "lucide-react";
-import { useDebounce } from "@/hooks/use-debounce";
+import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect } from "@/components/ui/grid-toolbar";
+import { FilterX, Download, Image as ImageIcon, KeyRound, Pencil, Phone, RefreshCcw } from "lucide-react";
 import { useAddStaffMutation, useCreateUserMutation, useGetAllRolesQuery, useGetMyPropertiesQuery, useGetStaffByPropertyQuery, useLazyGetStaffByIdQuery, useUpdateStaffMutation, useUpdateStaffPasswordMutation, useGetPropertyAddressByUserQuery } from "@/redux/services/hmsApi";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { toast } from "react-toastify";
@@ -39,6 +39,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils";
 import { getStatusColor } from "@/constants/statusColors";
 import { useGridPagination } from "@/hooks/useGridPagination";
+import { exportToExcel } from "@/utils/exportToExcel";
 
 /* -------------------- Types -------------------- */
 type Staff = {
@@ -56,6 +57,8 @@ type Staff = {
     image?: File | null;
     id_proof?: File | null;
 };
+
+const STAFF_STATUSES = ["active", "inactive"];
 
 const STAFF_INITIAL_VALUE = {
     first_name: "",
@@ -111,7 +114,8 @@ export default function StaffManagement() {
     const [sheetOpen, setSheetOpen] = useState(false);
     const [mode, setMode] = useState<"add" | "edit" | "view">("add");
 
-    const [search, setSearch] = useState("");
+    const [searchInput, setSearchInput] = useState("");
+    const [searchQuery, setSearchQuery] = useState("");
     const [selectedPropertyId, setSelectedPropertyId] = useState("");
 
     const [statusFilter, setStatusFilter] = useState("");
@@ -129,10 +133,9 @@ export default function StaffManagement() {
 
     const viewMode = mode === "view";
 
-    const debouncedSearch = useDebounce(search, 500);
     const { page, limit, setPage, resetPage, handleLimitChange } = useGridPagination({
         initialLimit: 10,
-        resetDeps: [selectedPropertyId, debouncedSearch, statusFilter],
+        resetDeps: [selectedPropertyId, statusFilter, searchQuery],
     });
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
     const { 
@@ -147,7 +150,7 @@ export default function StaffManagement() {
         property_id: selectedPropertyId,
         page,
         limit,
-        search: debouncedSearch,
+        search: searchQuery,
         department: "",
         status: statusFilter,
     }, {
@@ -354,7 +357,8 @@ export default function StaffManagement() {
     const staffRows = useMemo(() => staffData?.data ?? [], [staffData?.data]);
 
     const resetFiltersHandler = () => {
-        setSearch("");
+        setSearchInput("");
+        setSearchQuery("");
         setStatusFilter("");
         resetPage();
     };
@@ -371,6 +375,25 @@ export default function StaffManagement() {
             toast.dismiss(toastId);
             toast.error("Failed to refresh staff");
         }
+    };
+
+    const exportStaffSheet = () => {
+        if (!staffRows.length) {
+            toast.info("No staff available to export");
+            return;
+        }
+
+        const formatted = staffRows.map((staffMember: any) => ({
+            NAME: `${staffMember.first_name || ""} ${staffMember.last_name || ""}`.trim() || "-",
+            EMAIL: staffMember.email || "-",
+            PHONE: staffMember.phone || staffMember.phone1 || "-",
+            PROPERTY: staffMember.properties?.[0]?.brand_name || "-",
+            ROLE: staffMember.roles?.[0]?.name || "-",
+            STATUS: staffMember.status || "-",
+        }));
+
+        exportToExcel(formatted, "Staff.xlsx");
+        toast.success("Export completed");
     };
 
     const openStaffDetails = async (staffMember: Staff) => {
@@ -396,82 +419,156 @@ export default function StaffManagement() {
             console.error(err);
         }
     };
+
+    const staffColumns = useMemo<ColumnDef<any>[]>(() => [
+        {
+            label: "Name",
+            cellClassName: "font-medium",
+            render: (s) => (
+                <div className="flex items-center gap-3">
+                    <Avatar className="h-8 w-8 rounded-[3px] border border-border">
+                        <AvatarImage src={s.image || ""} />
+                        <AvatarFallback className="rounded-[3px] bg-primary/10 text-primary font-bold text-[10px]">
+                            {s.first_name?.[0]}{s.last_name?.[0]}
+                        </AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col">
+                        <span className="text-sm font-semibold">{s.first_name} {s.last_name}</span>
+                        <span className="text-xs text-muted-foreground leading-none">{s.email || "No email"}</span>
+                    </div>
+                </div>
+            ),
+        },
+        {
+            label: "Contact",
+            cellClassName: "text-sm",
+            render: (s) => (
+                <div className="inline-flex items-center gap-1.5 text-muted-foreground">
+                    <Phone className="h-3.5 w-3.5" />
+                    <span>{s.phone || s.phone1 || "-"}</span>
+                </div>
+            ),
+        },
+        {
+            label: "Property",
+            cellClassName: "text-sm",
+            render: (s) => s.properties?.[0]?.brand_name || "-",
+        },
+        {
+            label: "Role",
+            cellClassName: "text-sm capitalize",
+            render: (s) => s.roles?.[0]?.name || "-",
+        },
+        {
+            label: "Status",
+            headClassName: "text-center",
+            cellClassName: "text-center",
+            render: (s) => (
+                <span
+                    className={cn(
+                        "inline-flex min-w-[88px] justify-center px-3 py-1 text-xs font-semibold rounded-[3px]",
+                        getStatusColor(s.status, "staff")
+                    )}
+                >
+                    {s.status}
+                </span>
+            ),
+        },
+    ], []);
+
     return (
         <div className="h-full flex flex-col overflow-hidden">
             <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8 space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold">Staff Directory</h1>
-                    <p className="text-sm text-muted-foreground">
-                        Manage your hotel staff and their roles
-                    </p>
-                </div>
+                <div className="flex items-center justify-between w-full">
+                    <div className="flex flex-col">
+                        <h1 className="text-2xl font-bold leading-tight">Staff Directory</h1>
+                        <p className="text-sm text-muted-foreground">
+                            Manage your hotel staff and their roles
+                        </p>
+                    </div>
 
-                <div className="flex items-center gap-3">
-                    {isMultiProperty && (
-                        <div className="flex items-center h-9 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
-                            <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border uppercase">
-                                Property
-                            </span>
-                            <NativeSelect
-                                className="flex-1 bg-transparent px-2 focus:outline-none focus:ring-0 text-sm h-full truncate cursor-pointer"
-                                value={selectedPropertyId}
-                                onChange={(e) => {
-                                    setSelectedPropertyId(e.target.value);
-                                    resetPage();
+                    <div className="flex items-center gap-3">
+                        {isMultiProperty && (
+                            <div className="flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
+                                <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border uppercase">
+                                    Property
+                                </span>
+                                <NativeSelect
+                                    className="flex-1 bg-transparent px-2 focus:outline-none focus:ring-0 text-sm h-full truncate cursor-pointer"
+                                    value={selectedPropertyId}
+                                    onChange={(e) => {
+                                        setSelectedPropertyId(e.target.value);
+                                        resetPage();
+                                    }}
+                                >
+                                    <option value="" disabled>Select Property</option>
+                                    {myProperties?.properties?.map((property: { id: string; brand_name: string }) => (
+                                        <option key={property.id} value={property.id}>
+                                            {property.brand_name}
+                                        </option>
+                                    ))}
+                                </NativeSelect>
+                            </div>
+                        )}
+
+                        {permission?.can_create && (
+                            <Button
+                                variant="hero"
+                                className="h-10"
+                                onClick={() => {
+                                    setMode("add");
+                                    setStaff(STAFF_INITIAL_VALUE);
+                                    setFormErrors({});
+                                    setSheetOpen(true);
                                 }}
                             >
-                                <option value="" disabled>Select Property</option>
-                                {myProperties?.properties?.map((property: { id: string; brand_name: string }) => (
-                                    <option key={property.id} value={property.id}>
-                                        {property.brand_name}
-                                    </option>
-                                ))}
-                            </NativeSelect>
-                        </div>
-                    )}
-
-                    {permission?.can_create && (
-                        <Button
-                            className="h-9"
-                            onClick={() => {
-                                setMode("add");
-                                setStaff(STAFF_INITIAL_VALUE);
-                                setFormErrors({});
-                                setSheetOpen(true);
-                            }}
-                        >
-                            Add Staff
-                        </Button>
-                    )}
+                                Add Staff
+                            </Button>
+                        )}
+                    </div>
                 </div>
-            </div>
 
                 <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
                     <div className="w-full">
                         <GridToolbar className="border-b-0">
                             <GridToolbarRow className="gap-2">
                                 <GridToolbarSearch
-                                    value={search}
-                                    onChange={setSearch}
-                                    placeholder="Search staff name, email..."
+                                    value={searchInput}
+                                    onChange={(value) => {
+                                        setSearchInput(value);
+                                        if (!value.trim()) {
+                                            setSearchQuery("");
+                                            resetPage();
+                                        }
+                                    }}
+                                    onSearch={() => {
+                                        setSearchQuery(searchInput.trim());
+                                        resetPage();
+                                    }}
                                 />
 
                                 <GridToolbarSelect
                                     label="STATUS"
                                     value={statusFilter}
-                                    onChange={setStatusFilter}
+                                    onChange={(value) => {
+                                        setStatusFilter(value);
+                                        resetPage();
+                                    }}
                                     options={[
                                         { label: "Any", value: "" },
                                         ...STAFF_STATUSES.map((s) => ({ label: s, value: s })),
                                     ]}
                                 />
 
-                                <div className="w-full" /> {/* Empty col 3 */}
-
                                 <GridToolbarActions
                                     className="gap-1 justify-end"
                                     actions={[
+                                        {
+                                            key: "export",
+                                            label: "Export Staff",
+                                            icon: <Download className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: exportStaffSheet,
+                                        },
                                         {
                                             key: "reset",
                                             label: "Reset Filters",
@@ -489,76 +586,18 @@ export default function StaffManagement() {
                                 />
                             </GridToolbarRow>
                         </GridToolbar>
+                    </div>
 
+                    <div className="px-2 pb-2">
                         <AppDataGrid
-                            columns={[
-                                {
-                                    label: "Name",
-                                    cellClassName: "font-medium",
-                                    render: (s: Staff) => (
-                                        <div className="flex items-center gap-3">
-                                            <Avatar className="h-8 w-8 rounded-[3px] border border-border">
-                                                <AvatarImage src={s.image || ""}/>
-                                                <AvatarFallback className="rounded-[3px] bg-primary/10 text-primary font-bold text-[10px]">
-                                                    {s.first_name?.[0]}{s.last_name?.[0]}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex flex-col">
-                                                <span className="text-sm font-semibold">{s.first_name} {s.last_name}</span>
-                                                <span className="text-xs text-muted-foreground leading-none">{s.email || "No email"}</span>
-                                            </div>
-                                        </div>
-                                    ),
-                                },
-                                {
-                                    label: "Contact",
-                                    cellClassName: "text-xs",
-                                    render: (s: Staff) => (
-                                        <div className="flex flex-col gap-0.5">
-                                            <div className="flex items-center gap-1">
-                                                <Phone className="h-3 w-3 text-muted-foreground" />
-                                                <span>{s.phone}</span>
-                                            </div>
-                                        </div>
-                                    ),
-                                },
-                                {
-                                    label: "Property",
-                                    cellClassName: "text-xs",
-                                    render: (s: Staff) => (
-                                        <div className="flex flex-col">
-                                            <span className="font-medium text-foreground">
-                                                {s.properties?.[0]?.brand_name || "-"}
-                                            </span>
-                                        </div>
-                                    ),
-                                },
-                                {
-                                    label: "Role",
-                                    cellClassName: "text-xs capitalize",
-                                    render: (s: Staff) => s.roles?.[0]?.name || "-",
-                                },
-                                {
-                                    label: "Status",
-                                    render: (s: Staff) => (
-                                        <span
-                                            className={cn(
-                                                "px-3 py-1 text-xs font-semibold rounded-[3px]",
-                                                getStatusColor(s.status, "staff")
-                                            )}
-                                        >
-                                            {s.status}
-                                        </span>
-                                    ),
-                                },
-                            ] as ColumnDef[]}
+                            columns={staffColumns}
                             data={staffRows}
-                            loading={isLoading}
+                            loading={isLoading || isFetching}
                             emptyText="No staff added yet"
                             minWidth="700px"
                             rowKey={(s: Staff, idx: number) => s.id ?? idx}
                             actionLabel=""
-                            actionClassName="text-center w-[112px]"
+                            actionClassName="text-center w-[96px]"
                             actions={(s: Staff) => (
                                 <div className="flex justify-center gap-2">
                                     <Tooltip>
@@ -581,7 +620,7 @@ export default function StaffManagement() {
                                             <Button
                                                 size="icon"
                                                 variant="outline"
-                                                className="h-8 w-8 rounded-[3px]"
+                                                className="h-8 w-8 rounded-[3px] shadow-sm"
                                                 onClick={() => openPasswordModal(s)}
                                                 aria-label={`Update password for ${s.first_name} ${s.last_name}`}
                                             >
@@ -597,7 +636,7 @@ export default function StaffManagement() {
                                 page,
                                 totalPages: staffData?.pagination?.totalPages ?? 1,
                                 setPage,
-                                disabled: !staffData,
+                                disabled: isFetching || !staffData,
                                 totalRecords: staffData?.pagination?.totalItems ?? staffData?.pagination?.total ?? staffData?.data?.length ?? 0,
                                 limit,
                                 onLimitChange: handleLimitChange,

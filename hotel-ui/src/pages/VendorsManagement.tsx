@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
-import { GridToolbar, GridToolbarActions, GridToolbarSearch, GridToolbarSelect } from "@/components/ui/grid-toolbar";
+import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
 import {
     Sheet,
     SheetContent,
@@ -31,10 +31,10 @@ import { useLocation } from "react-router-dom";
 import { usePermission } from "@/rbac/usePermission";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import { useDebounce } from "@/hooks/use-debounce";
 import { useGridPagination } from "@/hooks/useGridPagination";
-import { FilterX, Pencil, RefreshCcw } from "lucide-react";
+import { FilterX, Pencil, RefreshCcw, Download } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { exportToExcel } from "@/utils/exportToExcel";
 import { getStatusColor } from "@/constants/statusColors";
 
 /* ---------------- Types ---------------- */
@@ -75,11 +75,13 @@ export default function VendorsManagement() {
     });
     const [formErrors, setFormErrors] = useState<Record<string, string>>({});
     const [submitted, setSubmitted] = useState(false);
-    const [search, setSearch] = useState("");
-    const debouncedSearch = useDebounce(search, 500)
+    const [searchInput, setSearchInput] = useState("");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [typeFilter, setTypeFilter] = useState("");
+    const [statusFilter, setStatusFilter] = useState("");
     const { page, limit, setPage, resetPage, handleLimitChange } = useGridPagination({
         initialLimit: 10,
-        resetDeps: [selectedPropertyId, debouncedSearch],
+        resetDeps: [selectedPropertyId, searchQuery, typeFilter, statusFilter],
     });
 
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
@@ -91,7 +93,7 @@ export default function VendorsManagement() {
         isLoading: myPropertiesLoading
     } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
 
-    const { data: vendors, isLoading, isFetching, isUninitialized, refetch: refetchVendors } = useGetPropertyVendorsQuery({ propertyId: selectedPropertyId, page, limit, search: debouncedSearch }, {
+    const { data: vendors, isLoading, isFetching, isUninitialized, refetch: refetchVendors } = useGetPropertyVendorsQuery({ propertyId: selectedPropertyId, page, limit, search: searchQuery }, {
         skip: !isLoggedIn || !selectedPropertyId,
     });
 
@@ -163,11 +165,37 @@ export default function VendorsManagement() {
 
     const pathname = useLocation().pathname
     const { permission } = usePermission(pathname)
-    const vendorRows = useMemo(() => vendors?.data ?? [], [vendors?.data]);
+    
+    const vendorRows = useMemo(() => {
+        let rows = vendors?.data ?? [];
+        if (typeFilter) {
+            rows = rows.filter((v: Vendor) => v.vendor_type === typeFilter);
+        }
+        if (statusFilter) {
+            const isActive = statusFilter === "true";
+            rows = rows.filter((v: Vendor) => v.is_active === isActive);
+        }
+        return rows;
+    }, [vendors?.data, typeFilter, statusFilter]);
 
     const resetFiltersHandler = () => {
-        setSearch("");
+        setSearchInput("");
+        setSearchQuery("");
+        setTypeFilter("");
+        setStatusFilter("");
         resetPage();
+    };
+
+    const exportVendorsSheet = () => {
+        if (!vendorRows.length) return toast.error("No data to export");
+        const formatted = vendorRows.map((v: Vendor) => ({
+            NAME: v.name,
+            TYPE: v.vendor_type || "—",
+            CONTACT: v.contact_no || "—",
+            EMAIL: v.email_id || "—",
+            STATUS: v.is_active ? "Active" : "Inactive"
+        }));
+        exportToExcel(formatted, "Vendors.xlsx");
     };
 
     const refreshTable = async () => {
@@ -224,7 +252,7 @@ export default function VendorsManagement() {
 
                     <div className="flex items-center gap-3">
                         {isMultiProperty && (
-                            <div className="flex items-center h-9 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
+                            <div className="flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
                                 <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border uppercase">
                                     Property
                                 </span>
@@ -247,7 +275,7 @@ export default function VendorsManagement() {
                         )}
 
                         {permission?.can_create && (
-                            <Button variant="hero" className="h-9" onClick={openAdd}>
+                            <Button variant="hero" className="h-10" onClick={openAdd}>
                                 Add Vendor
                             </Button>
                         )}
@@ -260,21 +288,56 @@ export default function VendorsManagement() {
                         <GridToolbar className="border-b-0">
                             <GridToolbarRow className="gap-2">
                                 <GridToolbarSearch
-                                    value={search}
-                                    onChange={setSearch}
-                                    placeholder="Search vendor name, email..."
+                                    value={searchInput}
+                                    onChange={(val) => {
+                                        setSearchInput(val);
+                                        if (val.trim() === "") {
+                                            setSearchQuery("");
+                                            resetPage();
+                                        }
+                                    }}
                                     onSearch={() => {
-                                        setSearchQuery(search.trim());
+                                        setSearchQuery(searchInput.trim());
                                         resetPage();
                                     }}
                                 />
 
-                                <div className="w-full" /> {/* Empty col 2 */}
-                                <div className="w-full" /> {/* Empty col 3 */}
+                                <GridToolbarSelect
+                                    label="TYPE"
+                                    value={typeFilter}
+                                    onChange={(val) => {
+                                        setTypeFilter(val);
+                                        resetPage();
+                                    }}
+                                    options={[
+                                        { label: "Any", value: "" },
+                                        ...Array.from(new Set((vendors?.data || []).map((v: Vendor) => v.vendor_type).filter(Boolean))).map(t => ({ label: String(t), value: String(t) }))
+                                    ]}
+                                />
+
+                                <GridToolbarSelect
+                                    label="STATUS"
+                                    value={statusFilter}
+                                    onChange={(val) => {
+                                        setStatusFilter(val);
+                                        resetPage();
+                                    }}
+                                    options={[
+                                        { label: "Any", value: "" },
+                                        { label: "Active", value: "true" },
+                                        { label: "Inactive", value: "false" }
+                                    ]}
+                                />
 
                                 <GridToolbarActions
                                     className="gap-1 justify-end"
                                     actions={[
+                                        {
+                                            key: "export",
+                                            label: "Export Vendors",
+                                            icon: <Download className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: exportVendorsSheet,
+                                        },
                                         {
                                             key: "reset",
                                             label: "Reset Filters",
@@ -294,6 +357,7 @@ export default function VendorsManagement() {
                         </GridToolbar>
                     </div>
 
+                    <div className="px-2 pb-2">
                     <AppDataGrid
                     columns={[
                         {
@@ -311,6 +375,8 @@ export default function VendorsManagement() {
                         },
                         {
                             label: "Status",
+                            headClassName: "text-center",
+                            cellClassName: "text-center",
                             render: (v: Vendor) => (
                                 <span className={cn(
                                     "px-3 py-1 rounded-[3px] text-xs font-semibold",
@@ -354,6 +420,7 @@ export default function VendorsManagement() {
                         onLimitChange: handleLimitChange
                     }}
                 />
+                    </div>
                 </div>
             </section>
 

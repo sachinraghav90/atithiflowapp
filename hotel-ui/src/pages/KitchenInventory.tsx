@@ -1,6 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import Sidebar from "@/components/layout/Sidebar";
-import AppHeader from "@/components/layout/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,7 +25,9 @@ import { normalizeNumberInput, normalizeSignedNumberInput } from "@/utils/normal
 import KitchenInventoryBulkAdjustSheet from "@/components/KitchenInventoryBulkAdjustSheet";
 import { AppDataGrid, DataGridPagination, type ColumnDef } from "@/components/ui/data-grid";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Pencil } from "lucide-react";
+import { Download, FilterX, Pencil, RefreshCcw } from "lucide-react";
+import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect } from "@/components/ui/grid-toolbar";
+import { exportToExcel } from "@/utils/exportToExcel";
 
 type KitchenItem = {
     id: string;
@@ -63,6 +63,13 @@ function buildUpdateKitchenItemPayload(data) {
 export default function KitchenInventory() {
     const [inventoryPage, setInventoryPage] = useState(1);
     const [auditPage, setAuditPage] = useState(1);
+    const [searchInput, setSearchInput] = useState("");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [historySearchInput, setHistorySearchInput] = useState("");
+    const [historySearchQuery, setHistorySearchQuery] = useState("");
+    const [historyActionFilter, setHistoryActionFilter] = useState("");
+    const [categoryFilter, setCategoryFilter] = useState("");
+    const [unitFilter, setUnitFilter] = useState("");
 
     const [sheetOpen, setSheetOpen] = useState(false);
     const [createOpen, setCreateOpen] = useState(false);
@@ -104,7 +111,12 @@ export default function KitchenInventory() {
         skip: !isLoggedIn
     });
 
-    const { data: kitchenInventory } = useGetKitchenInventoryQuery({ propertyId: selectedPropertyId, page: inventoryPage, limit: inventoryLimit }, {
+    const {
+        data: kitchenInventory,
+        isLoading: kitchenInventoryLoading,
+        isFetching: kitchenInventoryFetching,
+        refetch: refetchKitchenInventory
+    } = useGetKitchenInventoryQuery({ propertyId: selectedPropertyId, page: inventoryPage, limit: inventoryLimit }, {
         skip: !isLoggedIn || !selectedPropertyId
     })
 
@@ -112,7 +124,12 @@ export default function KitchenInventory() {
         skip: !isLoggedIn || !selectedPropertyId
     })
 
-    const { data: logs } = useGetLogsByTableQuery({ tableName: "kitchen_inventory", propertyId: selectedPropertyId, page: auditPage, limit: auditLimit }, {
+    const {
+        data: logs,
+        isLoading: logsLoading,
+        isFetching: logsFetching,
+        refetch: refetchLogs
+    } = useGetLogsByTableQuery({ tableName: "kitchen_inventory", propertyId: selectedPropertyId, page: auditPage, limit: auditLimit }, {
         skip: !isLoggedIn || !selectedPropertyId
     })
 
@@ -145,6 +162,20 @@ export default function KitchenInventory() {
         setInventoryPage(1);
         setAuditPage(1);
     }, [selectedPropertyId]);
+
+    useEffect(() => {
+        if (searchInput.trim() === "") {
+            setSearchQuery("");
+            setInventoryPage(1);
+        }
+    }, [searchInput]);
+
+    useEffect(() => {
+        if (historySearchInput.trim() === "") {
+            setHistorySearchQuery("");
+            setAuditPage(1);
+        }
+    }, [historySearchInput]);
     /* ---------------- Handlers ---------------- */
 
     const openManage = (item: KitchenItem) => {
@@ -281,6 +312,159 @@ export default function KitchenInventory() {
 
     const pathname = useLocation().pathname
     const { permission } = usePermission(pathname)
+    const inventoryCategoryOptions = useMemo(() => {
+        const categories = Array.from(
+            new Set((kitchenInventory?.data ?? []).map((item: KitchenItem) => item.inventory_type).filter(Boolean))
+        );
+
+        return categories.sort((a, b) => String(a).localeCompare(String(b)));
+    }, [kitchenInventory?.data]);
+
+    const inventoryUnitOptions = useMemo(() => {
+        const units = Array.from(
+            new Set((kitchenInventory?.data ?? []).map((item: KitchenItem) => item.unit).filter(Boolean))
+        );
+
+        return units.sort((a, b) => String(a).localeCompare(String(b)));
+    }, [kitchenInventory?.data]);
+
+    const filteredKitchenInventory = useMemo(() => {
+        const rows = kitchenInventory?.data ?? [];
+        const query = searchQuery.trim().toLowerCase();
+
+        return rows.filter((item: KitchenItem) =>
+            (!query ||
+                [
+                    item.name,
+                    item.inventory_type,
+                    item.quantity,
+                    item.unit,
+                ].some((field) => String(field ?? "").toLowerCase().includes(query))) &&
+            (!categoryFilter || item.inventory_type === categoryFilter) &&
+            (!unitFilter || item.unit === unitFilter)
+        );
+    }, [kitchenInventory?.data, searchQuery, categoryFilter, unitFilter]);
+
+    const filteredHistoryLogs = useMemo(() => {
+        const rows = logs?.data ?? [];
+        const query = historySearchQuery.trim().toLowerCase();
+
+        return rows.filter((audit: any) => {
+            const details = parseAuditDetails(audit.details);
+            const itemName = details?.entity?.inventory_name || "";
+            const userName = `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim();
+
+            const matchesQuery = !query || [
+                itemName,
+                audit.event_type,
+                userName,
+                new Date(audit.created_on).toLocaleString(),
+            ].some((field) => String(field ?? "").toLowerCase().includes(query));
+
+            const matchesAction = !historyActionFilter || audit.event_type === historyActionFilter;
+
+            return matchesQuery && matchesAction;
+        });
+    }, [logs?.data, historySearchQuery, historyActionFilter]);
+
+    const historyActionOptions = useMemo(() => {
+        const actions = Array.from(
+            new Set((logs?.data ?? []).map((audit: any) => audit.event_type).filter(Boolean))
+        );
+
+        return actions.sort((a, b) => String(a).localeCompare(String(b)));
+    }, [logs?.data]);
+
+    const resetInventoryFilters = () => {
+        setSearchInput("");
+        setSearchQuery("");
+        setCategoryFilter("");
+        setUnitFilter("");
+        setInventoryPage(1);
+    };
+
+    const refreshInventoryGrid = async () => {
+        if (kitchenInventoryFetching) return;
+
+        const toastId = toast.loading("Refreshing data...");
+
+        try {
+            await refetchKitchenInventory();
+            toast.dismiss(toastId);
+            toast.success("Data refreshed");
+        } catch {
+            toast.dismiss(toastId);
+            toast.error("Failed to refresh");
+        }
+    };
+
+    const exportKitchenInventory = () => {
+        if (!filteredKitchenInventory.length) {
+            toast.info("No inventory items to export");
+            return;
+        }
+
+        const formatted = filteredKitchenInventory.map((item: KitchenItem) => ({
+            ITEM: item.name,
+            CATEGORY: item.inventory_type || "--",
+            STOCK: item.quantity,
+            UNIT: item.unit || "--",
+        }));
+
+        exportToExcel(formatted, "Kitchen-Inventory.xlsx");
+        toast.success("Export completed");
+    };
+
+    const resetHistoryFilters = () => {
+        setHistorySearchInput("");
+        setHistorySearchQuery("");
+        setHistoryActionFilter("");
+        setAuditPage(1);
+    };
+
+    const refreshHistoryGrid = async () => {
+        if (logsFetching) return;
+
+        const toastId = toast.loading("Refreshing data...");
+
+        try {
+            await refetchLogs();
+            toast.dismiss(toastId);
+            toast.success("Data refreshed");
+        } catch {
+            toast.dismiss(toastId);
+            toast.error("Failed to refresh");
+        }
+    };
+
+    const exportHistoryLogs = () => {
+        if (!filteredHistoryLogs.length) {
+            toast.info("No history rows to export");
+            return;
+        }
+
+        const formatted = filteredHistoryLogs.map((audit: any) => {
+            const details = parseAuditDetails(audit.details);
+            const before = details?.before;
+            const after = details?.after;
+            const entity = details?.entity;
+            const unit = entity?.use_type === "usable" ? entity?.unit || "" : "";
+            const change = before
+                ? `${before.quantity}${unit ? ` ${unit}` : ""} -> ${after?.quantity}${unit ? ` ${unit}` : ""}`
+                : `${after?.quantity}${unit ? ` ${unit}` : ""}`;
+
+            return {
+                ITEM: details?.entity?.inventory_name || "--",
+                ACTION: audit.event_type,
+                CHANGE: change,
+                USER: `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim(),
+                DATE: new Date(audit.created_on).toLocaleString(),
+            };
+        });
+
+        exportToExcel(formatted, "Kitchen-Inventory-History.xlsx");
+        toast.success("Export completed");
+    };
     /* ---------------- UI ---------------- */
 
     return (
@@ -295,33 +479,35 @@ export default function KitchenInventory() {
                             Stock, costing & procurement management
                         </p>
                     </div>
-                    {(isSuperAdmin || isOwner) && (
-                        <div className="w-64 flex flex-col justify-end">
-                            <Label className="text-[11px] text-muted-foreground mb-1">
-                                Property
-                            </Label>
-                            <NativeSelect
-                                className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
-                                value={selectedPropertyId ?? ""}
-                                onChange={(e) => {
-                                    setSelectedPropertyId(Number(e.target.value) || null);
-                                }}
-                                disabled={!(isSuperAdmin || isOwner)}
-                            >
-                                <option value="">All properties</option>
-                                {!myPropertiesLoading &&
-                                    myProperties?.properties?.map((property) => (
-                                        <option key={property.id} value={property.id}>
-                                            {property.brand_name}
-                                        </option>
-                                    ))}
-                            </NativeSelect>
-                        </div>
-                    )}
+                    <div className="flex items-center gap-3">
+                        {(isSuperAdmin || isOwner) && (
+                            <div className="flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
+                                <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border uppercase">
+                                    Property
+                                </span>
+                                <NativeSelect
+                                    className="flex-1 bg-transparent px-2 focus:outline-none focus:ring-0 text-sm h-full truncate cursor-pointer"
+                                    value={selectedPropertyId ?? ""}
+                                    onChange={(e) => {
+                                        setSelectedPropertyId(Number(e.target.value) || null);
+                                    }}
+                                    disabled={!(isSuperAdmin || isOwner)}
+                                >
+                                    <option value="">All properties</option>
+                                    {!myPropertiesLoading &&
+                                        myProperties?.properties?.map((property) => (
+                                            <option key={property.id} value={property.id}>
+                                                {property.brand_name}
+                                            </option>
+                                        ))}
+                                </NativeSelect>
+                            </div>
+                        )}
 
-                    {permission?.can_create && <Button variant="hero" onClick={() => setBulkOpen(true)}>
-                        Add Stock
-                    </Button>}
+                        {permission?.can_create && <Button variant="hero" onClick={() => setBulkOpen(true)}>
+                            Add Stock
+                        </Button>}
+                    </div>
                 </div>
                 {/* Header Tabs */}
                 <div className="border-b border-border flex">
@@ -355,104 +541,270 @@ export default function KitchenInventory() {
 
                 {activeTab === "inventory" && (
                     <div className="flex-1 overflow-y-auto scrollbar-hide">
-                        <AppDataGrid
-                            columns={[
-                                {
-                                    label: "Item",
-                                    key: "name",
-                                    cellClassName: "font-medium",
-                                },
-                                {
-                                    label: "Category",
-                                    key: "inventory_type",
-                                    cellClassName: "text-muted-foreground",
-                                },
-                                {
-                                    label: "Stock",
-                                    render: (item: any) => {
-                                        const lowStock = Number(item.quantity) <= item.reorder_level;
-                                        return (
-                                            <span className={lowStock ? "font-medium text-red-600" : "font-medium text-foreground"}>
-                                                {item.quantity}
-                                            </span>
-                                        );
-                                    },
-                                },
-                                {
-                                    label: "Unit",
-                                    key: "unit",
-                                    cellClassName: "text-muted-foreground",
-                                },
-                            ] as ColumnDef[]}
-                            data={kitchenInventory?.data ?? []}
-                            emptyText="No inventory items found"
-                            minWidth="760px"
-                            actionLabel=""
-                            actionClassName="text-center w-[72px]"
-                            actions={(item: KitchenItem) => (
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            size="icon"
-                                            variant="ghost"
-                                            className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
-                                            onClick={() => openManage(item)}
-                                            aria-label={`View and edit details for inventory item ${item.name}`}
-                                        >
-                                            <Pencil className="w-4 h-4 mx-auto" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>View / Edit Details</TooltipContent>
-                                </Tooltip>
-                            )}
-                        />
+                        <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
+                            <div className="w-full">
+                                <GridToolbar className="border-b-0">
+                                    <GridToolbarRow className="gap-2">
+                                        <GridToolbarSearch
+                                            value={searchInput}
+                                            onChange={setSearchInput}
+                                            onSearch={() => {
+                                                setSearchQuery(searchInput.trim());
+                                                setInventoryPage(1);
+                                            }}
+                                        />
+
+                                        <GridToolbarSelect
+                                            label="TYPE"
+                                            value={categoryFilter}
+                                            onChange={(value) => {
+                                                setCategoryFilter(value);
+                                                setInventoryPage(1);
+                                            }}
+                                            options={[
+                                                { label: "Any", value: "" },
+                                                ...inventoryCategoryOptions.map((category) => ({
+                                                    label: String(category),
+                                                    value: String(category),
+                                                })),
+                                            ]}
+                                        />
+
+                                        <GridToolbarSelect
+                                            label="UNIT"
+                                            value={unitFilter}
+                                            onChange={(value) => {
+                                                setUnitFilter(value);
+                                                setInventoryPage(1);
+                                            }}
+                                            options={[
+                                                { label: "Any", value: "" },
+                                                ...inventoryUnitOptions.map((unit) => ({
+                                                    label: String(unit),
+                                                    value: String(unit),
+                                                })),
+                                            ]}
+                                        />
+
+                                        <GridToolbarActions
+                                            className="gap-1 justify-end"
+                                            actions={[
+                                                {
+                                                    key: "export",
+                                                    label: "Export Inventory",
+                                                    icon: <Download className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: exportKitchenInventory,
+                                                },
+                                                {
+                                                    key: "reset",
+                                                    label: "Reset Filters",
+                                                    icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: resetInventoryFilters,
+                                                },
+                                                {
+                                                    key: "refresh",
+                                                    label: "Refresh Data",
+                                                    icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: refreshInventoryGrid,
+                                                    disabled: kitchenInventoryFetching,
+                                                },
+                                            ]}
+                                        />
+                                    </GridToolbarRow>
+                                </GridToolbar>
+                            </div>
+
+                            <div className="px-2 pb-2">
+                                <AppDataGrid
+                                    columns={[
+                                        {
+                                            label: "Item",
+                                            key: "name",
+                                            cellClassName: "font-medium",
+                                        },
+                                        {
+                                            label: "Category",
+                                            key: "inventory_type",
+                                            cellClassName: "text-muted-foreground",
+                                        },
+                                        {
+                                            label: "Stock",
+                                            render: (item: any) => {
+                                                const lowStock = Number(item.quantity) <= item.reorder_level;
+                                                return (
+                                                    <span className={lowStock ? "font-medium text-red-600" : "font-medium text-foreground"}>
+                                                        {item.quantity}
+                                                    </span>
+                                                );
+                                            },
+                                        },
+                                        {
+                                            label: "Unit",
+                                            key: "unit",
+                                            cellClassName: "text-muted-foreground",
+                                        },
+                                    ] as ColumnDef[]}
+                                    data={filteredKitchenInventory}
+                                    loading={kitchenInventoryLoading || kitchenInventoryFetching}
+                                    emptyText="No inventory items found"
+                                    minWidth="760px"
+                                    actionLabel=""
+                                    actionClassName="text-center w-[72px]"
+                                    actions={(item: KitchenItem) => (
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                                    onClick={() => openManage(item)}
+                                                    aria-label={`View and edit details for inventory item ${item.name}`}
+                                                >
+                                                    <Pencil className="w-4 h-4 mx-auto" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>View / Edit Details</TooltipContent>
+                                        </Tooltip>
+                                    )}
+                                    enablePagination={Boolean(kitchenInventory?.pagination)}
+                                    paginationProps={kitchenInventory?.pagination ? {
+                                        page: inventoryPage,
+                                        totalPages: kitchenInventory.pagination.totalPages ?? 1,
+                                        setPage: setInventoryPage,
+                                        totalRecords: kitchenInventory.pagination.totalItems ?? kitchenInventory.pagination.total ?? kitchenInventory.data?.length ?? 0,
+                                        limit: inventoryLimit,
+                                        onLimitChange: (value) => {
+                                            setInventoryLimit(value);
+                                            setInventoryPage(1);
+                                        },
+                                        disabled: kitchenInventoryLoading || kitchenInventoryFetching,
+                                    } : undefined}
+                                />
+                            </div>
+                        </div>
                     </div>)}
 
                 {activeTab === "audit" && (
                     <div className="flex-1 overflow-y-auto scrollbar-hide">
-                        <AppDataGrid
-                            columns={[
-                                {
-                                    label: "Item",
-                                    cellClassName: "font-medium",
-                                    render: (audit: any) => {
-                                        const details = parseAuditDetails(audit.details);
-                                        return details?.entity?.inventory_name || "--";
-                                    },
-                                },
-                                {
-                                    label: "Action",
-                                    key: "event_type",
-                                },
-                                {
-                                    label: "Change",
-                                    render: (audit: any) => {
-                                        const details = parseAuditDetails(audit.details);
-                                        const before = details?.before;
-                                        const after = details?.after;
-                                        const entity = details?.entity;
-                                        const unit = entity?.use_type === "usable" ? entity?.unit || "" : "";
+                        <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
+                            <div className="w-full">
+                                <GridToolbar className="border-b-0">
+                                    <GridToolbarRow className="gap-2">
+                                        <GridToolbarSearch
+                                            value={historySearchInput}
+                                            onChange={setHistorySearchInput}
+                                            onSearch={() => {
+                                                setHistorySearchQuery(historySearchInput.trim());
+                                                setAuditPage(1);
+                                            }}
+                                        />
 
-                                        return before
-                                            ? `${before.quantity} ? ${after?.quantity}${unit ? ` ${unit}` : ""}`
-                                            : `${after?.quantity}${unit ? ` ${unit}` : ""}`;
-                                    },
-                                },
-                                {
-                                    label: "User",
-                                    cellClassName: "text-muted-foreground",
-                                    render: (audit: any) => `${audit.user_first_name} ${audit.user_last_name}`,
-                                },
-                                {
-                                    label: "Date",
-                                    cellClassName: "text-muted-foreground",
-                                    render: (audit: any) => new Date(audit.created_on).toLocaleString(),
-                                },
-                            ] as ColumnDef[]}
-                            data={logs?.data ?? []}
-                            emptyText="No audit logs found"
-                            minWidth="860px"
-                        />
+                                        <GridToolbarSelect
+                                            label="ACTION"
+                                            value={historyActionFilter}
+                                            onChange={(value) => {
+                                                setHistoryActionFilter(value);
+                                                setAuditPage(1);
+                                            }}
+                                            options={[
+                                                { label: "Any", value: "" },
+                                                ...historyActionOptions.map((action) => ({
+                                                    label: String(action),
+                                                    value: String(action),
+                                                })),
+                                            ]}
+                                        />
+
+                                        <GridToolbarActions
+                                            className="gap-1 justify-end"
+                                            actions={[
+                                                {
+                                                    key: "export",
+                                                    label: "Export History",
+                                                    icon: <Download className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: exportHistoryLogs,
+                                                },
+                                                {
+                                                    key: "reset",
+                                                    label: "Reset Filters",
+                                                    icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: resetHistoryFilters,
+                                                },
+                                                {
+                                                    key: "refresh",
+                                                    label: "Refresh Data",
+                                                    icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: refreshHistoryGrid,
+                                                    disabled: logsFetching,
+                                                },
+                                            ]}
+                                        />
+                                    </GridToolbarRow>
+                                </GridToolbar>
+                            </div>
+
+                            <div className="px-2 pb-2">
+                                <AppDataGrid
+                                    columns={[
+                                        {
+                                            label: "Item",
+                                            cellClassName: "font-medium",
+                                            render: (audit: any) => {
+                                                const details = parseAuditDetails(audit.details);
+                                                return details?.entity?.inventory_name || "--";
+                                            },
+                                        },
+                                        {
+                                            label: "Action",
+                                            headClassName: "text-center",
+                                            cellClassName: "text-center font-medium",
+                                            key: "event_type",
+                                        },
+                                        {
+                                            label: "Change",
+                                            render: (audit: any) => {
+                                                const details = parseAuditDetails(audit.details);
+                                                const before = details?.before;
+                                                const after = details?.after;
+                                                const entity = details?.entity;
+                                                const unit = entity?.use_type === "usable" ? entity?.unit || "" : "";
+
+                                                return before
+                                                    ? `${before.quantity}${unit ? ` ${unit}` : ""} -> ${after?.quantity}${unit ? ` ${unit}` : ""}`
+                                                    : `${after?.quantity}${unit ? ` ${unit}` : ""}`;
+                                            },
+                                        },
+                                        {
+                                            label: "User",
+                                            cellClassName: "text-muted-foreground",
+                                            render: (audit: any) => `${audit.user_first_name} ${audit.user_last_name}`,
+                                        },
+                                        {
+                                            label: "Date",
+                                            cellClassName: "text-xs text-muted-foreground",
+                                            render: (audit: any) => new Date(audit.created_on).toLocaleString(),
+                                        },
+                                    ] as ColumnDef[]}
+                                    data={filteredHistoryLogs}
+                                    loading={logsLoading || logsFetching}
+                                    emptyText="No audit logs found"
+                                    minWidth="860px"
+                                    enablePagination={Boolean(logs?.pagination)}
+                                    paginationProps={logs?.pagination ? {
+                                        page: auditPage,
+                                        totalPages: logs.pagination.totalPages ?? 1,
+                                        setPage: setAuditPage,
+                                        totalRecords: logs.pagination.totalItems ?? logs.pagination.total ?? logs.data?.length ?? 0,
+                                        limit: auditLimit,
+                                        onLimitChange: (value) => {
+                                            setAuditLimit(value);
+                                            setAuditPage(1);
+                                        },
+                                        disabled: logsLoading || logsFetching,
+                                    } : undefined}
+                                />
+                            </div>
+                        </div>
                     </div>
                 )}
 
@@ -460,36 +812,6 @@ export default function KitchenInventory() {
 
                 {/* Pagination */}
                 <div className="shrink-0 flex justify-end text-sm">
-
-                    {activeTab === "inventory" && (
-                        <DataGridPagination
-                            page={inventoryPage}
-                            totalPages={kitchenInventory?.pagination?.totalPages ?? 1}
-                            setPage={setInventoryPage}
-                            totalRecords={kitchenInventory?.pagination?.totalItems ?? kitchenInventory?.pagination?.total ?? kitchenInventory?.data?.length ?? 0}
-                            limit={inventoryLimit}
-                            onLimitChange={(value) => {
-                                setInventoryLimit(value);
-                                setInventoryPage(1);
-                            }}
-                            disabled={!kitchenInventory}
-                        />
-                    )}
-
-                    {activeTab === "audit" && (
-                        <DataGridPagination
-                            page={auditPage}
-                            totalPages={logs?.pagination?.totalPages ?? 1}
-                            setPage={setAuditPage}
-                            totalRecords={logs?.pagination?.totalItems ?? logs?.pagination?.total ?? logs?.data?.length ?? 0}
-                            limit={auditLimit}
-                            onLimitChange={(value) => {
-                                setAuditLimit(value);
-                                setAuditPage(1);
-                            }}
-                            disabled={!logs}
-                        />
-                    )}
 
                 </div>
 

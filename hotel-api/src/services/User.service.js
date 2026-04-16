@@ -106,25 +106,33 @@ class User {
 
         const { rows } = await this.#DB.query(
             `
-            SELECT DISTINCT
-                u.id AS user_id,
-                u.email,
-                CONCAT_WS(' ', s.first_name, s.last_name) AS full_name,
-                r.name AS role_name
-            FROM public.property_users pu
-            JOIN public.users u
-                ON u.id = pu.user_id
-            JOIN public.roles r
-                ON r.id = pu.role_id
-            LEFT JOIN public.staff s
-                ON s.id::varchar = u.staff_id
-            WHERE
-                (
-                    r.id::text = $1
-                    OR LOWER(r.name) = LOWER($1)
-                )
-                AND u.is_active = true
-            ORDER BY u.created_on DESC
+            SELECT
+                ranked.user_id,
+                ranked.email,
+                ranked.full_name,
+                ranked.role_name
+            FROM (
+                SELECT DISTINCT
+                    u.id AS user_id,
+                    u.email,
+                    CONCAT_WS(' ', s.first_name, s.last_name) AS full_name,
+                    r.name AS role_name,
+                    u.created_on
+                FROM public.property_users pu
+                JOIN public.users u
+                    ON u.id = pu.user_id
+                JOIN public.roles r
+                    ON r.id = pu.role_id
+                LEFT JOIN public.staff s
+                    ON s.id::varchar = u.staff_id
+                WHERE
+                    (
+                        r.id::text = $1
+                        OR LOWER(r.name) = LOWER($1)
+                    )
+                    AND u.is_active = true
+            ) ranked
+            ORDER BY ranked.created_on DESC
             `,
             [String(role)]
         );

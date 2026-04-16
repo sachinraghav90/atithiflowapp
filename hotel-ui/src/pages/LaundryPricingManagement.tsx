@@ -25,12 +25,13 @@ import { usePermission } from "@/rbac/usePermission";
 import { useLocation } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
-import { GridToolbar, GridToolbarActions, GridToolbarSearch, GridToolbarSelect } from "@/components/ui/grid-toolbar";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { FilterX, RefreshCcw } from "lucide-react";
+import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect } from "@/components/ui/grid-toolbar";
+import { FilterX, RefreshCcw, Download } from "lucide-react";
 import { getStatusColor } from "@/constants/statusColors";
 import { toast } from "react-toastify";
 import { filterGridRowsByQuery } from "@/utils/filterGridRows";
+import { exportToExcel } from "@/utils/exportToExcel";
+import { useGridPagination } from "@/hooks/useGridPagination";
 
 /* ---------------- Types ---------------- */
 type LaundryItem = {
@@ -57,8 +58,6 @@ type CreateLaundryForm = {
 export default function LaundryPricingManagement() {
     /* ---------------- State ---------------- */
     const [items, setItems] = useState<EditableLaundry[]>([]);
-    const [page, setPage] = useState(1);
-    const [limit, setLimit] = useState(9);
     const [editMode, setEditMode] = useState(false);
 
     const [sheetOpen, setSheetOpen] = useState(false);
@@ -68,14 +67,19 @@ export default function LaundryPricingManagement() {
 
     const [selectedPropertyId, setSelectedPropertyId] = useState("");
     const [showCreateErrors, setShowCreateErrors] = useState(false);
+    const [searchInput, setSearchInput] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
+    const { page, limit, setPage, resetPage, handleLimitChange } = useGridPagination({
+        initialLimit: 10,
+        resetDeps: [selectedPropertyId, statusFilter, searchQuery],
+    });
 
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
     const isSuperAdmin = useAppSelector(selectIsSuperAdmin)
     const isOwner = useAppSelector(selectIsOwner)
 
-    const { data: myProperties, isLoading: myPropertiesLoading } = useGetMyPropertiesQuery(undefined, {
+    const { data: myProperties } = useGetMyPropertiesQuery(undefined, {
         skip: !isLoggedIn
     })
 
@@ -304,27 +308,122 @@ export default function LaundryPricingManagement() {
         }
     };
 
-    const resetFiltersHandler = () => {
-        if (myProperties?.properties?.[0]?.id) {
-            setSelectedPropertyId(myProperties.properties[0].id);
+    const exportPricesSheet = () => {
+        if (!filteredItems || filteredItems.length === 0) {
+            toast.info("No data to export");
+            return;
         }
+
+        const formatted = filteredItems.map(item => ({
+            ITEM_NAME: item.item_name,
+            DESCRIPTION: item.description || "—",
+            RATE: item.item_rate,
+            STATUS: item.is_active ? "Active" : "Inactive"
+        }));
+
+        exportToExcel(formatted, "Laundry_Pricing.xlsx");
+        toast.success("Export completed");
+    };
+
+    const resetFiltersHandler = () => {
+        setSearchInput("");
         setSearchQuery("");
         setStatusFilter("");
-        setPage(1);
+        resetPage();
     };
 
     const filteredItems = useMemo(() => {
-        const statusFiltered = statusFilter
-            ? items.filter((item) => String(item.is_active) === statusFilter)
-            : items;
+        let filtered = items;
 
-        return filterGridRowsByQuery(statusFiltered, searchQuery, [
+        if (statusFilter) {
+            filtered = filtered.filter((item) => String(item.is_active) === statusFilter);
+        }
+
+        return filterGridRowsByQuery(filtered, searchQuery, [
             (item) => item.item_name,
             (item) => item.description,
             (item) => item.item_rate,
             (item) => item.is_active ? "Active" : "Inactive",
         ]);
     }, [items, searchQuery, statusFilter]);
+
+    const laundryColumns = useMemo<ColumnDef<EditableLaundry>[]>(() => [
+        {
+            label: "Item",
+            cellClassName: "font-medium",
+            render: (item) =>
+                editMode && !item.system_generated ? (
+                    <Input
+                        className="h-8 text-sm"
+                        value={item.item_name}
+                        onChange={(e) => updateItem(item.id, { item_name: e.target.value })}
+                    />
+                ) : (
+                    item.item_name
+                ),
+        },
+        {
+            label: "Description",
+            cellClassName: "text-muted-foreground",
+            render: (item) =>
+                editMode ? (
+                    <Input
+                        className="h-8 text-sm"
+                        value={item.description ?? ""}
+                        onChange={(e) => updateItem(item.id, { description: e.target.value })}
+                    />
+                ) : (
+                    item.description || "-"
+                ),
+        },
+        {
+            label: "Rate",
+            headClassName: "text-center",
+            cellClassName: "text-center",
+            render: (item) =>
+                editMode ? (
+                    <div className="flex justify-center">
+                        <Input
+                            type="text"
+                            className="h-8 w-28 text-sm text-center"
+                            value={item.item_rate}
+                            onChange={(e) =>
+                                updateItem(item.id, {
+                                    item_rate: normalizeNumberInput(e.target.value).toString(),
+                                })
+                            }
+                        />
+                    </div>
+                ) : (
+                    <span className="inline-flex min-w-[96px] justify-center rounded-[3px] bg-muted/40 px-3 py-1 text-sm font-semibold">
+                        Rs {item.item_rate}
+                    </span>
+                ),
+        },
+        {
+            label: "Status",
+            headClassName: "text-center",
+            cellClassName: "text-center",
+            render: (item) =>
+                editMode ? (
+                    <div className="flex justify-center">
+                        <Switch
+                            checked={item.is_active}
+                            onCheckedChange={(val) => updateItem(item.id, { is_active: val })}
+                        />
+                    </div>
+                ) : (
+                    <span
+                        className={cn(
+                            "inline-flex min-w-[88px] justify-center px-3 py-1 text-xs font-semibold rounded-[3px]",
+                            getStatusColor(item.is_active ? "active" : "inactive", "toggle")
+                        )}
+                    >
+                        {item.is_active ? "Active" : "Inactive"}
+                    </span>
+                ),
+        },
+    ], [editMode, items]);
 
     /* ---------------- UI ---------------- */
     return (
@@ -338,7 +437,7 @@ export default function LaundryPricingManagement() {
 
                     <div className="flex items-center gap-3">
                         {(isSuperAdmin || isOwner) && (
-                            <div className="flex items-center h-9 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
+                            <div className="flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
                                 <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border uppercase">
                                     Property
                                 </span>
@@ -347,7 +446,7 @@ export default function LaundryPricingManagement() {
                                     value={selectedPropertyId}
                                     onChange={(e) => {
                                         setSelectedPropertyId(e.target.value);
-                                        setPage(1);
+                                        resetPage();
                                     }}
                                 >
                                     <option value="" disabled>Select Property</option>
@@ -362,20 +461,20 @@ export default function LaundryPricingManagement() {
 
                         {permission?.can_create && (
                             <div className="flex gap-2">
-                                <Button variant="heroOutline" className="h-9" onClick={() => setSheetOpen(true)}>
+                                <Button variant="heroOutline" className="h-10" onClick={() => setSheetOpen(true)}>
                                     Add Item
                                 </Button>
 
                                 {!editMode ? (
-                                    <Button variant="hero" className="h-9" onClick={() => setEditMode(true)}>
+                                    <Button variant="hero" className="h-10" onClick={() => setEditMode(true)}>
                                         Edit
                                     </Button>
                                 ) : (
                                     <>
-                                        <Button variant="hero" className="h-9" disabled={!hasUpdates} onClick={handleBulkUpdate}>
+                                        <Button variant="hero" className="h-10" disabled={!hasUpdates} onClick={handleBulkUpdate}>
                                             Update Prices
                                         </Button>
-                                        <Button variant="hero" className="h-9" onClick={() => setEditMode(false)}>
+                                        <Button variant="heroOutline" className="h-10" onClick={() => setEditMode(false)}>
                                             Cancel
                                         </Button>
                                     </>
@@ -389,15 +488,27 @@ export default function LaundryPricingManagement() {
                         <GridToolbar className="border-b-0">
                             <GridToolbarRow className="gap-2">
                                 <GridToolbarSearch
-                                    value={searchQuery}
-                                    onChange={setSearchQuery}
-                                    placeholder="Search laundry items..."
+                                    value={searchInput}
+                                    onChange={(val) => {
+                                        setSearchInput(val);
+                                        if (val.trim() === "") {
+                                            setSearchQuery("");
+                                            resetPage();
+                                        }
+                                    }}
+                                    onSearch={() => {
+                                        setSearchQuery(searchInput.trim());
+                                        resetPage();
+                                    }}
                                 />
 
                                 <GridToolbarSelect
                                     label="STATUS"
                                     value={statusFilter}
-                                    onChange={setStatusFilter}
+                                    onChange={(value) => {
+                                        setStatusFilter(value);
+                                        resetPage();
+                                    }}
                                     options={[
                                         { label: "Any", value: "" },
                                         { label: "Active", value: "true" },
@@ -405,10 +516,15 @@ export default function LaundryPricingManagement() {
                                     ]}
                                 />
 
-                                <div className="w-full" /> {/* Empty col 3 */}
-
                                 <GridToolbarActions
+                                    className="gap-1 justify-end"
                                     actions={[
+                                        {
+                                            key: "export",
+                                            label: "Export Prices",
+                                            icon: <Download className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: exportPricesSheet,
+                                        },
                                         {
                                             key: "reset",
                                             label: "Reset Filters",
@@ -428,89 +544,25 @@ export default function LaundryPricingManagement() {
                         </GridToolbar>
                     </div>
 
-                    <AppDataGrid
-                    columns={[
-                        {
-                            label: "Item",
-                            render: (item: EditableLaundry) =>
-                                editMode && !item.system_generated ? (
-                                    <Input
-                                        className="text-xs"
-                                        value={item.item_name}
-                                        onChange={(e) => updateItem(item.id, { item_name: e.target.value })}
-                                    />
-                                ) : (
-                                    item.item_name
-                                ),
-                        },
-                        {
-                            label: "Description",
-                            render: (item: EditableLaundry) =>
-                                editMode ? (
-                                    <Input
-                                        value={item.description ?? ""}
-                                        onChange={(e) => updateItem(item.id, { description: e.target.value })}
-                                    />
-                                ) : (
-                                    item.description || "—"
-                                ),
-                        },
-                        {
-                            label: "Rate",
-                            render: (item: EditableLaundry) =>
-                                editMode ? (
-                                    <Input
-                                        type="text"
-                                        className="w-28 text-sm"
-                                        value={item.item_rate}
-                                        onChange={(e) =>
-                                            updateItem(item.id, {
-                                                item_rate: normalizeNumberInput(e.target.value).toString(),
-                                            })
-                                        }
-                                    />
-                                ) : (
-                                    <span className="text-sm">₹{item.item_rate}</span>
-                                ),
-                        },
-                        {
-                            label: "Status",
-                            render: (item: EditableLaundry) =>
-                                editMode ? (
-                                    <Switch
-                                        checked={item.is_active}
-                                        onCheckedChange={(val) => updateItem(item.id, { is_active: val })}
-                                    />
-                                ) : (
-                                    <span
-                                        className={cn(
-                                            "inline-flex items-center px-3 py-1 text-xs font-semibold rounded-[3px]",
-                                            getStatusColor(item.is_active ? "active" : "inactive", "toggle")
-                                        )}
-                                    >
-                                        {item.is_active ? "Active" : "Inactive"}
-                                    </span>
-                                ),
-                        },
-                    ] as ColumnDef[]}
-                    data={filteredItems}
-                    loading={laundryLoading}
-                    emptyText="No laundry pricing found"
-                    minWidth="760px"
-                    enablePagination
-                    paginationProps={{
-                        page,
-                        totalPages,
-                        setPage,
-                        totalRecords: data?.data?.pagination?.total ?? items.length,
-                        limit,
-                        onLimitChange: (value) => {
-                            setLimit(value);
-                            setPage(1);
-                        },
-                        disabled: laundryLoading || laundryFetching,
-                    }}
-                    />
+                    <div className="px-2 pb-2">
+                        <AppDataGrid
+                            columns={laundryColumns}
+                            data={filteredItems}
+                            rowKey={(item) => item.id}
+                            loading={laundryLoading || laundryFetching}
+                            emptyText="No laundry items found"
+                            enablePagination={Boolean(data?.data?.pagination)}
+                            paginationProps={data?.data?.pagination ? {
+                                page,
+                                totalPages,
+                                setPage,
+                                totalRecords: data?.data?.pagination?.total ?? items.length,
+                                limit,
+                                onLimitChange: handleLimitChange,
+                                disabled: laundryLoading || laundryFetching,
+                            } : undefined}
+                        />
+                    </div>
                 </div>
             </section>
 
@@ -551,11 +603,11 @@ export default function LaundryPricingManagement() {
                                             {/* ITEM NAME */}
                                             <TableCell className="border-r p-1">
 
-                                                <input
+                                                <Input
                                                     id={`laundry-create-item-name-${index}`}
                                                     name={`laundry_create_item_name_${index}`}
                                                     className={cn(
-                                                        "w-full h-8 px-2 text-sm rounded border bg-white outline-none focus:ring-1 focus:ring-primary",
+                                                        "h-8 text-sm",
                                                         showCreateErrors && errors.itemName && "border-red-500"
                                                     )}
                                                     title={
@@ -583,10 +635,10 @@ export default function LaundryPricingManagement() {
                                             {/* DESCRIPTION */}
                                             <TableCell className="border-r p-1">
 
-                                                <input
+                                                <Input
                                                     id={`laundry-create-description-${index}`}
                                                     name={`laundry_create_description_${index}`}
-                                                    className="w-full h-8 px-2 text-sm rounded border border-input bg-white outline-none focus:ring-1 focus:ring-primary"
+                                                    className="h-8 text-sm"
                                                     value={row.description}
                                                     onChange={(e) =>
                                                         updateCreateRow(index, {
@@ -601,11 +653,11 @@ export default function LaundryPricingManagement() {
                                             {/* RATE */}
                                             <TableCell className="border-r p-1">
 
-                                                <input
+                                                <Input
                                                     id={`laundry-create-rate-${index}`}
                                                     name={`laundry_create_rate_${index}`}
                                                     type="text"
-                                                    className="w-full h-8 px-2 text-sm rounded border border-input bg-white outline-none focus:ring-1 focus:ring-primary"
+                                                    className="h-8 text-sm"
                                                     value={row.itemRate}
                                                     onChange={(e) =>
                                                         updateCreateRow(index, {
@@ -620,14 +672,15 @@ export default function LaundryPricingManagement() {
                                             {/* REMOVE BUTTON */}
                                             <TableCell className="flex items-center justify-center p-1">
 
-                                                <button
+                                                <Button
                                                     type="button"
-                                                    className="text-red-500 hover:text-red-700 text-sm"
+                                                    variant="ghost"
+                                                    className="h-8 px-2 text-red-500 hover:text-red-700 hover:bg-transparent"
                                                     onClick={() => removeCreateRow(index)}
                                                     disabled={createRows.length === 1}
                                                 >
-                                                    ✕
-                                                </button>
+                                                    X
+                                                </Button>
 
                                             </TableCell>
 
@@ -679,4 +732,5 @@ export default function LaundryPricingManagement() {
         </div >
     );
 }
+
 

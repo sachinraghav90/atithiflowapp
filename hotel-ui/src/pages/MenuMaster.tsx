@@ -1,6 +1,4 @@
-import { useEffect, useState } from "react";
-import Sidebar from "@/components/layout/Sidebar";
-import AppHeader from "@/components/layout/AppHeader";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,8 +22,11 @@ import { cn } from "@/lib/utils";
 import MenuMasterBulkSheet from "@/components/MenuMasterBulkSheet";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Pencil } from "lucide-react";
+import { Download, FilterX, Pencil, RefreshCcw } from "lucide-react";
 import { getStatusColor } from "@/constants/statusColors";
+import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
+import { exportToExcel } from "@/utils/exportToExcel";
+import { toast } from "react-toastify";
 
 type MenuItem = {
     id: string;
@@ -107,6 +108,11 @@ function buildUpdateMenuPayload(
 export default function MenuMaster() {
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(10);
+    const [searchInput, setSearchInput] = useState("");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [groupFilter, setGroupFilter] = useState("");
+    const [typeFilter, setTypeFilter] = useState("");
+    const [statusFilter, setStatusFilter] = useState("");
     const [mode, setMode] = useState<"view" | "edit" | "add" | null>(null);
     const [selected, setSelected] = useState<MenuItem | null>(null);
 
@@ -141,7 +147,7 @@ export default function MenuMaster() {
         skip: !isLoggedIn
     })
 
-    const { data } = useGetPropertyMenuQuery({ page, limit, propertyId: selectedPropertyId }, {
+    const { data, isLoading, isFetching, refetch } = useGetPropertyMenuQuery({ page, limit, propertyId: selectedPropertyId }, {
         skip: !isLoggedIn || !selectedPropertyId
     })
 
@@ -198,6 +204,77 @@ export default function MenuMaster() {
         const previewUrl = URL.createObjectURL(form.image);
         return () => URL.revokeObjectURL(previewUrl);
     }, [form.image]);
+
+    const menuGroupOptions = useMemo(() => {
+        const groups = Array.from(
+            new Set((data?.data ?? []).map((item: MenuItem) => item.menu_item_group).filter(Boolean))
+        );
+
+        return groups.sort((a, b) => String(a).localeCompare(String(b)));
+    }, [data?.data]);
+
+    const filteredMenuItems = useMemo(() => {
+        const rows = data?.data ?? [];
+        const query = searchQuery.trim().toLowerCase();
+
+        return rows.filter((item: MenuItem) =>
+            (!query ||
+                [
+                    item.item_name,
+                    item.menu_item_group,
+                    item.price,
+                    item.is_veg ? "veg" : "non-veg",
+                    item.is_active ? "active" : "inactive",
+                    item.prep_time ? `${item.prep_time}` : "",
+                ].some((field) => String(field ?? "").toLowerCase().includes(query))) &&
+            (!groupFilter || item.menu_item_group === groupFilter) &&
+            (!typeFilter || (typeFilter === "veg" ? item.is_veg : !item.is_veg)) &&
+            (!statusFilter || (statusFilter === "active" ? item.is_active : !item.is_active))
+        );
+    }, [data?.data, searchQuery, groupFilter, typeFilter, statusFilter]);
+
+    const resetGridFilters = () => {
+        setSearchInput("");
+        setSearchQuery("");
+        setGroupFilter("");
+        setTypeFilter("");
+        setStatusFilter("");
+        setPage(1);
+    };
+
+    const handleRefresh = async () => {
+        if (isFetching) return;
+
+        const toastId = toast.loading("Refreshing data...");
+
+        try {
+            await refetch();
+            toast.dismiss(toastId);
+            toast.success("Data refreshed");
+        } catch {
+            toast.dismiss(toastId);
+            toast.error("Failed to refresh");
+        }
+    };
+
+    const exportMenuItems = () => {
+        if (!filteredMenuItems.length) {
+            toast.info("No menu items to export");
+            return;
+        }
+
+        const formatted = filteredMenuItems.map((item: MenuItem) => ({
+            NAME: item.item_name,
+            GROUP: item.menu_item_group || "--",
+            PRICE: item.price,
+            TYPE: item.is_veg ? "Veg" : "Non-Veg",
+            PREP_TIME: item.prep_time ? `${item.prep_time} min` : "--",
+            STATUS: item.is_active ? "Active" : "Inactive",
+        }));
+
+        exportToExcel(formatted, "Menu-Items.xlsx");
+        toast.success("Export completed");
+    };
 
     const openView = (item: MenuItem) => {
         setSelected(item);
@@ -266,7 +343,7 @@ export default function MenuMaster() {
             <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8 space-y-6">
 
                 {/* Header */}
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center justify-between w-full">
 
                     {/* LEFT SIDE */}
                     <div className="shrink-0">
@@ -278,13 +355,15 @@ export default function MenuMaster() {
 
 
                     {/* RIGHT SIDE */}
-                    <div className="flex flex-wrap items-end gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
 
                         {(isSuperAdmin || isOwner) && (
-                            <div className="w-64 space-y-1">
-                                <Label className="text-xs">Property</Label>
+                            <div className="flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
+                                <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border uppercase">
+                                    Property
+                                </span>
                                 <NativeSelect
-                                    className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
+                                    className="flex-1 bg-transparent px-2 focus:outline-none focus:ring-0 text-sm h-full truncate cursor-pointer"
                                     value={selectedPropertyId ?? ""}
                                     onChange={(e) =>
                                         setSelectedPropertyId(Number(e.target.value) || null)
@@ -343,90 +422,190 @@ export default function MenuMaster() {
                 </div>
 
 
-                <div className="grid-header border rounded-[5px] overflow-hidden px-4 py-2 mt-4 bg-muted/20 flex flex-col flex-1 min-h-0">
-                    <AppDataGrid
-                        columns={[
-                            {
-                                label: "Name",
-                                key: "item_name",
-                                cellClassName: "font-medium",
-                            },
-                            {
-                                label: "Group",
-                                render: (item: MenuItem) => item.menu_item_group || "—",
-                                cellClassName: "text-muted-foreground",
-                            },
-                            {
-                                label: "Price",
-                                render: (item: MenuItem) => `₹${item.price}`,
-                                cellClassName: "font-semibold",
-                            },
-                            {
-                                label: "Type",
-                                render: (item: MenuItem) => (
-                                    <span
-                                        className={cn(
-                                            "px-3 py-1 rounded-[3px] text-xs font-semibold",
-                                            getStatusColor(item.is_veg ? "veg" : "non-veg", "menuType")
-                                        )}
-                                    >
-                                        {item.is_veg ? "Veg" : "Non-Veg"}
-                                    </span>
-                                ),
-                            },
-                            {
-                                label: "Prep Time",
-                                render: (item: MenuItem) => item.prep_time ? `${item.prep_time} min` : "—",
-                                cellClassName: "text-muted-foreground",
-                            },
-                            {
-                                label: "Status",
-                                render: (item: MenuItem) => (
-                                    <span
-                                        className={cn(
-                                            "px-3 py-1 rounded-[3px] text-xs font-semibold",
-                                            getStatusColor(item.is_active ? "active" : "inactive", "toggle")
-                                        )}
-                                    >
-                                        {item.is_active ? "Active" : "Inactive"}
-                                    </span>
-                                ),
-                            },
-                        ] as ColumnDef[]}
-                        data={data?.data ?? []}
-                        emptyText="No menu items found"
-                        minWidth="980px"
-                        enablePagination={!!data?.pagination}
-                        paginationProps={{
-                            page,
-                            totalPages: data?.pagination?.totalPages ?? 1,
-                            setPage,
-                            totalRecords: data?.pagination?.totalItems ?? data?.pagination?.total ?? data?.data?.length ?? 0,
-                            limit,
-                            onLimitChange: (value) => {
-                                setLimit(value);
-                                setPage(1);
-                            },
-                        }}
-                        actionLabel=""
-                        actionClassName="text-center w-[72px]"
-                        actions={(item: MenuItem) => (
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
-                                        onClick={() => permission?.can_create ? openEdit(item) : openView(item)}
-                                        aria-label={`View and edit details for menu item ${item.item_name}`}
-                                    >
-                                        <Pencil className="w-4 h-4 mx-auto" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>View / Edit Details</TooltipContent>
-                            </Tooltip>
-                        )}
-                    />
+                <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
+                    <div className="w-full">
+                        <GridToolbar className="border-b-0">
+                            <GridToolbarRow className="gap-2">
+                                <GridToolbarSearch
+                                    value={searchInput}
+                                    onChange={setSearchInput}
+                                    onSearch={() => {
+                                        setSearchQuery(searchInput.trim());
+                                        setPage(1);
+                                    }}
+                                />
+
+                                <GridToolbarSelect
+                                    label="GROUP"
+                                    value={groupFilter}
+                                    onChange={(value) => {
+                                        setGroupFilter(value);
+                                        setPage(1);
+                                    }}
+                                    options={[
+                                        { label: "Any", value: "" },
+                                        ...menuGroupOptions.map((group) => ({
+                                            label: String(group),
+                                            value: String(group),
+                                        })),
+                                    ]}
+                                />
+
+                                <GridToolbarSelect
+                                    label="TYPE"
+                                    value={typeFilter}
+                                    onChange={(value) => {
+                                        setTypeFilter(value);
+                                        setPage(1);
+                                    }}
+                                    options={[
+                                        { label: "Any", value: "" },
+                                        { label: "Veg", value: "veg" },
+                                        { label: "Non-Veg", value: "non-veg" },
+                                    ]}
+                                />
+
+                                <GridToolbarActions
+                                    className="gap-1 justify-end"
+                                    actions={[
+                                        {
+                                            key: "export",
+                                            label: "Export Menu Items",
+                                            icon: <Download className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: exportMenuItems,
+                                        },
+                                        {
+                                            key: "reset",
+                                            label: "Reset Filters",
+                                            icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: resetGridFilters,
+                                        },
+                                        {
+                                            key: "refresh",
+                                            label: "Refresh Data",
+                                            icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: handleRefresh,
+                                            disabled: isFetching,
+                                        },
+                                    ]}
+                                />
+                            </GridToolbarRow>
+
+                            <GridToolbarRow className="gap-2">
+                                <GridToolbarSelect
+                                    label="STATUS"
+                                    value={statusFilter}
+                                    onChange={(value) => {
+                                        setStatusFilter(value);
+                                        setPage(1);
+                                    }}
+                                    options={[
+                                        { label: "Any", value: "" },
+                                        { label: "Active", value: "active" },
+                                        { label: "Inactive", value: "inactive" },
+                                    ]}
+                                />
+
+                                <GridToolbarSpacer />
+                                <GridToolbarSpacer />
+                                <GridToolbarSpacer type="actions" />
+                            </GridToolbarRow>
+                        </GridToolbar>
+                    </div>
+
+                    <div className="px-2 pb-2">
+                        <AppDataGrid
+                            columns={[
+                                {
+                                    label: "Name",
+                                    key: "item_name",
+                                    cellClassName: "font-medium",
+                                },
+                                {
+                                    label: "Group",
+                                    render: (item: MenuItem) => item.menu_item_group || "—",
+                                    cellClassName: "text-muted-foreground",
+                                },
+                                {
+                                    label: "Price",
+                                    headClassName: "text-center",
+                                    cellClassName: "text-center font-semibold whitespace-nowrap",
+                                    render: (item: MenuItem) => `₹${item.price}`,
+                                },
+                                {
+                                    label: "Type",
+                                    headClassName: "text-center",
+                                    cellClassName: "text-center",
+                                    render: (item: MenuItem) => (
+                                        <span
+                                            className={cn(
+                                                "px-3 py-1 rounded-[3px] text-xs font-semibold",
+                                                getStatusColor(item.is_veg ? "veg" : "non-veg", "menuType")
+                                            )}
+                                        >
+                                            {item.is_veg ? "Veg" : "Non-Veg"}
+                                        </span>
+                                    ),
+                                },
+                                {
+                                    label: "Prep Time",
+                                    headClassName: "text-center",
+                                    cellClassName: "text-center text-muted-foreground whitespace-nowrap",
+                                    render: (item: MenuItem) => item.prep_time ? `${item.prep_time} min` : "—",
+                                },
+                                {
+                                    label: "Status",
+                                    headClassName: "text-center",
+                                    cellClassName: "text-center",
+                                    render: (item: MenuItem) => (
+                                        <span
+                                            className={cn(
+                                                "px-3 py-1 rounded-[3px] text-xs font-semibold",
+                                                getStatusColor(item.is_active ? "active" : "inactive", "toggle")
+                                            )}
+                                        >
+                                            {item.is_active ? "Active" : "Inactive"}
+                                        </span>
+                                    ),
+                                },
+                            ] as ColumnDef[]}
+                            data={filteredMenuItems}
+                            loading={isLoading || isFetching}
+                            emptyText="No menu items found"
+                            minWidth="980px"
+                            enablePagination={!!data?.pagination}
+                            paginationProps={{
+                                page,
+                                totalPages: data?.pagination?.totalPages ?? 1,
+                                setPage,
+                                totalRecords: data?.pagination?.totalItems ?? data?.pagination?.total ?? data?.data?.length ?? 0,
+                                limit,
+                                onLimitChange: (value) => {
+                                    setLimit(value);
+                                    setPage(1);
+                                },
+                                disabled: isFetching,
+                            }}
+                            actionLabel=""
+                            actionClassName="text-center w-[60px]"
+                            actions={(item: MenuItem) => (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                            onClick={() => permission?.can_create ? openEdit(item) : openView(item)}
+                                            aria-label={`View and edit details for menu item ${item.item_name}`}
+                                        >
+                                            <Pencil className="w-4 h-4 mx-auto" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>View / Edit Details</TooltipContent>
+                                </Tooltip>
+                            )}
+                        />
+                    </div>
                 </div>
             </section>
 
