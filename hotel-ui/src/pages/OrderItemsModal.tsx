@@ -8,19 +8,40 @@ import {
 } from "@/redux/services/hmsApi";
 import { NativeSelect } from "@/components/ui/native-select";
 import { toast } from "react-toastify";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 
 const ORDER_STATUSES = ["New", "Preparing", "Ready", "Delivered", "Cancelled"];
 const PAYMENT_STATUSES = ["Pending", "Paid", "Failed", "Refunded"];
+
+const formatOrderDisplayId = (orderId: string | number) =>
+    formatModuleDisplayId("order", orderId);
 
 type Props = {
     orderId: string | null;
     open: boolean;
     onClose: () => void;
+    defaultEditMode?: boolean;
 };
 
-export function OrderItemsModal({ orderId, open, onClose }: Props) {
+export function OrderItemsModal({
+    orderId,
+    open,
+    onClose,
+    defaultEditMode = false,
+}: Props) {
     const [editMode, setEditMode] = useState(false);
+    const [draftOrderStatus, setDraftOrderStatus] = useState("");
+    const [draftPaymentStatus, setDraftPaymentStatus] = useState("");
+
+    useEffect(() => {
+        if (open) {
+            setEditMode(defaultEditMode);
+            return;
+        }
+
+        setEditMode(false);
+    }, [defaultEditMode, open, orderId]);
 
     const { data, isLoading } = useGetOrderByIdQuery(orderId, {
         skip: !orderId || !open
@@ -29,34 +50,58 @@ export function OrderItemsModal({ orderId, open, onClose }: Props) {
     const [updateOrderStatus] = useUpdateOrderStatusMutation();
     const [updateOrderPayment] = useUpdateOrderPaymentMutation();
 
-    const handleOrderStatusUpdate = (status: string) => {
+    useEffect(() => {
         if (!data) return;
 
-        const promise = updateOrderStatus({
-            id: data.id,
-            payload: { status }
-        }).unwrap();
+        setDraftOrderStatus(data.order_status || "");
+        setDraftPaymentStatus(data.payment_status || "");
+    }, [data]);
 
-        toast.promise(promise, {
-            pending: "Updating...",
+    const handleSave = async () => {
+        if (!data) return;
+
+        const shouldUpdateOrderStatus =
+            draftOrderStatus &&
+            draftOrderStatus !== data.order_status;
+
+        const shouldUpdatePaymentStatus =
+            draftPaymentStatus &&
+            draftPaymentStatus !== data.payment_status;
+
+        if (!shouldUpdateOrderStatus && !shouldUpdatePaymentStatus) {
+            setEditMode(false);
+            return;
+        }
+
+        const updates: Promise<unknown>[] = [];
+
+        if (shouldUpdateOrderStatus) {
+            updates.push(
+                updateOrderStatus({
+                    id: data.id,
+                    payload: { status: draftOrderStatus }
+                }).unwrap()
+            );
+        }
+
+        if (shouldUpdatePaymentStatus) {
+            updates.push(
+                updateOrderPayment({
+                    id: data.id,
+                    payload: { status: draftPaymentStatus }
+                }).unwrap()
+            );
+        }
+
+        const promise = Promise.all(updates);
+
+        await toast.promise(promise, {
+            pending: "Saving changes...",
             success: "Order updated",
-            error: "Update failed"
+            error: "Save failed"
         });
-    };
 
-    const handlePaymentStatusUpdate = (status: string) => {
-        if (!data) return;
-
-        const promise = updateOrderPayment({
-            id: data.id,
-            payload: { status }
-        }).unwrap();
-
-        toast.promise(promise, {
-            pending: "Updating...",
-            success: "Payment updated",
-            error: "Update failed"
-        });
+        setEditMode(false);
     };
 
     return (
@@ -65,26 +110,6 @@ export function OrderItemsModal({ orderId, open, onClose }: Props) {
                 <DialogHeader>
                     <div className="flex justify-between items-center">
                         <DialogTitle>Order Details</DialogTitle>
-
-                        {!editMode ? (
-                            <Button
-                                className="mx-3"
-                                size="sm"
-                                variant="heroOutline"
-                                onClick={() => setEditMode(true)}
-                            >
-                                Edit
-                            </Button>
-                        ) : (
-                            <Button
-                                className="mx-3"
-                                size="sm"
-                                variant="heroOutline"
-                                onClick={() => setEditMode(false)}
-                            >
-                                Cancel
-                            </Button>
-                        )}
                     </div>
                 </DialogHeader>
 
@@ -137,7 +162,7 @@ export function OrderItemsModal({ orderId, open, onClose }: Props) {
                         {/* ================= ORDER SUMMARY ================= */}
                         <div className="grid grid-cols-2 gap-4 text-sm bg-muted p-3 rounded-lg">
 
-                            <Info label="Order ID" value={`#${data.id}`} />
+                            <Info label="Order ID" value={formatOrderDisplayId(data.id)} />
                             <Info label="Order Type" value={data.order_type || "—"} />
 
                             <Info label="Guest" value={data.guest_name || "—"} />
@@ -181,10 +206,8 @@ export function OrderItemsModal({ orderId, open, onClose }: Props) {
 
                                     <NativeSelect
                                         className="w-full h-10 rounded-[3px] border border-border px-3"
-                                        value={data.order_status}
-                                        onChange={(e) =>
-                                            handleOrderStatusUpdate(e.target.value)
-                                        }
+                                        value={draftOrderStatus}
+                                        onChange={(e) => setDraftOrderStatus(e.target.value)}
                                     >
                                         {ORDER_STATUSES.map(s => (
                                             <option key={s} value={s}>{s}</option>
@@ -199,10 +222,8 @@ export function OrderItemsModal({ orderId, open, onClose }: Props) {
 
                                     <NativeSelect
                                         className="w-full h-10 rounded-[3px] border border-border px-3"
-                                        value={data.payment_status}
-                                        onChange={(e) =>
-                                            handlePaymentStatusUpdate(e.target.value)
-                                        }
+                                        value={draftPaymentStatus}
+                                        onChange={(e) => setDraftPaymentStatus(e.target.value)}
                                     >
                                         {PAYMENT_STATUSES.map(s => (
                                             <option key={s} value={s}>{s}</option>
@@ -260,6 +281,18 @@ export function OrderItemsModal({ orderId, open, onClose }: Props) {
                         <div className="flex justify-end text-lg font-semibold">
                             Total: ₹{data.total_amount}
                         </div>
+
+                        {editMode && (
+                            <div className="flex justify-end pt-2">
+                                <Button
+                                    size="sm"
+                                    variant="hero"
+                                    onClick={handleSave}
+                                >
+                                    Save
+                                </Button>
+                            </div>
+                        )}
 
                     </div>
                 )}

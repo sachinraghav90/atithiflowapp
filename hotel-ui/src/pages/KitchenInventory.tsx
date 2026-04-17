@@ -28,6 +28,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Download, FilterX, Pencil, RefreshCcw } from "lucide-react";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect } from "@/components/ui/grid-toolbar";
 import { exportToExcel } from "@/utils/exportToExcel";
+import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 
 type KitchenItem = {
     id: string;
@@ -405,10 +406,11 @@ export default function KitchenInventory() {
         }
 
         const formatted = filteredKitchenInventory.map((item: KitchenItem) => ({
-            ITEM: item.name,
-            CATEGORY: item.inventory_type || "--",
-            STOCK: item.quantity,
-            UNIT: item.unit || "--",
+            "Item ID": formatModuleDisplayId("kitchen", item.id),
+            "Item": item.name,
+            "Category": item.inventory_type || "--",
+            "Stock": item.quantity,
+            "Unit": item.unit || "--",
         }));
 
         exportToExcel(formatted, "Kitchen-Inventory.xlsx");
@@ -618,9 +620,23 @@ export default function KitchenInventory() {
                                 <AppDataGrid
                                     columns={[
                                         {
+                                            label: "Item ID",
+                                            cellClassName: "font-medium min-w-[90px]",
+                                            render: (item: KitchenItem) => (
+                                                <button
+                                                    type="button"
+                                                    className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
+                                                    onClick={() => openManage(item)}
+                                                    aria-label={`Open summary view for kitchen item ${formatModuleDisplayId("kitchen", item.id)}`}
+                                                >
+                                                    {formatModuleDisplayId("kitchen", item.id)}
+                                                </button>
+                                            ),
+                                        },
+                                        {
                                             label: "Item",
                                             key: "name",
-                                            cellClassName: "font-medium",
+                                            cellClassName: "font-semibold text-foreground",
                                         },
                                         {
                                             label: "Category",
@@ -649,7 +665,7 @@ export default function KitchenInventory() {
                                     emptyText="No inventory items found"
                                     minWidth="760px"
                                     actionLabel=""
-                                    actionClassName="text-center w-[72px]"
+                                    actionClassName="text-center w-[60px]"
                                     actions={(item: KitchenItem) => (
                                         <Tooltip>
                                             <TooltipTrigger asChild>

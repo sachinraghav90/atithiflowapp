@@ -22,9 +22,19 @@ import { cn } from "@/lib/utils";
 import { getStatusColor } from "@/constants/statusColors";
 import { useGridPagination } from "@/hooks/useGridPagination";
 import { NativeSelect } from "@/components/ui/native-select";
+import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 
 const ORDER_STATUSES = ["New", "Preparing", "Ready", "Delivered", "Cancelled"];
 const PAYMENT_STATUSES = ["Pending", "Paid", "Failed", "Refunded"];
+
+const formatOrderDisplayId = (orderId: string | number) =>
+    formatModuleDisplayId("order", orderId);
+
+const getOrderRoomTableDisplayValue = (order: Order) =>
+    order.room_no || order.table_no || "—";
+
+const formatOrderDateTime = (value: string | null | undefined) =>
+    value ? new Date(value).toLocaleString() : "—";
 
 type Order = {
     id: string;
@@ -50,6 +60,7 @@ export function OrdersManagement() {
     const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
     const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
     const [itemsOpen, setItemsOpen] = useState(false);
+    const [openOrderInEditMode, setOpenOrderInEditMode] = useState(false);
     const [searchInput, setSearchInput] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
 
@@ -102,6 +113,7 @@ export function OrdersManagement() {
 
             const searchFields = [
                 order.id.toString(),
+                formatOrderDisplayId(order.id),
                 order.guest_name || "",
                 order.guest_mobile || "",
                 order.room_no || "",
@@ -130,12 +142,13 @@ export function OrdersManagement() {
             }).unwrap();
 
             const formatted = res.data.map(order => ({
-                ORDER_ID: order.id,
-                GUEST_NAME: order.guest_name,
-                ROOM_TABLE: order.room_no || order.table_no,
-                TIME: new Date(order.order_date).toLocaleString(),
-                STATUS: order.order_status,
-                PAYMENT: order.payment_status,
+                "Order ID": formatOrderDisplayId(order.id),
+                "Guest": order.guest_name || "—",
+                "Room/Table": getOrderRoomTableDisplayValue(order),
+                "Delivery Time": formatOrderDateTime(order.expected_delivery_time),
+                "Status": order.order_status || "—",
+                "Payment": order.payment_status || "—",
+                "Order Time": formatOrderDateTime(order.order_date),
             }));
 
             exportToExcel(formatted, "Orders.xlsx");
@@ -175,7 +188,22 @@ export function OrdersManagement() {
         {
             label: "Order",
             cellClassName: "font-medium",
-            render: (order) => `#${order.id}`,
+            render: (order) => (
+                <button
+                    type="button"
+                    className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
+                    onMouseEnter={() => prefetchOrder(order.id)}
+                    onFocus={() => prefetchOrder(order.id)}
+                    onClick={() => {
+                        setOpenOrderInEditMode(false);
+                        setSelectedOrderId(order.id);
+                        setItemsOpen(true);
+                    }}
+                    aria-label={`Open summary view for order ${formatOrderDisplayId(order.id)}`}
+                >
+                    {formatOrderDisplayId(order.id)}
+                </button>
+            ),
         },
         {
             label: "Guest",
@@ -185,12 +213,12 @@ export function OrdersManagement() {
             label: "Room/Table",
             headClassName: "text-center",
             cellClassName: "text-center font-medium",
-            render: (order) => order.room_no || order.table_no || "—",
+            render: (order) => getOrderRoomTableDisplayValue(order),
         },
         {
             label: "Delivery Time",
             cellClassName: "text-xs",
-            render: (order) => new Date(order.expected_delivery_time).toLocaleString(),
+            render: (order) => formatOrderDateTime(order.expected_delivery_time),
         },
         {
             label: "Status",
@@ -221,7 +249,7 @@ export function OrdersManagement() {
         {
             label: "Order Time",
             cellClassName: "text-xs text-muted-foreground",
-            render: (order) => new Date(order.order_date).toLocaleString(),
+            render: (order) => formatOrderDateTime(order.order_date),
         },
     ], [prefetchOrder]);
 
@@ -366,10 +394,11 @@ export function OrdersManagement() {
                                             size="icon"
                                             variant="ghost"
                                             className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
-                                            aria-label={`View and edit details for order #${order.id}`}
+                                            aria-label={`View and edit details for order ${formatOrderDisplayId(order.id)}`}
                                             onMouseEnter={() => prefetchOrder(order.id)}
                                             onFocus={() => prefetchOrder(order.id)}
                                             onClick={() => {
+                                                setOpenOrderInEditMode(true);
                                                 setSelectedOrderId(order.id);
                                                 setItemsOpen(true);
                                             }}
@@ -398,8 +427,10 @@ export function OrdersManagement() {
             <OrderItemsModal
                 orderId={selectedOrderId}
                 open={itemsOpen}
+                defaultEditMode={openOrderInEditMode}
                 onClose={() => {
                     setItemsOpen(false);
+                    setOpenOrderInEditMode(false);
                     setSelectedOrderId(null);
                 }}
             />

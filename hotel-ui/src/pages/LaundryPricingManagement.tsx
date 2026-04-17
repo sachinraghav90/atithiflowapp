@@ -25,13 +25,14 @@ import { usePermission } from "@/rbac/usePermission";
 import { useLocation } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
-import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect } from "@/components/ui/grid-toolbar";
+import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
 import { FilterX, RefreshCcw, Download } from "lucide-react";
 import { getStatusColor } from "@/constants/statusColors";
 import { toast } from "react-toastify";
 import { filterGridRowsByQuery } from "@/utils/filterGridRows";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { useGridPagination } from "@/hooks/useGridPagination";
+import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 
 /* ---------------- Types ---------------- */
 type LaundryItem = {
@@ -315,10 +316,11 @@ export default function LaundryPricingManagement() {
         }
 
         const formatted = filteredItems.map(item => ({
-            ITEM_NAME: item.item_name,
-            DESCRIPTION: item.description || "—",
-            RATE: item.item_rate,
-            STATUS: item.is_active ? "Active" : "Inactive"
+            "Laundry ID": formatModuleDisplayId("laundry", item.id),
+            "Item Name": item.item_name,
+            "Description": item.description || "—",
+            "Rate (Rs)": item.item_rate,
+            "Status": item.is_active ? "Active" : "Inactive"
         }));
 
         exportToExcel(formatted, "Laundry_Pricing.xlsx");
@@ -349,8 +351,17 @@ export default function LaundryPricingManagement() {
 
     const laundryColumns = useMemo<ColumnDef<EditableLaundry>[]>(() => [
         {
+            label: "Laundry ID",
+            cellClassName: "font-medium min-w-[90px]",
+            render: (item) => (
+                <span className="font-medium text-primary">
+                    {formatModuleDisplayId("laundry", item.id)}
+                </span>
+            ),
+        },
+        {
             label: "Item",
-            cellClassName: "font-medium",
+            cellClassName: "font-semibold text-foreground",
             render: (item) =>
                 editMode && !item.system_generated ? (
                     <Input
@@ -515,6 +526,8 @@ export default function LaundryPricingManagement() {
                                         { label: "Inactive", value: "false" },
                                     ]}
                                 />
+
+                                <GridToolbarSpacer />
 
                                 <GridToolbarActions
                                     className="gap-1 justify-end"

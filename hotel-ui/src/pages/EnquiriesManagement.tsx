@@ -22,7 +22,8 @@ import { usePermission } from "@/rbac/usePermission";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect } from "@/components/ui/grid-toolbar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { CalendarCheck2, Download, FilterX, Pencil, RefreshCcw } from "lucide-react";
+import { Download, FilterX, Pencil, RefreshCcw } from "lucide-react";
+import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { filterGridRowsByQuery } from "@/utils/filterGridRows";
 
@@ -87,11 +88,65 @@ type Enquiry = {
     updated_on?: string | null;
 };
 
+const ENQUIRY_STATUS_OPTIONS: Array<{ label: string; value: EnquiryStatus }> = [
+    { label: "Open", value: "open" },
+    { label: "Follow Up", value: "follow_up" },
+    { label: "Reserved", value: "reserved" },
+    { label: "Booked", value: "booked" },
+    { label: "Closed", value: "closed" },
+    { label: "Cancelled", value: "cancelled" },
+];
+
+function formatEnquiryStatus(status?: string | null) {
+    return status ? status.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "—";
+}
+
+function formatEnquiryDate(value?: string | null) {
+    return value ? new Date(value).toLocaleDateString() : "—";
+}
+
+function formatEnquiryCurrency(value?: string | null) {
+    return value ? `₹${value}` : "—";
+}
+
+function getEnquiryDisplay(enquiry: Enquiry) {
+    return {
+        primaryLabel: enquiry.guest_name || enquiry.mobile || enquiry.email || enquiry.id,
+        contactLabel: enquiry.mobile || "--",
+        cityLabel: enquiry.city || "--",
+        offerAmountLabel: formatEnquiryCurrency(enquiry.offer_amount),
+        checkInLabel: formatEnquiryDate(enquiry.check_in),
+        checkOutLabel: formatEnquiryDate(enquiry.check_out),
+        statusLabel: formatEnquiryStatus(enquiry.status),
+        followUpLabel: formatEnquiryDate(enquiry.follow_up_date),
+    };
+}
+
+function getEnquiryStatusClassName(status?: EnquiryStatus | null) {
+    switch (status) {
+        case "open":
+            return "bg-blue-100 text-blue-700";
+        case "follow_up":
+            return "bg-amber-100 text-amber-700";
+        case "reserved":
+            return "bg-violet-100 text-violet-700";
+        case "booked":
+            return "bg-emerald-100 text-emerald-700";
+        case "closed":
+            return "bg-slate-100 text-slate-700";
+        case "cancelled":
+            return "bg-rose-100 text-rose-700";
+        default:
+            return "bg-slate-100 text-slate-700";
+    }
+}
+
 export default function EnquiriesManagement() {
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(10);
     const [open, setOpen] = useState(false);
+    const [editMode, setEditMode] = useState(false);
     const [selected, setSelected] = useState<Enquiry | null>(null);
 
     const [status, setStatus] = useState<EnquiryStatus>("open");
@@ -104,11 +159,12 @@ export default function EnquiriesManagement() {
 
     const navigate = useNavigate()
 
-    const openManage = (enquiry: Enquiry) => {
+    const openManage = (enquiry: Enquiry, isEdit: boolean = true) => {
         setSelected(enquiry);
         setStatus(enquiry.status);
         setFollowUpDate(enquiry.follow_up_date?.slice(0, 16) ?? "");
         setComment(enquiry.comment ?? "");
+        setEditMode(isEdit);
         setOpen(true);
     };
     const { myProperties, isMultiProperty } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
@@ -130,19 +186,21 @@ export default function EnquiriesManagement() {
                 propertyId: selectedPropertyId,
             }).unwrap();
 
-            const formatted = res.data.map((enquiry: any) => ({
-                ID: enquiry.id,
-                GUEST_NAME: enquiry.guest_name,
-                MOBILE: enquiry.mobile,
-                EMAIL: enquiry.email,
-                STATUS: enquiry.status,
-                CITY: enquiry.city,
-                OFFER_AMOUNT: enquiry.offer_amount,
-                QUOTE_AMOUNT: enquiry.quote_amount,
-                CHECK_IN: enquiry.check_in,
-                CHECK_OUT: enquiry.check_out,
-                CREATED_ON: enquiry.created_on
-            }));
+            const formatted = res.data.map((enquiry: Enquiry) => {
+                const displayEnquiry = getEnquiryDisplay(enquiry);
+
+                return {
+                    "Enquiry ID": formatModuleDisplayId("enquiry", enquiry.id),
+                    Name: displayEnquiry.primaryLabel,
+                    Contact: displayEnquiry.contactLabel,
+                    City: displayEnquiry.cityLabel,
+                    "Offer Amount": displayEnquiry.offerAmountLabel,
+                    "Check In": displayEnquiry.checkInLabel,
+                    "Check Out": displayEnquiry.checkOutLabel,
+                    Status: displayEnquiry.statusLabel,
+                    "Follow Up": displayEnquiry.followUpLabel,
+                };
+            });
 
             exportToExcel(formatted, "Enquiries.xlsx");
             toast.dismiss(toastId);
@@ -206,17 +264,81 @@ export default function EnquiriesManagement() {
 
         return filterGridRowsByQuery(statusFiltered, searchQuery, [
             (enquiry) => enquiry.id,
-            (enquiry) => enquiry.guest_name,
-            (enquiry) => enquiry.mobile,
             (enquiry) => enquiry.email,
-            (enquiry) => enquiry.city,
-            (enquiry) => enquiry.status,
-            (enquiry) => enquiry.offer_amount,
-            (enquiry) => enquiry.quote_amount,
-            (enquiry) => enquiry.check_in ? new Date(enquiry.check_in).toLocaleDateString() : "",
-            (enquiry) => enquiry.check_out ? new Date(enquiry.check_out).toLocaleDateString() : "",
+            (enquiry) => getEnquiryDisplay(enquiry).primaryLabel,
+            (enquiry) => getEnquiryDisplay(enquiry).contactLabel,
+            (enquiry) => getEnquiryDisplay(enquiry).cityLabel,
+            (enquiry) => getEnquiryDisplay(enquiry).statusLabel,
+            (enquiry) => getEnquiryDisplay(enquiry).offerAmountLabel,
+            (enquiry) => getEnquiryDisplay(enquiry).checkInLabel,
+            (enquiry) => getEnquiryDisplay(enquiry).checkOutLabel,
+            (enquiry) => getEnquiryDisplay(enquiry).followUpLabel,
         ]);
     }, [enquiries?.data, searchQuery, statusFilter]);
+
+    const enquiryColumns = useMemo<ColumnDef<Enquiry>[]>(() => [
+        {
+            label: "Enquiry",
+            cellClassName: "font-medium min-w-[90px]",
+            render: (enquiry) => (
+                <button
+                    type="button"
+                    className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
+                    onClick={() => openManage(enquiry, false)}
+                    aria-label={`Open summary view for enquiry ${formatModuleDisplayId("enquiry", enquiry.id)}`}
+                >
+                    {formatModuleDisplayId("enquiry", enquiry.id)}
+                </button>
+            ),
+        },
+        {
+            label: "Name",
+            cellClassName: "whitespace-nowrap max-w-[150px] truncate",
+            render: (enquiry) => getEnquiryDisplay(enquiry).primaryLabel,
+        },
+        {
+            label: "Contact",
+            cellClassName: "font-medium whitespace-nowrap",
+            render: (enquiry) => getEnquiryDisplay(enquiry).contactLabel,
+        },
+        {
+            label: "City",
+            cellClassName: "whitespace-nowrap",
+            render: (enquiry) => getEnquiryDisplay(enquiry).cityLabel,
+        },
+        {
+            label: "Offer Amount",
+            cellClassName: "font-medium whitespace-nowrap",
+            render: (enquiry) => getEnquiryDisplay(enquiry).offerAmountLabel,
+        },
+        {
+            label: "Check In",
+            cellClassName: "text-xs text-muted-foreground whitespace-nowrap",
+            render: (enquiry) => getEnquiryDisplay(enquiry).checkInLabel,
+        },
+        {
+            label: "Check Out",
+            cellClassName: "text-xs text-muted-foreground whitespace-nowrap",
+            render: (enquiry) => getEnquiryDisplay(enquiry).checkOutLabel,
+        },
+        {
+            label: "Status",
+            headClassName: "text-center",
+            cellClassName: "text-center whitespace-nowrap",
+            render: (enquiry) => (
+                <span
+                    className={`px-3 py-1 text-xs font-semibold rounded-[3px] ${getEnquiryStatusClassName(enquiry.status)}`}
+                >
+                    {getEnquiryDisplay(enquiry).statusLabel}
+                </span>
+            ),
+        },
+        {
+            label: "Follow Up",
+            cellClassName: "text-xs text-muted-foreground whitespace-nowrap",
+            render: (enquiry) => getEnquiryDisplay(enquiry).followUpLabel,
+        },
+    ], []);
 
     return (
         <div className="h-full flex flex-col overflow-hidden">
@@ -287,12 +409,7 @@ export default function EnquiriesManagement() {
                                     }}
                                     options={[
                                         { label: "Any", value: "" },
-                                        { label: "Open", value: "open" },
-                                        { label: "Follow Up", value: "follow_up" },
-                                        { label: "Reserved", value: "reserved" },
-                                        { label: "Booked", value: "booked" },
-                                        { label: "Closed", value: "closed" },
-                                        { label: "Cancelled", value: "cancelled" },
+                                        ...ENQUIRY_STATUS_OPTIONS,
                                     ]}
                                 />
 
@@ -327,84 +444,29 @@ export default function EnquiriesManagement() {
 
                     <div className="px-2 pb-2">
                         <AppDataGrid
-                            columns={[
-                                {
-                                    label: "Name",
-                                    key: "guest_name",
-                                    cellClassName: "font-medium",
-                                },
-                                {
-                                    label: "Contact",
-                                    key: "mobile",
-                                    cellClassName: "font-semibold",
-                                },
-                                {
-                                    label: "Offer Amount",
-                                    key: "offer_amount",
-                                    cellClassName: "font-medium",
-                                },
-                                {
-                                    label: "Quote Amount",
-                                    key: "quote_amount",
-                                    cellClassName: "font-medium",
-                                },
-                                {
-                                    label: "CheckIn",
-                                    cellClassName: "font-medium",
-                                    render: (e) => (e as Enquiry).check_in ? new Date((e as Enquiry).check_in as string).toLocaleDateString() : "-",
-                                },
-                                {
-                                    label: "CheckOut",
-                                    cellClassName: "font-medium",
-                                    render: (e) => (e as Enquiry).check_out ? new Date((e as Enquiry).check_out as string).toLocaleDateString() : "-",
-                                },
-                                {
-                                    label: "FollowUp",
-                                    cellClassName: "font-medium",
-                                    render: (e) => (e as Enquiry).follow_up_date ? new Date((e as Enquiry).follow_up_date as string).toLocaleDateString() : "",
-                                },
-                            ] as ColumnDef<Enquiry>[]}
+                            columns={enquiryColumns}
                             data={filteredEnquiries}
                             loading={enquiryLoading}
-                            actionClassName="text-center w-[90px]"
+                            emptyText="No enquiries found"
+                            minWidth="1080px"
+                            actionClassName="text-center w-[60px]"
                             className="mt-0"
-                            actions={(e) => {
-                                const enquiry = e as Enquiry;
+                            actions={(enquiry) => {
                                 return (
-                                    <div className="flex justify-center gap-1">
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
-                                                    onClick={() => openManage(enquiry)}
-                                                    aria-label={`Manage enquiry ${enquiry.id}`}
-                                                >
-                                                    <Pencil className="w-4 h-4 mx-auto" />
-                                                </Button>
-                                            </TooltipTrigger>
-                                            <TooltipContent>Manage Enquiry</TooltipContent>
-                                        </Tooltip>
-
-                                        {bookingPermission?.can_create && (
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Button
-                                                        size="icon"
-                                                        variant="ghost"
-                                                        className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
-                                                        disabled={enquiry.is_reserved}
-                                                        onClick={() => handleBook(enquiry)}
-                                                        aria-label={`Create booking from enquiry ${enquiry.id}`}
-                                                    >
-                                                        <CalendarCheck2 className="w-4 h-4 mx-auto" />
-                                                    </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>Book Enquiry</TooltipContent>
-                                            </Tooltip>
-                                        )}
-                                    </div>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                size="icon"
+                                                variant="ghost"
+                                                className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                                onClick={() => openManage(enquiry, true)}
+                                                aria-label={`Manage enquiry ${enquiry.id}`}
+                                            >
+                                                <Pencil className="w-4 h-4 mx-auto" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Manage Enquiry</TooltipContent>
+                                    </Tooltip>
                                 );
                             }}
                             enablePagination={!!enquiries?.pagination}
@@ -429,7 +491,7 @@ export default function EnquiriesManagement() {
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogContent className="max-w-3xl">
                     <DialogHeader>
-                        <DialogTitle>Manage Enquiry</DialogTitle>
+                        <DialogTitle>{editMode ? "Manage Enquiry" : "Enquiry Summary"}</DialogTitle>
                     </DialogHeader>
 
                     {selected && (
@@ -505,53 +567,87 @@ export default function EnquiriesManagement() {
                                 </div>
                             </div>
 
-                            {/* RIGHT — EDITABLE */}
+                            {/* RIGHT — EDITABLE / READ-ONLY */}
                             <div className="space-y-4 border-l pl-6 border-border">
                                 <div>
-                                    <Label className="text-primary font-bold">Update Lead Status</Label>
-                                    <NativeSelect
-                                        className="w-full h-10 rounded-[3px] border px-3 text-sm mt-1"
-                                        value={status}
-                                        onChange={(e) =>
-                                            setStatus(e.target.value as EnquiryStatus)
-                                        }
-                                    >
-                                        <option value="open">Open</option>
-                                        <option value="follow_up">Follow Up</option>
-                                        <option value="closed">Closed</option>
-                                        <option value="cancelled">Cancelled</option>
-                                    </NativeSelect>
+                                    <Label className={editMode ? "text-primary font-bold" : "text-muted-foreground"}>
+                                        {editMode ? "Update Lead Status" : "Lead Status"}
+                                    </Label>
+                                    {!editMode ? (
+                                        <p className="font-medium mt-1 text-sm uppercase">
+                                            {status.replace("_", " ")}
+                                        </p>
+                                    ) : (
+                                        <NativeSelect
+                                            className="w-full h-10 rounded-[3px] border px-3 text-sm mt-1"
+                                            value={status}
+                                            onChange={(e) =>
+                                                setStatus(e.target.value as EnquiryStatus)
+                                            }
+                                        >
+                                            <option value="open">Open</option>
+                                            <option value="follow_up">Follow Up</option>
+                                            <option value="closed">Closed</option>
+                                            <option value="cancelled">Cancelled</option>
+                                        </NativeSelect>
+                                    )}
                                 </div>
 
                                 {status === "follow_up" && (
                                     <div className="animate-in fade-in duration-300">
-                                        <Label>Follow-up Date</Label>
-                                        <Input
-                                            type="datetime-local"
-                                            className="mt-1 h-10 rounded-[3px]"
-                                            value={followUpDate}
-                                            onChange={(e) => setFollowUpDate(e.target.value)}
-                                        />
+                                        <Label className="text-muted-foreground">Follow-up Date</Label>
+                                        {!editMode ? (
+                                            <p className="font-medium mt-1 text-sm">
+                                                {followUpDate ? new Date(followUpDate).toLocaleString() : "—"}
+                                            </p>
+                                        ) : (
+                                            <Input
+                                                type="datetime-local"
+                                                className="mt-1 h-10 rounded-[3px]"
+                                                value={followUpDate}
+                                                onChange={(e) => setFollowUpDate(e.target.value)}
+                                            />
+                                        )}
                                     </div>
                                 )}
 
                                 <div>
-                                    <Label>Internal Notes</Label>
-                                    <textarea
-                                        className="w-full min-h-[120px] rounded-[3px] border px-3 py-2 text-sm mt-1 focus:ring-1 focus:ring-primary outline-none transition-all"
-                                        value={comment}
-                                        onChange={(e) => setComment(e.target.value)}
-                                        placeholder="Add a reason or next steps..."
-                                    />
+                                    <Label className="text-muted-foreground">Internal Notes</Label>
+                                    {!editMode ? (
+                                        <p className="font-medium mt-1 text-sm whitespace-pre-wrap">
+                                            {comment || "—"}
+                                        </p>
+                                    ) : (
+                                        <textarea
+                                            className="w-full min-h-[120px] rounded-[3px] border px-3 py-2 text-sm mt-1 focus:ring-1 focus:ring-primary outline-none transition-all"
+                                            value={comment}
+                                            onChange={(e) => setComment(e.target.value)}
+                                            placeholder="Add a reason or next steps..."
+                                        />
+                                    )}
                                 </div>
 
-                                <Button
-                                    variant="hero"
-                                    className="w-full h-11"
-                                    onClick={handleUpdate}
-                                >
-                                    Update Enquiry
-                                </Button>
+                                {editMode && (
+                                    <div className="space-y-2 pt-2">
+                                        <Button
+                                            variant="hero"
+                                            className="w-full h-11"
+                                            onClick={handleUpdate}
+                                        >
+                                            Update Enquiry
+                                        </Button>
+
+                                        {bookingPermission?.can_create && !selected.is_reserved && (
+                                            <Button
+                                                variant="heroOutline"
+                                                className="w-full h-11"
+                                                onClick={() => handleBook(selected)}
+                                            >
+                                                Book Enquiry
+                                            </Button>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

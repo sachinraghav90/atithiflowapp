@@ -26,6 +26,7 @@ import { Download, FilterX, Pencil, RefreshCcw } from "lucide-react";
 import { getStatusColor } from "@/constants/statusColors";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
 import { exportToExcel } from "@/utils/exportToExcel";
+import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { toast } from "react-toastify";
 
 type MenuItem = {
@@ -264,12 +265,13 @@ export default function MenuMaster() {
         }
 
         const formatted = filteredMenuItems.map((item: MenuItem) => ({
-            NAME: item.item_name,
-            GROUP: item.menu_item_group || "--",
-            PRICE: item.price,
-            TYPE: item.is_veg ? "Veg" : "Non-Veg",
-            PREP_TIME: item.prep_time ? `${item.prep_time} min` : "--",
-            STATUS: item.is_active ? "Active" : "Inactive",
+            "Menu ID": formatModuleDisplayId("menu", item.id),
+            "Name": item.item_name,
+            "Group": item.menu_item_group || "--",
+            "Price": `₹${item.price}`,
+            "Type": item.is_veg ? "Veg" : "Non-Veg",
+            "Prep Time": item.prep_time ? `${item.prep_time} min` : "--",
+            "Status": item.is_active ? "Active" : "Inactive",
         }));
 
         exportToExcel(formatted, "Menu-Items.xlsx");
@@ -517,9 +519,23 @@ export default function MenuMaster() {
                         <AppDataGrid
                             columns={[
                                 {
+                                    label: "Menu ID",
+                                    cellClassName: "font-medium min-w-[90px]",
+                                    render: (item: MenuItem) => (
+                                        <button
+                                            type="button"
+                                            className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
+                                            onClick={() => permission?.can_create ? openEdit(item) : openView(item)}
+                                            aria-label={`Open summary for menu item ${formatModuleDisplayId("menu", item.id)}`}
+                                        >
+                                            {formatModuleDisplayId("menu", item.id)}
+                                        </button>
+                                    ),
+                                },
+                                {
                                     label: "Name",
                                     key: "item_name",
-                                    cellClassName: "font-medium",
+                                    cellClassName: "font-semibold text-foreground",
                                 },
                                 {
                                     label: "Group",

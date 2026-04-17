@@ -56,6 +56,7 @@ import { cn } from "@/lib/utils";
 import { getStatusColor } from "@/constants/statusColors";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { filterGridRowsByQuery } from "@/utils/filterGridRows";
+import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 const REQUIRED_SCOPE_BY_STATUS: Record<string, "upcoming" | "past" | "all"> = {
     CONFIRMED: "upcoming",
     CHECKED_IN: "upcoming",
@@ -107,6 +108,7 @@ export default function BookingsManagement() {
     const [toDate, setToDate] = useState<string>(tomorrowISO());
 
     const [detailsOpen, setDetailsOpen] = useState(false);
+    const [editMode, setEditMode] = useState(false);
 
     const [cancelFee, setCancelFee] = useState("0");
     const [cancelComment, setCancelComment] = useState("");
@@ -152,8 +154,9 @@ export default function BookingsManagement() {
     const [updateBookingStatus] = useUpdateBookingMutation()
     const [getAllBookings, { data: exportedData, reset, isFetching: gettingAllBookings }] = useLazyExportBookingsQuery()
 
-    async function handleManage(id: string) {
+    async function handleManage(id: string, isEdit: boolean = true) {
         setBookingId(id)
+        setEditMode(isEdit);
         setDetailsOpen(true);
     }
 
@@ -225,14 +228,14 @@ export default function BookingsManagement() {
         if (!exportedData) return
 
         const formatted = exportedData.map(b => ({
-            Booking_ID: b.id,
-            Booking_Status: b.booking_status,
-            Booking_Date: new Date(b.booking_date).toLocaleDateString(),
-            Estimated_Arrival: new Date(b.estimated_arrival).toLocaleDateString(),
-            Estimated_Departure: new Date(b.estimated_departure).toLocaleDateString(),
-            Booking_Nights: b.booking_nights,
-            Final_Amount: b.final_amount,
-            Room_Numbers: b.room_numbers.toString()
+            "Booking ID": formatModuleDisplayId("booking", b.id),
+            "Status": b.booking_status?.replace("_", " "),
+            "Booking Date": new Date(b.booking_date).toLocaleDateString(),
+            "Arrival Date": new Date(b.estimated_arrival).toLocaleDateString(),
+            "Departure Date": new Date(b.estimated_departure).toLocaleDateString(),
+            "Nights": b.booking_nights,
+            "Final Amount": `₹${b.final_amount}`,
+            "Room Number(s)": Array.isArray(b.room_numbers) ? b.room_numbers.join(", ") : b.room_numbers?.toString()
         }));
 
         exportToExcel(formatted, "bookings.xlsx")
@@ -649,12 +652,26 @@ export default function BookingsManagement() {
                         <AppDataGrid
                     columns={[
                         {
+                            label: "Booking",
+                            cellClassName: "font-medium",
+                            render: (b: any) => (
+                                <button
+                                    type="button"
+                                    className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
+                                    onClick={() => handleManage(b.id, false)}
+                                    aria-label={`Open summary view for booking ${formatModuleDisplayId("booking", b.id)}`}
+                                >
+                                    {formatModuleDisplayId("booking", b.id)}
+                                </button>
+                            ),
+                        },
+                        {
                             label: "Status",
                             headClassName: "text-center",
                             cellClassName: "text-center",
                             render: (b: any) => (
                                 <span className={cn(
-                                    "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                                    "px-2 py-0.5 rounded-[3px] text-xs font-semibold uppercase tracking-wider",
                                     getStatusColor(b.booking_status, "booking")
                                 )}>
                                     {b.booking_status?.replace("_", " ")}
@@ -678,8 +695,8 @@ export default function BookingsManagement() {
                             headClassName: "text-center",
                             cellClassName: "text-center",
                             render: (b: any) => (
-                                <div className="max-w-[150px] truncate mx-auto" title={b.room_numbers.toString()}>
-                                    {b.room_numbers.slice(0, 4).toString()}{b.room_numbers.length > 4 ? "..." : ""}
+                                <div className="max-w-[150px] truncate mx-auto" title={Array.isArray(b.room_numbers) ? b.room_numbers.join(", ") : b.room_numbers?.toString()}>
+                                    {Array.isArray(b.room_numbers) ? b.room_numbers.slice(0, 4).join(", ") : (b.room_numbers?.toString() || "-")}{(b.room_numbers?.length || 0) > 4 ? "..." : ""}
                                 </div>
                             )
                         },
@@ -688,6 +705,12 @@ export default function BookingsManagement() {
                             headClassName: "text-center",
                             cellClassName: "text-center",
                             render: (b: any) => `${b.pickup ? "Yes" : "No"} / ${b.drop ? "Yes" : "No"}`
+                        },
+                        {
+                            label: "Amount",
+                            headClassName: "text-center",
+                            cellClassName: "text-center font-medium",
+                            render: (b: any) => <span className="inline-flex min-w-[60px] justify-center rounded-[3px] bg-muted/40 px-2 py-1 text-xs font-semibold">₹ {b.final_amount}</span>
                         }
                     ] as ColumnDef<any>[]}
                     data={filteredBookings}
@@ -702,14 +725,14 @@ export default function BookingsManagement() {
                                 <Button
                                     size="icon"
                                     variant="ghost"
-                                    className="h-8 w-8 text-primary hover:bg-primary/10 transition-colors"
-                                    onClick={() => handleManage(b.id)}
-                                    aria-label={`View booking ${b.id}`}
+                                    className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                    onClick={() => handleManage(b.id, true)}
+                                    aria-label={`Manage booking ${b.id}`}
                                 >
-                                    <Eye className="w-4 h-4" />
+                                    <Pencil className="w-4 h-4 mx-auto" />
                                 </Button>
                             </TooltipTrigger>
-                            <TooltipContent>View Booking Details</TooltipContent>
+                            <TooltipContent>Manage Booking</TooltipContent>
                         </Tooltip>
                     )}
                     enablePagination={!!bookings?.pagination}
@@ -739,40 +762,41 @@ export default function BookingsManagement() {
                     {/* Header */}
                     <div className="h-14 border-b border-border flex items-center justify-between px-6">
                         <div>
-                            <h2 className="text-lg font-semibold">Booking (#{bookingId})</h2>
-                            {/* <p className="text-xs text-muted-foreground">
-                                Booking ID: {selectedBooking?.booking.id}
-                            </p> */}
+                            <h2 className="text-lg font-semibold">
+                                {editMode ? "Manage Booking" : "Booking Summary"} ({formatModuleDisplayId("booking", bookingId)})
+                            </h2>
                         </div>
 
                         {/* Status Update */}
-                        <div className="flex items-center gap-3 me-8">
-                            <NativeSelect
-                                className="h-9 rounded-[3px] border border-border bg-background px-3 text-sm"
-                                value={updatedStatus || selectedBooking?.booking.booking_status}
-                                onChange={(e) => setUpdatedStatus(e.target.value)}
-                                disabled={selectedBooking?.booking.booking_status === "CANCELLED"}
-                            >
-                                <option value={""} disabled>Select status</option>
-                                {BOOKING_STATUSES.map((s) => (
-                                    <option key={s} value={s}>
-                                        {s.replace("_", " ")}
-                                    </option>
-                                ))}
-                            </NativeSelect>
+                        {editMode && (
+                            <div className="flex items-center gap-3 me-8">
+                                <NativeSelect
+                                    className="h-9 rounded-[3px] border border-border bg-background px-3 text-sm"
+                                    value={updatedStatus || selectedBooking?.booking.booking_status || ""}
+                                    onChange={(e) => setUpdatedStatus(e.target.value)}
+                                    disabled={selectedBooking?.booking.booking_status === "CANCELLED"}
+                                >
+                                    <option value={""} disabled>Select status</option>
+                                    {BOOKING_STATUSES.map((s) => (
+                                        <option key={s} value={s}>
+                                            {s.replace("_", " ")}
+                                        </option>
+                                    ))}
+                                </NativeSelect>
 
-                            <Button
-                                size="sm"
-                                variant="hero"
-                                disabled={
-                                    !updatedStatus ||
-                                    updatedStatus === selectedBooking?.booking.booking_status
-                                }
-                                onClick={() => setConfirmStatusOpen(true)}
-                            >
-                                Update
-                            </Button>
-                        </div>
+                                <Button
+                                    size="sm"
+                                    variant="hero"
+                                    disabled={
+                                        !updatedStatus ||
+                                        updatedStatus === selectedBooking?.booking.booking_status
+                                    }
+                                    onClick={() => setConfirmStatusOpen(true)}
+                                >
+                                    Update
+                                </Button>
+                            </div>
+                        )}
                     </div>
 
 

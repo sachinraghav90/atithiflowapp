@@ -35,6 +35,7 @@ import { useGridPagination } from "@/hooks/useGridPagination";
 import { FilterX, Pencil, RefreshCcw, Download } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { exportToExcel } from "@/utils/exportToExcel";
+import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { getStatusColor } from "@/constants/statusColors";
 
 /* ---------------- Types ---------------- */
@@ -360,6 +361,20 @@ export default function VendorsManagement() {
                     <div className="px-2 pb-2">
                     <AppDataGrid
                     columns={[
+                        {
+                            label: "Vendor ID",
+                            cellClassName: "font-medium min-w-[90px]",
+                            render: (v: Vendor) => (
+                                <button
+                                    type="button"
+                                    className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
+                                    onClick={() => openView(v)}
+                                    aria-label={`Open summary view for vendor ${formatModuleDisplayId("vendor", v.id)}`}
+                                >
+                                    {formatModuleDisplayId("vendor", v.id)}
+                                </button>
+                            ),
+                        },
                         {
                             label: "Name",
                             key: "name",

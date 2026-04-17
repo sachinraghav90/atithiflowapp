@@ -21,7 +21,10 @@ import { usePermission } from "@/rbac/usePermission";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Pencil, RefreshCcw, FilterX, Download, Eye } from "lucide-react";
+import { Pencil, RefreshCcw, FilterX, Download } from "lucide-react";
+import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
+import { exportToExcel } from "@/utils/exportToExcel";
+import { getStatusColor } from "@/constants/statusColors";
 
 type InventoryItem = {
     id: string;
@@ -173,28 +176,18 @@ export default function InventoryMaster() {
     }, [rawData, searchQuery, inventoryTypeFilter, useTypeFilter, statusFilter]);
 
     const handleExport = () => {
-        if (!inventoryRows.length) return toast.info("No data to export");
+        if (!inventoryRows.length) return toast.error("No data to export");
         
-        const headers = ["Name,Inventory Type,Use Type,Status,Created On"];
-        const rows = inventoryRows.map(item => [
-            `"${item.name}"`,
-            `"${item.inventory_type || ""}"`,
-            `"${item.use_type}"`,
-            `"${item.is_active ? "Active" : "Inactive"}"`,
-            `"${new Date(item.created_on).toLocaleDateString("en-GB")}"`
-        ].join(","));
+        const formatted = inventoryRows.map((item) => ({
+            "Inventory ID": formatModuleDisplayId("inventory", item.id),
+            "Name": item.name,
+            "Inventory Type": item.inventory_type || "—",
+            "Use Type": item.use_type.charAt(0).toUpperCase() + item.use_type.slice(1),
+            "Status": item.is_active ? "Active" : "Inactive",
+            "Created On": new Date(item.created_on).toLocaleDateString("en-GB")
+        }));
         
-        const csvContent = [headers, ...rows].join("\n");
-        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.setAttribute("href", url);
-        link.setAttribute("download", `Inventory_Report_${new Date().toLocaleDateString("en-GB")}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        toast.success("Inventory exported successfully");
+        exportToExcel(formatted, "InventoryMaster.xlsx");
     };
 
     const totalPages = inventoryMaster?.pagination?.totalPages ?? 1;
@@ -270,7 +263,13 @@ export default function InventoryMaster() {
                             <GridToolbarRow className="gap-2">
                                 <GridToolbarSearch
                                     value={searchInput}
-                                    onChange={setSearchInput}
+                                    onChange={(val) => {
+                                        setSearchInput(val);
+                                        if (val.trim() === "") {
+                                            setSearchQuery("");
+                                            setPage(1);
+                                        }
+                                    }}
                                     onSearch={() => setSearchQuery(searchInput.trim())}
                                 />
 
@@ -306,7 +305,7 @@ export default function InventoryMaster() {
                                     actions={[
                                         {
                                             key: "export",
-                                            label: "Export CSV",
+                                            label: "Export Inventory",
                                             icon: <Download className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
                                             onClick: handleExport,
                                         },
@@ -360,6 +359,20 @@ export default function InventoryMaster() {
                         <AppDataGrid
                             columns={[
                                 {
+                                    label: "Inventory ID",
+                                    cellClassName: "font-medium min-w-[90px]",
+                                    render: (item: InventoryItem) => (
+                                        <button
+                                            type="button"
+                                            className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
+                                            onClick={() => openView(item)}
+                                            aria-label={`Open summary view for inventory ${formatModuleDisplayId("inventory", item.id)}`}
+                                        >
+                                            {formatModuleDisplayId("inventory", item.id)}
+                                        </button>
+                                    ),
+                                },
+                                {
                                     label: "Name",
                                     key: "name",
                                     cellClassName: "font-semibold text-foreground",
@@ -367,7 +380,7 @@ export default function InventoryMaster() {
                                 {
                                     label: "Inventory Type",
                                     key: "inventory_type",
-                                    cellClassName: "text-muted-foreground",
+                                    cellClassName: "whitespace-nowrap text-muted-foreground",
                                 },
                                 {
                                     label: "Use Type",
@@ -376,10 +389,12 @@ export default function InventoryMaster() {
                                 },
                                 {
                                     label: "Status",
+                                    headClassName: "text-center",
+                                    cellClassName: "text-center",
                                     render: (item: InventoryItem) => (
                                         <span className={cn(
-                                            "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
-                                            item.is_active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                                            "px-3 py-1 rounded-[3px] text-xs font-semibold",
+                                            getStatusColor(item.is_active ? "active" : "inactive", "toggle")
                                         )}>
                                             {item.is_active ? "Active" : "Inactive"}
                                         </span>
@@ -387,17 +402,14 @@ export default function InventoryMaster() {
                                 },
                                 {
                                     label: "Created",
-                                    render: (item: InventoryItem) => (
-                                        <span className="text-muted-foreground text-xs font-medium">
-                                            {new Date(item.created_on).toLocaleDateString("en-GB")}
-                                        </span>
-                                    ),
+                                    cellClassName: "text-muted-foreground text-xs font-medium whitespace-nowrap",
+                                    render: (item: InventoryItem) => new Date(item.created_on).toLocaleDateString("en-GB")
                                 },
-                            ] as ColumnDef[]}
+                            ] satisfies ColumnDef[]}
                             data={inventoryRows}
                             loading={inventoryLoading}
                             emptyText="No inventory items found"
-                            minWidth="600px"
+                            minWidth="800px"
                             enablePagination
                             paginationProps={{
                                 page,
@@ -412,25 +424,10 @@ export default function InventoryMaster() {
                                 disabled: inventoryLoading || inventoryFetching,
                             }}
                             actionLabel=""
-                            actionClassName="text-center w-[96px]"
+                            actionClassName="text-center w-[60px]"
                             actions={
                                 (item: InventoryItem) => (
                                     <div className="flex items-center justify-center gap-2">
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
-                                                    aria-label={`View details for inventory ${item.name}`}
-                                                    onClick={() => openView(item)}
-                                                >
-                                                    <Eye className="w-4 h-4 mx-auto" />
-                                                </Button>
-                                            </TooltipTrigger>
-                                            <TooltipContent>View Details</TooltipContent>
-                                        </Tooltip>
-
                                         {permission?.can_create && (
                                             <Tooltip>
                                                 <TooltipTrigger asChild>

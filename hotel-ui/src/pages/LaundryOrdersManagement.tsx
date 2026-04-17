@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,7 +27,7 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover";
 import { format } from "date-fns";
-import { CalendarIcon, Download, Eye, FilterX, History, RefreshCcw } from "lucide-react";
+import { Download, FilterX, Pencil, RefreshCcw } from "lucide-react";
 import DatePicker from 'react-datepicker'
 import { toast } from "react-toastify";
 import { normalizeNumberInput } from "@/utils/normalizeTextInput";
@@ -40,6 +40,8 @@ import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
 import { getStatusColor } from "@/constants/statusColors";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect } from "@/components/ui/grid-toolbar";
+
+import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 
 /* ---------------- Types ---------------- */
 export type LaundryStatus =
@@ -134,6 +136,101 @@ function parseDate(value?: string | Date) {
 
 function formatDate(date?: Date | null) {
     return date ? date.toISOString() : "";
+}
+
+function formatDateTime(value?: string | null) {
+    return value ? new Date(value).toLocaleString() : "--";
+}
+
+function formatDisplayStatus(value?: string | null) {
+    return value ? value.replace(/_/g, " ") : "--";
+}
+
+function getLaundryVendorStatus(order: LaundryOrder) {
+    return order.vendor_status || order.vendorStatus || "NOT_ALLOTTED";
+}
+
+function getLaundryVendorName(order: LaundryOrder, vendors?: Array<{ id: string | number; name: string }>) {
+    return vendors?.find(v => String(v.id) === String(order.vendor_id))?.name || "--";
+}
+
+function getLaundryOrderItemLabel(order: LaundryOrder) {
+    const firstItemName = order.items?.[0]?.item_name?.trim();
+    const totalItems = order.items?.length ?? 0;
+
+    if (!firstItemName) {
+        return totalItems ? `${totalItems} item(s)` : "--";
+    }
+
+    if (totalItems <= 1) {
+        return firstItemName;
+    }
+
+    return `${firstItemName} +${totalItems - 1} more`;
+}
+
+function getLaundryOrderDisplay(order: LaundryOrder, vendors?: Array<{ id: string | number; name: string }>) {
+    const vendorStatus = getLaundryVendorStatus(order);
+
+    return {
+        itemLabel: getLaundryOrderItemLabel(order),
+        itemCountLabel: `${order.items?.length ?? 0} item(s)`,
+        pickupDateLabel: formatDateTime(order.pickup_date),
+        deliveryDateLabel: formatDateTime(order.delivery_date),
+        laundryStatusLabel: formatDisplayStatus(order.laundry_status),
+        vendorStatus,
+        vendorStatusLabel: formatDisplayStatus(vendorStatus),
+        vendorName: getLaundryVendorName(order, vendors),
+    };
+}
+
+function getLaundryAuditChanges(audit: any) {
+    const details = audit.details as Record<string, Record<string, string>> | undefined;
+    const before = details?.before;
+    const after = details?.after;
+
+    if (audit.event_type === "CREATE") {
+        return ["Order Created"];
+    }
+
+    const changes: string[] = [];
+
+    if (before?.laundry_status !== after?.laundry_status) {
+        changes.push(
+            `Laundry: ${formatDisplayStatus(before?.laundry_status)} -> ${formatDisplayStatus(after?.laundry_status)}`
+        );
+    }
+
+    if (before?.vendor_status !== after?.vendor_status) {
+        changes.push(
+            `Vendor: ${formatDisplayStatus(before?.vendor_status)} -> ${formatDisplayStatus(after?.vendor_status)}`
+        );
+    }
+
+    if (before?.vendor_id !== after?.vendor_id) {
+        changes.push("Vendor Assigned");
+    }
+
+    if (before?.delivery_date !== after?.delivery_date) {
+        changes.push("Delivery Date Updated");
+    }
+
+    return changes;
+}
+
+function getLaundryAuditChangeText(audit: any) {
+    return getLaundryAuditChanges(audit).join(", ");
+}
+
+function getLaundryAuditDisplay(audit: any) {
+    return {
+        orderLabel: `#${audit.event_id}`,
+        actionLabel: formatDisplayStatus(audit.event_type),
+        actionClassName: "bg-slate-100 text-slate-700",
+        changeText: getLaundryAuditChangeText(audit) || "--",
+        userLabel: `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim() || "--",
+        dateLabel: formatDateTime(audit.created_on as string),
+    };
 }
 
 /* ---------------- Component ---------------- */
@@ -471,10 +568,9 @@ export default function LaundryOrdersManagement() {
         const query = searchQuery.trim().toLowerCase();
 
         return data.data.filter((order) => {
-            const normalizedVendorStatus = order.vendor_status || order.vendorStatus || "NOT_ALLOTTED";
-            const vendorName = vendors?.find(v => v.id === order.vendor_id)?.name || "";
+            const displayOrder = getLaundryOrderDisplay(order, vendors);
             const matchesLaundryStatus = !laundryStatusFilter || order.laundry_status === laundryStatusFilter;
-            const matchesVendorStatus = !vendorStatusFilter || normalizedVendorStatus === vendorStatusFilter;
+            const matchesVendorStatus = !vendorStatusFilter || displayOrder.vendorStatus === vendorStatusFilter;
 
             if (!matchesLaundryStatus || !matchesVendorStatus) {
                 return false;
@@ -486,12 +582,13 @@ export default function LaundryOrdersManagement() {
 
             const searchFields = [
                 order.id?.toString() || "",
-                `${order.items?.length ?? 0} item(s)`,
-                order.pickup_date ? new Date(order.pickup_date).toLocaleString() : "",
-                order.delivery_date ? new Date(order.delivery_date).toLocaleString() : "",
-                order.laundry_status || "",
-                normalizedVendorStatus,
-                vendorName,
+                displayOrder.itemLabel,
+                displayOrder.itemCountLabel,
+                displayOrder.pickupDateLabel,
+                displayOrder.deliveryDateLabel,
+                displayOrder.laundryStatusLabel,
+                displayOrder.vendorStatusLabel,
+                displayOrder.vendorName,
                 order.amount || "",
             ];
 
@@ -511,27 +608,7 @@ export default function LaundryOrdersManagement() {
                 return false;
             }
 
-            const details = audit.details as Record<string, Record<string, string>> | undefined;
-            const before = details?.before;
-            const after = details?.after;
-
-            const changes: string[] = [];
-            if (audit.event_type === "CREATE") {
-                changes.push("Order Created");
-            } else {
-                if (before?.laundry_status !== after?.laundry_status) {
-                    changes.push(`Laundry: ${before?.laundry_status} -> ${after?.laundry_status}`);
-                }
-                if (before?.vendor_status !== after?.vendor_status) {
-                    changes.push(`Vendor: ${before?.vendor_status} -> ${after?.vendor_status}`);
-                }
-                if (before?.vendor_id !== after?.vendor_id) {
-                    changes.push("Vendor Assigned");
-                }
-                if (before?.delivery_date !== after?.delivery_date) {
-                    changes.push("Delivery Date Updated");
-                }
-            }
+            const displayAudit = getLaundryAuditDisplay(audit);
 
             if (!query) {
                 return true;
@@ -539,15 +616,160 @@ export default function LaundryOrdersManagement() {
 
             const searchFields = [
                 audit.event_id?.toString() || "",
-                audit.event_type || "",
-                changes.join(", "),
-                `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim(),
-                audit.created_on ? new Date(audit.created_on as string).toLocaleString() : "",
+                displayAudit.orderLabel,
+                displayAudit.actionLabel,
+                displayAudit.changeText,
+                displayAudit.userLabel,
+                displayAudit.dateLabel,
             ];
 
             return searchFields.some((field) => field.toLowerCase().includes(query));
         });
     }, [auditActionFilter, auditSearchQuery, logs?.data]);
+
+    const laundryAuditColumns = useMemo<ColumnDef[]>(() => [
+        {
+            label: "Order",
+            cellClassName: "font-medium whitespace-nowrap",
+            render: (audit) => {
+                const displayAudit = getLaundryAuditDisplay(audit);
+
+                return (
+                    <button
+                        type="button"
+                        className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm text-left"
+                        onClick={() =>
+                            setHistoryModal({
+                                open: true,
+                                order: { id: String(audit.event_id) } as LaundryOrder,
+                            })
+                        }
+                    >
+                        {displayAudit.orderLabel}
+                    </button>
+                );
+            },
+        },
+        {
+            label: "Action",
+            cellClassName: "whitespace-nowrap",
+            render: (audit) => {
+                const displayAudit = getLaundryAuditDisplay(audit);
+
+                return (
+                    <span
+                        className={cn(
+                            "px-3 py-1 text-xs font-semibold rounded-[3px]",
+                            displayAudit.actionClassName
+                        )}
+                    >
+                        {displayAudit.actionLabel}
+                    </span>
+                );
+            },
+        },
+        {
+            label: "Change",
+            cellClassName: "text-sm",
+            render: (audit) => getLaundryAuditDisplay(audit).changeText,
+        },
+        {
+            label: "User",
+            cellClassName: "text-muted-foreground whitespace-nowrap",
+            render: (audit) => getLaundryAuditDisplay(audit).userLabel,
+        },
+        {
+            label: "Date",
+            cellClassName: "text-muted-foreground whitespace-nowrap text-xs",
+            render: (audit) => getLaundryAuditDisplay(audit).dateLabel,
+        },
+    ], []);
+
+    const laundryOrderColumns = useMemo<ColumnDef<LaundryOrder>[]>(() => [
+        {
+            label: "Laundry",
+            cellClassName: "font-medium min-w-[120px]",
+            render: (order: LaundryOrder) => (
+                <button
+                    type="button"
+                    className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
+                    onClick={() =>
+                        setViewItemsModal({
+                            open: true,
+                            editMode: false,
+                            order,
+                        })
+                    }
+                    aria-label={`Open summary view for laundry order ${formatModuleDisplayId("laundry", order.id)}`}
+                >
+                    {formatModuleDisplayId("laundry", order.id)}
+                </button>
+            ),
+        },
+        {
+            label: "Item Name",
+            cellClassName: "whitespace-nowrap max-w-[200px] truncate",
+            render: (order: LaundryOrder) => getLaundryOrderDisplay(order, vendors).itemLabel,
+        },
+        {
+            label: "No. of Items",
+            headClassName: "text-center",
+            cellClassName: "text-center font-medium whitespace-nowrap",
+            render: (order: LaundryOrder) => getLaundryOrderDisplay(order, vendors).itemCountLabel,
+        },
+        {
+            label: "Pickup Date",
+            cellClassName: "text-xs text-muted-foreground whitespace-nowrap",
+            render: (order: LaundryOrder) => getLaundryOrderDisplay(order, vendors).pickupDateLabel,
+        },
+        {
+            label: "Delivery Date",
+            cellClassName: "text-xs text-muted-foreground whitespace-nowrap",
+            render: (order: LaundryOrder) => getLaundryOrderDisplay(order, vendors).deliveryDateLabel,
+        },
+        {
+            label: "Laundry Status",
+            headClassName: "text-center",
+            cellClassName: "text-center whitespace-nowrap",
+            render: (order: LaundryOrder) => (
+                <span
+                    className={cn(
+                        "px-3 py-1 text-xs font-semibold rounded-[3px]",
+                        getStatusColor(order.laundry_status, "laundry")
+                    )}
+                >
+                    {getLaundryOrderDisplay(order, vendors).laundryStatusLabel}
+                </span>
+            ),
+        },
+        {
+            label: "Vendor Status",
+            headClassName: "text-center",
+            cellClassName: "text-center whitespace-nowrap",
+            render: (order: LaundryOrder) => (
+                <span
+                    className={cn(
+                        "px-3 py-1 text-xs font-semibold rounded-[3px]",
+                        getStatusColor(
+                            getLaundryOrderDisplay(order, vendors).vendorStatus,
+                            "vendor"
+                        )
+                    )}
+                >
+                    {getLaundryOrderDisplay(order, vendors).vendorStatusLabel}
+                </span>
+            ),
+        },
+        {
+            label: "Vendor",
+            cellClassName: "whitespace-nowrap",
+            render: (order: LaundryOrder) => (
+                <span className="text-sm">
+                    {getLaundryOrderDisplay(order, vendors).vendorName}
+                </span>
+            ),
+        },
+    ], [vendors]);
 
     const resetFiltersHandler = () => {
         if (myProperties?.properties?.[0]?.id) {
@@ -594,18 +816,17 @@ export default function LaundryOrdersManagement() {
             const rows = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
 
             const formatted = rows.map((order: LaundryOrder) => {
-                const normalizedVendorStatus = order.vendor_status || order.vendorStatus || "NOT_ALLOTTED";
-                const vendorName = vendors?.find(v => v.id === order.vendor_id)?.name || "--";
+                const displayOrder = getLaundryOrderDisplay(order, vendors);
 
                 return {
-                    ORDER_ID: order.id,
-                    ITEM_COUNT: order.items?.length ?? 0,
-                    PICKUP_DATE: order.pickup_date ? new Date(order.pickup_date).toLocaleString() : "--",
-                    DELIVERY_DATE: order.delivery_date ? new Date(order.delivery_date).toLocaleString() : "--",
-                    LAUNDRY_STATUS: order.laundry_status,
-                    VENDOR_STATUS: normalizedVendorStatus,
-                    VENDOR_NAME: vendorName,
-                    AMOUNT: order.amount,
+                    "Laundry ID": formatModuleDisplayId("laundry", order.id),
+                    "Item Name": displayOrder.itemLabel,
+                    "No. of Items": displayOrder.itemCountLabel,
+                    "Pickup Date": displayOrder.pickupDateLabel,
+                    "Delivery Date": displayOrder.deliveryDateLabel,
+                    "Laundry Status": displayOrder.laundryStatusLabel,
+                    "Vendor Status": displayOrder.vendorStatusLabel,
+                    Vendor: displayOrder.vendorName,
                 };
             });
 
@@ -620,104 +841,81 @@ export default function LaundryOrdersManagement() {
 
     const exportAuditLogsSheet = () => {
         const formatted = filteredAuditLogs.map((audit) => {
-            const details = audit.details as Record<string, Record<string, string>> | undefined;
-            const before = details?.before;
-            const after = details?.after;
-
-            const changes: string[] = [];
-            if (audit.event_type === "CREATE") {
-                changes.push("Order Created");
-            } else {
-                if (before?.laundry_status !== after?.laundry_status) {
-                    changes.push(`Laundry: ${before?.laundry_status} -> ${after?.laundry_status}`);
-                }
-                if (before?.vendor_status !== after?.vendor_status) {
-                    changes.push(`Vendor: ${before?.vendor_status} -> ${after?.vendor_status}`);
-                }
-                if (before?.vendor_id !== after?.vendor_id) {
-                    changes.push("Vendor Assigned");
-                }
-                if (before?.delivery_date !== after?.delivery_date) {
-                    changes.push("Delivery Date Updated");
-                }
-            }
+            const displayAudit = getLaundryAuditDisplay(audit);
 
             return {
-                ORDER_ID: audit.event_id,
-                ACTION: audit.event_type,
-                CHANGE: changes.join(", "),
-                USER: `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim(),
-                DATE: audit.created_on ? new Date(audit.created_on as string).toLocaleString() : "--",
+                Order: displayAudit.orderLabel,
+                Action: displayAudit.actionLabel,
+                Change: displayAudit.changeText,
+                User: displayAudit.userLabel,
+                Date: displayAudit.dateLabel,
             };
         });
-
-        exportToExcel(formatted, "LaundryOrderHistory.xlsx");
+        exportToExcel(formatted, "LaundryAuditLogs.xlsx");
         toast.success("Export completed");
     };
 
+    /* ---------------- UI ---------------- */
     return (
         <div className="h-full flex flex-col overflow-hidden">
             <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8 space-y-6">
-                {/* Header */}
-                <div className="flex flex-col gap-4">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <h1 className="text-2xl font-bold">Laundry Orders</h1>
-                            <p className="text-sm text-muted-foreground">
-                                Track & manage laundry processing
+                    <div className="flex items-center justify-between w-full">
+                        <div className="flex flex-col">
+                            <h1 className="text-2xl font-bold leading-tight">Laundry Management</h1>
+                            <p className="text-sm text-muted-foreground mt-1">
+                                Manage hotel laundry operations, vendors, and audit logs.
                             </p>
                         </div>
 
                         <div className="flex items-center gap-3">
                             {isMultiProperty && (
-                                <div className="flex items-center h-9 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
-                                    <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border">
-                                        PROPERTY
+                                <div className="flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
+                                    <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border uppercase">
+                                        Property
                                     </span>
                                     <NativeSelect
                                         className="flex-1 bg-transparent px-2 focus:outline-none focus:ring-0 text-sm h-full truncate cursor-pointer"
                                         value={selectedPropertyId}
-                                        onChange={(e) => {
-                                            setSelectedPropertyId(e.target.value);
-                                            setOrdersPage(1);
-                                            setAuditPage(1);
-                                        }}
+                                        onChange={(e) => setSelectedPropertyId(e.target.value)}
                                     >
                                         <option value="" disabled>Select Property</option>
-                                        {myProperties?.properties?.map((p: any) => (
-                                            <option key={p.id} value={p.id}>
-                                                {p.brand_name}
+                                        {myProperties?.properties?.map((property: any) => (
+                                            <option key={property.id} value={property.id}>
+                                                {property.brand_name}
                                             </option>
                                         ))}
                                     </NativeSelect>
                                 </div>
                             )}
 
-                            {/* Create Order Button */}
-                            <Button variant="hero" className="h-9" onClick={() => setSheetOpen(true)}>
-                                + Create Order
-                            </Button>
+                            {permission?.can_create && (
+                                <Button
+                                    variant="hero"
+                                    onClick={() => {
+                                        setAddModalOpen(true);
+                                    }}
+                                >
+                                    Add Laundry Order
+                                </Button>
+                            )}
                         </div>
                     </div>
-                </div>
 
-                <div className="border-b border-border flex">
-
-                    <div
-                        onClick={() => setActiveTab("orders")}
-                        className={cn(
-                            "px-4 py-3 text-sm font-medium cursor-pointer border-b-2 transition",
-                            activeTab === "orders"
-                                ? "border-primary text-foreground"
-                                : "border-transparent text-muted-foreground hover:text-foreground"
-                        )}
-                    >
-                        Laundry Orders
-                    </div>
-
-                    <div
-                        onClick={() => setActiveTab("audit")}
-                        className={cn(
+                    <div className="flex border-b border-border bg-card/50 px-2 pt-2 gap-2">
+                        <div
+                            onClick={() => setActiveTab("orders")}
+                            className={cn(
+                                "px-4 py-3 text-sm font-medium cursor-pointer border-b-2 transition",
+                                activeTab === "orders"
+                                    ? "border-primary text-foreground"
+                                    : "border-transparent text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            Orders
+                        </div>
+                        <div
+                            onClick={() => setActiveTab("audit")}
+                            className={cn(
                             "px-4 py-3 text-sm font-medium cursor-pointer border-b-2 transition",
                             activeTab === "audit"
                                 ? "border-primary text-foreground"
@@ -806,115 +1004,34 @@ export default function LaundryOrdersManagement() {
 
                         <div className="px-2 pb-2">
                             <AppDataGrid
-                                columns={[
-                                    {
-                                        label: "#Id",
-                                        cellClassName: "font-medium",
-                                        render: (order: LaundryOrder) => `#${order.id}`,
-                                    },
-                                    {
-                                        label: "No. of Items",
-                                        headClassName: "text-center",
-                                        cellClassName: "text-center font-medium",
-                                        render: (order: LaundryOrder) => `${order.items?.length ?? 0} item(s)`,
-                                    },
-                                    {
-                                        label: "Pickup Date",
-                                        cellClassName: "text-xs text-muted-foreground",
-                                        render: (order: LaundryOrder) => new Date(order.pickup_date).toLocaleString(),
-                                    },
-                                    {
-                                        label: "Laundry Status",
-                                        headClassName: "text-center",
-                                        cellClassName: "text-center",
-                                        render: (order: LaundryOrder) => (
-                                            <span
-                                                className={cn(
-                                                    "px-2 py-1 rounded text-xs font-medium",
-                                                    getStatusColor(order.laundry_status, "laundry")
-                                                )}
-                                            >
-                                                {order.laundry_status.replace(/_/g, " ")}
-                                            </span>
-                                        ),
-                                    },
-                                    {
-                                        label: "Vendor Status",
-                                        headClassName: "text-center",
-                                        cellClassName: "text-center",
-                                        render: (order: LaundryOrder) => (
-                                            <span
-                                                className={cn(
-                                                    "px-2 py-1 rounded text-xs font-medium",
-                                                    getStatusColor(
-                                                        order.vendor_status ||
-                                                        order.vendorStatus ||
-                                                        "NOT_ALLOTTED",
-                                                        "vendor"
-                                                    )
-                                                )}
-                                            >
-                                                {(order.vendor_status || order.vendorStatus || "NOT_ALLOTTED")
-                                                    .replace(/_/g, " ")}
-                                            </span>
-                                        ),
-                                    },
-                                    {
-                                        label: "Vendor",
-                                        render: (order: LaundryOrder) => (
-                                            <span className="text-sm">
-                                                {vendors?.find(v => v.id === order.vendor_id)?.name || "--"}
-                                            </span>
-                                        ),
-                                    },
-                                ] as ColumnDef[]}
+                                columns={laundryOrderColumns}
                                 data={filteredOrders}
                                 loading={ordersLoading}
                                 emptyText="No laundry orders found"
-                                minWidth="900px"
-                                actionClassName="text-center w-[92px]"
+                                minWidth="1080px"
+                                actionClassName="text-center w-[60px]"
                                 className="mt-0"
                                 actions={(order: LaundryOrder) => (
-                                    <div className="flex gap-1 justify-center">
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className="h-8 w-8 text-primary hover:bg-primary/10 transition-colors"
-                                                    onClick={() =>
-                                                        setViewItemsModal({
-                                                            open: true,
-                                                            editMode: false,
-                                                            order: order
-                                                        })
-                                                    }
-                                                >
-                                                    <Eye className="w-4 h-4" />
-                                                </Button>
-                                            </TooltipTrigger>
-                                            <TooltipContent>Order Summary</TooltipContent>
-                                        </Tooltip>
-
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className="h-8 w-8 text-primary hover:bg-primary/10 transition-colors"
-                                                    onClick={() => {
-                                                        setHistoryModal({
-                                                            open: true,
-                                                            order
-                                                        });
-                                                    }}
-                                                >
-                                                    <History className="w-4 h-4" />
-                                                </Button>
-                                            </TooltipTrigger>
-                                            <TooltipContent>View Log History</TooltipContent>
-                                        </Tooltip>
-                                    </div>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                size="icon"
+                                                variant="ghost"
+                                                className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                                onClick={() => {
+                                                    setEditOrder(order);
+                                                    setViewItemsModal({
+                                                        open: true,
+                                                        editMode: true,
+                                                        order,
+                                                    });
+                                                }}
+                                            >
+                                                <Pencil className="w-4 h-4 mx-auto" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Edit Order</TooltipContent>
+                                    </Tooltip>
                                 )}
                                 enablePagination={!!data?.pagination}
                                 paginationProps={{
@@ -957,13 +1074,11 @@ export default function LaundryOrdersManagement() {
                                         options={[
                                             { label: "Any", value: "" },
                                             ...AUDIT_ACTIONS.map((action) => ({
-                                                label: action,
+                                                label: formatDisplayStatus(action),
                                                 value: action,
                                             })),
                                         ]}
                                     />
-
-                                    <div className="w-full" /> {/* Empty col 3 */}
 
                                     <GridToolbarActions
                                         className="gap-1 justify-end"
@@ -996,55 +1111,11 @@ export default function LaundryOrdersManagement() {
 
                         <div className="px-2 pb-2">
                             <AppDataGrid
-                                columns={[
-                                    {
-                                        label: "Order",
-                                        cellClassName: "font-medium",
-                                        render: (audit) => `#${audit.event_id}`,
-                                    },
-                                    {
-                                        label: "Action",
-                                        key: "event_type",
-                                        headClassName: "text-center",
-                                        cellClassName: "text-center font-medium",
-                                    },
-                                    {
-                                        label: "Change",
-                                        render: (audit) => {
-                                            const details = audit.details as Record<string, Record<string, string>> | undefined;
-                                            const before = details?.before;
-                                            const after = details?.after;
-
-                                            if (audit.event_type === "CREATE") return "Order Created";
-
-                                            const changes: string[] = [];
-                                            if (before?.laundry_status !== after?.laundry_status)
-                                                changes.push(`Laundry: ${before?.laundry_status} -> ${after?.laundry_status}`);
-                                            if (before?.vendor_status !== after?.vendor_status)
-                                                changes.push(`Vendor: ${before?.vendor_status} -> ${after?.vendor_status}`);
-                                            if (before?.vendor_id !== after?.vendor_id)
-                                                changes.push("Vendor Assigned");
-                                            if (before?.delivery_date !== after?.delivery_date)
-                                                changes.push("Delivery Date Updated");
-
-                                            return changes.join(", ");
-                                        },
-                                    },
-                                    {
-                                        label: "User",
-                                        cellClassName: "text-muted-foreground whitespace-nowrap",
-                                        render: (audit) => `${audit.user_first_name} ${audit.user_last_name}`,
-                                    },
-                                    {
-                                        label: "Date",
-                                        cellClassName: "text-muted-foreground whitespace-nowrap text-xs",
-                                        render: (audit) => new Date(audit.created_on as string).toLocaleString(),
-                                    },
-                                ] as ColumnDef[]}
+                                columns={laundryAuditColumns}
                                 data={filteredAuditLogs}
                                 loading={logsFetching}
                                 emptyText="No audit logs found"
-                                minWidth="900px"
+                                minWidth="1080px"
                                 className="mt-0"
                                 enablePagination={!!logs?.pagination}
                                 paginationProps={{
@@ -1361,7 +1432,7 @@ export default function LaundryOrdersManagement() {
                                         </NativeSelect>
                                     ) : (
                                         <p className="mt-1 font-medium">
-                                            {vendors?.find(v => v.id === viewItemsModal.order.vendor_id)?.name || "--"}
+                                            {getLaundryVendorName(viewItemsModal.order, vendors)}
                                         </p>
                                     )}
 
@@ -1383,12 +1454,12 @@ export default function LaundryOrdersManagement() {
                                             }
                                         >
                                             {(["PENDING", "PICKED_UP", "IN_PROCESS", "DELIVERED", "CANCELLED"] as LaundryStatus[]).map(s => (
-                                                <option key={s}>{s}</option>
+                                                <option key={s} value={s}>{formatDisplayStatus(s)}</option>
                                             ))}
                                         </NativeSelect>
                                     ) : (
                                         <p className="mt-1 font-medium">
-                                            {viewItemsModal.order.laundry_status}
+                                            {formatDisplayStatus(viewItemsModal.order.laundry_status)}
                                         </p>
                                     )}
                                 </div>
@@ -1409,12 +1480,12 @@ export default function LaundryOrdersManagement() {
                                             }
                                         >
                                             {(["NOT_ALLOTTED", "PICKED_UP", "RECEIVED"] as VendorStatus[]).map(s => (
-                                                <option key={s}>{s}</option>
+                                                <option key={s} value={s}>{formatDisplayStatus(s)}</option>
                                             ))}
                                         </NativeSelect>
                                     ) : (
                                         <p className="mt-1 font-medium">
-                                            {(viewItemsModal.order.vendor_status || viewItemsModal.order.vendorStatus)?.replace(/_/g, " ")}
+                                            {formatDisplayStatus(viewItemsModal.order.vendor_status || viewItemsModal.order.vendorStatus)}
                                         </p>
                                     )}
                                 </div>
@@ -1426,7 +1497,7 @@ export default function LaundryOrdersManagement() {
                                     {viewItemsModal.editMode ? (
                                         <div>
                                             <DatePicker
-                                                selected={parseDate(viewItemsModal.order.delivery_date)}
+                                                selected={parseDate(editOrder?.delivery_date || viewItemsModal.order.delivery_date)}
                                                 onChange={(date) =>
                                                     setEditOrder(prev => ({
                                                         ...prev,
@@ -1451,9 +1522,7 @@ export default function LaundryOrdersManagement() {
                                         </div>
                                     ) : (
                                         <p className="mt-1 font-medium">
-                                            {viewItemsModal.order.delivery_date
-                                                ? new Date(viewItemsModal.order.delivery_date).toLocaleString()
-                                                : "--"}
+                                            {formatDateTime(viewItemsModal.order.delivery_date)}
                                         </p>
                                     )}
                                 </div>
@@ -1580,34 +1649,7 @@ export default function LaundryOrdersManagement() {
 
                         {singleLog?.data?.map(log => {
 
-                            const details = typeof log.details === "string"
-                                ? JSON.parse(log.details)
-                                : log.details;
-
-                            const before = details?.before;
-                            const after = details?.after;
-
-                            const changes = [];
-
-                            if (log.event_type === "CREATE") {
-                                changes.push("Order Created");
-                            }
-
-                            if (before?.laundry_status !== after?.laundry_status) {
-                                changes.push(`Laundry Status: ${before?.laundry_status} → ${after?.laundry_status}`);
-                            }
-
-                            if (before?.vendor_status !== after?.vendor_status) {
-                                changes.push(`Vendor Status: ${before?.vendor_status} → ${after?.vendor_status}`);
-                            }
-
-                            if (before?.vendor_id !== after?.vendor_id) {
-                                changes.push("Vendor Assigned");
-                            }
-
-                            if (before?.delivery_date !== after?.delivery_date) {
-                                changes.push("Delivery Date Updated");
-                            }
+                            const changes = getLaundryAuditChanges(log);
 
                             return (
 
@@ -1616,11 +1658,11 @@ export default function LaundryOrdersManagement() {
                                     <div className="flex justify-between text-sm">
 
                                         <div className="font-medium">
-                                            {log.task_name || log.event_type}
+                                            {formatDisplayStatus(log.task_name || log.event_type)}
                                         </div>
 
                                         <div className="text-muted-foreground text-xs">
-                                            {new Date(log.created_on).toLocaleString()}
+                                            {formatDateTime(log.created_on)}
                                         </div>
 
                                     </div>

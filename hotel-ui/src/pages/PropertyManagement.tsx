@@ -19,6 +19,7 @@ import { useAppSelector } from "@/redux/hook";
 import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
 import { normalizeTextInput } from "@/utils/normalizeTextInput";
 import { useLocation, useNavigate } from "react-router-dom";
+import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 
 import PropertyIdentity from "@/components/property-form/sections/PropertyIdentity";
 import PropertyLocation from "@/components/property-form/sections/PropertyLocation";
@@ -829,12 +830,40 @@ export default function PropertyManagement() {
                         <AppDataGrid
                             columns={[
                         {
-                            label: "Property",
-                            cellClassName: "font-medium",
+                            label: "Property ID",
+                            cellClassName: "font-medium min-w-[90px]",
                             render: (property: Property) => (
-                                <div className="flex items-center gap-2">
-                                    <Building2 className="h-4 w-4 text-primary" />
-                                    {property.brand_name}
+                                <button
+                                    type="button"
+                                    className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
+                                    aria-label={`Open summary view for property ${formatModuleDisplayId("property", property.id)}`}
+                                    onClick={() => {
+                                        setMode("view");
+                                        setSelectedProperty(property);
+                                        const prepared = {
+                                            ...EMPTY_PROPERTY,
+                                            ...property,
+                                            floors: [],
+                                            total_rooms: property.total_rooms != null ? String(property.total_rooms) : "",
+                                            total_floors: property.total_floors ?? 0,
+                                            owner_user_id: property.owner_user_id ?? "",
+                                        };
+                                        setNewProperty(prepared);
+                                        setOriginalProperty(prepared);
+                                        setSheetOpen(true);
+                                    }}
+                                >
+                                    {formatModuleDisplayId("property", property.id)}
+                                </button>
+                            ),
+                        },
+                        {
+                            label: "Property Name",
+                            cellClassName: "font-medium whitespace-nowrap max-w-[200px] truncate",
+                            render: (property: Property) => (
+                                <div className="flex items-center gap-2 truncate">
+                                    <Building2 className="h-4 w-4 text-primary shrink-0" />
+                                    <span className="truncate">{property.brand_name}</span>
                                 </div>
                             ),
                         },

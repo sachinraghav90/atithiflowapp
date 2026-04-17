@@ -40,6 +40,7 @@ import { cn } from "@/lib/utils";
 import { getStatusColor } from "@/constants/statusColors";
 import { useGridPagination } from "@/hooks/useGridPagination";
 import { exportToExcel } from "@/utils/exportToExcel";
+import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 
 /* -------------------- Types -------------------- */
 type Staff = {
@@ -422,6 +423,20 @@ export default function StaffManagement() {
 
     const staffColumns = useMemo<ColumnDef<any>[]>(() => [
         {
+            label: "Staff ID",
+            cellClassName: "font-medium min-w-[90px]",
+            render: (s) => (
+                <button
+                    type="button"
+                    className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
+                    onClick={() => openStaffDetails(s)}
+                    aria-label={`Open summary view for staff ${formatModuleDisplayId("staff", s.id)}`}
+                >
+                    {formatModuleDisplayId("staff", s.id)}
+                </button>
+            ),
+        },
+        {
             label: "Name",
             cellClassName: "font-medium",
             render: (s) => (
@@ -433,7 +448,7 @@ export default function StaffManagement() {
                         </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
-                        <span className="text-sm font-semibold">{s.first_name} {s.last_name}</span>
+                        <span className="text-sm font-semibold whitespace-nowrap">{s.first_name} {s.last_name}</span>
                         <span className="text-xs text-muted-foreground leading-none">{s.email || "No email"}</span>
                     </div>
                 </div>

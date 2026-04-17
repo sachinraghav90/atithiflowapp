@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils";
 import { NativeSelect } from "@/components/ui/native-select";
 import DatePicker from "react-datepicker";
+import { normalizeTextInput } from "@/utils/normalizeTextInput";
 
 /* ================= TYPES ================= */
 
@@ -96,15 +97,24 @@ export function GridToolbarSearch({
   placeholder = "search here...",
   className,
 }: GridToolbarSearchProps) {
+  const handleBlur = () => {
+    const normalizedValue = normalizeTextInput(value).trim();
+
+    if (normalizedValue !== value) {
+      onChange(normalizedValue);
+    }
+  };
+
   return (
     <div className={cn("flex items-center h-8 w-full", className)}>
-      <div className="flex items-center w-full">
+      <div className="flex items-center gap-1 w-full">
         {/* INPUT */}
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4  h-4 text-muted-foreground" />
           <Input
             value={value}
             onChange={(e) => onChange(e.target.value)}
+            onBlur={handleBlur}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 onSearch?.();
@@ -118,7 +128,7 @@ export function GridToolbarSearch({
         {/* BUTTON */}
         <Button
           onClick={onSearch}
-          className="h-8 px-3 text-xs ml-0.5 rounded-lg border border-primary text-primary bg-transparent hover:bg-primary/10 font-medium whitespace-nowrap"
+          className="h-8 px-3 text-xs rounded-lg border border-primary text-primary bg-transparent hover:bg-primary/10 font-medium whitespace-nowrap"
         >
           SEARCH
         </Button>
