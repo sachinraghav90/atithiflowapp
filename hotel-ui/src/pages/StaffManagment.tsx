@@ -385,12 +385,12 @@ export default function StaffManagement() {
         }
 
         const formatted = staffRows.map((staffMember: any) => ({
-            NAME: `${staffMember.first_name || ""} ${staffMember.last_name || ""}`.trim() || "-",
-            EMAIL: staffMember.email || "-",
-            PHONE: staffMember.phone || staffMember.phone1 || "-",
-            PROPERTY: staffMember.properties?.[0]?.brand_name || "-",
-            ROLE: staffMember.roles?.[0]?.name || "-",
-            STATUS: staffMember.status || "-",
+            "Staff ID": formatModuleDisplayId("staff", staffMember.id),
+            "Name": `${staffMember.first_name || ""} ${staffMember.last_name || ""}`.trim() || "-",
+            "Contact": staffMember.phone || staffMember.phone1 || "-",
+            "Property": staffMember.properties?.[0]?.brand_name || "-",
+            "Role": staffMember.roles?.[0]?.name || "-",
+            "Status": staffMember.status || "-",
         }));
 
         exportToExcel(formatted, "Staff.xlsx");
@@ -424,7 +424,8 @@ export default function StaffManagement() {
     const staffColumns = useMemo<ColumnDef<any>[]>(() => [
         {
             label: "Staff ID",
-            cellClassName: "font-medium min-w-[90px]",
+            headClassName: "text-center",
+            cellClassName: "text-center font-medium min-w-[90px]",
             render: (s) => (
                 <button
                     type="button"
@@ -456,7 +457,7 @@ export default function StaffManagement() {
         },
         {
             label: "Contact",
-            cellClassName: "text-sm",
+            cellClassName: "text-muted-foreground text-sm whitespace-nowrap",
             render: (s) => (
                 <div className="inline-flex items-center gap-1.5 text-muted-foreground">
                     <Phone className="h-3.5 w-3.5" />
@@ -466,18 +467,18 @@ export default function StaffManagement() {
         },
         {
             label: "Property",
-            cellClassName: "text-sm",
+            cellClassName: "text-muted-foreground text-sm",
             render: (s) => s.properties?.[0]?.brand_name || "-",
         },
         {
             label: "Role",
-            cellClassName: "text-sm capitalize",
+            cellClassName: "text-muted-foreground text-sm capitalize",
             render: (s) => s.roles?.[0]?.name || "-",
         },
         {
             label: "Status",
             headClassName: "text-center",
-            cellClassName: "text-center",
+            cellClassName: "text-center whitespace-nowrap",
             render: (s) => (
                 <span
                     className={cn(

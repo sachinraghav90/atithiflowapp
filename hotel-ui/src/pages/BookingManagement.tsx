@@ -228,14 +228,13 @@ export default function BookingsManagement() {
         if (!exportedData) return
 
         const formatted = exportedData.map(b => ({
-            "Booking ID": formatModuleDisplayId("booking", b.id),
+            "Booking": formatModuleDisplayId("booking", b.id),
             "Status": b.booking_status?.replace("_", " "),
-            "Booking Date": new Date(b.booking_date).toLocaleDateString(),
-            "Arrival Date": new Date(b.estimated_arrival).toLocaleDateString(),
-            "Departure Date": new Date(b.estimated_departure).toLocaleDateString(),
-            "Nights": b.booking_nights,
-            "Final Amount": `₹${b.final_amount}`,
-            "Room Number(s)": Array.isArray(b.room_numbers) ? b.room_numbers.join(", ") : b.room_numbers?.toString()
+            "Arrival": formatToDDMMYYYY(b.estimated_arrival),
+            "Departure": formatToDDMMYYYY(b.estimated_departure),
+            "Amount": `₹ ${b.final_amount}`,
+            "Room number(s)": Array.isArray(b.room_numbers) ? b.room_numbers.join(", ") : (b.room_numbers?.toString() || "-"),
+            "Pickup / Drop": `${b.pickup ? "Yes" : "No"} / ${b.drop ? "Yes" : "No"}`,
         }));
 
         exportToExcel(formatted, "bookings.xlsx")

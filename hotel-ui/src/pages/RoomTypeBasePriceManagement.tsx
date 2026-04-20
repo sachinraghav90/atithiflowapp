@@ -17,11 +17,13 @@ import { normalizeNumberInput } from "@/utils/normalizeTextInput";
 import { useLocation } from "react-router-dom";
 import { usePermission } from "@/rbac/usePermission";
 import { exportToExcel } from "@/utils/exportToExcel";
-import { Download, FilterX, RefreshCcw } from "lucide-react";
+import { Download, FilterX, RefreshCcw, Pencil } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
 import { useGridPagination } from "@/hooks/useGridPagination";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
+import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 
 /* ---------------- Types ---------------- */
 type RateRow = {
@@ -203,7 +205,7 @@ export default function RoomTypeBasePriceManagement() {
                 <div className="flex items-center justify-between w-full">
                     {/* Left: Title */}
                     <div className="flex flex-col">
-                        <h1 className="text-2xl font-bold leading-tight">Room Category</h1>
+                        <h1 className="text-2xl font-bold leading-tight">Room Categories</h1>
                         <p className="text-sm text-muted-foreground">
                             Manage base pricing per room configuration
                         </p>
@@ -232,43 +234,33 @@ export default function RoomTypeBasePriceManagement() {
                             </div>
                         )}
 
-                        {permission?.can_create && (
-                            !editMode ? (
+                        {permission?.can_create && editMode && (
+                            <>
+                                <Button
+                                    variant="heroOutline"
+                                    className="h-10"
+                                    onClick={() => {
+                                        setRows(
+                                            (roomTypesData?.data ?? []).map((row: RateRow) => ({
+                                                ...row,
+                                                base_price: row.base_price == "0.00" || row.base_price == "0" ? "" : row.base_price
+                                            }))
+                                        );
+                                        setEditMode(false);
+                                    }}
+                                >
+                                    Cancel
+                                </Button>
+
                                 <Button
                                     variant="hero"
                                     className="h-10"
-                                    onClick={() => setEditMode(true)}
+                                    disabled={updatedRates.length === 0}
+                                    onClick={() => setConfirmOpen(true)}
                                 >
-                                    Edit Prices
+                                    Update
                                 </Button>
-                            ) : (
-                                <>
-                                    <Button
-                                        variant="heroOutline"
-                                        className="h-10"
-                                        onClick={() => {
-                                            setRows(
-                                                (roomTypesData?.data ?? []).map((row: RateRow) => ({
-                                                    ...row,
-                                                    base_price: row.base_price == "0.00" || row.base_price == "0" ? "" : row.base_price
-                                                }))
-                                            );
-                                            setEditMode(false);
-                                        }}
-                                    >
-                                        Cancel
-                                    </Button>
-
-                                    <Button
-                                        variant="hero"
-                                        className="h-10"
-                                        disabled={updatedRates.length === 0}
-                                        onClick={() => setConfirmOpen(true)}
-                                    >
-                                        Update
-                                    </Button>
-                                </>
-                            )
+                            </>
                         )}
                     </div>
                 </div>
@@ -360,17 +352,29 @@ export default function RoomTypeBasePriceManagement() {
                     <AppDataGrid
                     columns={[
                         {
+                            label: "Room ID",
+                            headClassName: "text-center",
+                            cellClassName: "text-center font-medium min-w-[90px]",
+                            render: (r: RateRow) => (
+                                <span className="inline-flex items-center font-semibold text-primary text-sm tracking-wide">
+                                    {formatModuleDisplayId("room", r.id)}
+                                </span>
+                            ),
+                        },
+                        {
                             label: "Room Category",
                             key: "room_category_name",
-                            cellClassName: "font-medium",
+                            cellClassName: "font-semibold text-foreground",
                         },
                         {
                             label: "AC Type",
                             key: "ac_type_name",
+                            cellClassName: "text-muted-foreground",
                         },
                         {
                             label: "Bed Type",
                             key: "bed_type_name",
+                            cellClassName: "text-muted-foreground",
                         },
                         {
                             label: "Base Price",
@@ -399,6 +403,24 @@ export default function RoomTypeBasePriceManagement() {
                     loading={roomTypesLoading}
                     emptyText="No room categories found"
                     minWidth="760px"
+                    actionLabel=""
+                    actionClassName="text-center w-[60px]"
+                    actions={(r: RateRow) => (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                    aria-label={`Edit price for ${r.room_category_name}`}
+                                    onClick={() => setEditMode(true)}
+                                >
+                                    <Pencil className="w-4 h-4 mx-auto" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Edit Price</TooltipContent>
+                        </Tooltip>
+                    )}
                     enablePagination
                     paginationProps={{
                         page,

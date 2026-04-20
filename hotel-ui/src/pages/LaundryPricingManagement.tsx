@@ -26,7 +26,8 @@ import { useLocation } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
-import { FilterX, RefreshCcw, Download } from "lucide-react";
+import { FilterX, RefreshCcw, Download, Pencil } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getStatusColor } from "@/constants/statusColors";
 import { toast } from "react-toastify";
 import { filterGridRowsByQuery } from "@/utils/filterGridRows";
@@ -317,9 +318,9 @@ export default function LaundryPricingManagement() {
 
         const formatted = filteredItems.map(item => ({
             "Laundry ID": formatModuleDisplayId("laundry", item.id),
-            "Item Name": item.item_name,
-            "Description": item.description || "—",
-            "Rate (Rs)": item.item_rate,
+            "Item": item.item_name,
+            "Description": item.description || "-",
+            "Rate": `Rs ${item.item_rate}`,
             "Status": item.is_active ? "Active" : "Inactive"
         }));
 
@@ -352,9 +353,10 @@ export default function LaundryPricingManagement() {
     const laundryColumns = useMemo<ColumnDef<EditableLaundry>[]>(() => [
         {
             label: "Laundry ID",
-            cellClassName: "font-medium min-w-[90px]",
+            headClassName: "text-center",
+            cellClassName: "text-center font-medium min-w-[90px]",
             render: (item) => (
-                <span className="font-medium text-primary">
+                <span className="inline-flex items-center font-semibold text-primary text-sm tracking-wide">
                     {formatModuleDisplayId("laundry", item.id)}
                 </span>
             ),
@@ -476,11 +478,7 @@ export default function LaundryPricingManagement() {
                                     Add Item
                                 </Button>
 
-                                {!editMode ? (
-                                    <Button variant="hero" className="h-10" onClick={() => setEditMode(true)}>
-                                        Edit
-                                    </Button>
-                                ) : (
+                                {editMode && (
                                     <>
                                         <Button variant="hero" className="h-10" disabled={!hasUpdates} onClick={handleBulkUpdate}>
                                             Update Prices
@@ -564,6 +562,24 @@ export default function LaundryPricingManagement() {
                             rowKey={(item) => item.id}
                             loading={laundryLoading || laundryFetching}
                             emptyText="No laundry items found"
+                            actionLabel=""
+                            actionClassName="text-center w-[60px]"
+                            actions={(item) => (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                            aria-label={`Edit laundry item ${item.item_name}`}
+                                            onClick={() => setEditMode(true)}
+                                        >
+                                            <Pencil className="w-4 h-4 mx-auto" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Edit Item</TooltipContent>
+                                </Tooltip>
+                            )}
                             enablePagination={Boolean(data?.data?.pagination)}
                             paginationProps={data?.data?.pagination ? {
                                 page,

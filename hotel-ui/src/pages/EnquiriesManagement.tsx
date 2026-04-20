@@ -278,8 +278,9 @@ export default function EnquiriesManagement() {
 
     const enquiryColumns = useMemo<ColumnDef<Enquiry>[]>(() => [
         {
-            label: "Enquiry",
-            cellClassName: "font-medium min-w-[90px]",
+            label: "Enquiry ID",
+            headClassName: "text-center",
+            cellClassName: "text-center font-medium min-w-[90px]",
             render: (enquiry) => (
                 <button
                     type="button"
@@ -293,7 +294,7 @@ export default function EnquiriesManagement() {
         },
         {
             label: "Name",
-            cellClassName: "whitespace-nowrap max-w-[150px] truncate",
+            cellClassName: "font-medium whitespace-nowrap max-w-[150px] truncate",
             render: (enquiry) => getEnquiryDisplay(enquiry).primaryLabel,
         },
         {
@@ -303,7 +304,7 @@ export default function EnquiriesManagement() {
         },
         {
             label: "City",
-            cellClassName: "whitespace-nowrap",
+            cellClassName: "text-muted-foreground whitespace-nowrap",
             render: (enquiry) => getEnquiryDisplay(enquiry).cityLabel,
         },
         {

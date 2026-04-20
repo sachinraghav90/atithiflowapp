@@ -843,12 +843,12 @@ export function CreateOrder() {
 
                         {/* Total Amount */}
                         <div className="flex flex-col gap-1 justify-end ml-auto">
-                            <Label className="flex items-center gap-2">
+                            <Label className="flex focus:outline-none  items-center gap-2">
                                 Total Amount
                             </Label>
 
                             <Input
-                                className="item-total-input bold text-lg"
+                                className="item-total-input focus:outline-none border-none bold text-lg"
                                 type="text"
                                 readOnly={true}
                                 value={order.total_amount ? `₹ ${order.total_amount}` : ""}

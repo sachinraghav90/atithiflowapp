@@ -476,7 +476,7 @@ export default function KitchenInventory() {
                 {/* Header */}
                 <div className="flex justify-between items-center shrink-0">
                     <div>
-                        <h1 className="text-2xl font-bold">Kitchen Inventory</h1>
+                        <h1 className="text-2xl font-bold">Kitchen</h1>
                         <p className="text-sm text-muted-foreground">
                             Stock, costing & procurement management
                         </p>
@@ -621,7 +621,8 @@ export default function KitchenInventory() {
                                     columns={[
                                         {
                                             label: "Item ID",
-                                            cellClassName: "font-medium min-w-[90px]",
+                                            headClassName: "text-center",
+                                            cellClassName: "text-center font-medium min-w-[90px]",
                                             render: (item: KitchenItem) => (
                                                 <button
                                                     type="button"

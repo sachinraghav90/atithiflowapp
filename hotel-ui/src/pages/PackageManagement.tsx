@@ -25,10 +25,11 @@ import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Download, FilterX, Pencil, RefreshCcw } from "lucide-react";
 import { getStatusColor } from "@/constants/statusColors";
-import { GridToolbar, GridToolbarActions, GridToolbarSearch, GridToolbarSelect, GridToolbarRow } from "@/components/ui/grid-toolbar";
+import { GridToolbar, GridToolbarActions, GridToolbarSearch, GridToolbarSelect, GridToolbarRow, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
 import { filterGridRowsByQuery } from "@/utils/filterGridRows";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { useGridPagination } from "@/hooks/useGridPagination";
+import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 
 /* -------------------- Types -------------------- */
 type PackageListItem = {
@@ -225,11 +226,12 @@ export default function PackageManagement() {
         }
 
         const formatted = filteredPackageRows.map((pkg) => ({
-            PLAN_NAME: pkg.package_name,
-            DESCRIPTION: pkg.description || "-",
-            TYPE: pkg.system_generated ? "System" : "Custom",
-            BASE_PRICE: Number(pkg.base_price).toFixed(),
-            STATUS: pkg.is_active ? "Active" : "Inactive",
+            "Plan ID": formatModuleDisplayId("package", pkg.id),
+            "Plan Name": pkg.package_name,
+            "Description": pkg.description || "-",
+            "Type": pkg.system_generated ? "System" : "Custom",
+            "Base Price": `₹${Number(pkg.base_price).toFixed()}`,
+            "Status": pkg.is_active ? "Active" : "Inactive",
         }));
 
         exportToExcel(formatted, "Plans.xlsx");
@@ -264,8 +266,23 @@ export default function PackageManagement() {
 
     const packageColumns = useMemo<ColumnDef<PackageDetail>[]>(() => [
         {
+            label: "Plan ID",
+            headClassName: "text-center",
+            cellClassName: "text-center font-medium min-w-[90px]",
+            render: (pkg) => (
+                <button
+                    type="button"
+                    className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
+                    onClick={() => handleOpenEdit({ id: String(pkg.id), package_name: pkg.package_name })}
+                    aria-label={`Open plan ${formatModuleDisplayId("package", pkg.id)}`}
+                >
+                    {formatModuleDisplayId("package", pkg.id)}
+                </button>
+            ),
+        },
+        {
             label: "Plan Name",
-            cellClassName: "font-medium",
+            cellClassName: "font-semibold text-foreground",
             render: (pkg) => pkg.package_name,
         },
         {

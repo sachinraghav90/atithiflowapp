@@ -670,7 +670,7 @@ export default function LaundryOrdersManagement() {
         },
         {
             label: "Change",
-            cellClassName: "text-sm",
+            cellClassName: "text-muted-foreground text-sm",
             render: (audit) => getLaundryAuditDisplay(audit).changeText,
         },
         {
@@ -688,7 +688,8 @@ export default function LaundryOrdersManagement() {
     const laundryOrderColumns = useMemo<ColumnDef<LaundryOrder>[]>(() => [
         {
             label: "Laundry",
-            cellClassName: "font-medium min-w-[120px]",
+            headClassName: "text-center",
+            cellClassName: "text-center font-medium min-w-[90px]",
             render: (order: LaundryOrder) => (
                 <button
                     type="button"
@@ -762,12 +763,8 @@ export default function LaundryOrdersManagement() {
         },
         {
             label: "Vendor",
-            cellClassName: "whitespace-nowrap",
-            render: (order: LaundryOrder) => (
-                <span className="text-sm">
-                    {getLaundryOrderDisplay(order, vendors).vendorName}
-                </span>
-            ),
+            cellClassName: "text-muted-foreground whitespace-nowrap text-sm",
+            render: (order: LaundryOrder) => getLaundryOrderDisplay(order, vendors).vendorName,
         },
     ], [vendors]);
 
@@ -861,7 +858,7 @@ export default function LaundryOrdersManagement() {
             <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8 space-y-6">
                     <div className="flex items-center justify-between w-full">
                         <div className="flex flex-col">
-                            <h1 className="text-2xl font-bold leading-tight">Laundry Management</h1>
+                            <h1 className="text-2xl font-bold leading-tight">Laundry Orders</h1>
                             <p className="text-sm text-muted-foreground mt-1">
                                 Manage hotel laundry operations, vendors, and audit logs.
                             </p>

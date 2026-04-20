@@ -190,11 +190,11 @@ export default function VendorsManagement() {
     const exportVendorsSheet = () => {
         if (!vendorRows.length) return toast.error("No data to export");
         const formatted = vendorRows.map((v: Vendor) => ({
-            NAME: v.name,
-            TYPE: v.vendor_type || "—",
-            CONTACT: v.contact_no || "—",
-            EMAIL: v.email_id || "—",
-            STATUS: v.is_active ? "Active" : "Inactive"
+            "Vendor ID": formatModuleDisplayId("vendor", v.id),
+            "Name": v.name,
+            "Type": v.vendor_type || "—",
+            "Contact": v.contact_no || "—",
+            "Status": v.is_active ? "Active" : "Inactive"
         }));
         exportToExcel(formatted, "Vendors.xlsx");
     };
@@ -363,7 +363,8 @@ export default function VendorsManagement() {
                     columns={[
                         {
                             label: "Vendor ID",
-                            cellClassName: "font-medium min-w-[90px]",
+                            headClassName: "text-center",
+                            cellClassName: "text-center font-medium min-w-[90px]",
                             render: (v: Vendor) => (
                                 <button
                                     type="button"
@@ -382,10 +383,12 @@ export default function VendorsManagement() {
                         },
                         {
                             label: "Type",
+                            cellClassName: "text-muted-foreground",
                             render: (v: Vendor) => v.vendor_type || "—",
                         },
                         {
                             label: "Contact",
+                            cellClassName: "text-muted-foreground whitespace-nowrap",
                             render: (v: Vendor) => v.contact_no || "—",
                         },
                         {
@@ -407,7 +410,7 @@ export default function VendorsManagement() {
                     emptyText="No vendors found"
                     minWidth="600px"
                     actionLabel=""
-                    actionClassName="text-center w-[72px]"
+                    actionClassName="text-center w-[60px]"
                     actions={(v: Vendor) => (
                         <Tooltip>
                             <TooltipTrigger asChild>

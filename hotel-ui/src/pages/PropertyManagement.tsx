@@ -831,7 +831,8 @@ export default function PropertyManagement() {
                             columns={[
                         {
                             label: "Property ID",
-                            cellClassName: "font-medium min-w-[90px]",
+                            headClassName: "text-center",
+                            cellClassName: "text-center font-medium min-w-[90px]",
                             render: (property: Property) => (
                                 <button
                                     type="button"
@@ -869,9 +870,9 @@ export default function PropertyManagement() {
                         },
                         {
                             label: "Address",
-                            cellClassName: "font-medium",
+                            cellClassName: "text-muted-foreground text-sm",
                             render: (property: Property) => (
-                                <div className="text-sm">
+                                <div>
                                     {property.city}, {property.state}
                                 </div>
                             ),
@@ -879,16 +880,17 @@ export default function PropertyManagement() {
                         {
                             label: "Email",
                             key: "email",
-                            cellClassName: "text-muted-foreground text-xs",
+                            cellClassName: "text-muted-foreground text-xs whitespace-nowrap",
                         },
                         {
                             label: "Phone",
                             key: "phone",
-                            cellClassName: "font-mono text-xs",
+                            cellClassName: "font-mono text-xs text-muted-foreground whitespace-nowrap",
                         },
                         {
                             label: "Status",
-                            cellClassName: "text-center",
+                            headClassName: "text-center",
+                            cellClassName: "text-center whitespace-nowrap",
                             render: (property: Property) => (
                                 <span
                                     className={cn(
@@ -906,7 +908,7 @@ export default function PropertyManagement() {
                     emptyText="No properties found"
                     minWidth="760px"
                     actionLabel=""
-                    actionClassName="text-center w-[72px]"
+                    actionClassName="text-center w-[60px]"
                     actions={(property: Property) => (
                         <Tooltip>
                             <TooltipTrigger asChild>

@@ -209,7 +209,7 @@ export default function InventoryMaster() {
                 {/* HEADER */}
                 <div className="flex justify-between items-center mb-2">
                     <div>
-                        <h1 className="text-2xl font-bold text-foreground">Inventory Master</h1>
+                        <h1 className="text-2xl font-bold text-foreground">Master Inventory</h1>
                         <p className="text-sm text-muted-foreground">
                             Manage inventory items and stock master data
                         </p>
@@ -360,7 +360,8 @@ export default function InventoryMaster() {
                             columns={[
                                 {
                                     label: "Inventory ID",
-                                    cellClassName: "font-medium min-w-[90px]",
+                                    headClassName: "text-center",
+                                    cellClassName: "text-center font-medium min-w-[90px]",
                                     render: (item: InventoryItem) => (
                                         <button
                                             type="button"

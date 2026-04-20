@@ -349,7 +349,7 @@ export default function MenuMaster() {
 
                     {/* LEFT SIDE */}
                     <div className="shrink-0">
-                        <h1 className="text-2xl font-bold">Menu Master</h1>
+                        <h1 className="text-2xl font-bold">Menu Items</h1>
                         <p className="text-sm text-muted-foreground">
                             Manage restaurant menu items
                         </p>
@@ -520,7 +520,8 @@ export default function MenuMaster() {
                             columns={[
                                 {
                                     label: "Menu ID",
-                                    cellClassName: "font-medium min-w-[90px]",
+                                    headClassName: "text-center",
+                                    cellClassName: "text-center font-medium min-w-[90px]",
                                     render: (item: MenuItem) => (
                                         <button
                                             type="button"
