@@ -185,7 +185,7 @@ export default function KitchenInventoryBulkAdjustSheet({
                                         touched: { ...row.touched, inventory_master_id: true }
                                     });
                                 }}
-                                placeholder="Select inventory item"
+                                placeholder="--Please Select--"
                                 itemName="name"
                                 disabled={!propertyId}
                             />
@@ -232,7 +232,7 @@ export default function KitchenInventoryBulkAdjustSheet({
                             onChange={(e) => updateRow(index, { unit: e.target.value })}
                             disabled={!row.inventory_master_id || selectedMaster?.use_type !== "usable"}
                         >
-                            <option value="">--</option>
+                            <option value="">--Please Select--</option>
                             {availableUnits.map(u => (
                                 <option key={u.id} value={u.id}>{u.label}</option>
                             ))}
@@ -251,8 +251,8 @@ export default function KitchenInventoryBulkAdjustSheet({
                 </SheetHeader>
 
                 <div className="flex-1 overflow-y-auto bg-background">
-                    <div className="p-6 space-y-6">
-                        <div className="space-y-4">
+                    <div className="px-6 pb-6 pt-3 space-y-6">
+                        <div className="space-y-2">
 
                         <div className="editable-grid-compact border rounded-[5px] overflow-hidden bg-background/50 border-border">
                             <AppDataGrid

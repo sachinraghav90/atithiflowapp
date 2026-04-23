@@ -21,6 +21,7 @@ import { getStatusColor } from "@/constants/statusColors";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { filterGridRowsByQuery } from "@/utils/filterGridRows";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
+import { GridBadge } from "@/components/ui/grid-badge";
 
 type PropertyOption = {
     id: number;
@@ -250,14 +251,9 @@ export default function PaymentsManagement() {
                                     headClassName: "text-center",
                                     cellClassName: "text-center whitespace-nowrap",
                                     render: (p: PaymentRow) => (
-                                        <span
-                                            className={cn(
-                                                "px-3 py-1 text-xs font-semibold rounded-[3px]",
-                                                getStatusColor(p.payment_status, "payment")
-                                            )}
-                                        >
+                                        <GridBadge status={p.payment_status} statusType="payment">
                                             {p.payment_status}
-                                        </span>
+                                        </GridBadge>
                                     ),
                                 },
                             ] as ColumnDef[]}

@@ -19,6 +19,8 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover";
 import { NativeSelect } from "@/components/ui/native-select";
+import { DataGrid, DataGridCell, DataGridHead, DataGridHeader, DataGridRow } from "@/components/ui/data-grid";
+import { ValidationTooltip } from "@/components/ui/validation-tooltip";
 import {
     Command,
     CommandEmpty,
@@ -27,6 +29,7 @@ import {
     CommandItem,
 } from "@/components/ui/command";
 import { Check, ChevronDown, Delete, Trash, Trash2, X, PlusCircle } from "lucide-react";
+import { MenuItemSelect } from "@/components/MenuItemSelect";
 import COUNTRY_CODES from '../utils/countryCode.json'
 
 type AvailableRoom = {
@@ -170,7 +173,11 @@ export default function EnquiryCreate() {
 
     const roomsByFloor = groupRoomsByFloor(availableRooms?.rooms);
     const roomTypes = useMemo(() => {
-        return Array.isArray(roomTypesData?.data) ? roomTypesData.data : [];
+        const data = Array.isArray(roomTypesData?.data) ? roomTypesData.data : [];
+        return data.map(type => ({
+            ...type,
+            full_name: `${type.room_category_name} ${type.ac_type_name} ${type.bed_type_name}`
+        }));
     }, [roomTypesData]);
 
     useEffect(() => {
@@ -392,28 +399,41 @@ return (
                             </p>
                         </div>
 
-                        {/* Right: Property Dropdown */}
-                        {(isSuperAdmin || isOwner) && (
-                            <div className="w-full sm:w-64 space-y-1">
-                                <Label className="text-xs">Property</Label>
-                                <NativeSelect
-                                    className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
-                                    value={selectedPropertyId ?? ""}
-                                    onChange={(e) =>
-                                        setSelectedPropertyId(Number(e.target.value) || null)
-                                    }
-                                    disabled={!(isSuperAdmin || isOwner)}
-                                >
-                                    <option value="">All properties</option>
-                                    {!myPropertiesLoading &&
-                                        myProperties?.properties?.map((property) => (
-                                            <option key={property.id} value={property.id}>
-                                                {property.brand_name}
-                                            </option>
-                                        ))}
-                                </NativeSelect>
-                            </div>
-                        )}
+                        <div className="flex w-full items-start gap-2 sm:w-auto sm:items-start">
+                            {/* Right: Property Dropdown */}
+                            {(isSuperAdmin || isOwner) && (
+                                <div className="w-full sm:w-64 space-y-1">
+                                    <Label className="text-xs">Property</Label>
+                                    <NativeSelect
+                                        className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
+                                        value={selectedPropertyId ?? ""}
+                                        onChange={(e) =>
+                                            setSelectedPropertyId(Number(e.target.value) || null)
+                                        }
+                                        disabled={!(isSuperAdmin || isOwner)}
+                                    >
+                                        <option value="">All properties</option>
+                                        {!myPropertiesLoading &&
+                                            myProperties?.properties?.map((property) => (
+                                                <option key={property.id} value={property.id}>
+                                                    {property.brand_name}
+                                                </option>
+                                            ))}
+                                    </NativeSelect>
+                                </div>
+                            )}
+
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 shrink-0 self-start rounded-sm p-0 text-slate-500 shadow-none hover:bg-transparent hover:text-slate-700"
+                                aria-label="Close enquiry form"
+                                onClick={() => navigate("/enquiries")}
+                            >
+                                <X className="h-5 w-5 stroke-[1.75]" />
+                            </Button>
+                        </div>
                     </div>
 
                     <div className="space-y-3 mt-4">
@@ -662,7 +682,7 @@ return (
                                         <Label>Total Members</Label>
                                         <Input
                                             readOnly
-                                            className="bg-gray-100 cursor-not-allowed"
+                                            className="bg-background cursor-not-allowed"
                                             value={(Number(form.senior_citizens || 0) + Number(form.children || 0) + Number(form.adults || 0) + Number(form.specially_abled || 0)).toString()}
                                         />
                                     </div>
@@ -698,63 +718,44 @@ return (
                             title="Room & Pricing"
                             description="Room preferences and quoted amount"
                         >
-                            <div className="space-y-2">
+                            <div className="editable-grid-compact overflow-hidden rounded-[5px] border bg-background">
+                                <div className="overflow-x-auto w-full border-b border-border bg-background">
+                                    <div className="w-full min-w-[640px]">
+                                        <DataGrid>
+                                            <DataGridHeader>
+                                                <DataGridHead>Room Type*</DataGridHead>
+                                                <DataGridHead className="w-44">Rooms</DataGridHead>
+                                                {form.room_details.length > 1 && (
+                                                    <DataGridHead className="w-20 text-center">Action</DataGridHead>
+                                                )}
+                                            </DataGridHeader>
 
-                                {form.room_details.map((room, index) => (
+                                            <tbody>
+                                                {form.room_details.map((room) => {
+                                                    const isRoomTypeInvalid = submitted && !room.room_type;
+                                                    const isRoomCountInvalid = submitted && room.no_of_rooms < 1;
 
-                                    <div
-                                        key={room.id}
-                                        className={cn(
-                                            "flex items-end gap-3 rounded-[4px]",
-                                            submitted && !room.room_type && "border-2 border-red-500 p-3 bg-red-50"
-                                        )}
-                                    >
+                                                    return (
+                                                        <DataGridRow key={room.id} className="odd:bg-background even:bg-background">
+                                                            <DataGridCell>
+                                                                <ValidationTooltip
+                                                                    isValid={!isRoomTypeInvalid}
+                                                                    message="Room type missing"
+                                                                >
+                                                                    <MenuItemSelect
+                                                                        value={room.room_type}
+                                                                        items={roomTypes}
+                                                                        itemName="full_name"
+                                                                        placeholder="--Please Select--"
+                                                                        extraClasses={cn(
+                                                                            "h-9 w-full rounded-[3px] border border-border bg-background px-2 py-1 text-sm font-normal shadow-none hover:bg-background text-left transition-colors duration-150",
+                                                                            !room.room_type && "text-muted-foreground",
+                                                                            isRoomTypeInvalid && "border-red-500"
+                                                                        )}
+                                                                        onSelect={(val) => {
+                                                                            const existingRoom = form.room_details.find(r => r.room_type === val && r.id !== room.id);
 
-                                        {/* ROOM TYPE */}
-                                        <div className="flex-1 relative">
-                                            {index === 0 && <Label className="text-xs">Room Type</Label>}
-
-                                            <Popover open={roomOpenId === room.id} onOpenChange={(isOpen) => setRoomOpenId(isOpen ? room.id : null)}>
-                                                <PopoverTrigger asChild>
-                                                    <Button
-                                                        variant="outline"
-                                                        className={cn(
-                                                            "w-full justify-between bg-background",
-                                                            submitted && !room.room_type && "border-red-500"
-                                                        )}
-                                                    >
-                                                        {room.room_type || "Select room type"}
-                                                        <ChevronDown className="h-4 w-4 opacity-50" />
-                                                    </Button>
-                                                </PopoverTrigger>
-
-                                                <PopoverContent className="p-0">
-                                                    <Command>
-                                                        <CommandInput placeholder="Search room type..." />
-                                                        <CommandGroup
-                                                            className="max-h-60 overflow-y-auto"
-                                                            onWheel={(e) => e.stopPropagation()}
-                                                        >
-
-                                                            {roomTypes?.filter(type => {
-                                                                const value = `${type.room_category_name} ${type.ac_type_name} ${type.bed_type_name}`;
-                                                                // Exclude already-selected room types (except current room)
-                                                                return !form.room_details.some(r => r.id !== room.id && r.room_type === value);
-                                                            }).map((type) => {
-
-                                                                const value =
-                                                                    `${type.room_category_name} ${type.ac_type_name} ${type.bed_type_name}`;
-
-                                                                return (
-                                                                    <CommandItem
-                                                                        key={type.id}
-                                                                        value={value}
-                                                                        onSelect={() => {
-                                                                            // Check if this room type is already selected in another room
-                                                                            const existingRoom = form.room_details.find(r => r.room_type === value && r.id !== room.id);
-                                                                            
                                                                             if (existingRoom) {
-                                                                                // If exists elsewhere, increment that room's quantity and remove current
                                                                                 setForm(prev => ({
                                                                                     ...prev,
                                                                                     room_details: prev.room_details
@@ -768,74 +769,73 @@ return (
                                                                                         .filter(Boolean) as typeof form.room_details
                                                                                 }));
                                                                             } else {
-                                                                                // Normal update - set room type for current room
                                                                                 setForm(prev => ({
                                                                                     ...prev,
                                                                                     room_details: prev.room_details.map(r =>
-                                                                                        r.id === room.id ? { ...r, room_type: value } : r
+                                                                                        r.id === room.id ? { ...r, room_type: String(val) } : r
                                                                                     )
                                                                                 }));
                                                                             }
-                                                                            setRoomOpenId(null);
                                                                         }}
+                                                                    />
+                                                                </ValidationTooltip>
+                                                            </DataGridCell>
+
+                                                            <DataGridCell className="w-44">
+                                                                <ValidationTooltip
+                                                                    isValid={!isRoomCountInvalid}
+                                                                    message="Invalid room count"
+                                                                >
+                                                                    <Input
+                                                                        type="text"
+                                                                        className={cn(
+                                                                            "h-9 rounded-[3px] border border-border bg-background px-3 shadow-none focus-visible:ring-1 focus-visible:ring-primary",
+                                                                            isRoomCountInvalid && "border-red-500"
+                                                                        )}
+                                                                        value={room.no_of_rooms}
+                                                                        onChange={(e) => {
+                                                                            const val = normalizeNumberInput(e.target.value);
+                                                                            setForm(prev => ({
+                                                                                ...prev,
+                                                                                room_details: prev.room_details.map(r =>
+                                                                                    r.id === room.id ? { ...r, no_of_rooms: val === "" ? 0 : Number(val) } : r
+                                                                                )
+                                                                            }));
+                                                                        }}
+                                                                    />
+                                                                </ValidationTooltip>
+                                                            </DataGridCell>
+
+                                                            {form.room_details.length > 1 && (
+                                                                <DataGridCell className="text-center">
+                                                                    <Button
+                                                                        type="button"
+                                                                        size="icon"
+                                                                        variant="ghost"
+                                                                        className="mx-auto h-10 w-10 text-destructive transition-colors hover:text-destructive/80"
+                                                                        onClick={() => removeRoomType(room.id)}
                                                                     >
-                                                                        {value}
-                                                                    </CommandItem>
-                                                                )
-                                                            })}
-
-                                                        </CommandGroup>
-                                                    </Command>
-                                                </PopoverContent>
-                                            </Popover>
-                                            {submitted && !room.room_type && (
-                                                <></>
-                                            )}
-                                        </div>
-
-                                        {/* QUANTITY */}
-                                        <div className="w-[120px]">
-                                            {index === 0 && <Label className="text-xs">Rooms</Label>}
-                                            <Input
-                                                type="number"
-                                                className="bg-background"
-                                                min={1}
-                                                value={room.no_of_rooms}
-                                                onChange={(e) => {
-                                                    setForm(prev => ({
-                                                        ...prev,
-                                                        room_details: prev.room_details.map(r =>
-                                                            r.id === room.id ? { ...r, no_of_rooms: Number(e.target.value) } : r
-                                                        )
-                                                    }));
-                                                }}
-                                            />
-                                        </div>
-
-                                        {/* REMOVE ICON BUTTON */}
-                                        {form.room_details.length > 1 && (
-                                            <Button
-                                                type="button"
-                                                size="icon"
-                                                variant="ghost"
-                                                className="mb-[2px]"
-                                                onClick={() => removeRoomType(room.id)}
-                                            >
-                                                <Trash2 />
-                                            </Button>
-                                        )}
-
+                                                                        <Trash2 className="h-5 w-5" />
+                                                                    </Button>
+                                                                </DataGridCell>
+                                                            )}
+                                                        </DataGridRow>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </DataGrid>
                                     </div>
+                                </div>
 
-                                ))}
-                                <button
-                                    type="button"
-                                    className="flex items-center gap-1.5 text-primary hover:underline text-sm font-medium transition-colors"
-                                    onClick={addRoomType}
-                                >
-                                    <PlusCircle className="w-4 h-4" /> Add New Room Type(s)
-                                </button>
-
+                                <div className="bg-muted/10 p-3">
+                                    <button
+                                        type="button"
+                                        className="flex items-center gap-1.5 text-sm font-semibold text-primary transition-colors hover:underline"
+                                        onClick={addRoomType}
+                                    >
+                                        <PlusCircle className="w-4 h-4" /> Add New Room Type(s)
+                                    </button>
+                                </div>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3">
 
@@ -895,20 +895,19 @@ return (
                             </div>
                         </FormSection>
 
-                        <div className="pt-4 flex justify-end" onClick={() => {
-                            buildEnquiryPayload(form)
-                        }}>
+                        <div className="pt-4 flex justify-end gap-3">
+                            <Button
+                                type="button"
+                                variant="heroOutline"
+                                onClick={() => navigate("/enquiries")}
+                            >
+                                Cancel
+                            </Button>
                             <Button
                                 variant="hero"
-                            // disabled={
-                            //     !form.guest_name ||
-                            //     !form.mobile ||
-                            //     !form.email ||
-                            //     !form.check_in ||
-                            //     !form.check_out ||
-                            //     !form.room_type ||
-                            //     !form.quote_amount
-                            // }
+                                onClick={() => {
+                                    buildEnquiryPayload(form)
+                                }}
                             >
                                 Create Enquiry
                             </Button>

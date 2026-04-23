@@ -24,6 +24,7 @@ import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Download, FilterX, Plus, Pencil, RefreshCcw } from "lucide-react";
 import { getStatusColor } from "@/constants/statusColors";
+import { GridBadge } from "@/components/ui/grid-badge";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
@@ -558,14 +559,9 @@ export default function MenuMaster() {
                                     headClassName: "text-center",
                                     cellClassName: "text-center",
                                     render: (item: MenuItem) => (
-                                        <span
-                                            className={cn(
-                                                "px-3 py-1 rounded-[3px] text-xs font-semibold",
-                                                getStatusColor(item.is_veg ? "veg" : "non-veg", "menuType")
-                                            )}
-                                        >
+                                        <GridBadge status={item.is_veg ? "veg" : "non-veg"} statusType="menuType">
                                             {item.is_veg ? "Veg" : "Non-Veg"}
-                                        </span>
+                                        </GridBadge>
                                     ),
                                 },
                                 {
@@ -579,14 +575,9 @@ export default function MenuMaster() {
                                     headClassName: "text-center",
                                     cellClassName: "text-center",
                                     render: (item: MenuItem) => (
-                                        <span
-                                            className={cn(
-                                                "px-3 py-1 rounded-[3px] text-xs font-semibold",
-                                                getStatusColor(item.is_active ? "active" : "inactive", "toggle")
-                                            )}
-                                        >
+                                        <GridBadge status={item.is_active ? "active" : "inactive"} statusType="toggle">
                                             {item.is_active ? "Active" : "Inactive"}
-                                        </span>
+                                        </GridBadge>
                                     ),
                                 },
                             ] as ColumnDef[]}

@@ -23,6 +23,7 @@ import { getStatusColor } from "@/constants/statusColors";
 import { useGridPagination } from "@/hooks/useGridPagination";
 import { NativeSelect } from "@/components/ui/native-select";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
+import { GridBadge } from "@/components/ui/grid-badge";
 
 const ORDER_STATUSES = ["New", "Preparing", "Ready", "Delivered", "Cancelled"];
 const PAYMENT_STATUSES = ["Pending", "Paid", "Failed", "Refunded"];
@@ -224,27 +225,17 @@ export function OrdersManagement() {
         {
             label: "Status",
             render: (order) => (
-                <span
-                    className={cn(
-                        "px-3 py-1 text-xs font-semibold rounded-[3px]",
-                        getStatusColor(order.order_status, "order")
-                    )}
-                >
+                <GridBadge status={order.order_status} statusType="order">
                     {order.order_status}
-                </span>
+                </GridBadge>
             ),
         },
         {
             label: "Payment",
             render: (order) => (
-                <span
-                    className={cn(
-                        "px-3 py-1 text-xs font-semibold rounded-[3px]",
-                        getStatusColor(order.payment_status, "payment")
-                    )}
-                >
+                <GridBadge status={order.payment_status} statusType="payment">
                     {order.payment_status}
-                </span>
+                </GridBadge>
             ),
         },
         {

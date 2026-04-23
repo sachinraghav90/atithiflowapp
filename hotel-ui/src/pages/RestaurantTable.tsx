@@ -36,6 +36,7 @@ import { getStatusColor } from "@/constants/statusColors";
 import { cn } from "@/lib/utils";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
+import { GridBadge } from "@/components/ui/grid-badge";
 
 const TABLE_STATUSES = ["Available", "Occupied", "Reserved", "Out of Service"];
 
@@ -221,12 +222,9 @@ export function RestaurantTables() {
             headClassName: "text-center",
             cellClassName: "text-center",
             render: (t) => (
-                <span className={cn(
-                    "px-3 py-1 rounded-[3px] text-xs font-semibold",
-                    getStatusColor(t.status.toLowerCase().replace(/ /g, "_"), "laundry") // reuse laundry primary colors
-                )}>
+                <GridBadge status={t.status} statusType="restaurantTable">
                     {t.status}
-                </span>
+                </GridBadge>
             ),
         },
     ];

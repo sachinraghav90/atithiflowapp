@@ -673,7 +673,7 @@ export function CreateOrder() {
                                                     <ValidationTooltip isValid={!((orderSubmitted || item.touched?.group) && itemErrors[index]?.group)} message="Required field">
                                                         <MenuItemSelect
                                                             extraClasses={cn(
-                                                                "h-9 w-full rounded-[3px] border bg-background px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
+                                                                "w-full rounded-[3px] border bg-background text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
                                                                 (orderSubmitted || item.touched?.group) && itemErrors[index]?.group ? "border-red-500" : "border-border"
                                                             )}
                                                             value={selectedMenuGroups[index]}
@@ -700,7 +700,7 @@ export function CreateOrder() {
                                                                     return copy;
                                                                 });
                                                             }}
-                                                            placeholder="Select group"
+                                                            placeholder="--Please Select--"
                                                             itemName="name"
                                                         />
                                                     </ValidationTooltip>
@@ -711,7 +711,7 @@ export function CreateOrder() {
                                                     <ValidationTooltip isValid={!((orderSubmitted || item.touched?.item) && itemErrors[index]?.item)} message="Required field">
                                                         <MenuItemSelect
                                                             extraClasses={cn(
-                                                                "h-9 w-full rounded-[3px] border bg-background px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
+                                                                "w-full rounded-[3px] border bg-background text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
                                                                 (orderSubmitted || item.touched?.item) && itemErrors[index]?.item ? "border-red-500" : "border-border"
                                                             )}
                                                             value={item.menu_item_id}
@@ -727,7 +727,7 @@ export function CreateOrder() {
                                                                     return copy;
                                                                 });
                                                             }}
-                                                            placeholder="Select item"
+                                                            placeholder="--Please Select--"
                                                             disabled={!Object.prototype.hasOwnProperty.call(selectedMenuGroups, index)}
                                                             itemName="item_name"
                                                         />

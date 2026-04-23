@@ -1,19 +1,20 @@
 const COLOR_TOKENS = {
-    blue: "bg-blue-100 text-blue-700",
-    green: "bg-green-100 text-green-800",
-    gray: "bg-gray-100 text-gray-800",
-    red: "bg-red-100 text-red-800",
-    yellow: "bg-yellow-100 text-yellow-800",
-    purple: "bg-purple-100 text-purple-700",
+    blue: "border-primary/20 bg-primary/10 text-primary",
+    green: "border-emerald-500/20 bg-emerald-500/10 text-emerald-700",
+    gray: "border-slate-300/80 bg-slate-100/90 text-slate-700",
+    red: "border-red-500/20 bg-red-500/10 text-red-700",
+    yellow: "border-amber-500/20 bg-amber-500/12 text-amber-700",
+    purple: "border-violet-500/20 bg-violet-500/10 text-violet-700",
 } as const;
 
-type StatusColorType =
+export type StatusColorType =
     | "booking"
     | "enquiry"
     | "laundry"
     | "menuType"
     | "order"
     | "payment"
+    | "restaurantTable"
     | "staff"
     | "toggle"
     | "vendor";
@@ -27,12 +28,12 @@ const STATUS_COLORS: Record<StatusColorType, Record<string, string>> = {
         NO_SHOW: COLOR_TOKENS.yellow,
     },
     enquiry: {
-        NEW: COLOR_TOKENS.blue,
-        IN_PROGRESS: COLOR_TOKENS.yellow,
-        QUALIFIED: COLOR_TOKENS.purple,
-        WON: COLOR_TOKENS.green,
+        OPEN: COLOR_TOKENS.blue,
+        FOLLOW_UP: COLOR_TOKENS.yellow,
+        RESERVED: COLOR_TOKENS.purple,
+        BOOKED: COLOR_TOKENS.green,
         CLOSED: COLOR_TOKENS.gray,
-        LOST: COLOR_TOKENS.red,
+        CANCELLED: COLOR_TOKENS.red,
     },
     laundry: {
         PENDING: COLOR_TOKENS.yellow,
@@ -58,6 +59,13 @@ const STATUS_COLORS: Record<StatusColorType, Record<string, string>> = {
         PAID: COLOR_TOKENS.green,
         FAILED: COLOR_TOKENS.red,
         REFUNDED: COLOR_TOKENS.gray,
+        PARTIAL: COLOR_TOKENS.yellow,
+    },
+    restaurantTable: {
+        AVAILABLE: COLOR_TOKENS.green,
+        OCCUPIED: COLOR_TOKENS.blue,
+        RESERVED: COLOR_TOKENS.purple,
+        OUT_OF_SERVICE: COLOR_TOKENS.gray,
     },
     staff: {
         ACTIVE: COLOR_TOKENS.green,

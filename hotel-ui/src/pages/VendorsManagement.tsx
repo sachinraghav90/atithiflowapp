@@ -37,6 +37,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { exportToExcel } from "@/utils/exportToExcel";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { getStatusColor } from "@/constants/statusColors";
+import { GridBadge } from "@/components/ui/grid-badge";
 
 /* ---------------- Types ---------------- */
 type Vendor = {
@@ -399,12 +400,9 @@ export default function VendorsManagement() {
                             headClassName: "text-center",
                             cellClassName: "text-center",
                             render: (v: Vendor) => (
-                                <span className={cn(
-                                    "px-3 py-1 rounded-[3px] text-xs font-semibold",
-                                    getStatusColor(v.is_active ? "active" : "inactive", "toggle")
-                                )}>
+                                <GridBadge status={v.is_active ? "active" : "inactive"} statusType="toggle">
                                     {v.is_active ? "Active" : "Inactive"}
-                                </span>
+                                </GridBadge>
                             ),
                         },
                     ] satisfies ColumnDef[]}

@@ -32,7 +32,7 @@ export function MenuItemSelect({
     itemName = "item_name",
     disabled = false,
     extraClasses = "",
-    placeholder = "Select option",
+    placeholder = "--Please Select--",
     forceNative = false
 }: Props) {
     const [open, setOpen] = useState(false);
@@ -72,15 +72,15 @@ export function MenuItemSelect({
                         role="combobox"
                         aria-expanded={open}
                         className={cn(
-                            "flex h-9 w-full items-center justify-between rounded-[3px] border border-input bg-background px-3 py-2 text-sm font-normal shadow-none hover:bg-background text-left transition-colors duration-150",
+                            "flex h-9 w-full items-center justify-between rounded-[3px] border border-input bg-background px-2 py-1 text-sm font-normal shadow-none hover:bg-background text-left transition-colors duration-150",
                             !value && "text-muted-foreground",
                             extraClasses
                         )}
                     >
-                        <span className="truncate">
+                        <span className="truncate flex-1">
                             {selectedItem ? getLabel(selectedItem) : placeholder}
                         </span>
-                        <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                 </PopoverTrigger>
                 <PopoverContent 
@@ -108,13 +108,16 @@ export function MenuItemSelect({
                                                 onSelect(Number(itemId) || itemId);
                                                 setOpen(false);
                                             }}
-                                            className="flex items-center justify-between cursor-pointer py-2 px-3 text-sm"
+                                            className={cn(
+                                                "flex items-center justify-between cursor-pointer py-1.5 px-2 text-sm rounded-sm transition-colors",
+                                                String(value) === itemId ? "bg-primary text-primary-foreground hover:bg-primary/90" : "hover:bg-accent hover:text-accent-foreground"
+                                            )}
                                         >
                                             <span className="truncate">{itemLabel}</span>
                                             <Check
                                                 className={cn(
-                                                    "ml-auto h-3.5 w-3.5 text-primary",
-                                                    String(value) === itemId ? "opacity-100" : "opacity-0"
+                                                    "ml-auto h-3.5 w-3.5",
+                                                    String(value) === itemId ? "text-primary-foreground opacity-100" : "opacity-0"
                                                 )}
                                             />
                                         </CommandItem>

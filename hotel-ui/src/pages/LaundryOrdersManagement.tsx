@@ -38,6 +38,7 @@ import { apiToast } from "@/utils/apiToastPromise";
 import { MenuItemSelect } from "@/components/MenuItemSelect";
 import { AppDataGrid, type ColumnDef, DataGrid, DataGridHeader, DataGridRow, DataGridHead, DataGridCell } from "@/components/ui/data-grid";
 import { getStatusColor } from "@/constants/statusColors";
+import { GridBadge } from "@/components/ui/grid-badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect } from "@/components/ui/grid-toolbar";
 import { ValidationTooltip } from "@/components/ui/validation-tooltip";
@@ -232,7 +233,7 @@ function getLaundryAuditDisplay(audit: any) {
     return {
         orderLabel: `#${audit.event_id}`,
         actionLabel: formatDisplayStatus(audit.event_type),
-        actionClassName: "bg-slate-100 text-slate-700",
+        actionClassName: "border-slate-300/80 bg-slate-100/90 text-slate-700",
         changeText: getLaundryAuditChangeText(audit) || "--",
         userLabel: `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim() || "--",
         dateLabel: formatDateTime(audit.created_on as string),
@@ -658,14 +659,9 @@ export default function LaundryOrdersManagement() {
                 const displayAudit = getLaundryAuditDisplay(audit);
 
                 return (
-                    <span
-                        className={cn(
-                            "px-3 py-1 text-xs font-semibold rounded-[3px]",
-                            displayAudit.actionClassName
-                        )}
-                    >
+                    <GridBadge tone="neutral" className={displayAudit.actionClassName}>
                         {displayAudit.actionLabel}
-                    </span>
+                    </GridBadge>
                 );
             },
         },
@@ -734,14 +730,9 @@ export default function LaundryOrdersManagement() {
             headClassName: "text-center",
             cellClassName: "text-center whitespace-nowrap",
             render: (order: LaundryOrder) => (
-                <span
-                    className={cn(
-                        "px-3 py-1 text-xs font-semibold rounded-[3px]",
-                        getStatusColor(order.laundry_status, "laundry")
-                    )}
-                >
+                <GridBadge status={order.laundry_status} statusType="laundry">
                     {getLaundryOrderDisplay(order, vendors).laundryStatusLabel}
-                </span>
+                </GridBadge>
             ),
         },
         {
@@ -749,17 +740,12 @@ export default function LaundryOrdersManagement() {
             headClassName: "text-center",
             cellClassName: "text-center whitespace-nowrap",
             render: (order: LaundryOrder) => (
-                <span
-                    className={cn(
-                        "px-3 py-1 text-xs font-semibold rounded-[3px]",
-                        getStatusColor(
-                            getLaundryOrderDisplay(order, vendors).vendorStatus,
-                            "vendor"
-                        )
-                    )}
+                <GridBadge
+                    status={getLaundryOrderDisplay(order, vendors).vendorStatus}
+                    statusType="vendor"
                 >
                     {getLaundryOrderDisplay(order, vendors).vendorStatusLabel}
-                </span>
+                </GridBadge>
             ),
         },
         {
@@ -1149,7 +1135,7 @@ export default function LaundryOrdersManagement() {
                         <SheetTitle>Add Laundry Order Items</SheetTitle>
                     </SheetHeader>
 
-                    <div className="space-y-6 mt-6">
+                    <div className="space-y-4 mt-3">
 
                         {/* ================= HEADER SECTION ================= */}
 
@@ -1313,6 +1299,7 @@ export default function LaundryOrdersManagement() {
                                                             touched: { ...row.touched, laundryId: true }
                                                         })
                                                     }
+                                                    placeholder="--Please Select--"
                                                 />
                                             </ValidationTooltip>
                                         </div>
@@ -1338,7 +1325,7 @@ export default function LaundryOrdersManagement() {
                                                             })
                                                         }
                                                     >
-                                                        <option value="">--</option>
+                                                        <option value="">--Please Select--</option>
 
                                                         {bookingData?.booking?.rooms?.map(room => (
                                                             <option key={room.room_no} value={room.room_no}>

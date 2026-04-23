@@ -151,8 +151,8 @@ export default function MenuMasterBulkSheet({
                 </SheetHeader>
 
                 <div className="flex-1 overflow-y-auto bg-background">
-                    <div className="p-6 space-y-6">
-                        <div className="space-y-4">
+                    <div className="px-6 pb-6 pt-3 space-y-6">
+                        <div className="space-y-2">
 
 
                         <div className="editable-grid-compact border rounded-[5px] overflow-hidden flex flex-col bg-background/50 border-border">
@@ -226,6 +226,7 @@ export default function MenuMasterBulkSheet({
                                                                         menuItemGroupId: String(id),
                                                                         touched: { ...row.touched, menuItemGroupId: true }
                                                                      })}
+                                                                     placeholder="--Please Select--"
                                                                 />
                                                             </ValidationTooltip>
                                                         </DataGridCell>

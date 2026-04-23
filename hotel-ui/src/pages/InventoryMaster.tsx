@@ -37,6 +37,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { MenuItemSelect } from "@/components/MenuItemSelect";
 import { DataGrid, DataGridHeader, DataGridRow, DataGridHead, DataGridCell } from "@/components/ui/data-grid";
 import { ValidationTooltip } from "@/components/ui/validation-tooltip";
+import { GridBadge } from "@/components/ui/grid-badge";
 
 type InventoryItem = {
     id: string;
@@ -609,12 +610,9 @@ export default function InventoryMaster() {
                                     headClassName: "text-center",
                                     cellClassName: "text-center",
                                     render: (item: InventoryItem) => (
-                                        <span className={cn(
-                                            "px-3 py-1 rounded-[3px] text-xs font-semibold",
-                                            getStatusColor(item.is_active ? "active" : "inactive", "toggle")
-                                        )}>
+                                        <GridBadge status={item.is_active ? "active" : "inactive"} statusType="toggle">
                                             {item.is_active ? "Active" : "Inactive"}
-                                        </span>
+                                        </GridBadge>
                                     )
                                 },
                                 {
@@ -676,8 +674,8 @@ export default function InventoryMaster() {
                         </SheetHeader>
 
                         <div className="flex-1 overflow-y-auto">
-                            <div className="p-6 space-y-6">
-                                <div className="space-y-4">
+                            <div className="px-6 pb-6 pt-3 space-y-6">
+                                <div className="space-y-2">
 
 
 
@@ -707,7 +705,7 @@ export default function InventoryMaster() {
                                                                 <ValidationTooltip isValid={!((submittedBulk || row.touched?.inventory_type_id) && bulkErrors[index]?.inventory_type_id)} message={typeof bulkErrors[index]?.inventory_type_id === 'string' ? bulkErrors[index]?.inventory_type_id : "Required field"}>
                                                                     <MenuItemSelect
                                                                         extraClasses={cn(
-                                                                            "w-full h-9 bg-background border border-border focus:ring-1 focus:ring-primary text-sm cursor-pointer px-3 rounded-[3px]",
+                                                                            "w-full bg-background border border-border focus:ring-1 focus:ring-primary text-sm cursor-pointer rounded-[3px]",
                                                                             (submittedBulk || row.touched?.inventory_type_id) && bulkErrors[index]?.inventory_type_id && "border-red-500"
                                                                         )}
                                                                         value={row.inventory_type_id ?? ""}
@@ -725,7 +723,7 @@ export default function InventoryMaster() {
                                                                                 void ensureBulkDuplicateInventory([nextRow]);
                                                                             }
                                                                         }}
-                                                                        placeholder="Select Type"
+                                                                        placeholder="--Please Select--"
                                                                     />
                                                                 </ValidationTooltip>
                                                             </DataGridCell>

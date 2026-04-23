@@ -29,6 +29,7 @@ import { exportToExcel } from "@/utils/exportToExcel";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { useGridPagination } from "@/hooks/useGridPagination";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
+import { GridBadge } from "@/components/ui/grid-badge";
 
 /* ---------------- Types ---------------- */
 type LaundryItem = {
@@ -389,14 +390,13 @@ export default function LaundryPricingManagement() {
             headClassName: "text-center",
             cellClassName: "text-center",
             render: (item) => (
-                <span
-                    className={cn(
-                        "inline-flex min-w-[88px] justify-center px-3 py-1 text-xs font-semibold rounded-[3px]",
-                        getStatusColor(item.is_active ? "active" : "inactive", "toggle")
-                    )}
+                <GridBadge
+                    status={item.is_active ? "active" : "inactive"}
+                    statusType="toggle"
+                    className="min-w-[88px]"
                 >
                     {item.is_active ? "Active" : "Inactive"}
-                </span>
+                </GridBadge>
             ),
         },
     ], [items]);
@@ -570,7 +570,7 @@ export default function LaundryPricingManagement() {
                         </SheetTitle>
                     </SheetHeader>
 
-                    <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-background">
+                    <div className="flex-1 overflow-y-auto px-6 pb-6 pt-3 space-y-4 bg-background">
                         {mode === "view" && selectedItem && (
                             <div className="space-y-6">
                                 <div className="grid grid-cols-2 gap-4">

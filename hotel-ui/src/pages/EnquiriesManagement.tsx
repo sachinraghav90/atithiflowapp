@@ -26,6 +26,7 @@ import { Download, FilterX, Pencil, Plus, RefreshCcw } from "lucide-react";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { filterGridRowsByQuery } from "@/utils/filterGridRows";
+import { GridBadge } from "@/components/ui/grid-badge";
 
 type EnquiryStatus =
     | "open"
@@ -120,25 +121,6 @@ function getEnquiryDisplay(enquiry: Enquiry) {
         statusLabel: formatEnquiryStatus(enquiry.status),
         followUpLabel: formatEnquiryDate(enquiry.follow_up_date),
     };
-}
-
-function getEnquiryStatusClassName(status?: EnquiryStatus | null) {
-    switch (status) {
-        case "open":
-            return "bg-blue-100 text-blue-700";
-        case "follow_up":
-            return "bg-amber-100 text-amber-700";
-        case "reserved":
-            return "bg-violet-100 text-violet-700";
-        case "booked":
-            return "bg-emerald-100 text-emerald-700";
-        case "closed":
-            return "bg-slate-100 text-slate-700";
-        case "cancelled":
-            return "bg-rose-100 text-rose-700";
-        default:
-            return "bg-slate-100 text-slate-700";
-    }
 }
 
 export default function EnquiriesManagement() {
@@ -327,11 +309,9 @@ export default function EnquiriesManagement() {
             headClassName: "text-center",
             cellClassName: "text-center whitespace-nowrap",
             render: (enquiry) => (
-                <span
-                    className={`px-3 py-1 text-xs font-semibold rounded-[3px] ${getEnquiryStatusClassName(enquiry.status)}`}
-                >
+                <GridBadge status={enquiry.status} statusType="enquiry">
                     {getEnquiryDisplay(enquiry).statusLabel}
-                </span>
+                </GridBadge>
             ),
         },
         {
@@ -490,7 +470,7 @@ export default function EnquiriesManagement() {
 
             {/* Manage Dialog */}
             <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="max-w-3xl">
+                <DialogContent className="max-w-3xl [&>button.absolute]:right-3 [&>button.absolute]:top-3 [&>button.absolute]:h-7 [&>button.absolute]:w-7 [&>button.absolute]:rounded-md [&>button.absolute]:border [&>button.absolute]:border-border/70 [&>button.absolute]:bg-background/95 [&>button.absolute]:p-0 [&>button.absolute]:opacity-100 [&>button.absolute]:shadow-sm [&>button.absolute]:ring-offset-0 [&>button.absolute]:hover:bg-accent [&>button.absolute]:hover:text-foreground [&>button.absolute]:data-[state=open]:bg-background/95 [&>button.absolute]:data-[state=open]:text-muted-foreground [&>button.absolute>svg]:h-3.5 [&>button.absolute>svg]:w-3.5">
                     <DialogHeader>
                         <DialogTitle>{editMode ? "Manage Enquiry" : "Enquiry Summary"}</DialogTitle>
                     </DialogHeader>

@@ -30,6 +30,7 @@ import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, Gri
 import { exportToExcel } from "@/utils/exportToExcel";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
+import { GridBadge } from "@/components/ui/grid-badge";
 
 type KitchenItem = {
     id: string;
@@ -326,15 +327,15 @@ export default function KitchenInventory() {
 
     function getAuditActionLabel(log: any) {
         const action = log.event_type;
-        const colorClass = 
-            action === "CREATE" ? "text-green-600 bg-green-50" :
-            action === "DELETE" ? "text-red-600 bg-red-50" :
-            "text-blue-600 bg-blue-50";
+        const tone =
+            action === "CREATE" ? "success" :
+            action === "DELETE" ? "danger" :
+            "info";
         
         return (
-            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${colorClass}`}>
+            <GridBadge tone={tone}>
                 {action}
-            </span>
+            </GridBadge>
         );
     }
 

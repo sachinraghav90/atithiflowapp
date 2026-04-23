@@ -162,8 +162,8 @@ export default function InventoryBulkSheet({
                 </SheetHeader>
 
                 <div className="flex-1 overflow-y-auto bg-background">
-                    <div className="p-6 space-y-6">
-                        <div className="space-y-4">
+                    <div className="px-6 pb-6 pt-3 space-y-6">
+                        <div className="space-y-2">
                             <div className="flex items-center justify-between">
                                 <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Inventory Details</h3>
                                 <p className="text-[10px] text-muted-foreground italic">*Define required fields for new inventory items</p>
@@ -217,6 +217,7 @@ export default function InventoryBulkSheet({
                                                                 touched: { ...row.touched, inventory_type_id: true }
                                                             })
                                                         }
+                                                        placeholder="--Please Select--"
                                                     />
                                                 </ValidationTooltip>
                                             </TableCell>
@@ -259,7 +260,7 @@ export default function InventoryBulkSheet({
                                                             })
                                                         }
                                                     >
-                                                        <option value="">-- Select --</option>
+                                                        <option value="">--Please Select--</option>
                                                         <option value="pcs">PCS</option>
                                                         <option value="kg">KG</option>
                                                         <option value="gm">GM</option>

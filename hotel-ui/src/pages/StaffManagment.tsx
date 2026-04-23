@@ -38,6 +38,7 @@ import { apiToast } from "@/utils/apiToastPromise";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { getStatusColor } from "@/constants/statusColors";
+import { GridBadge } from "@/components/ui/grid-badge";
 import { useGridPagination } from "@/hooks/useGridPagination";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
@@ -481,14 +482,9 @@ export default function StaffManagement() {
             headClassName: "text-center",
             cellClassName: "text-center whitespace-nowrap",
             render: (s) => (
-                <span
-                    className={cn(
-                        "inline-flex min-w-[88px] justify-center px-3 py-1 text-xs font-semibold rounded-[3px]",
-                        getStatusColor(s.status, "staff")
-                    )}
-                >
+                <GridBadge status={s.status} statusType="staff" className="min-w-[88px]">
                     {s.status}
-                </span>
+                </GridBadge>
             ),
         },
     ], []);

@@ -53,6 +53,7 @@ import { exportToExcel } from "@/utils/exportToExcel";
 import { Download, Eye, FilterX, Pencil, Plus, RefreshCcw, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getStatusColor } from "@/constants/statusColors";
+import { GridBadge } from "@/components/ui/grid-badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { filterGridRowsByQuery } from "@/utils/filterGridRows";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
@@ -615,12 +616,9 @@ export default function BookingsManagement() {
                                     headClassName: "text-center",
                                     cellClassName: "text-center",
                                     render: (b: any) => (
-                                        <span className={cn(
-                                            "px-2 py-0.5 rounded-[3px] text-xs font-semibold uppercase tracking-wider",
-                                            getStatusColor(b.booking_status, "booking")
-                                        )}>
+                                        <GridBadge status={b.booking_status} statusType="booking">
                                             {b.booking_status?.replace("_", " ")}
-                                        </span>
+                                        </GridBadge>
                                     )
                                 },
                                 {

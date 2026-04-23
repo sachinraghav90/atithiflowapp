@@ -36,6 +36,7 @@ import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, Gri
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { getStatusColor } from "@/constants/statusColors";
+import { GridBadge } from "@/components/ui/grid-badge";
 
 // ---- Types ----
 type Property = {
@@ -901,14 +902,9 @@ export default function PropertyManagement() {
                             headClassName: "text-center",
                             cellClassName: "text-center whitespace-nowrap",
                             render: (property: Property) => (
-                                <span
-                                    className={cn(
-                                        "px-3 py-1 text-xs font-semibold rounded-[3px]",
-                                        getStatusColor(property.is_active ? "active" : "inactive", "toggle")
-                                    )}
-                                >
+                                <GridBadge status={property.is_active ? "active" : "inactive"} statusType="toggle">
                                     {property.is_active ? "Active" : "Inactive"}
-                                </span>
+                                </GridBadge>
                             ),
                         },
                     ] as ColumnDef[]}

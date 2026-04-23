@@ -30,6 +30,7 @@ import { filterGridRowsByQuery } from "@/utils/filterGridRows";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { useGridPagination } from "@/hooks/useGridPagination";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
+import { GridBadge } from "@/components/ui/grid-badge";
 
 /* -------------------- Types -------------------- */
 type PackageListItem = {
@@ -263,9 +264,12 @@ export default function PackageManagement() {
             headClassName: "text-center",
             cellClassName: "text-center",
             render: (pkg) => (
-                <span className="inline-flex min-w-[84px] justify-center px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <GridBadge
+                    tone={pkg.system_generated ? "neutral" : "info"}
+                    className="min-w-[84px]"
+                >
                     {pkg.system_generated ? "System" : "Custom"}
-                </span>
+                </GridBadge>
             ),
         },
         {
@@ -283,14 +287,13 @@ export default function PackageManagement() {
             headClassName: "text-center",
             cellClassName: "text-center",
             render: (pkg) => (
-                <span
-                    className={cn(
-                        "inline-flex min-w-[88px] justify-center px-3 py-1 text-xs font-semibold rounded-[3px]",
-                        getStatusColor(pkg.is_active ? "active" : "inactive", "toggle")
-                    )}
+                <GridBadge
+                    status={pkg.is_active ? "active" : "inactive"}
+                    statusType="toggle"
+                    className="min-w-[88px]"
                 >
                     {pkg.is_active ? "Active" : "Inactive"}
-                </span>
+                </GridBadge>
             ),
         },
     ], []);
