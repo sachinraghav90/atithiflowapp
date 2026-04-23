@@ -122,7 +122,9 @@ export type AppDataGridProps<T = Record<string, unknown>> = {
     /** Render action column at the beginning of the table instead of the end */
     prefixActions?: boolean
     /** Action column header/cell className */
-    actionClassName?: string
+    actionClassName?: string;
+    /** Optional flag to show/hide the actions column */
+    showActions?: boolean;
     /** Enable pagination */
     enablePagination?: boolean
     /** Pagination props */
@@ -199,7 +201,7 @@ function DataGridPagination({
     }
 
     return (
-        <div className="flex items-center justify-end gap-2 px-3 py-2 border-t border-border text-xs text-foreground bg-[#E1F3F8]">
+        <div className="flex items-center justify-end gap-2 px-3 py-2 text-xs text-foreground bg-[#E1F3F8]">
             {onLimitChange && (
                 <div className="relative flex items-center" ref={menuRef}>
                     <button
@@ -326,8 +328,10 @@ function AppDataGrid<T extends Record<string, unknown>>({
     tableClassName,
     onRowClick,
     rowProps,
+    showActions = true,
 }: AppDataGridProps<T>) {
-    const totalCols = columns.length + (actions ? 1 : 0)
+    const hasActions = Boolean(actions && showActions)
+    const totalCols = columns.length + (hasActions ? 1 : 0)
 
     return (
         <div
@@ -343,7 +347,7 @@ function AppDataGrid<T extends Record<string, unknown>>({
                         {/* ---- HEAD ---- */}
                         <DataGridHeader>
                             <tr>
-                                {actions && prefixActions && (
+                                {hasActions && prefixActions && (
                                     <DataGridHead className={cn(actionClassName)}>
                                         {actionLabel}
                                     </DataGridHead>
@@ -356,7 +360,7 @@ function AppDataGrid<T extends Record<string, unknown>>({
                                         {col.label}
                                     </DataGridHead>
                                 ))}
-                                {actions && !prefixActions && (
+                                {hasActions && !prefixActions && (
                                     <DataGridHead className={cn(actionClassName)}>
                                         {actionLabel}
                                     </DataGridHead>
@@ -413,7 +417,7 @@ function AppDataGrid<T extends Record<string, unknown>>({
                                             )}
                                             {...extraProps}
                                         >
-                                            {actions && prefixActions && (
+                                            {hasActions && prefixActions && (
                                                 <DataGridCell className={cn(actionClassName)}>
                                                     {actions(row, idx)}
                                                 </DataGridCell>
@@ -433,7 +437,7 @@ function AppDataGrid<T extends Record<string, unknown>>({
                                                             : "—"}
                                                 </DataGridCell>
                                             ))}
-                                            {actions && !prefixActions && (
+                                            {hasActions && !prefixActions && (
                                                 <DataGridCell
                                                     className={cn(actionClassName)}
                                                 >

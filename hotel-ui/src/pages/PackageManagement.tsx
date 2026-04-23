@@ -14,7 +14,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { useAppSelector } from "@/redux/hook";
-import { useCreatePackageMutation, useGetMyPropertiesQuery, useGetPackageByIdQuery, useGetPackagesByPropertyQuery, useUpdatePackageMutation, useUpdatePackagesBulkMutation } from "@/redux/services/hmsApi";
+import { useCreatePackageMutation, useGetMyPropertiesQuery, useGetPackageByIdQuery, useGetPackagesByPropertyQuery, useUpdatePackageMutation } from "@/redux/services/hmsApi";
 import { toast } from "react-toastify";
 import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
 import { normalizeNumberInput, normalizeTextInput } from "@/utils/normalizeTextInput";
@@ -23,7 +23,7 @@ import { useLocation } from "react-router-dom";
 import { usePermission } from "@/rbac/usePermission";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Download, FilterX, Pencil, RefreshCcw } from "lucide-react";
+import { Download, FilterX, Pencil, RefreshCcw, Plus } from "lucide-react";
 import { getStatusColor } from "@/constants/statusColors";
 import { GridToolbar, GridToolbarActions, GridToolbarSearch, GridToolbarSelect, GridToolbarRow, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
 import { filterGridRowsByQuery } from "@/utils/filterGridRows";
@@ -50,9 +50,9 @@ type PackageDetail = {
 /* -------------------- Component -------------------- */
 export default function PackageManagement() {
     const [sheetOpen, setSheetOpen] = useState(false);
-    const [mode, setMode] = useState<"add" | "edit">("add");
+    const [mode, setMode] = useState<"add" | "edit" | "view">("add");
     const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
-    const { myProperties, isMultiProperty } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
+    const { myProperties, isMultiProperty, isInitializing } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
 
     const [searchInput, setSearchInput] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
@@ -68,13 +68,9 @@ export default function PackageManagement() {
         description: "",
         base_price: "",
         is_active: true,
-        system_generated: true
+        system_generated: false
     });
     const [selectedPackageId, setSelectedPackageId] = useState(0)
-    const [isPriceEditMode, setIsPriceEditMode] = useState(false);
-    const [editedPrices, setEditedPrices] = useState<Record<string, string>>({});
-
-
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
 
     const {
@@ -96,7 +92,6 @@ export default function PackageManagement() {
 
     const [createPackage] = useCreatePackageMutation()
     const [updatePackage] = useUpdatePackageMutation()
-    const [updatePackagesBulk] = useUpdatePackagesBulkMutation()
     const [formErrors, setFormErrors] = useState<Record<string, string>>({});
     const [submitted, setSubmitted] = useState(false);
 
@@ -108,14 +103,14 @@ export default function PackageManagement() {
             description: "",
             base_price: "",
             is_active: true,
-            system_generated: true
+            system_generated: false
         });
         setSheetOpen(true);
     };
 
-    const handleOpenEdit = async (pkg: PackageListItem) => {
+    const handleOpenEdit = async (pkg: PackageListItem, forceMode: "edit" | "view" = "edit") => {
         setSelectedPackageId(() => +pkg?.id)
-        setMode("edit");
+        setMode(forceMode);
         setSheetOpen(true);
     };
 
@@ -161,33 +156,6 @@ export default function PackageManagement() {
         });
 
         setSheetOpen(false);
-    };
-
-    const handlePriceChange = (id: string, value: string) => {
-        setEditedPrices(prev => ({
-            ...prev,
-            [id]: normalizeNumberInput(value).toString(),
-        }));
-    };
-
-    const hasPriceChanges = Object.keys(editedPrices).length > 0;
-
-    const handleBulkPriceUpdate = () => {
-        const payload = Object.entries(editedPrices).map(([id, base_price]) => ({
-            id,
-            base_price: Number(base_price),
-        }));
-
-        const promise = updatePackagesBulk({ packages: payload, propertyId: String(selectedPropertyId) }).unwrap()
-
-        toast.promise(promise, {
-            pending: "Updating plans...",
-            error: "Error updating plans",
-            success: "Plans updated successfully"
-        })
-
-        setIsPriceEditMode(false);
-        setEditedPrices({});
     };
 
     useEffect(() => {
@@ -273,7 +241,7 @@ export default function PackageManagement() {
                 <button
                     type="button"
                     className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
-                    onClick={() => handleOpenEdit({ id: String(pkg.id), package_name: pkg.package_name })}
+                    onClick={() => handleOpenEdit({ id: String(pkg.id), package_name: pkg.package_name }, "view")}
                     aria-label={`Open plan ${formatModuleDisplayId("package", pkg.id)}`}
                 >
                     {formatModuleDisplayId("package", pkg.id)}
@@ -304,21 +272,11 @@ export default function PackageManagement() {
             label: "Base Price",
             headClassName: "text-center",
             cellClassName: "text-center font-medium",
-            render: (pkg) =>
-                isPriceEditMode ? (
-                    <div className="flex justify-center">
-                        <Input
-                            type="text"
-                            className="h-8 w-24 text-center"
-                            value={editedPrices[pkg.id!] ?? Number(pkg.base_price).toString()}
-                            onChange={(e) => handlePriceChange(pkg.id!, e.target.value)}
-                        />
-                    </div>
-                ) : (
-                    <span className="inline-flex min-w-[72px] justify-center rounded-[3px] bg-muted/40 px-3 py-1 text-sm font-semibold">
-                        {Number(pkg.base_price).toFixed()}
-                    </span>
-                ),
+            render: (pkg) => (
+                <span className="inline-flex min-w-[72px] justify-center rounded-[3px] bg-muted/40 px-3 py-1 text-sm font-semibold">
+                    {Number(pkg.base_price).toFixed()}
+                </span>
+            ),
         },
         {
             label: "Status",
@@ -335,7 +293,7 @@ export default function PackageManagement() {
                 </span>
             ),
         },
-    ], [editedPrices, isPriceEditMode]);
+    ], []);
 
     return (
         <div className="h-full flex flex-col overflow-hidden">
@@ -374,36 +332,11 @@ export default function PackageManagement() {
                         {permission?.can_create &&
                             <>
                                 <Button
-                                    variant="heroOutline"
-                                    className="h-10"
-                                    onClick={() => {
-                                        if (isPriceEditMode) {
-                                            setIsPriceEditMode(false);
-                                            setEditedPrices({});
-                                            return;
-                                        }
-
-                                        setIsPriceEditMode(true);
-                                        setEditedPrices({});
-                                    }}
-                                >
-                                    {isPriceEditMode ? "Cancel Edit" : "Edit Prices"}
-                                </Button>
-                                <Button
                                     variant="hero"
-                                    className="h-10"
+                                    className="h-10 px-4 flex items-center gap-2"
                                     onClick={handleOpenAdd}
-                                    disabled={isPriceEditMode}
                                 >
-                                    Add Plan
-                                </Button>
-                                <Button
-                                    variant="hero"
-                                    className="h-10"
-                                    disabled={!isPriceEditMode || !hasPriceChanges}
-                                    onClick={handleBulkPriceUpdate}
-                                >
-                                    Update Prices
+                                    <Plus className="w-4 h-4" /> Add Plan
                                 </Button>
                             </>
                         }
@@ -432,24 +365,24 @@ export default function PackageManagement() {
                                 />
 
                                 <GridToolbarSelect
-                                    label="TYPE"
+                                    label="Type"
                                     value={typeFilter}
                                     onChange={setTypeFilter}
                                     className="min-w-[160px]"
                                     options={[
-                                        { label: "Any", value: "" },
+                                        { label: "All", value: "" },
                                         { label: "System", value: "system" },
                                         { label: "Custom", value: "custom" },
                                     ]}
                                 />
 
                                 <GridToolbarSelect
-                                    label="STATUS"
+                                    label="Status"
                                     value={statusFilter}
                                     onChange={setStatusFilter}
                                     className="min-w-[180px]"
                                     options={[
-                                        { label: "Any", value: "" },
+                                        { label: "All", value: "" },
                                         { label: "Active", value: "true" },
                                         { label: "Inactive", value: "false" },
                                     ]}
@@ -488,24 +421,29 @@ export default function PackageManagement() {
                             columns={packageColumns}
                             data={!packageUninitialized && !packagesLoading ? filteredPackageRows : []}
                             rowKey={(pkg) => pkg.id ?? pkg.package_name}
-                            loading={packagesLoading || packagesFetching}
+                            loading={packagesLoading || packagesFetching || isInitializing}
                             emptyText="No plans found"
                             actionClassName="text-center w-[60px]"
+                            showActions={permission?.can_create}
                             actions={(pkg) => (
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            size="icon"
-                                            variant="ghost"
-                                            className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
-                                            aria-label={`Edit plan ${pkg.package_name}`}
-                                            onClick={() => handleOpenEdit({ id: String(pkg.id), package_name: pkg.package_name })}
-                                        >
-                                            <Pencil className="w-4 h-4 mx-auto" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>View / Edit Plan</TooltipContent>
-                                </Tooltip>
+                                <>
+                                    {permission?.can_create && (
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                                    aria-label={`Edit plan ${pkg.package_name}`}
+                                                    onClick={() => handleOpenEdit({ id: String(pkg.id), package_name: pkg.package_name }, "edit")}
+                                                >
+                                                    <Pencil className="w-4 h-4 mx-auto" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>View / Edit Plan</TooltipContent>
+                                        </Tooltip>
+                                    )}
+                                </>
                             )}
                             enablePagination={Boolean(packages?.pagination)}
                             paginationProps={packages?.pagination ? {
@@ -537,31 +475,22 @@ export default function PackageManagement() {
                                 <SheetTitle>
                                     {mode === "add"
                                         ? "Add plan"
-                                        : "Edit plan"}
+                                        : mode === "edit"
+                                            ? "Edit plan"
+                                            : "Plan summary"}
                                 </SheetTitle>
                             </SheetHeader>
 
                             {/* Package Name */}
                             <div className="space-y-2">
                                 <Label>Plan Name</Label>
-                                {(mode === "edit" && selectedPackage?.system_generated) ?
+                                {mode === "view" || (mode === "edit" && selectedPackage?.system_generated) ? (
                                     <p
-                                        className="
-                                        h-10
-                                        w-full
-                                        rounded-[3px]
-                                        bg-background
-                                        px-3
-                                        flex
-                                        items-center
-                                        text-sm
-                                        text-foreground
-                                        cursor-default
-                                        select-text
-                                    "
+                                        className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text"
                                     >
                                         {selectedPackage?.package_name}
-                                    </p> :
+                                    </p>
+                                ) : (
                                     <Input
                                         className={submitted && formErrors.package_name ? "border-red-500" : ""}
                                         value={selectedPackage?.package_name}
@@ -576,77 +505,87 @@ export default function PackageManagement() {
                                             }
                                         }}
                                     />
-                                }
+                                )}
                             </div>
 
                             {/* Description */}
                             <div className="space-y-2">
                                 <Label>Description</Label>
-                                {(mode === "edit" && selectedPackage?.system_generated) ?
+                                {mode === "view" || (mode === "edit" && selectedPackage?.system_generated) ? (
                                     <p
-                                        className="
-                                        h-10
-                                        w-full
-                                        rounded-[3px]
-                                        bg-background
-                                        px-3
-                                        flex
-                                        items-center
-                                        text-sm
-                                        text-foreground
-                                        cursor-default
-                                        select-text
-                                    "
+                                        className="w-full rounded-[3px] bg-background px-3 py-2 text-sm text-foreground cursor-default select-text whitespace-pre-wrap flex"
                                     >
-                                        {selectedPackage?.description}
+                                        {selectedPackage?.description || "-"}
                                     </p>
-                                    : <textarea
-                                        // readOnly={!(isSuperAdmin || isOwner || isAdmin) || (mode === "edit" && selectedPackage?.system_generated)}
+                                ) : (
+                                    <textarea
                                         className="w-full min-h-[100px] rounded-[3px] border border-border bg-background px-3 py-2 text-sm"
                                         value={selectedPackage?.description}
                                         onChange={(e) => {
                                             const next = e.target.value
-                                            if (isWithinCharLimit(next, 50)) {
+                                            if (isWithinCharLimit(next, 200)) {
                                                 setSelectedPackage((prev) => ({
                                                     ...prev,
                                                     description: normalizeTextInput(e.target.value),
                                                 }))
                                             }
                                         }}
-                                    />}
+                                    />
+                                )}
                             </div>
 
                             {/* Price */}
-                            <div className="space-y-2">
+                            <div className="space-y-2 pt-4 border-t border-border">
                                 <Label>Base Price</Label>
-                                <Input
-                                    type="text"
-                                    className={submitted && formErrors.base_price ? "border-red-500" : ""}
-                                    value={selectedPackage?.base_price}
-                                    onChange={(e) => {
-                                        setSelectedPackage(prev => ({
-                                            ...prev,
-                                            base_price: normalizeNumberInput(e.target.value).toString(),
-                                        }));
-                                        setFormErrors(prev => ({ ...prev, base_price: "" }));
-                                    }}
-                                />
+                                {mode === "view" ? (
+                                    <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default">
+                                        ₹ {selectedPackage?.base_price || "0.00"}
+                                    </p>
+                                ) : (
+                                    <Input
+                                        type="text"
+                                        className={submitted && formErrors.base_price ? "border-red-500" : ""}
+                                        value={selectedPackage?.base_price}
+                                        onChange={(e) => {
+                                            setSelectedPackage(prev => ({
+                                                ...prev,
+                                                base_price: normalizeNumberInput(e.target.value).toString(),
+                                            }));
+                                            setFormErrors(prev => ({ ...prev, base_price: "" }));
+                                        }}
+                                    />
+                                )}
                             </div>
 
                             {/* Active */}
-                            {!selectedPackage?.system_generated && <div className="flex items-center gap-2">
-                                <Switch
-                                    // disabled={!(isSuperAdmin || isOwner || isAdmin)}
-                                    checked={selectedPackage?.is_active}
-                                    onCheckedChange={(v) =>
-                                        setSelectedPackage((prev) => ({
-                                            ...prev,
-                                            is_active: v,
-                                        }))
-                                    }
-                                />
-                                <Label>Active</Label>
-                            </div>}
+                            <div className="flex items-center gap-2">
+                                {mode === "view" || (mode === "edit" && selectedPackage?.system_generated) ? (
+                                    <div className="flex items-center gap-2">
+                                        <Label>Status</Label>
+                                        <span
+                                            className={cn(
+                                                "px-3 py-1 rounded-[3px] text-xs font-semibold",
+                                                getStatusColor(selectedPackage?.is_active ? "active" : "inactive", "toggle")
+                                            )}
+                                        >
+                                            {selectedPackage?.is_active ? "Active" : "Inactive"}
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <Switch
+                                            checked={selectedPackage?.is_active}
+                                            onCheckedChange={(v) =>
+                                                setSelectedPackage((prev) => ({
+                                                    ...prev,
+                                                    is_active: v,
+                                                }))
+                                            }
+                                        />
+                                        <Label>Active</Label>
+                                    </>
+                                )}
+                            </div>
 
                             {/* Actions */}
                             <div className="flex justify-end gap-3 pt-4 border-t border-border">
@@ -654,16 +593,17 @@ export default function PackageManagement() {
                                     variant="heroOutline"
                                     onClick={() => setSheetOpen(false)}
                                 >
-                                    Cancel
+                                    {mode === "view" ? "Close" : "Cancel"}
                                 </Button>
 
-                                <Button variant="hero"
-                                    // disabled={!selectedPackage?.base_price || !selectedPackage?.package_name}
-                                    onClick={handleSubmit}>
-                                    {mode === "add"
-                                        ? "Create Plan"
-                                        : "Save Changes"}
-                                </Button>
+                                {mode === "view" ? null : (
+                                    <Button
+                                        variant="hero"
+                                        onClick={handleSubmit}
+                                    >
+                                        {mode === "add" ? "Create Plan" : "Save Changes"}
+                                    </Button>
+                                )}
                             </div>
                         </motion.div>
                 </SheetContent>

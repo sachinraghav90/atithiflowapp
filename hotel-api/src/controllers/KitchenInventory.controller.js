@@ -114,6 +114,12 @@ class KitchenInventoryController {
 
             console.error("KitchenInventory UPDATE error:", error);
 
+            if (error.code === "23505") {
+                return res.status(409).json({
+                    message: "Inventory already exists for this item"
+                });
+            }
+
             return res.status(500).json({
                 message: "Failed to update kitchen inventory"
             });
@@ -167,6 +173,12 @@ class KitchenInventoryController {
 
             console.error("KitchenInventory ADJUST STOCK error:", error);
 
+            if (error.code === "23505") {
+                return res.status(409).json({
+                    message: "Inventory already exists for this item"
+                });
+            }
+
             return res.status(500).json({
                 message: "Failed to adjust kitchen inventory stock"
             });
@@ -182,7 +194,7 @@ class KitchenInventoryController {
 
             const { property_id, items } = req.body;
 
-            const user_id = req.user?.id;
+            const user_id = req.user?.user_id;
 
             if (!property_id) {
                 return res.status(400).json({
@@ -210,6 +222,12 @@ class KitchenInventoryController {
         } catch (err) {
 
             console.error("KitchenInventoryController ~ bulkAdjustStock ~ err:", err);
+
+            if (err.code === "23505") {
+                return res.status(409).json({
+                    message: "Inventory already exists for one or more items"
+                });
+            }
 
             return res.status(500).json({
                 message: err.message || "Failed to bulk adjust stock"

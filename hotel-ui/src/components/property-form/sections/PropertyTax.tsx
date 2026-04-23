@@ -144,8 +144,8 @@ export default function PropertyTax({
                         value={value.gst}
                         title={errors.gst?.message || ""}
                         className={`w-full h-10 rounded-[3px] border px-3 text-sm ${errors.gst
-                            ? "border-red-500 bg-white"
-                            : "border-border bg-white"
+                            ? "border-red-500 bg-background"
+                            : "border-border bg-background"
                             }`}
                         onChange={(e) =>
                             setValue((prev: any) => ({

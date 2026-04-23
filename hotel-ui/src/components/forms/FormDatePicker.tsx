@@ -1,6 +1,7 @@
-import DatePicker from "react-datepicker";
-import { Label } from "../ui/label";
-import { Input } from "../ui/input";
+import * as React from "react"
+import { ResponsiveDatePicker } from "../ui/responsive-date-picker"
+import { Label } from "../ui/label"
+import { cn } from "@/lib/utils"
 
 export default function FormDatePicker({
     label,
@@ -12,50 +13,34 @@ export default function FormDatePicker({
     required,
     selected,
     onChange,
-    customInput
 }: any) {
-    const normalizedSelected =
-        selected instanceof Date && !Number.isNaN(selected.getTime())
-            ? selected
-            : null;
-
-    const error = errors?.[field];
-    const hoverError =
-        error?.type === "required" ? error.message : "";
+    const error = errors?.[field]
+    const hoverError = error?.type === "required" ? error.message : ""
 
     return (
         <div className="space-y-2">
-
-            <Label title={hoverError}>
+            <Label title={hoverError} className="text-sm font-semibold">
                 {label} {required && "*"}
             </Label>
-            <div>
-                <DatePicker
-                    selected={normalizedSelected}
-                    onChange={(date) => {
-
-                        onChange(date);
-
-                        setErrors((prev: any) => {
-                            const next = { ...prev };
-                            delete next[field];
-                            return next;
-                        });
-                    }}
-                    customInput={
-                        <Input
-                            readOnly
-                            className={error ? "border-red-500 bg-white" : "bg-white"}
-                        />
-                    }
-                />
-            </div>
+            <ResponsiveDatePicker
+                value={selected}
+                onChange={(date) => {
+                    onChange(date)
+                    setErrors((prev: any) => {
+                        const next = { ...prev }
+                        delete next[field]
+                        return next
+                    })
+                }}
+                placeholder="DD/MM/YYYY"
+                label={label}
+                className={cn(error && "border-red-500 focus:ring-red-500")}
+            />
             {error?.type === "invalid" && (
-                <p className="text-xs text-red-500">
+                <p className="text-xs text-red-500 animate-in fade-in slide-in-from-top-1">
                     {error.message}
                 </p>
             )}
-
         </div>
-    );
+    )
 }

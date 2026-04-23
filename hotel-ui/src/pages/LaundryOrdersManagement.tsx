@@ -27,8 +27,8 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover";
 import { format } from "date-fns";
-import { Download, FilterX, Pencil, RefreshCcw } from "lucide-react";
-import DatePicker from 'react-datepicker'
+import { Download, FilterX, Pencil, RefreshCcw, Trash2, Plus, PlusCircle } from "lucide-react";
+import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
 import { toast } from "react-toastify";
 import { normalizeNumberInput } from "@/utils/normalizeTextInput";
 import { useLocation } from "react-router-dom";
@@ -36,10 +36,11 @@ import { usePermission } from "@/rbac/usePermission";
 import { extractApiErrorMessage } from "@/utils/apiError";
 import { apiToast } from "@/utils/apiToastPromise";
 import { MenuItemSelect } from "@/components/MenuItemSelect";
-import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
+import { AppDataGrid, type ColumnDef, DataGrid, DataGridHeader, DataGridRow, DataGridHead, DataGridCell } from "@/components/ui/data-grid";
 import { getStatusColor } from "@/constants/statusColors";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect } from "@/components/ui/grid-toolbar";
+import { ValidationTooltip } from "@/components/ui/validation-tooltip";
 
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 
@@ -92,6 +93,11 @@ type LaundryItemRow = {
     laundryId: number | "";
     roomNo?: string;
     itemCount: number | "";
+    touched?: {
+        laundryId?: boolean;
+        roomNo?: boolean;
+        itemCount?: boolean;
+    };
 };
 
 type CreateLaundryOrderForm = {
@@ -280,8 +286,8 @@ export default function LaundryOrdersManagement() {
 
     const [ordersPage, setOrdersPage] = useState(1);
     const [auditPage, setAuditPage] = useState(1);
-    const [ordersLimit, setOrdersLimit] = useState(10);
-    const [auditLimit, setAuditLimit] = useState(20);
+    const [ordersLimit, setOrdersLimit] = useState(5);
+    const [auditLimit, setAuditLimit] = useState(5);
 
     const [editOrder, setEditOrder] = useState<any>(null);
     const [historyModal, setHistoryModal] = useState({
@@ -294,10 +300,7 @@ export default function LaundryOrdersManagement() {
     const prefilledBookingStatus = location.state?.bookingStatus;
 
 
-    const { 
-        myProperties, 
-        isMultiProperty, 
-    } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
+    const { myProperties, isMultiProperty, isInitializing } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
 
     const { data, isLoading: ordersLoading, isFetching: ordersFetching, refetch: refetchOrders } = useGetPropertyLaundryOrdersQuery({ propertyId: selectedPropertyId, page: ordersPage, limit: ordersLimit }, {
         skip: !isLoggedIn || !selectedPropertyId
@@ -392,10 +395,7 @@ export default function LaundryOrdersManagement() {
         if (!selectedPropertyId) return;
 
         if (!validateForm()) {
-
-            toast.error("Please fix errors before creating order");
             return; // 🚀 stops API call
-
         }
 
 
@@ -518,7 +518,8 @@ export default function LaundryOrdersManagement() {
                     id: crypto.randomUUID(),
                     laundryId: "",
                     roomNo: "",
-                    itemCount: ""
+                    itemCount: "",
+                    touched: {}
                 }
             ]
         }));
@@ -629,7 +630,7 @@ export default function LaundryOrdersManagement() {
 
     const laundryAuditColumns = useMemo<ColumnDef[]>(() => [
         {
-            label: "Order",
+            label: "Order ID",
             cellClassName: "font-medium whitespace-nowrap",
             render: (audit) => {
                 const displayAudit = getLaundryAuditDisplay(audit);
@@ -687,7 +688,7 @@ export default function LaundryOrdersManagement() {
 
     const laundryOrderColumns = useMemo<ColumnDef<LaundryOrder>[]>(() => [
         {
-            label: "Laundry",
+            label: "Laundry ID",
             headClassName: "text-center",
             cellClassName: "text-center font-medium min-w-[90px]",
             render: (order: LaundryOrder) => (
@@ -701,9 +702,9 @@ export default function LaundryOrdersManagement() {
                             order,
                         })
                     }
-                    aria-label={`Open summary view for laundry order ${formatModuleDisplayId("laundry", order.id)}`}
+                    aria-label={`Open summary view for laundry order ${formatModuleDisplayId("laundry_order", order.id)}`}
                 >
-                    {formatModuleDisplayId("laundry", order.id)}
+                    {formatModuleDisplayId("laundry_order", order.id)}
                 </button>
             ),
         },
@@ -816,7 +817,7 @@ export default function LaundryOrdersManagement() {
                 const displayOrder = getLaundryOrderDisplay(order, vendors);
 
                 return {
-                    "Laundry ID": formatModuleDisplayId("laundry", order.id),
+                    "Laundry ID": formatModuleDisplayId("laundry_order", order.id),
                     "Item Name": displayOrder.itemLabel,
                     "No. of Items": displayOrder.itemCountLabel,
                     "Pickup Date": displayOrder.pickupDateLabel,
@@ -854,12 +855,12 @@ export default function LaundryOrdersManagement() {
 
     /* ---------------- UI ---------------- */
     return (
-        <div className="h-full flex flex-col overflow-hidden">
-            <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8 space-y-6">
+        <div className="h-full flex flex-col overflow-hidden bg-background">
+            <section className="flex flex-col flex-1 overflow-hidden p-6 lg:p-8 gap-6">
                     <div className="flex items-center justify-between w-full">
                         <div className="flex flex-col">
                             <h1 className="text-2xl font-bold leading-tight">Laundry Orders</h1>
-                            <p className="text-sm text-muted-foreground mt-1">
+                            <p className="text-sm text-muted-foreground">
                                 Manage hotel laundry operations, vendors, and audit logs.
                             </p>
                         </div>
@@ -888,17 +889,18 @@ export default function LaundryOrdersManagement() {
                             {permission?.can_create && (
                                 <Button
                                     variant="hero"
+                                    className="h-10 px-4 flex items-center gap-2"
                                     onClick={() => {
-                                        setAddModalOpen(true);
+                                        setSheetOpen(true);
                                     }}
                                 >
-                                    Add Laundry Order
+                                    <Plus className="w-4 h-4" /> Add Laundry Order
                                 </Button>
                             )}
                         </div>
                     </div>
 
-                    <div className="flex border-b border-border bg-card/50 px-2 pt-2 gap-2">
+                    <div className="border-b border-border flex shrink-0">
                         <div
                             onClick={() => setActiveTab("orders")}
                             className={cn(
@@ -913,19 +915,19 @@ export default function LaundryOrdersManagement() {
                         <div
                             onClick={() => setActiveTab("audit")}
                             className={cn(
-                            "px-4 py-3 text-sm font-medium cursor-pointer border-b-2 transition",
-                            activeTab === "audit"
-                                ? "border-primary text-foreground"
-                                : "border-transparent text-muted-foreground hover:text-foreground"
-                        )}
-                    >
-                        History
+                                "px-4 py-3 text-sm font-medium cursor-pointer border-b-2 transition",
+                                activeTab === "audit"
+                                    ? "border-primary text-foreground"
+                                    : "border-transparent text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            History
+                        </div>
                     </div>
 
-                </div>
-
                 {activeTab === "orders" && (
-                    <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
+                    <div className="flex-1 overflow-y-auto scrollbar-hide">
+                        <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
                         <div className="w-full">
                             <GridToolbar className="border-b-0">
                                 <GridToolbarRow className="gap-2">
@@ -939,14 +941,14 @@ export default function LaundryOrdersManagement() {
                                     />
 
                                     <GridToolbarSelect
-                                        label="VENDOR"
+                                        label="Vendor"
                                         value={vendorStatusFilter}
                                         onChange={(value) => {
                                             setVendorStatusFilter(value);
                                             setOrdersPage(1);
                                         }}
                                         options={[
-                                            { label: "Any", value: "" },
+                                            { label: "All", value: "" },
                                             ...VENDOR_STATUSES.map((status) => ({
                                                 label: status.replace(/_/g, " "),
                                                 value: status,
@@ -955,14 +957,14 @@ export default function LaundryOrdersManagement() {
                                     />
 
                                     <GridToolbarSelect
-                                        label="STATUS"
+                                        label="Status"
                                         value={laundryStatusFilter}
                                         onChange={(value) => {
                                             setLaundryStatusFilter(value);
                                             setOrdersPage(1);
                                         }}
                                         options={[
-                                            { label: "Any", value: "" },
+                                            { label: "All", value: "" },
                                             ...LAUNDRY_STATUSES.map((status) => ({
                                                 label: status.replace(/_/g, " "),
                                                 value: status,
@@ -1003,7 +1005,7 @@ export default function LaundryOrdersManagement() {
                             <AppDataGrid
                                 columns={laundryOrderColumns}
                                 data={filteredOrders}
-                                loading={ordersLoading}
+                                loading={ordersLoading || isInitializing}
                                 emptyText="No laundry orders found"
                                 minWidth="1080px"
                                 actionClassName="text-center w-[60px]"
@@ -1045,10 +1047,12 @@ export default function LaundryOrdersManagement() {
                             />
                         </div>
                     </div>
-                )}
+                </div>
+            )}
 
                 {activeTab === "audit" && (
-                    <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
+                    <div className="flex-1 overflow-y-auto scrollbar-hide">
+                        <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
                         <div className="w-full">
                             <GridToolbar className="border-b-0">
                                 <GridToolbarRow className="gap-2">
@@ -1062,14 +1066,14 @@ export default function LaundryOrdersManagement() {
                                     />
 
                                     <GridToolbarSelect
-                                        label="ACTION"
+                                        label="Action"
                                         value={auditActionFilter}
                                         onChange={(value) => {
                                             setAuditActionFilter(value);
                                             setAuditPage(1);
                                         }}
                                         options={[
-                                            { label: "Any", value: "" },
+                                            { label: "All", value: "" },
                                             ...AUDIT_ACTIONS.map((action) => ({
                                                 label: formatDisplayStatus(action),
                                                 value: action,
@@ -1129,7 +1133,8 @@ export default function LaundryOrdersManagement() {
                             />
                         </div>
                     </div>
-                )}
+                </div>
+            )}
 
 
 
@@ -1138,10 +1143,10 @@ export default function LaundryOrdersManagement() {
 
             {/* Create Order Sheet */}
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetContent side="right" className="w-full sm:max-w-4xl h-full overflow-y-auto">
+                <SheetContent side="right" className="w-full sm:max-w-4xl h-full overflow-y-auto bg-background">
 
                     <SheetHeader>
-                        <SheetTitle>Create Laundry Order</SheetTitle>
+                        <SheetTitle>Add Laundry Order Items</SheetTitle>
                     </SheetHeader>
 
                     <div className="space-y-6 mt-6">
@@ -1154,7 +1159,7 @@ export default function LaundryOrdersManagement() {
                             <div className="space-y-1">
                                 <Label>Vendor</Label>
                                 <NativeSelect
-                                    className="w-full h-10 border rounded px-3 text-sm"
+                                    className="w-full h-10 border rounded px-3 text-sm bg-background/50"
                                     value={form.vendorId}
                                     onChange={(e) =>
                                         setForm({ ...form, vendorId: Number(e.target.value) })
@@ -1171,7 +1176,7 @@ export default function LaundryOrdersManagement() {
                             <div className="space-y-1">
                                 <Label>Vendor Status</Label>
                                 <NativeSelect
-                                    className="w-full h-10 border rounded px-3 text-sm"
+                                    className="w-full h-10 border rounded px-3 text-sm bg-background/50"
                                     value={form.vendorStatus}
                                     onChange={(e) =>
                                         setForm({
@@ -1192,29 +1197,19 @@ export default function LaundryOrdersManagement() {
                             <div className="space-y-1">
                                 <Label>Pickup Date & Time*</Label>
                                 <div>
-                                    <DatePicker
-                                        selected={parseDate(form.pickupDate)}
+                                    <ResponsiveDatePicker
+                                        value={parseDate(form.pickupDate)}
                                         onChange={(date) =>
                                             setForm(prev => ({
                                                 ...prev,
                                                 pickupDate: formatDate(date)
                                             }))
                                         }
-                                        showTimeSelect
-                                        timeIntervals={15}
-                                        dateFormat="dd/MM/yyyy HH:mm"
-
+                                        showTime
                                         minDate={now}
-
-                                        minTime={
-                                            parseDate(form.pickupDate)?.toDateString() === now.toDateString()
-                                                ? now
-                                                : new Date(new Date().setHours(0, 0, 0, 0))
-                                        }
-
-                                        maxTime={new Date(new Date().setHours(23, 59, 59, 999))}
-
-                                        className="w-full h-10 border rounded px-3 text-sm"
+                                        placeholder="Select date & time"
+                                        label="Pickup Information"
+                                        className="bg-background/50"
                                     />
                                 </div>
                             </div>
@@ -1223,7 +1218,7 @@ export default function LaundryOrdersManagement() {
                             <div className="space-y-1">
                                 <Label>Booking ID</Label>
                                 <NativeSelect
-                                    className="w-full h-10 border rounded px-3 text-sm"
+                                    className="w-full h-10 border rounded px-3 text-sm bg-background/50"
                                     value={form.bookingId}
                                     onChange={(e) =>
                                         setForm({
@@ -1246,26 +1241,32 @@ export default function LaundryOrdersManagement() {
 
                         {/* ================= ITEMS TABLE ================= */}
 
-                        <div className="border rounded-md overflow-hidden">
+                        <div className="overflow-hidden rounded-[5px] border border-border bg-background">
 
                             {/* HEADER */}
                             <div
                                 className={cn(
-                                    "grid text-sm font-semibold border-b",
+                                    "grid bg-primary text-primary-foreground font-semibold border-b border-border",
                                     form.bookingId
-                                        ? "grid-cols-[2fr_1fr_1fr_40px]"
-                                        : "grid-cols-[2fr_1fr_40px]"
+                                        ? form.items.length > 1
+                                            ? "grid-cols-[2fr_1fr_1fr_88px]"
+                                            : "grid-cols-[2fr_1fr_1fr]"
+                                        : form.items.length > 1
+                                            ? "grid-cols-[2fr_1fr_88px]"
+                                            : "grid-cols-[2fr_1fr]"
                                 )}
                             >
-                                <div className="px-3 py-2 border-r">Item *</div>
+                                <div className="px-5 py-2">Item *</div>
 
                                 {form.bookingId && (
-                                    <div className="px-3 py-2 border-r">Room</div>
+                                    <div className="px-5 py-2">Room</div>
                                 )}
 
-                                <div className="px-3 py-2 border-r">Quantity *</div>
+                                <div className="px-5 py-2">Quantity *</div>
 
-                                <div />
+                                {form.items.length > 1 && (
+                                    <div className="px-3 py-2 text-center">Action</div>
+                                )}
                             </div>
 
                             {/* ROWS */}
@@ -1279,113 +1280,150 @@ export default function LaundryOrdersManagement() {
                                     <div
                                         key={row.id}
                                         className={cn(
-                                            "grid border-b last:border-b-0 hover:bg-muted/30",
+                                            "grid border-b border-border last:border-b-0",
                                             form.bookingId
-                                                ? "grid-cols-[2fr_1fr_1fr_40px]"
-                                                : "grid-cols-[2fr_1fr_40px]"
+                                                ? form.items.length > 1
+                                                    ? "grid-cols-[2fr_1fr_1fr_88px]"
+                                                    : "grid-cols-[2fr_1fr_1fr]"
+                                                : form.items.length > 1
+                                                    ? "grid-cols-[2fr_1fr_88px]"
+                                                    : "grid-cols-[2fr_1fr]"
                                         )}
                                     >
 
                                         {/* ITEM */}
-                                        <div className="border-r p-1">
-
-                                            <MenuItemSelect
-                                                value={row.laundryId || null}
-                                                items={laundryTypes?.data || []}
-                                                disabledIds={[]}   // or your duplicate prevention array
-                                                itemName="item_name"
-                                                extraClasses={cn(
-                                                    "h-8 w-full",
-                                                    error && "border-red-500"
-                                                )}
-                                                onSelect={(id) =>
-                                                    updateItem(index, {
-                                                        laundryId: id
-                                                    })
-                                                }
-                                            />
-
+                                        <div className="border-r border-border p-1.5">
+                                            <ValidationTooltip
+                                                isValid={!((showErrors || row.touched?.laundryId) && (error && (!row.laundryId || error === "Duplicate item selected")))}
+                                                message={error === "Duplicate item selected" ? "Duplicate item selected" : "Required field"}
+                                            >
+                                                <MenuItemSelect
+                                                    value={row.laundryId || null}
+                                                    items={laundryTypes?.data || []}
+                                                    disabledIds={form.items.map(item => item.laundryId).filter(Boolean)}
+                                                    itemName="item_name"
+                                                    forceNative={true}
+                                                    extraClasses={cn(
+                                                        "h-9 w-full rounded-[3px] border border-input bg-background text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary",
+                                                        (showErrors || row.touched?.laundryId) && (error && (!row.laundryId || error === "Duplicate item selected")) && "border-red-500"
+                                                    )}
+                                                    onSelect={(id) =>
+                                                        updateItem(index, {
+                                                            laundryId: id,
+                                                            touched: { ...row.touched, laundryId: true }
+                                                        })
+                                                    }
+                                                />
+                                            </ValidationTooltip>
                                         </div>
 
 
                                         {/* ROOM */}
                                         {form.bookingId && (
-                                            <div className="border-r p-1">
-                                                <NativeSelect
-                                                    className={cn(
-                                                        "w-full h-8 px-2 text-sm rounded border border-input bg-white outline-none focus:ring-1 focus:ring-primary",
-                                                        error && !row.roomNo && "border-red-500 bg-red-50"
-                                                    )}
-                                                    value={row.roomNo || ""}
-                                                    onChange={(e) =>
-                                                        updateItem(index, { roomNo: e.target.value })
-                                                    }
+                                            <div className="border-r border-border p-1.5">
+                                                <ValidationTooltip
+                                                    isValid={!((showErrors || row.touched?.roomNo) && (error && !row.roomNo))}
+                                                    message="Required field"
                                                 >
-                                                    <option value="">--</option>
+                                                    <NativeSelect
+                                                        className={cn(
+                                                            "w-full h-9 rounded-[3px] border border-input bg-background px-3 text-sm shadow-none outline-none focus:ring-1 focus:ring-primary",
+                                                            (showErrors || row.touched?.roomNo) && (error && !row.roomNo) && "border-red-500"
+                                                        )}
+                                                        value={row.roomNo || ""}
+                                                        onChange={(e) =>
+                                                            updateItem(index, { 
+                                                                roomNo: e.target.value,
+                                                                touched: { ...row.touched, roomNo: true }
+                                                            })
+                                                        }
+                                                    >
+                                                        <option value="">--</option>
 
-                                                    {bookingData?.booking?.rooms?.map(room => (
-                                                        <option key={room.room_no} value={room.room_no}>
-                                                            {room.room_no}
-                                                        </option>
-                                                    ))}
-                                                </NativeSelect>
+                                                        {bookingData?.booking?.rooms?.map(room => (
+                                                            <option key={room.room_no} value={room.room_no}>
+                                                                {room.room_no}
+                                                            </option>
+                                                        ))}
+                                                    </NativeSelect>
+                                                </ValidationTooltip>
                                             </div>
                                         )}
 
 
                                         {/* QTY */}
-                                        <div className="border-r p-1">
-                                            <input
-                                                className={cn(
-                                                    "w-full h-8 px-2 text-sm outline-none rounded border border-input bg-white",
-                                                    error && "border-red-500 bg-red-50"
-                                                )}
-                                                value={row.itemCount}
-                                                title={error || ""}
-                                                onChange={(e) =>
-                                                    updateItem(index, {
-                                                        itemCount: +normalizeNumberInput(e.target.value)
-                                                    })
-                                                }
-                                            />
-                                        </div>
-
-
-                                        {/* REMOVE */}
-                                        <div className="flex items-center justify-center">
-                                            <button
-                                                type="button"
-                                                className="text-red-500 hover:text-red-700 text-sm"
-                                                onClick={() => removeRow(row.id)}
+                                        <div className="border-r border-border p-1.5">
+                                            <ValidationTooltip
+                                                isValid={!((showErrors || row.touched?.itemCount) && (error && !row.itemCount))}
+                                                message="Required field"
                                             >
-                                                ✕
-                                            </button>
+                                                <input
+                                                    type="text"
+                                                    name={`laundry_item_count_${index}`}
+                                                    className={cn(
+                                                        "w-full h-9 rounded-[3px] border border-input bg-background px-3 text-sm shadow-none outline-none focus:ring-1 focus:ring-primary",
+                                                        (showErrors || row.touched?.itemCount) && (error && !row.itemCount) && "border-red-500"
+                                                    )}
+                                                    value={row.itemCount}
+                                                    onChange={(e) =>
+                                                        updateItem(index, {
+                                                            itemCount: +normalizeNumberInput(e.target.value)
+                                                        })
+                                                    }
+                                                    onBlur={() => updateItem(index, { touched: { ...row.touched, itemCount: true } })}
+                                                />
+                                            </ValidationTooltip>
                                         </div>
 
+                                        {/* REMOVE ACTION */}
+                                        {form.items.length > 1 && (
+                                            <div className="flex items-center justify-center px-2">
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-10 w-10 text-destructive hover:text-destructive/80 transition-colors"
+                                                    onClick={() => removeRow(row.id)}
+                                                >
+                                                    <Trash2 className="w-5 h-5" />
+                                                </Button>
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}
+                            <div className="p-3 bg-muted/10">
+                                <button
+                                    type="button"
+                                    className="flex items-center gap-1.5 text-primary hover:underline text-sm font-semibold transition-colors"
+                                    onClick={addRow}
+                                >
+                                    <PlusCircle className="w-4 h-4" /> Add New Order Item(s)
+                                </button>
+                            </div>
                         </div>
 
-
-                        <Button variant="heroOutline" onClick={addRow}>
-                            + Add Item
-                        </Button>
-
-                        {/* Submit */}
-                        <Button
-                            variant="hero"
-                            className="w-full"
-                            onClick={handleCreateOrder}
-                        >
-                            Create Order
-                        </Button>
+                        <div className="p-6 border-t bg-muted/20 flex justify-end gap-3">
+                            <Button
+                                variant="outline"
+                                onClick={() => setSheetOpen(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="hero"
+                                className="min-w-[140px]"
+                                onClick={handleCreateOrder}
+                            >
+                                Create Order
+                            </Button>
+                        </div>
 
                     </div>
 
                 </SheetContent>
             </Sheet>
 
+            {/* View / Edit Items Modal */}
             <Dialog
                 open={viewItemsModal.open}
                 onOpenChange={() =>
@@ -1393,23 +1431,16 @@ export default function LaundryOrdersManagement() {
                 }
             >
                 <DialogContent className="max-w-2xl">
-
                     <DialogHeader>
                         <DialogTitle>Laundry Order Details</DialogTitle>
                     </DialogHeader>
 
                     {viewItemsModal.order && (
-
                         <div className="space-y-6 mt-4">
-
                             {/* ===== HEADER DETAILS ===== */}
-
                             <div className="grid grid-cols-2 gap-4 text-sm">
-
-                                {/* Vendor */}
                                 <div>
                                     <Label>Vendor</Label>
-
                                     {viewItemsModal.editMode ? (
                                         <NativeSelect
                                             className="w-full h-9 border rounded px-2"
@@ -1421,7 +1452,6 @@ export default function LaundryOrdersManagement() {
                                                 }))
                                             }
                                         >
-
                                             <option value="">Select Vendor</option>
                                             {vendors?.map(v => (
                                                 <option key={v.id} value={v.id}>{v.name}</option>
@@ -1432,13 +1462,10 @@ export default function LaundryOrdersManagement() {
                                             {getLaundryVendorName(viewItemsModal.order, vendors)}
                                         </p>
                                     )}
-
                                 </div>
 
-                                {/* Laundry Status */}
                                 <div>
                                     <Label>Laundry Status</Label>
-
                                     {viewItemsModal.editMode ? (
                                         <NativeSelect
                                             className="w-full h-9 border rounded px-2"
@@ -1461,10 +1488,8 @@ export default function LaundryOrdersManagement() {
                                     )}
                                 </div>
 
-                                {/* Vendor Status */}
                                 <div>
                                     <Label>Vendor Status</Label>
-
                                     {viewItemsModal.editMode ? (
                                         <NativeSelect
                                             className="w-full h-9 border rounded px-2"
@@ -1487,58 +1512,44 @@ export default function LaundryOrdersManagement() {
                                     )}
                                 </div>
 
-                                {/* Delivery Date */}
                                 <div>
                                     <Label>Delivery Date</Label>
-
                                     {viewItemsModal.editMode ? (
-                                        <div>
-                                            <DatePicker
-                                                selected={parseDate(editOrder?.delivery_date || viewItemsModal.order.delivery_date)}
-                                                onChange={(date) =>
-                                                    setEditOrder(prev => ({
-                                                        ...prev,
-                                                        delivery_date: formatDate(date)
-                                                    }))
-                                                }
-                                                showTimeSelect
-                                                timeIntervals={15}
-                                                minDate={now}
-
-                                                minTime={
-                                                    parseDate(form.pickupDate)?.toDateString() === now.toDateString()
-                                                        ? now
-                                                        : new Date(new Date().setHours(0, 0, 0, 0))
-                                                }
-
-                                                maxTime={new Date(new Date().setHours(23, 59, 59, 999))}
-
-                                                dateFormat="dd/MM/yyyy HH:mm"
-                                                className="w-full h-9 border rounded px-2"
-                                            />
-                                        </div>
+                                        <DatePicker
+                                            selected={parseDate(editOrder?.delivery_date || viewItemsModal.order.delivery_date)}
+                                            onChange={(date) =>
+                                                setEditOrder(prev => ({
+                                                    ...prev,
+                                                    delivery_date: formatDate(date)
+                                                }))
+                                            }
+                                            showTimeSelect
+                                            timeIntervals={15}
+                                            minDate={now}
+                                            minTime={
+                                                parseDate(form.pickupDate)?.toDateString() === now.toDateString()
+                                                    ? now
+                                                    : new Date(new Date().setHours(0, 0, 0, 0))
+                                            }
+                                            maxTime={new Date(new Date().setHours(23, 59, 59, 999))}
+                                            dateFormat="dd/MM/yyyy HH:mm"
+                                            className="w-full h-9 border rounded px-2"
+                                        />
                                     ) : (
                                         <p className="mt-1 font-medium">
                                             {formatDateTime(viewItemsModal.order.delivery_date)}
                                         </p>
                                     )}
                                 </div>
-
                             </div>
 
-                            {/* ===== ITEMS TABLE (READ ONLY ALWAYS) ===== */}
-
                             <div className="border rounded overflow-hidden">
-
                                 <div className="grid grid-cols-[2fr_1fr_1fr_1fr] text-xs font-medium bg-muted/30 border-b">
-
                                     <div className="px-3 py-2 border-r">Item</div>
                                     <div className="px-3 py-2 border-r">Room</div>
                                     <div className="px-3 py-2 border-r">Qty</div>
                                     <div className="px-3 py-2">Amount</div>
-
                                 </div>
-
                                 {viewItemsModal.order.items?.map((i, index) => (
                                     <div
                                         key={index}
@@ -1550,38 +1561,32 @@ export default function LaundryOrdersManagement() {
                                         <div className="px-3 py-2">₹{i.amount}</div>
                                     </div>
                                 ))}
-
                             </div>
-
-                            {/* ===== ACTIONS ===== */}
 
                             <div className="flex justify-end gap-2">
-
                                 {!viewItemsModal.editMode ? (
-
                                     <Button
-                                        variant="hero"
-                                        onClick={() => {
-                                            setEditOrder(viewItemsModal.order);
-                                            setViewItemsModal(prev => ({ ...prev, editMode: true }))
-                                        }}
+                                        variant="heroOutline"
+                                        onClick={() => setViewItemsModal({ open: false, editMode: false, order: null })}
                                     >
-                                        Edit
+                                        Close
                                     </Button>
-
                                 ) : (
-
-                                    <Button variant="hero" onClick={updateOrder}>
-                                        Save Changes
-                                    </Button>
-
+                                    <>
+                                        <Button
+                                            variant="heroOutline"
+                                            onClick={() => setViewItemsModal({ open: false, editMode: false, order: null })}
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button variant="hero" onClick={updateOrder}>
+                                            Save Changes
+                                        </Button>
+                                    </>
                                 )}
-
                             </div>
-
                         </div>
                     )}
-
                 </DialogContent>
             </Dialog>
 
@@ -1688,4 +1693,3 @@ export default function LaundryOrdersManagement() {
         </div>
     );
 }
-

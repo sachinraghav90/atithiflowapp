@@ -3,6 +3,8 @@ export const MODULE_ID_PREFIXES = {
     order: "OR",
     enquiry: "EN",
     laundry: "LA",
+    laundry_order: "LO",
+    laundry_pricing: "LP",
     guest: "GU",
     inventory: "IN",
     kitchen: "KI",

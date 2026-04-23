@@ -46,7 +46,7 @@ export default function SearchSelectPopover<T>({
                 <Button
                     variant="outline"
                     className={cn(
-                        "w-full h-10 justify-between bg-white",
+                        "w-full h-10 justify-between bg-background",
                         className
                     )}
                 >

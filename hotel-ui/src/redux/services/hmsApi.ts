@@ -1227,7 +1227,7 @@ exportPropertyOrders: builder.query({
     bulkAdjustStock: builder.mutation({
       query: (payload) => {
         return {
-          url: `/kitchen/bulk-adjust`,
+          url: `/kitchen/bulk`,
           method: "POST",
           body: payload
         }
@@ -1326,6 +1326,16 @@ exportPropertyOrders: builder.query({
         }
       },
       invalidatesTags: ["Inventory"]
+    }),
+
+    checkDuplicateInventory: builder.mutation({
+      query: (items) => {
+        return {
+          url: `/inventory/check-duplicates`,
+          method: "POST",
+          body: { items }
+        }
+      }
     }),
 
     updateInventoryMaster: builder.mutation({
@@ -1525,6 +1535,7 @@ export const {
   useCreateInventoryMasterMutation,
   useUpdateInventoryMasterMutation,
   useGetInventoryMasterByTypesQuery,
+  useLazyGetInventoryMasterByTypesQuery,
   useGetMenuItemGroupsLightQuery,
   useGetMenuItemGroupsQuery,
   useCreateMenuItemGroupMutation,
@@ -1543,5 +1554,6 @@ export const {
   useBulkAdjustStockMutation,
   useTodayInHouseBookingRoomsQuery,
   useCreateMenuItemBulkMutation,
+  useCheckDuplicateInventoryMutation,
   usePrefetch
 } = hmsApi

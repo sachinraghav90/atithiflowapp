@@ -104,6 +104,13 @@ class MenuMasterController {
             return res.status(201).json(menuItem);
         } catch (error) {
             console.log("🚀 ~ MenuMasterController ~ create ~ error:", error)
+            
+            if (error.code === "23505") {
+                return res.status(409).json({
+                    message: "An item with this name already exists in this group"
+                });
+            }
+
             return res.status(500).json({ message: "Some error occurred" })
         }
     }
@@ -139,6 +146,13 @@ class MenuMasterController {
             return res.status(200).json(updated);
         } catch (error) {
             console.log("🚀 ~ MenuMasterController ~ updateById ~ error:", error)
+            
+            if (error.code === "23505") {
+                return res.status(409).json({
+                    message: "An item with this name already exists in this group"
+                });
+            }
+
             return res.status(500).json({ message: "Some error occurred" })
         }
     }
@@ -170,6 +184,13 @@ class MenuMasterController {
             });
         } catch (error) {
             console.log("🚀 ~ MenuMasterController ~ bulkUpdate ~ error:", error)
+            
+            if (error.code === "23505") {
+                return res.status(409).json({
+                    message: "One or more items have conflicting names"
+                });
+            }
+
             return res.status(500).json({ message: "Some error occurred" })
         }
     }
@@ -288,6 +309,12 @@ class MenuMasterController {
             });
 
         } catch (err) {
+
+            if (err.code === "23505") {
+                return res.status(409).json({
+                    message: "An item with this name already exists in this group"
+                });
+            }
 
             next(err);
 

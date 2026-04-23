@@ -19,6 +19,8 @@ router.get("/", supabaseAuth, KitchenInventoryController.getByPropertyId.bind(Ki
 
 router.post("/", supabaseAuth, KitchenInventoryController.create.bind(KitchenInventoryController));
 
+router.post("/bulk", supabaseAuth, KitchenInventoryController.bulkAdjustStock.bind(KitchenInventoryController));
+
 router.post("/adjust-stock", supabaseAuth, KitchenInventoryController.adjustStock.bind(KitchenInventoryController));
 
 router.put("/:id", supabaseAuth, KitchenInventoryController.update.bind(KitchenInventoryController));

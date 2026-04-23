@@ -91,7 +91,7 @@ export default function EmergencyContacts({
                                 variant="outline"
                                 disabled={viewMode}
                                 className={cn(
-                                    "h-10 bg-white justify-between rounded-r-none w-[85px]",
+                                    "h-10 bg-background justify-between rounded-r-none w-[85px]",
                                     error && "border-red-500"
                                 )}
                             >
@@ -135,7 +135,7 @@ export default function EmergencyContacts({
                         maxLength={15}
                         title={error?.type === "required" ? error.message : ""}
                         className={cn(
-                            "h-10 rounded-l-none bg-white",
+                            "h-10 rounded-l-none bg-background",
                             error && "border-red-500"
                         )}
                         onChange={(e) => {
@@ -154,7 +154,7 @@ export default function EmergencyContacts({
     };
 
     return (
-        <div className="space-y-5 border border-border rounded-[5px] p-5 bg-card">
+        <div className="space-y-5 border border-border rounded-[5px] p-5 bg-transparent">
 
             <h3 className="font-semibold text-base">
                 Emergency Contacts

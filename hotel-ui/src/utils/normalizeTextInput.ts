@@ -33,3 +33,16 @@ export function normalizeSignedNumberInput(value: string): number | "" {
 
     return Number.isNaN(num) ? "" : num;
 }
+
+export function normalizePriceInput(value: string): string {
+    // Allows only digits and at most one decimal point
+    let cleaned = value.replace(/[^0-9.]/g, "");
+
+    // Ensure only one dot exists
+    const parts = cleaned.split(".");
+    if (parts.length > 2) {
+        cleaned = parts[0] + "." + parts.slice(1).join("");
+    }
+
+    return cleaned;
+}

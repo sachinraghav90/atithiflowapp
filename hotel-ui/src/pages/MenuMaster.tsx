@@ -10,7 +10,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { NativeSelect } from "@/components/ui/native-select";
-import { useCreateMenuItemBulkMutation, useCreateMenuItemGroupMutation, useCreateMenuItemMutation, useGetMenuItemGroupsLightQuery, useGetMenuItemGroupsQuery, useGetMyPropertiesQuery, useGetPropertyMenuQuery, useUpdateMenuItemGroupMutation, useUpdateMenuItemMutation } from "@/redux/services/hmsApi";
+import { useCreateMenuItemBulkMutation, useCreateMenuItemGroupMutation, useCreateMenuItemMutation, useGetMenuItemGroupsLightQuery, useGetMenuItemGroupsQuery, useGetPropertyMenuLightQuery, useGetPropertyMenuQuery, useUpdateMenuItemGroupMutation, useUpdateMenuItemMutation } from "@/redux/services/hmsApi";
 import { useAppSelector } from "@/redux/hook";
 import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
 import { normalizeNumberInput } from "@/utils/normalizeTextInput";
@@ -22,12 +22,13 @@ import { cn } from "@/lib/utils";
 import MenuMasterBulkSheet from "@/components/MenuMasterBulkSheet";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Download, FilterX, Pencil, RefreshCcw } from "lucide-react";
+import { Download, FilterX, Plus, Pencil, RefreshCcw } from "lucide-react";
 import { getStatusColor } from "@/constants/statusColors";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { toast } from "react-toastify";
+import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 
 type MenuItem = {
     id: string;
@@ -108,7 +109,7 @@ function buildUpdateMenuPayload(
 
 export default function MenuMaster() {
     const [page, setPage] = useState(1);
-    const [limit, setLimit] = useState(10);
+    const [limit, setLimit] = useState(5);
     const [searchInput, setSearchInput] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
     const [groupFilter, setGroupFilter] = useState("");
@@ -144,15 +145,22 @@ export default function MenuMaster() {
     const isSuperAdmin = useAppSelector(selectIsSuperAdmin)
     const isOwner = useAppSelector(selectIsOwner)
 
-    const { data: myProperties, isLoading: myPropertiesLoading } = useGetMyPropertiesQuery(undefined, {
-        skip: !isLoggedIn
-    })
+    const { 
+        myProperties, 
+        isMultiProperty, 
+        isInitializing, 
+        isLoading: myPropertiesLoading 
+    } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
 
     const { data, isLoading, isFetching, refetch } = useGetPropertyMenuQuery({ page, limit, propertyId: selectedPropertyId }, {
         skip: !isLoggedIn || !selectedPropertyId
     })
 
     const { data: menuItemGroups } = useGetMenuItemGroupsQuery({ propertyId: selectedPropertyId }, {
+        skip: !isLoggedIn || !selectedPropertyId
+    })
+
+    const { data: menuLight } = useGetPropertyMenuLightQuery(selectedPropertyId, {
         skip: !isLoggedIn || !selectedPropertyId
     })
 
@@ -193,11 +201,7 @@ export default function MenuMaster() {
     }
 
 
-    useEffect(() => {
-        if (!selectedPropertyId && myProperties?.properties?.length > 0) {
-            setSelectedPropertyId(myProperties.properties[0].id);
-        }
-    }, [myProperties]);
+
 
     useEffect(() => {
         if (!form.image) return;
@@ -415,7 +419,7 @@ export default function MenuMaster() {
                                     setBulkOpen(true)
                                 }}
                             >
-                                Add Menu Item
+                                 <Plus className="h-4 w-4 mr-none"/>Add Menu Item
                             </Button>
                         )}
 
@@ -438,14 +442,14 @@ export default function MenuMaster() {
                                 />
 
                                 <GridToolbarSelect
-                                    label="GROUP"
+                                    label="Group"
                                     value={groupFilter}
                                     onChange={(value) => {
                                         setGroupFilter(value);
                                         setPage(1);
                                     }}
                                     options={[
-                                        { label: "Any", value: "" },
+                                        { label: "All", value: "" },
                                         ...menuGroupOptions.map((group) => ({
                                             label: String(group),
                                             value: String(group),
@@ -454,14 +458,14 @@ export default function MenuMaster() {
                                 />
 
                                 <GridToolbarSelect
-                                    label="TYPE"
+                                    label="Type"
                                     value={typeFilter}
                                     onChange={(value) => {
                                         setTypeFilter(value);
                                         setPage(1);
                                     }}
                                     options={[
-                                        { label: "Any", value: "" },
+                                        { label: "All", value: "" },
                                         { label: "Veg", value: "veg" },
                                         { label: "Non-Veg", value: "non-veg" },
                                     ]}
@@ -495,14 +499,14 @@ export default function MenuMaster() {
 
                             <GridToolbarRow className="gap-2">
                                 <GridToolbarSelect
-                                    label="STATUS"
+                                    label="Status"
                                     value={statusFilter}
                                     onChange={(value) => {
                                         setStatusFilter(value);
                                         setPage(1);
                                     }}
                                     options={[
-                                        { label: "Any", value: "" },
+                                        { label: "All", value: "" },
                                         { label: "Active", value: "active" },
                                         { label: "Inactive", value: "inactive" },
                                     ]}
@@ -526,7 +530,7 @@ export default function MenuMaster() {
                                         <button
                                             type="button"
                                             className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
-                                            onClick={() => permission?.can_create ? openEdit(item) : openView(item)}
+                                            onClick={() => openView(item)}
                                             aria-label={`Open summary for menu item ${formatModuleDisplayId("menu", item.id)}`}
                                         >
                                             {formatModuleDisplayId("menu", item.id)}
@@ -587,7 +591,7 @@ export default function MenuMaster() {
                                 },
                             ] as ColumnDef[]}
                             data={filteredMenuItems}
-                            loading={isLoading || isFetching}
+                            loading={isLoading || isFetching || isInitializing}
                             emptyText="No menu items found"
                             minWidth="980px"
                             enablePagination={!!data?.pagination}
@@ -605,21 +609,26 @@ export default function MenuMaster() {
                             }}
                             actionLabel=""
                             actionClassName="text-center w-[60px]"
+                            showActions={permission?.can_create}
                             actions={(item: MenuItem) => (
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            size="icon"
-                                            variant="ghost"
-                                            className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
-                                            onClick={() => permission?.can_create ? openEdit(item) : openView(item)}
-                                            aria-label={`View and edit details for menu item ${item.item_name}`}
-                                        >
-                                            <Pencil className="w-4 h-4 mx-auto" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>View / Edit Details</TooltipContent>
-                                </Tooltip>
+                                <>
+                                    {permission?.can_create && (
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                                    onClick={() => openEdit(item)}
+                                                    aria-label={`View and edit details for menu item ${item.item_name}`}
+                                                >
+                                                    <Pencil className="w-4 h-4 mx-auto" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>View / Edit Details</TooltipContent>
+                                        </Tooltip>
+                                    )}
+                                </>
                             )}
                         />
                     </div>
@@ -825,13 +834,23 @@ export default function MenuMaster() {
                                 </div>
                             </div>
 
-                            <Button
-                                variant="hero"
-                                className="w-full"
-                                onClick={handleForm}
-                            >
-                                {mode === "add" ? "Create Item" : "Save Changes"}
-                            </Button>
+                            {mode === "view" ? (
+                                <Button
+                                    variant="heroOutline"
+                                    className="w-full"
+                                    onClick={() => setMode(null)}
+                                >
+                                    Close
+                                </Button>
+                            ) : (
+                                <Button
+                                    variant="hero"
+                                    className="w-full"
+                                    onClick={handleForm}
+                                >
+                                    {mode === "add" ? "Create Item" : "Save Changes"}
+                                </Button>
+                            )}
                         </div>
 
                     )}
@@ -1074,10 +1093,10 @@ export default function MenuMaster() {
             <MenuMasterBulkSheet
                 open={bulkOpen}
                 onOpenChange={setBulkOpen}
-                propertyId={selectedPropertyId}
-                menuGroups={menuGroupsLight}
-                existingItems={data?.data || []}
-                onSubmit={(payload) => {
+                propertyId={selectedPropertyId!}
+                menuGroups={menuGroupsLight || []}
+                existingItems={menuLight || []}
+                onSubmit={async (payload) => {
                     apiToast(
                         createMenuItemBulk(payload).unwrap(),
                         "Menu items created successfully"

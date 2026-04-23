@@ -95,6 +95,38 @@ class InventoryService {
     }
 
     /* =====================================================
+       CREATE inventory
+    ===================================================== */
+    async createInventory(payload, userId) {
+
+        const query = `
+            INSERT INTO public.inventory_master (
+                property_id,
+                inventory_type_id,
+                use_type,
+                name,
+                unit,
+                created_by
+            )
+            VALUES ($1,$2,$3,$4,$5,$6)
+            RETURNING *;
+        `;
+
+        const values = [
+            payload.property_id,
+            payload.inventory_type_id,
+            payload.use_type,
+            payload.name,
+            payload.unit ?? null,
+            userId
+        ];
+
+        const result = await this.#DB.query(query, values);
+
+        return result.rows[0];
+    }
+
+    /* =====================================================
     BULK CREATE inventory
     ===================================================== */
 
@@ -144,10 +176,93 @@ class InventoryService {
     }
 
     /* =====================================================
+    CHECK DUPLICATES INVENTORY
+    ===================================================== */
+    
+    async checkDuplicates(items) {
+        if (!Array.isArray(items) || items.length === 0) {
+            return [];
+        }
+
+        const duplicates = await Promise.all(
+            items.map(async (item) => {
+                if (!item.property_id || !item.inventory_type_id || !item.name?.trim()) return false;
+                
+                const duplicate = await this.#findDuplicateInventory({
+                    id: item.id || -1,
+                    property_id: item.property_id,
+                    inventory_type_id: item.inventory_type_id,
+                    name: item.name
+                });
+                
+                return duplicate !== null;
+            })
+        );
+        
+        return duplicates;
+    }
+
+    async #getInventoryById(id) {
+        const result = await this.#DB.query(
+            `
+                SELECT *
+                FROM public.inventory_master
+                WHERE id = $1
+                LIMIT 1;
+            `,
+            [id]
+        );
+
+        return result.rows[0] ?? null;
+    }
+
+    async #findDuplicateInventory({ id, property_id, inventory_type_id, name }) {
+        const result = await this.#DB.query(
+            `
+                SELECT id
+                FROM public.inventory_master
+                WHERE property_id = $1
+                  AND inventory_type_id = $2
+                  AND name = $3
+                  AND id <> $4
+                LIMIT 1;
+            `,
+            [property_id, inventory_type_id, name, id]
+        );
+
+        return result.rows[0] ?? null;
+    }
+
+    /* =====================================================
        UPDATE inventory
     ===================================================== */
 
     async updateInventory(id, payload, userId) {
+        const existing = await this.#getInventoryById(id);
+
+        if (!existing) {
+            throw new Error("Inventory not found");
+        }
+
+        const effectivePropertyId = payload.property_id ?? existing.property_id;
+        const effectiveInventoryTypeId = payload.inventory_type_id ?? existing.inventory_type_id;
+        const effectiveName = payload.name ?? existing.name;
+
+        if (effectivePropertyId && effectiveInventoryTypeId && effectiveName?.trim()) {
+            const duplicate = await this.#findDuplicateInventory({
+                id,
+                property_id: effectivePropertyId,
+                inventory_type_id: effectiveInventoryTypeId,
+                name: effectiveName,
+            });
+
+            if (duplicate) {
+                const error = new Error("Inventory item already exists in this category");
+                error.statusCode = 409;
+                error.code = "INVENTORY_DUPLICATE";
+                throw error;
+            }
+        }
 
         const fields = [];
         const values = [];
@@ -177,10 +292,6 @@ class InventoryService {
         values.push(id);
 
         const result = await this.#DB.query(query, values);
-
-        if (!result.rowCount) {
-            throw new Error("Inventory not found");
-        }
 
         return result.rows[0];
     }

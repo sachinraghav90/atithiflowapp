@@ -80,7 +80,8 @@ export function OrdersManagement() {
 
     const {
         myProperties,
-        isMultiProperty
+        isMultiProperty,
+        isInitializing
     } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
 
     const [getAllOrders, { reset, isFetching: exportingOrders }] = useLazyExportPropertyOrdersQuery();
@@ -186,7 +187,7 @@ export function OrdersManagement() {
 
     const orderColumns = useMemo<ColumnDef<Order>[]>(() => [
         {
-            label: "Order",
+            label: "Order ID",
             cellClassName: "font-medium",
             render: (order) => (
                 <button
@@ -332,21 +333,21 @@ export function OrdersManagement() {
                                 />
 
                                 <GridToolbarSelect
-                                    label="PAYMENT"
+                                    label="Payment"
                                     value={paymentFilter}
                                     onChange={setPaymentFilter}
                                     options={[
-                                        { label: "Any", value: "" },
+                                        { label: "All", value: "" },
                                         ...PAYMENT_STATUSES.map((s) => ({ label: s, value: s })),
                                     ]}
                                 />
 
                                 <GridToolbarSelect
-                                    label="STATUS"
+                                    label="Status"
                                     value={statusFilter}
                                     onChange={setStatusFilter}
                                     options={[
-                                        { label: "Any", value: "" },
+                                        { label: "All", value: "" },
                                         ...ORDER_STATUSES.map((s) => ({ label: s, value: s })),
                                     ]}
                                 />
@@ -384,7 +385,7 @@ export function OrdersManagement() {
                             columns={orderColumns}
                             data={filteredOrders}
                             rowKey={(order) => order.id}
-                            loading={isLoading || ordersFetching}
+                            loading={isLoading || ordersFetching || isInitializing}
                             emptyText="No orders found"
                             actionClassName="text-center w-[60px]"
                             actions={(order) => (

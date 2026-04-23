@@ -100,8 +100,8 @@ export default function PropertyConfiguration({
                         value={value.serial_suffix}
                         title={errors.serial_suffix?.message || ""}
                         className={`w-full h-10 rounded-[3px] border px-3 text-sm ${errors.serial_suffix
-                            ? "border-red-500 bg-white"
-                            : "border-border bg-white"
+                            ? "border-red-500 bg-background"
+                            : "border-border bg-background"
                             }`}
                         onChange={(e) =>
                             setValue((prev: any) => ({
@@ -144,7 +144,7 @@ export default function PropertyConfiguration({
                     <input
                         disabled
                         value={totalRooms}
-                        className="w-full h-10 rounded-[3px] border border-border px-3 text-sm bg-white"
+                        className="w-full h-10 rounded-[3px] border border-border px-3 text-sm bg-background"
                     />
 
                 </div>
@@ -184,7 +184,7 @@ export default function PropertyConfiguration({
                                 disabled={viewMode}
                                 value={floor.total_rooms}
                                 maxLength={2}
-                                className="w-full h-10 rounded-[3px] border border-border px-3 text-sm bg-white"
+                                className="w-full h-10 rounded-[3px] border border-border px-3 text-sm bg-background"
                                 onChange={(e) => {
 
                                     const val = normalizeNumberInput(e.target.value);

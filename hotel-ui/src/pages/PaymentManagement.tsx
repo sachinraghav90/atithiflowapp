@@ -69,7 +69,10 @@ export default function PaymentsManagement() {
     const [detailsOpen, setDetailsOpen] = useState(false);
     const [selectedPayment, setSelectedPayment] = useState<PaymentRow | null>(null);
 
-    const { myProperties } = useAutoPropertySelect(propertyId, setPropertyId);
+    const { 
+        myProperties, 
+        isInitializing 
+    } = useAutoPropertySelect(propertyId, setPropertyId);
 
     /* Payments */
     const {
@@ -138,19 +141,19 @@ export default function PaymentsManagement() {
                                     placeholder="Search payments..."
                                 />
                                 <GridToolbarSelect
-                                    label="METHOD"
+                                    label="Method"
                                     value={method}
                                     onChange={setMethod}
                                     options={[
                                         { label: "All", value: "" },
-                                        { label: "Cash", value: "Cash" },
-                                        { label: "Card", value: "Card" },
+                                        { label: "CASH", value: "CASH" },
+                                        { label: "CARD", value: "CARD" },
                                         { label: "UPI", value: "UPI" },
-                                        { label: "Net Banking", value: "Net Banking" },
+                                        { label: "NET_BANKING", value: "NET_BANKING" },
                                     ]}
                                 />
                                 <GridToolbarSelect
-                                    label="STATUS"
+                                    label="Status"
                                     value={status}
                                     onChange={setStatus}
                                     options={[
@@ -184,7 +187,7 @@ export default function PaymentsManagement() {
                             {/* Row 2 */}
                             <GridToolbarRow className="gap-2">
                                 <GridToolbarSelect
-                                    label="PROPERTY"
+                                    label="Property"
                                     value={propertyId ?? ""}
                                     onChange={(value) => setPropertyId(value ? Number(value) : undefined)}
                                     options={[
@@ -222,7 +225,7 @@ export default function PaymentsManagement() {
                                     ),
                                 },
                                 {
-                                    label: "Booking",
+                                    label: "Booking ID",
                                     cellClassName: "text-muted-foreground font-medium whitespace-nowrap",
                                     render: (p: PaymentRow) => formatModuleDisplayId("booking", p.booking_id),
                                 },
@@ -259,7 +262,7 @@ export default function PaymentsManagement() {
                                 },
                             ] as ColumnDef[]}
                             data={filteredPayments}
-                            loading={paymentsLoading}
+                            loading={paymentsLoading || isInitializing}
                             emptyText="No payments found"
                             minWidth="860px"
                             actionLabel=""

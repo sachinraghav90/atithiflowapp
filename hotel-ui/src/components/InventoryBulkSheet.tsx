@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { MenuItemSelect } from "./MenuItemSelect";
 import { cn } from "@/lib/utils";
+import { Trash2, PlusCircle } from "lucide-react";
+import { ValidationTooltip } from "@/components/ui/validation-tooltip";
 
 type InventoryRow = {
     id?: string;
@@ -19,6 +21,8 @@ type InventoryRow = {
     name: string;
     touched?: {
         name?: boolean;
+        unit?: boolean;
+        inventory_type_id?: boolean;
     };
 };
 
@@ -79,7 +83,9 @@ export default function InventoryBulkSheet({
     };
 
     const removeRow = (id?: string) => {
-        setRows(prev => prev.filter(r => r.id !== id));
+        if (rows.length > 1) {
+            setRows(prev => prev.filter(r => r.id !== id));
+        }
     };
 
     /* VALIDATION */
@@ -149,33 +155,42 @@ export default function InventoryBulkSheet({
     return (
 
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent side="right" className="w-full sm:max-w-4xl h-full overflow-y-auto">
+            <SheetContent side="right" onOpenAutoFocus={(event) => event.preventDefault()} className="w-full sm:max-w-4xl h-full overflow-y-auto bg-background p-0 flex flex-col">
 
-                <SheetHeader>
+                <SheetHeader className="px-6 py-4 border-b bg-background">
                     <SheetTitle>Create Inventory (Bulk)</SheetTitle>
                 </SheetHeader>
 
-                <div className="mt-6 space-y-4">
+                <div className="flex-1 overflow-y-auto bg-background">
+                    <div className="p-6 space-y-6">
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Inventory Details</h3>
+                                <p className="text-[10px] text-muted-foreground italic">*Define required fields for new inventory items</p>
+                            </div>
 
-                    <div className="border rounded-md overflow-hidden">
-
-                        <Table className="text-sm">
-
-                            <TableHeader>
-                                <TableRow className="h-9">
-                                    <TableHead>Inventory Type *</TableHead>
-                                    <TableHead>Use Type</TableHead>
-                                    <TableHead>Unit</TableHead>
-                                    <TableHead>Name *</TableHead>
-                                    <TableHead className="w-12"></TableHead>
-                                </TableRow>
-                            </TableHeader>
+                        <div className="editable-grid-compact border rounded-[5px] overflow-hidden bg-background/50 border-border">
+                            <Table className="text-sm">
+                                <TableHeader className="bg-muted/40">
+                                    <TableRow className="h-10 hover:bg-transparent">
+                                        <TableHead className="font-bold text-foreground">Inventory Type *</TableHead>
+                                        <TableHead className="font-bold text-foreground">Use Type</TableHead>
+                                        <TableHead className="font-bold text-foreground">Unit</TableHead>
+                                        <TableHead className="font-bold text-foreground">Name *</TableHead>
+                                        {rows.length > 1 && (
+                                            <TableHead className="w-16 text-center font-bold text-foreground">Action</TableHead>
+                                        )}
+                                    </TableRow>
+                                </TableHeader>
 
                             <TableBody>
 
                                 {rows.map((row, index) => {
 
                                     const errors = getRowErrors(row);
+                                    const isNameInvalid =
+                                        (showErrors && (errors.name || errors.duplicateInForm || errors.duplicateExisting)) ||
+                                        (!!row.touched?.name && (errors.duplicateInForm || errors.duplicateExisting));
 
                                     return (
 
@@ -183,19 +198,27 @@ export default function InventoryBulkSheet({
 
                                             {/* TYPE */}
                                             <TableCell className="border-r p-1">
-                                                <MenuItemSelect
-                                                    value={row.inventory_type_id}
-                                                    items={inventoryTypes || []}
-                                                    disabledIds={[]}
-                                                    itemName="type"
-                                                    extraClasses={cn(
-                                                        "h-8 text-sm",
-                                                        showErrors && errors.inventory_type_id && "border border-red-500"
-                                                    )}
-                                                    onSelect={(id) =>
-                                                        updateRow(index, { inventory_type_id: id })
-                                                    }
-                                                />
+                                                <ValidationTooltip
+                                                    isValid={!((showErrors || row.touched?.inventory_type_id) && errors.inventory_type_id)}
+                                                    message="Required field"
+                                                >
+                                                    <MenuItemSelect
+                                                        value={row.inventory_type_id}
+                                                        items={inventoryTypes || []}
+                                                        disabledIds={[]}
+                                                        itemName="type"
+                                                        extraClasses={cn(
+                                                            "h-8 text-sm w-full",
+                                                            (showErrors || row.touched?.inventory_type_id) && errors.inventory_type_id && "border border-red-500"
+                                                        )}
+                                                        onSelect={(id) =>
+                                                            updateRow(index, {
+                                                                inventory_type_id: id,
+                                                                touched: { ...row.touched, inventory_type_id: true }
+                                                            })
+                                                        }
+                                                    />
+                                                </ValidationTooltip>
                                             </TableCell>
 
                                             {/* USE TYPE */}
@@ -217,73 +240,80 @@ export default function InventoryBulkSheet({
 
                                             {/* UNIT */}
                                             <TableCell className="border-r p-1">
-                                                <NativeSelect
-                                                    disabled={row.use_type !== "usable"}
-                                                    className={cn(
-                                                        "w-full h-8 px-2 text-sm rounded border border-input",
-                                                        row.use_type !== "usable" && "opacity-40 pointer-events-none",
-                                                        showErrors && errors.unit && "border-red-500"
-                                                    )}
-                                                    value={row.unit || ""}
-                                                    onChange={(e) =>
-                                                        updateRow(index, { unit: e.target.value })
-                                                    }
+                                                <ValidationTooltip
+                                                    isValid={!((showErrors || row.touched?.unit) && errors.unit)}
+                                                    message="Required field"
                                                 >
-                                                    <option value="">-- Select --</option>
-                                                    <option value="pcs">PCS</option>
-                                                    <option value="kg">KG</option>
-                                                    <option value="gm">GM</option>
-                                                    <option value="ltr">LTR</option>
-                                                    <option value="ml">ML</option>
-                                                    <option value="box">BOX</option>
-                                                    <option value="pack">PACK</option>
-                                                </NativeSelect>
+                                                    <NativeSelect
+                                                        disabled={row.use_type !== "usable"}
+                                                        className={cn(
+                                                            "w-full h-8 px-2 text-sm rounded border border-input",
+                                                            row.use_type !== "usable" && "opacity-40 pointer-events-none",
+                                                            (showErrors || row.touched?.unit) && errors.unit && "border-red-500"
+                                                        )}
+                                                        value={row.unit || ""}
+                                                        onChange={(e) =>
+                                                            updateRow(index, {
+                                                                unit: e.target.value,
+                                                                touched: { ...row.touched, unit: true }
+                                                            })
+                                                        }
+                                                    >
+                                                        <option value="">-- Select --</option>
+                                                        <option value="pcs">PCS</option>
+                                                        <option value="kg">KG</option>
+                                                        <option value="gm">GM</option>
+                                                        <option value="ltr">LTR</option>
+                                                        <option value="ml">ML</option>
+                                                        <option value="box">BOX</option>
+                                                        <option value="pack">PACK</option>
+                                                    </NativeSelect>
+                                                </ValidationTooltip>
                                             </TableCell>
 
                                             {/* NAME */}
                                             <TableCell className="border-r p-1">
-                                                <input
-                                                    value={row.name}
-                                                    onChange={(e) =>
-                                                        updateRow(index, { name: e.target.value })
+                                                <ValidationTooltip
+                                                    isValid={!isNameInvalid}
+                                                    message={
+                                                        errors.duplicateExisting
+                                                            ? "This item is already registered for this category."
+                                                            : errors.duplicateInForm
+                                                                ? "This item is repeated in your list"
+                                                                : "Required field"
                                                     }
-                                                    className={cn(
-                                                        "w-full h-8 px-2 text-sm rounded border border-input",
-                                                        (showErrors || row.touched?.name) &&
-                                                        (errors.name ||
-                                                            errors.duplicateInForm ||
-                                                            errors.duplicateExisting) &&
-                                                        "border-red-500"
-                                                    )}
-                                                    onBlur={() =>
-                                                        updateRow(index, {
-                                                            touched: { ...row.touched, name: true }
-                                                        })
-                                                    }
-                                                    title={
-                                                        (showErrors || row.touched?.name)
-                                                            ? errors.duplicateExisting
-                                                                ? "Inventory already exists"
-                                                                : errors.duplicateInForm
-                                                                    ? "Duplicate in list"
-                                                                    : errors.name
-                                                                        ? "Required"
-                                                                        : ""
-                                                            : ""
-                                                    }
-                                                />
+                                                >
+                                                    <input
+                                                        value={row.name}
+                                                        onChange={(e) =>
+                                                            updateRow(index, { name: e.target.value })
+                                                        }
+                                                        className={cn(
+                                                            "w-full h-8 px-2 text-sm rounded border border-input focus:outline-none focus:ring-1 focus:ring-primary",
+                                                            isNameInvalid && "border-red-500"
+                                                        )}
+                                                        onBlur={() =>
+                                                            updateRow(index, {
+                                                                touched: { ...row.touched, name: true }
+                                                            })
+                                                        }
+                                                    />
+                                                </ValidationTooltip>
                                             </TableCell>
 
                                             {/* REMOVE */}
-                                            <TableCell className="flex justify-center p-1">
-                                                <button
-                                                    className="text-red-500"
-                                                    onClick={() => removeRow(row.id)}
-                                                    disabled={rows.length === 1}
-                                                >
-                                                    ✕
-                                                </button>
-                                            </TableCell>
+                                            {rows.length > 1 && (
+                                                <TableCell className="p-1 text-center">
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="editable-grid-remove-btn h-10 w-10 text-destructive hover:text-destructive/80 transition-colors"
+                                                        onClick={() => removeRow(row.id)}
+                                                    >
+                                                        <Trash2 className="w-5 h-5" />
+                                                    </Button>
+                                                </TableCell>
+                                            )}
 
                                         </TableRow>
                                     );
@@ -293,18 +323,27 @@ export default function InventoryBulkSheet({
 
                         </Table>
 
+                            <div className="editable-grid-footer p-3 bg-muted/10">
+                                <button
+                                    type="button"
+                                    className="flex items-center gap-1.5 text-primary hover:underline text-sm font-semibold transition-colors"
+                                    onClick={addRow}
+                                >
+                                    <PlusCircle className="w-4 h-4" /> Add Row
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="flex justify-between">
-                        <Button variant="heroOutline" onClick={addRow}>
-                            + Add Row
+                    <div className="p-6 border-t bg-background flex justify-end gap-3">
+                        <Button variant="outline" onClick={() => onOpenChange(false)}>
+                            Cancel
                         </Button>
-
-                        <Button variant="hero" onClick={handleSubmit}>
+                        <Button variant="hero" className="min-w-[140px]" onClick={handleSubmit}>
                             Create Inventory
                         </Button>
                     </div>
-
+                </div>
                 </div>
 
             </SheetContent>
@@ -312,4 +351,3 @@ export default function InventoryBulkSheet({
 
     );
 }
-

@@ -11,6 +11,7 @@ import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.select
 import { useLocation, useNavigate } from "react-router-dom";
 import { usePermission } from "@/rbac/usePermission";
 import { NativeSelect } from "@/components/ui/native-select";
+import { Plus } from "lucide-react";
 
 /* ---------------- Types ---------------- */
 type Room = {
@@ -221,7 +222,7 @@ export default function RoomStatusBoard() {
                                 <div className="w-full sm:w-48">
                                     <Label>Property</Label>
                                     <NativeSelect
-                                        className="w-full h-10 rounded-[3px] border px-3 text-sm"
+                                        className="w-full h-10 rounded-[3px] border bg-background px-3 text-sm"
                                         value={propertyId}
                                         onChange={(e) => setPropertyId(e.target.value)}
                                     >
@@ -239,7 +240,7 @@ export default function RoomStatusBoard() {
                                 <Label>Date</Label>
                                 <Input
                                     type="date"
-                                    className="bg-white h-10"
+                                    className="bg-background h-10"
                                     value={selectedDate}
                                     onChange={(e) => setSelectedDate(e.target.value)}
                                 />
@@ -247,12 +248,11 @@ export default function RoomStatusBoard() {
 
                             {bookingPermission?.can_create && (
                                 <Button
-                                    size="sm"
-                                    variant="heroOutline"
+                                    variant="hero"
                                     onClick={() => navigate("/reservation")}
-                                    className="h-10 sm:mt-[22px]"
+                                    className="h-10 px-4 flex items-center gap-2 sm:mt-[22px]"
                                 >
-                                   + New Booking
+                                    <Plus className="w-4 h-4" /> New Booking
                                 </Button>
                             )}
                         </div>

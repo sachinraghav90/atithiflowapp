@@ -15,7 +15,7 @@ import {
     useAddGuestsByBookingMutation,
 } from "@/redux/services/hmsApi";
 import { normalizeNumberInput, normalizeTextInput } from "@/utils/normalizeTextInput";
-import DatePicker from 'react-datepicker'
+import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
 import {
     Popover,
     PopoverContent,
@@ -120,7 +120,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
 
         const remaining = guestCount - existing.length;
 
-        const remainingGuests = maxGuests - data?.guests?.length
+        const remainingGuestsNum = maxGuests - data?.guests?.length
 
         const emptyGuests: GuestForm[] = Array.from(
             { length: Math.max(0, remaining) },
@@ -133,7 +133,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
         );
 
         setGuests([...existing, ...emptyGuests]);
-        setRemainingGuests(remainingGuests)
+        setRemainingGuests(remainingGuestsNum)
     }, [data, guestCount, maxGuests]);
 
     /* -------- Helpers -------- */
@@ -414,7 +414,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                     <NativeSelect
                                         disabled={!isEditing}
                                         tabIndex={isEditing ? 0 : -1}
-                                        className="h-10 w-20 rounded-[3px] border px-3 text-sm bg-white"
+                                        className="h-10 w-20 rounded-[3px] border px-3 text-sm bg-background"
                                         value={g.salutation ?? ""}
                                         onChange={(e) =>
                                             updateGuest(index, {
@@ -432,7 +432,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                     <Input
                                         className={`
                                                 flex-1
-                                                ${!isEditing ? "pointer-events-none select-none" : "bg-white"}
+                                                ${!isEditing ? "pointer-events-none select-none" : "bg-background"}
                                                 ${errors[index]?.first_name ? "border-red-500 focus-visible:ring-red-500" : ""}
                                             `}
                                         readOnly={!isEditing}
@@ -462,7 +462,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                 <Input
                                     readOnly={!isEditing}
                                     tabIndex={isEditing ? 0 : -1}
-                                    className={!isEditing ? "pointer-events-none select-none" : "bg-white"}
+                                    className={!isEditing ? "pointer-events-none select-none" : "bg-background"}
                                     value={g.middle_name ?? ""}
                                     onChange={(e) =>
                                         updateGuest(index, {
@@ -477,7 +477,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                 <Input
                                     readOnly={!isEditing}
                                     tabIndex={isEditing ? 0 : -1}
-                                    className={!isEditing ? "pointer-events-none select-none" : "bg-white"}
+                                    className={!isEditing ? "pointer-events-none select-none" : "bg-background"}
                                     value={g.last_name ?? ""}
                                     onChange={(e) =>
                                         updateGuest(index, {
@@ -491,7 +491,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                 <NativeSelect
                                     disabled={!isEditing}
                                     tabIndex={isEditing ? 0 : -1}
-                                    className="h-10 w-full rounded-[3px] border px-3 text-sm"
+                                    className="h-10 w-full rounded-[3px] border px-3 text-sm bg-background"
                                     value={g.gender ?? ""}
                                     onChange={(e) =>
                                         updateGuest(index, {
@@ -512,7 +512,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                 <Input
                                     readOnly={!isEditing}
                                     tabIndex={isEditing ? 0 : -1}
-                                    className={!isEditing ? "pointer-events-none select-none" : "bg-white"}
+                                    className={!isEditing ? "pointer-events-none select-none" : "bg-background"}
                                     value={g.age ?? ""}
                                     onChange={(e) =>
                                         updateGuest(index, {
@@ -530,7 +530,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                         <PopoverTrigger asChild>
                                             <Button
                                                 variant="outline"
-                                                className="w-[4rem] bg-white"
+                                                className="w-[4rem] bg-background"
                                             >
                                                 {getCountryCode(g.phone)}
                                                 <ChevronDown className="h-4 w-4 opacity-50" />
@@ -572,7 +572,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                     </Popover>
                                     <Input
                                         className={`
-                                            ${!isEditing ? "pointer-events-none select-none" : "bg-white"}
+                                            ${!isEditing ? "pointer-events-none select-none" : "bg-background"}
                                             ${errors[index]?.phone ? "border-red-500 focus-visible:ring-red-500" : ""}
                                         `}
                                         readOnly={!isEditing}
@@ -601,7 +601,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                 <Label>Email</Label>
                                 <Input
                                     className={`
-                                            ${!isEditing ? "pointer-events-none select-none" : "bg-white"}
+                                            ${!isEditing ? "pointer-events-none select-none" : "bg-background"}
                                             ${errors[index]?.email ? "border-red-500 focus-visible:ring-red-500" : ""}
                                         `}
                                     readOnly={!isEditing}
@@ -623,7 +623,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                             <div className="space-y-1">
                                 <Label>Nationality</Label>
                                 <NativeSelect
-                                    className="w-full h-10 rounded-[3px] bg-white border border-border bg-background px-3 text-sm"
+                                    className="w-full h-10 rounded-[3px] bg-background border border-border px-3 text-sm"
                                     value={g.nationality ?? ""}
                                     onChange={(e) =>
                                         updateGuest(index, {
@@ -663,7 +663,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                             <div className="space-y-1">
                                 <Label>Address</Label>
                                 <Input
-                                    className="bg-white"
+                                    className="bg-background"
                                     readOnly={!isEditing}
                                     value={g.address ?? ""}
                                     onChange={(e) =>
@@ -677,7 +677,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                             <div className="space-y-1">
                                 <Label>ID Type</Label>
                                 {/* <Input
-                                    className="bg-white"
+                                    className="bg-background"
                                     readOnly={!isEditing}
                                     tabIndex={isEditing ? 0 : -1}
                                     value={g.id_type ?? ""}
@@ -689,7 +689,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                 /> */}
 
                                 <NativeSelect
-                                    className="w-full h-10 rounded-[3px] border border-border bg-white px-3 text-sm"
+                                    className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
                                     value={g.id_type ?? ""}
                                     onChange={(e) => {
                                         updateGuest(index, {
@@ -713,7 +713,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                             <div className="space-y-1">
                                 <Label>ID Number</Label>
                                 <Input
-                                    className="bg-white"
+                                    className="bg-background"
                                     readOnly={!isEditing}
                                     tabIndex={isEditing ? 0 : -1}
                                     value={g.id_number ?? ""}
@@ -728,7 +728,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                             <div className="space-y-1">
                                 <Label>ID Proof</Label>
                                 <Input
-                                    className="bg-white"
+                                    className="bg-background"
                                     type="file"
                                     accept="image/*"
                                     disabled={!isEditing}
@@ -744,7 +744,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                     <div className="space-y-1">
                                         <Label>Visa Number *</Label>
                                         <Input
-                                            className="bg-white"
+                                            className="bg-background"
                                             readOnly={!isEditing}
                                             value={g.visa_number ?? ""}
                                             onChange={(e) =>
@@ -757,40 +757,34 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
 
                                     <div className="space-y-1">
                                         <Label>Issue Date *</Label>
-                                        <div className="block">
-                                            <DatePicker
-                                                className="bg-white"
-                                                readOnly={!isEditing}
-                                                selected={parseDate(g.visa_issue_date)}
-                                                placeholderText="dd-MM-yyyy"
-                                                onChange={(date) =>
-                                                    updateGuest(index, {
-                                                        visa_issue_date: formatDate(date),
-                                                    })
-                                                }
-                                                dateFormat="dd-MM-yyyy"
-                                                customInput={<Input readOnly />}
-                                            />
-                                        </div>
+                                        <ResponsiveDatePicker
+                                            value={parseDate(g.visa_issue_date)}
+                                            placeholder="dd-MM-yyyy"
+                                            onChange={(date) =>
+                                                updateGuest(index, {
+                                                    visa_issue_date: formatDate(date),
+                                                })
+                                            }
+                                            label="Visa Issue Date"
+                                            disabled={!isEditing}
+                                            className="bg-background"
+                                        />
                                     </div>
 
                                     <div className="space-y-1">
                                         <Label>Expiry Date *</Label>
-                                        <div className="block">
-                                            <DatePicker
-                                                className="bg-white"
-                                                readOnly={!isEditing}
-                                                selected={parseDate(g.visa_expiry_date)}
-                                                placeholderText="dd-MM-yyyy"
-                                                onChange={(date) =>
-                                                    updateGuest(index, {
-                                                        visa_expiry_date: formatDate(date),
-                                                    })
-                                                }
-                                                dateFormat="dd-MM-yyyy"
-                                                customInput={<Input readOnly />}
-                                            />
-                                        </div>
+                                        <ResponsiveDatePicker
+                                            value={parseDate(g.visa_expiry_date)}
+                                            placeholder="dd-MM-yyyy"
+                                            onChange={(date) =>
+                                                updateGuest(index, {
+                                                    visa_expiry_date: formatDate(date),
+                                                })
+                                            }
+                                            label="Visa Expiry Date"
+                                            disabled={!isEditing}
+                                            className="bg-background"
+                                        />
                                     </div>
                                 </>
                             )}
@@ -999,4 +993,3 @@ function InfoRow({
         </div>
     );
 }
-

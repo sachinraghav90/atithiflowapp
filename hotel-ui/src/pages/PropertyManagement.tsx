@@ -127,7 +127,7 @@ export default function PropertyManagement() {
 
     // pagination
     const [page, setPage] = useState(1);
-    const [limit, setLimit] = useState(10);
+    const [limit, setLimit] = useState(5);
 
     // filters
     const [search, setSearch] = useState("");
@@ -302,6 +302,28 @@ export default function PropertyManagement() {
                 return next;
             });
         }
+    };
+
+    const openPropertyDetails = (property: Property, forceMode: "view" | "edit" = "view") => {
+        setMode(forceMode);
+        setSelectedProperty(property);
+
+        const prepared = {
+            ...EMPTY_PROPERTY,
+            ...property,
+            floors: [],
+            total_rooms: property.total_rooms != null ? String(property.total_rooms) : "",
+            total_floors: property.total_floors ?? 0,
+            owner_user_id: property.owner_user_id ?? "",
+        };
+
+        setNewProperty(prepared);
+        setOriginalProperty(JSON.parse(JSON.stringify(prepared)));
+        setOriginalBankAccounts(
+            propertyBanks ? JSON.parse(JSON.stringify(propertyBanks)) : []
+        );
+        setOriginalHasBankDetails(!!propertyBanks?.length);
+        setSheetOpen(true);
     };
 
     const viewMode = mode === "view";
@@ -796,7 +818,7 @@ export default function PropertyManagement() {
                                 />
 
                                 <GridToolbarSelect
-                                    label="STATUS"
+                                    label="Status"
                                     value="all"
                                     onChange={() => { }}
                                     options={[{ label: "All Status", value: "all" }]}
@@ -828,6 +850,7 @@ export default function PropertyManagement() {
 
                     <div className="px-2 pb-2">
                         <AppDataGrid
+                            rowKey={(p: Property) => p.id}
                             columns={[
                         {
                             label: "Property ID",
@@ -838,21 +861,7 @@ export default function PropertyManagement() {
                                     type="button"
                                     className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
                                     aria-label={`Open summary view for property ${formatModuleDisplayId("property", property.id)}`}
-                                    onClick={() => {
-                                        setMode("view");
-                                        setSelectedProperty(property);
-                                        const prepared = {
-                                            ...EMPTY_PROPERTY,
-                                            ...property,
-                                            floors: [],
-                                            total_rooms: property.total_rooms != null ? String(property.total_rooms) : "",
-                                            total_floors: property.total_floors ?? 0,
-                                            owner_user_id: property.owner_user_id ?? "",
-                                        };
-                                        setNewProperty(prepared);
-                                        setOriginalProperty(prepared);
-                                        setSheetOpen(true);
-                                    }}
+                                    onClick={() => openPropertyDetails(property, "view")}
                                 >
                                     {formatModuleDisplayId("property", property.id)}
                                 </button>
@@ -909,42 +918,27 @@ export default function PropertyManagement() {
                     minWidth="760px"
                     actionLabel=""
                     actionClassName="text-center w-[60px]"
+                    showActions={permission?.can_create}
                     actions={(property: Property) => (
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
-                                    disabled={updatingPropertyIds.has(property.id)}
-                                    aria-label={`View and edit details for property ${property.brand_name}`}
-                                    onClick={() => {
-                                        setMode("view");
-                                        setSelectedProperty(property);
-
-                                        const prepared = {
-                                            ...EMPTY_PROPERTY,
-                                            ...property,
-                                            floors: [],
-                                            total_rooms: property.total_rooms != null ? String(property.total_rooms) : "",
-                                            total_floors: property.total_floors ?? 0,
-                                            owner_user_id: property.owner_user_id ?? "",
-                                        };
-
-                                        setNewProperty(prepared);
-                                        setOriginalProperty(JSON.parse(JSON.stringify(prepared)));
-                                        setOriginalBankAccounts(
-                                            propertyBanks ? JSON.parse(JSON.stringify(propertyBanks)) : []
-                                        );
-                                        setOriginalHasBankDetails(!!propertyBanks?.length);
-                                        setSheetOpen(true);
-                                    }}
-                                >
-                                    <Pencil className="w-4 h-4 mx-auto" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>View / Edit Details</TooltipContent>
-                        </Tooltip>
+                        <>
+                            {permission?.can_create && (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                            disabled={updatingPropertyIds.has(property.id)}
+                                            aria-label={`View and edit details for property ${property.brand_name}`}
+                                            onClick={() => openPropertyDetails(property, "edit")}
+                                        >
+                                            <Pencil className="w-4 h-4 mx-auto" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>View / Edit Details</TooltipContent>
+                                </Tooltip>
+                            )}
+                        </>
                     )}
                     enablePagination={!!properties?.pagination}
                     paginationProps={{
@@ -1174,14 +1168,7 @@ export default function PropertyManagement() {
                         </Button>
 
                         {/* VIEW MODE BUTTON */}
-                        {mode === "view" && (
-                            <Button
-                                variant="hero"
-                                onClick={() => setMode("edit")}
-                            >
-                                Edit Property
-                            </Button>
-                        )}
+
 
                         {/* CREATE BUTTON */}
                         {mode === "add" && permission?.can_create && (

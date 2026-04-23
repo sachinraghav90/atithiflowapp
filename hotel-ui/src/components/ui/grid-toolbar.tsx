@@ -1,12 +1,24 @@
-import { useId, type ReactNode } from "react";
-import { Search } from "lucide-react";
+import * as React from "react";
+import { Search, Calendar as CalendarIcon, Download, FilterX, Pencil, Plus, RefreshCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { NativeSelect } from "@/components/ui/native-select";
-import DatePicker from "react-datepicker";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
 import { normalizeTextInput } from "@/utils/normalizeTextInput";
+import { useId, type ReactNode } from "react";
+
+function formatToolbarDate(date: Date | null) {
+  if (!date) return "";
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}-${month}-${year}`;
+}
 
 /* ================= TYPES ================= */
 
@@ -106,7 +118,7 @@ export function GridToolbarSearch({
   };
 
   return (
-    <div className={cn("flex items-center h-8 w-full", className)}>
+    <div className={cn("flex items-center h-10 w-full", className)}>
       <div className="flex items-center gap-1 w-full">
         {/* INPUT */}
         <div className="relative flex-1">
@@ -121,16 +133,17 @@ export function GridToolbarSearch({
               }
             }}
             placeholder={placeholder}
-            className="pl-9 h-8 text-sm rounded-lg border border-border bg-background shadow-sm w-full focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-border"
+            className="pl-9 h-full text-sm rounded-lg border border-border bg-background shadow-sm w-full focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-border"
           />
         </div>
 
         {/* BUTTON */}
         <Button
           onClick={onSearch}
-          className="h-8 px-3 text-xs rounded-lg border border-primary text-primary bg-transparent hover:bg-primary/10 font-medium whitespace-nowrap"
+          className="h-full rounded-lg px-4 text-sm font-semibold whitespace-nowrap bg-background text-primary border border-primary/30 hover:bg-primary/5 transition-all shadow-sm"
+          variant="outline"
         >
-          SEARCH
+          Search
         </Button>
       </div>
     </div>
@@ -138,6 +151,29 @@ export function GridToolbarSearch({
 }
 
 /* ================= SELECT ================= */
+
+function formatFilterLabel(label: string) {
+  if (!label || label === "All") return label;
+  
+  // Only format if it looks like a raw identifier (underscores, all caps, or all lower)
+  const isLower = label === label.toLowerCase() && label !== label.toUpperCase();
+  const isUpper = label === label.toUpperCase() && label !== label.toLowerCase();
+  const hasUnderscore = label.includes("_");
+
+  // Keep short acronyms as-is (e.g., UPI, ID, GST)
+  if (isUpper && label.length <= 3) {
+    return label;
+  }
+  
+  if (isLower || isUpper || hasUnderscore) {
+    return label
+      .replace(/_/g, " ")
+      .toLowerCase()
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+  }
+  
+  return label;
+}
 
 export function GridToolbarSelect({
   label,
@@ -151,21 +187,16 @@ export function GridToolbarSelect({
   const selectId = `${normalizedLabel}-${generatedId}`;
 
   return (
-    <div
-      className={cn(
-        "flex items-center h-8 border border-border bg-background rounded-lg text-sm overflow-hidden shadow-sm",
-        className
-      )}
-    >
-      {/* LABEL */}
+    <div className={cn("flex items-center h-10 border border-border bg-background rounded-lg text-sm overflow-hidden shadow-sm w-full", className)}>
+      {/* LABEL PREFIX */}
       <label
         htmlFor={selectId}
-        className="px-3 bg-muted/40 text-muted-foreground text-[10px] font-bold uppercase tracking-wider whitespace-nowrap flex items-center border-r border-border h-full min-w-[80px] justify-center"
+        className="px-3 bg-muted/40 text-muted-foreground text-[10px] font-bold uppercase tracking-wider whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center"
       >
         {label}
       </label>
 
-      {/* SELECT */}
+      {/* NATIVE SELECT */}
       <NativeSelect
         id={selectId}
         name={selectId}
@@ -178,8 +209,9 @@ export function GridToolbarSelect({
             key={`${label}-${option.value}`}
             value={option.value}
             disabled={option.disabled}
+            className="bg-background"
           >
-            {option.label}
+            {formatFilterLabel(option.label)}
           </option>
         ))}
       </NativeSelect>
@@ -194,7 +226,7 @@ export function GridToolbarActions({
   className,
 }: GridToolbarActionsProps) {
   return (
-    <div className={cn("flex items-center h-8 gap-1 justify-end", className)}>
+    <div className={cn("flex items-center h-10 gap-1 justify-end", className)}>
       {actions.map((action) => (
         <Tooltip key={action.key}>
           <TooltipTrigger asChild>
@@ -202,7 +234,7 @@ export function GridToolbarActions({
               variant="outline"
               size="icon"
               className={cn(
-                "h-8 w-8 rounded-lg hover:bg-muted/50 transition-colors bg-background shadow-sm",
+                "h-10 w-10 rounded-lg hover:bg-muted/50 transition-colors bg-background shadow-sm",
                 action.buttonClassName
               )}
               onClick={action.onClick}
@@ -219,6 +251,9 @@ export function GridToolbarActions({
 }
 
 /* ================= DATE PICKER ================= */
+
+import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
+import { ResponsiveDateRangePicker } from "@/components/ui/responsive-date-range-picker";
 
 type GridToolbarDatePickerProps = {
   label: string;
@@ -240,31 +275,60 @@ export function GridToolbarDatePicker({
   disabled
 }: GridToolbarDatePickerProps) {
   return (
-    <div
-      className={cn(
-        "flex items-center h-8 border border-border bg-background rounded-lg text-sm overflow-hidden shadow-sm w-full",
-        disabled && "opacity-50 cursor-not-allowed",
-        className
-      )}
-    >
-      <span className="px-3 bg-muted/40 text-muted-foreground text-[10px] font-bold uppercase tracking-wider whitespace-nowrap flex items-center border-r border-border h-full min-w-[80px] justify-center">
+    <div className={cn("flex items-center h-10 border border-border bg-background rounded-lg text-sm overflow-hidden shadow-sm w-full", className)}>
+       <span className="px-3 bg-muted/40 text-muted-foreground text-[10px] font-bold uppercase tracking-wider whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center">
         {label}
       </span>
-      <DatePicker
-        selected={value}
+      <ResponsiveDatePicker
+        value={value}
         onChange={onChange}
-        placeholderText={placeholder}
-        dateFormat="dd-MM-yyyy"
+        placeholder={placeholder}
+        label={label}
         minDate={minDate}
         disabled={disabled}
-        customInput={
-          <Input
-            readOnly
-            className="h-full border-0 rounded-none bg-transparent px-2 text-sm shadow-none focus-visible:ring-0 w-full cursor-pointer"
-          />
-        }
+        className="h-10 border-0 rounded-none shadow-none focus-within:ring-0"
       />
     </div>
+  );
+}
+
+/* ================= DATE RANGE PICKER ================= */
+
+type GridToolbarRangePickerProps = {
+  startDate: Date | null;
+  endDate: Date | null;
+  onChange: (dates: [Date | null, Date | null]) => void;
+  className?: string;
+  startLabel?: string;
+  endLabel?: string;
+  startPlaceholder?: string;
+  endPlaceholder?: string;
+  disabled?: boolean;
+};
+
+export function GridToolbarRangePicker({
+  startDate,
+  endDate,
+  onChange,
+  className,
+  startLabel = "From",
+  endLabel = "To",
+  startPlaceholder = "dd-mm-yyyy",
+  endPlaceholder = "dd-mm-yyyy",
+  disabled
+}: GridToolbarRangePickerProps) {
+  return (
+     <ResponsiveDateRangePicker
+        startDate={startDate}
+        endDate={endDate}
+        onChange={onChange}
+        startPlaceholder={startPlaceholder}
+        endPlaceholder={endPlaceholder}
+        startLabel={startLabel}
+        endLabel={endLabel}
+        disabled={disabled}
+        className={className}
+     />
   );
 }
 
@@ -279,10 +343,9 @@ export function GridToolbarSpacer({ type = "fluid", className }: GridToolbarSpac
   return (
     <div 
       className={cn(
-        type === "fluid" ? "w-full" : "w-[104px]", 
+        type === "fluid" ? "w-full" : "w-[128px]", 
         className
       )} 
     />
   );
 }
-

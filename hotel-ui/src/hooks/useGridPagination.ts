@@ -8,7 +8,7 @@ type UseGridPaginationOptions = {
 
 export function useGridPagination({
     initialPage = 1,
-    initialLimit = 10,
+    initialLimit = 5,
     resetDeps = [],
 }: UseGridPaginationOptions = {}) {
     const [page, setPage] = useState(initialPage);

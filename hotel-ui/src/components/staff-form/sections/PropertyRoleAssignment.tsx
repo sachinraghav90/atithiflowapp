@@ -1,6 +1,6 @@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import DatePicker from "react-datepicker";
+import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
 import FormInput from "@/components/forms/FormInput";
 import { useEffect } from "react";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -57,7 +57,7 @@ export default function PropertyRole({
     };
 
     useEffect(() => {
-        if (!isPrivilegeUser && Array.from(properties) && properties.length > 0) {
+        if (!isPrivilegeUser && Array.isArray(properties) && properties.length > 0) {
             setValue((prev: any) => ({
                 ...prev,
                 property_id: properties[0].id,
@@ -66,7 +66,7 @@ export default function PropertyRole({
     }, [properties, isPrivilegeUser])
 
     return (
-        <div className="space-y-6 border border-border rounded-[5px] p-5 bg-card">
+        <div className="space-y-6 border border-border rounded-[5px] p-5 bg-transparent">
 
             <h3 className="font-semibold text-base">
                 Property & Role Assignment
@@ -85,7 +85,7 @@ export default function PropertyRole({
                     <NativeSelect
                         disabled={viewMode}
                         title={errors.property_id?.type === "required" ? errors.property_id.message : ""}
-                        className={`w-full h-10 rounded-[3px] border px-3 text-sm ${errors.property_id ? "border-red-500 bg-white" : "border-border bg-white"
+                        className={`w-full h-10 rounded-[3px] border px-3 text-sm ${errors.property_id ? "border-red-500 bg-background" : "border-border bg-background"
                             }`}
                         value={value.property_id || ""}
                         onChange={(e) => {
@@ -127,7 +127,7 @@ export default function PropertyRole({
                     <NativeSelect
                         disabled={viewMode}
                         title={errors.role_ids?.type === "required" ? errors.role_ids.message : ""}
-                        className={`w-full h-10 rounded-[3px] border px-3 text-sm ${errors.role_ids ? "border-red-500 bg-white" : "border-border bg-white"
+                        className={`w-full h-10 rounded-[3px] border px-3 text-sm ${errors.role_ids ? "border-red-500 bg-background" : "border-border bg-background"
                             }`}
                         value={value.role_ids?.[0] || ""}
                         onChange={(e) => {
@@ -145,7 +145,7 @@ export default function PropertyRole({
                         {roles
                             ?.filter(
                                 (role) =>
-                                    !excludedRoles.includes(role.name.toUpperCase())
+                                    !excludedRoles?.includes(role.name.toUpperCase())
                             )
                             .map((role) => (
                                 <option value={role.id} key={role.id}>
@@ -170,7 +170,7 @@ export default function PropertyRole({
 
                     <NativeSelect
                         disabled={viewMode}
-                        className="w-full h-10 rounded-[3px] border border-border px-3 text-sm"
+                        className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
                         value={value.employment_type || ""}
                         onChange={(e) =>
                             setValue((prev: any) => ({
@@ -192,36 +192,25 @@ export default function PropertyRole({
                 <div className="space-y-2">
 
                     <Label>Joining Date*</Label>
-                    <div>
-                        <DatePicker
-                            className="bg-white"
-                            selected={parseDate(value.hire_date)}
-                            minDate={new Date(2000, 0, 1)}
-                            onChange={(date) => {
+                    <ResponsiveDatePicker
+                        value={parseDate(value.hire_date)}
+                        minDate={new Date(2000, 0, 1)}
+                        onChange={(date) => {
 
-                                setValue((prev: any) => ({
-                                    ...prev,
-                                    hire_date: formatDate(date),
-                                }));
+                            setValue((prev: any) => ({
+                                ...prev,
+                                hire_date: formatDate(date),
+                            }));
 
-                                clearError("hire_date");
-                            }}
-                            dateFormat="dd-MM-yyyy"
-                            customInput={
-                                <Input
-                                    readOnly
-                                    title={errors.hire_date?.type === "required" ? errors.hire_date.message : ""}
-                                    className={
-                                        errors.hire_date
-                                            ? "border-red-500 bg-white"
-                                            : "bg-white"
-                                    }
-                                />
-                            }
-                        />
-                    </div>
+                            clearError("hire_date");
+                        }}
+                        placeholder="DD-MM-YYYY"
+                        label="Joining Date"
+                        disabled={viewMode}
+                        className={errors.hire_date ? "border-red-500" : ""}
+                    />
                     {errors.hire_date?.type === "invalid" && (
-                        <p className="text-xs text-red-500">
+                        <p className="text-xs text-red-500 animate-in fade-in slide-in-from-top-1">
                             {errors.hire_date.message}
                         </p>
                     )}

@@ -32,7 +32,7 @@ import { usePermission } from "@/rbac/usePermission";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { useGridPagination } from "@/hooks/useGridPagination";
-import { FilterX, Pencil, RefreshCcw, Download } from "lucide-react";
+import { FilterX, Pencil, RefreshCcw, Download, Plus } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
@@ -81,7 +81,7 @@ export default function VendorsManagement() {
     const [typeFilter, setTypeFilter] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
     const { page, limit, setPage, resetPage, handleLimitChange } = useGridPagination({
-        initialLimit: 10,
+        initialLimit: 5,
         resetDeps: [selectedPropertyId, searchQuery, typeFilter, statusFilter],
     });
 
@@ -91,6 +91,7 @@ export default function VendorsManagement() {
         isMultiProperty, 
         isSuperAdmin, 
         isOwner,
+        isInitializing,
         isLoading: myPropertiesLoading
     } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
 
@@ -220,9 +221,8 @@ export default function VendorsManagement() {
         }
     }, [sheetOpen]);
 
-    const openView = (vendor: Vendor) => {
-
-        setMode("view");
+    const openView = (vendor: Vendor, forceMode: "view" | "edit" | "add" = "view") => {
+        setMode(forceMode);
 
         setEditingVendor(vendor);
 
@@ -243,12 +243,14 @@ export default function VendorsManagement() {
 
     /* ---------------- UI ---------------- */
     return (
-        <div className="h-full flex flex-col overflow-hidden">
-            <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8 space-y-6">
+        <div className="h-full flex flex-col overflow-hidden bg-background">
+            <section className="flex flex-col flex-1 overflow-hidden p-6 lg:p-8 gap-6">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-2xl font-bold">Vendors</h1>
-                        <p className="text-sm text-muted-foreground">Manage suppliers & vendors</p>
+                        <h1 className="text-2xl font-bold leading-tight">Vendors</h1>
+                        <p className="text-sm text-muted-foreground mt-1">
+                            Supplier and vendor logistics management
+                        </p>
                     </div>
 
                     <div className="flex items-center gap-3">
@@ -276,15 +278,16 @@ export default function VendorsManagement() {
                         )}
 
                         {permission?.can_create && (
-                            <Button variant="hero" className="h-10" onClick={openAdd}>
-                                Add Vendor
+                            <Button variant="hero" className="h-10 px-4 flex items-center gap-2" onClick={openAdd}>
+                                <Plus className="w-4 h-4" /> Add Vendor
                             </Button>
                         )}
                     </div>
                 </div>
 
 
-                <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
+                <div className="flex-1 overflow-y-auto scrollbar-hide">
+                    <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
                     <div className="w-full">
                         <GridToolbar className="border-b-0">
                             <GridToolbarRow className="gap-2">
@@ -304,27 +307,27 @@ export default function VendorsManagement() {
                                 />
 
                                 <GridToolbarSelect
-                                    label="TYPE"
+                                    label="Type"
                                     value={typeFilter}
                                     onChange={(val) => {
                                         setTypeFilter(val);
                                         resetPage();
                                     }}
                                     options={[
-                                        { label: "Any", value: "" },
+                                        { label: "All", value: "" },
                                         ...Array.from(new Set((vendors?.data || []).map((v: Vendor) => v.vendor_type).filter(Boolean))).map(t => ({ label: String(t), value: String(t) }))
                                     ]}
                                 />
 
                                 <GridToolbarSelect
-                                    label="STATUS"
+                                    label="Status"
                                     value={statusFilter}
                                     onChange={(val) => {
                                         setStatusFilter(val);
                                         resetPage();
                                     }}
                                     options={[
-                                        { label: "Any", value: "" },
+                                        { label: "All", value: "" },
                                         { label: "Active", value: "true" },
                                         { label: "Inactive", value: "false" }
                                     ]}
@@ -369,7 +372,7 @@ export default function VendorsManagement() {
                                 <button
                                     type="button"
                                     className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
-                                    onClick={() => openView(v)}
+                                    onClick={() => openView(v, "view")}
                                     aria-label={`Open summary view for vendor ${formatModuleDisplayId("vendor", v.id)}`}
                                 >
                                     {formatModuleDisplayId("vendor", v.id)}
@@ -406,26 +409,31 @@ export default function VendorsManagement() {
                         },
                     ] satisfies ColumnDef[]}
                     data={vendorRows}
-                    loading={isLoading}
+                    loading={isLoading || isInitializing}
                     emptyText="No vendors found"
                     minWidth="600px"
                     actionLabel=""
                     actionClassName="text-center w-[60px]"
+                    showActions={permission?.can_create}
                     actions={(v: Vendor) => (
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
-                                    onClick={() => openView(v)}
-                                    aria-label={`View and edit details for vendor ${v.name}`}
-                                >
-                                    <Pencil className="w-4 h-4 mx-auto" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>View / Edit Details</TooltipContent>
-                        </Tooltip>
+                        <>
+                            {permission?.can_create && (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                            onClick={() => openView(v, "edit")}
+                                            aria-label={`View and edit details for vendor ${v.name}`}
+                                        >
+                                            <Pencil className="w-4 h-4 mx-auto" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>View / Edit Details</TooltipContent>
+                                </Tooltip>
+                            )}
+                        </>
                     )}
                     enablePagination={!!vendors?.pagination}
                     paginationProps={{
@@ -439,19 +447,19 @@ export default function VendorsManagement() {
                     }}
                 />
                     </div>
+                    </div>
                 </div>
             </section>
 
-            {/* Add / Edit Sheet */}
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetContent side="right" className="w-full sm:max-w-xl">
+                <SheetContent side="right" className="w-full sm:max-w-xl bg-background">
                     <SheetHeader>
                         <SheetTitle>
                             {mode === "add"
                                 ? "Add Vendor"
                                 : mode === "edit"
                                     ? "Edit Vendor"
-                                    : "Vendor Details"}
+                                    : "Vendor Summary"}
 
                         </SheetTitle>
                     </SheetHeader>
@@ -601,50 +609,42 @@ export default function VendorsManagement() {
                                     />
                                 </div>
 
-                                {mode === "edit" && <div className="flex items-center gap-3">
+                                {mode === "edit" && (
+                                    <div className="flex items-center gap-3 rounded-[5px] border p-4 bg-background/50">
+                                        <Switch
+                                            className="scale-90"
+                                            checked={!!form.is_active}
+                                            onCheckedChange={(checked) =>
+                                                setForm({
+                                                    ...form,
+                                                    is_active: checked
+                                                })
+                                            }
+                                        />
 
-                                    <Switch
-                                        className="scale-90"
-                                        checked={!!form.is_active}
-                                        onCheckedChange={(checked) =>
-                                            setForm({
-                                                ...form,
-                                                is_active: checked
-                                            })
-                                        }
-                                    />
-
-                                    <span className={cn(
-                                        "px-3 py-1 rounded-[3px] text-xs font-semibold",
-                                        getStatusColor(form.is_active ? "active" : "inactive", "toggle")
-                                    )}>
-                                        {form.is_active ? "Active" : "Inactive"}
-                                    </span>
-                                </div>}
+                                        <span className={cn(
+                                            "px-3 py-1 rounded-[3px] text-xs font-semibold",
+                                            getStatusColor(form.is_active ? "active" : "inactive", "toggle")
+                                        )}>
+                                            {form.is_active ? "Active" : "Inactive"}
+                                        </span>
+                                    </div>
+                                )}
 
                             </>
                         )}
                         <div className="pt-4 border-t flex justify-end gap-3">
 
                             {mode === "view" ? (
+                                <>
 
-                                permission?.can_create && (
-                                    <>
-                                        <Button
-                                            variant="hero"
-                                            onClick={() => setMode("edit")}
-                                        >
-                                            Edit
-                                        </Button>
-                                        <Button
-                                            variant="heroOutline"
-                                            onClick={() => setSheetOpen(false)}
-                                        >
-                                            Close
-                                        </Button>
-                                    </>
-                                )
-
+                                    <Button
+                                        variant="heroOutline"
+                                        onClick={() => setSheetOpen(false)}
+                                    >
+                                        Close
+                                    </Button>
+                                </>
                             ) : (
 
                                 <>

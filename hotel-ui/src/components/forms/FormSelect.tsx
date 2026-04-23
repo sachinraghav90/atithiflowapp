@@ -31,10 +31,10 @@ export default function FormSelect({
             <NativeSelect
                 disabled={viewMode}
                 className={`
-                    w-full h-10 rounded-[3px] px-3 text-sm
+                    w-full h-10 rounded-[3px] px-3 text-sm bg-background
                     ${error
-                        ? "border border-red-500 bg-white"
-                        : "border border-border bg-white"
+                        ? "border border-red-500"
+                        : "border border-border"
                     }
                 `}
                 value={value[field] ?? ""}

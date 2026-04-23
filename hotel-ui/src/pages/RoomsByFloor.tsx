@@ -14,12 +14,13 @@ import {
     DialogTitle,
     DialogFooter,
 } from "@/components/ui/dialog";
-import { NativeSelect } from "@/components/ui/native-select";
-import { Plus } from "lucide-react";
-import AppHeader from "@/components/layout/AppHeader";
-import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
 import { Label } from "@/components/ui/label";
 import { usePermission } from "@/rbac/usePermission";
+import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
+import { ChevronDown, ChevronRight, Plus, PlusCircle } from "lucide-react";
+import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
+import { AnimatePresence, motion } from "framer-motion";
+import { NativeSelect } from "@/components/ui/native-select";
 
 /* -------------------- Types -------------------- */
 type Room = {
@@ -54,6 +55,7 @@ export default function RoomsByFloor() {
         Record<string, { category?: string; bed?: string; ac?: string }>
     >({});
     const [propertyId, setPropertyId] = useState<string>("");
+    const [expandedFloors, setExpandedFloors] = useState<Record<number, boolean>>({});
 
     const [addRoom, { isLoading: adding }] = useAddRoomMutation();
 
@@ -74,28 +76,31 @@ export default function RoomsByFloor() {
     });
 
     const [updateRoomsBulk] = useBulkUpdateRoomsMutation()
-    const { data: properties, isLoading: propertiesLoading } = useGetMyPropertiesQuery(undefined, {
-        skip: !isLoggedIn
-    })
+    const { 
+        myProperties, 
+        isMultiProperty, 
+        isInitializing, 
+        isLoading: myPropertiesLoading 
+    } = useAutoPropertySelect(propertyId, setPropertyId);
 
     useEffect(() => {
         if (id) {
             setPropertyId(id);
-            return;
         }
-
-        if (
-            !propertyId &&
-            !propertiesLoading &&
-            properties?.properties?.length > 0
-        ) {
-            setPropertyId(properties.properties[0].id);
-        }
-    }, [id, properties, propertiesLoading, propertyId]);
+    }, [id]);
 
 
     useEffect(() => {
         setEditedRooms(rooms?.rooms);
+        // Initialize only the first floor to expanded on first load
+        if (rooms?.rooms?.length > 0 && Object.keys(expandedFloors).length === 0) {
+            const sortedFloors = [...new Set(rooms.rooms.map((r: Room) => r.floor_number))].sort((a, b) => a - b);
+            const initial: Record<number, boolean> = {};
+            sortedFloors.forEach((f: number, idx: number) => {
+                initial[f] = idx === 0; 
+            });
+            setExpandedFloors(initial);
+        }
     }, [rooms]);
 
     useEffect(() => {
@@ -230,244 +235,214 @@ export default function RoomsByFloor() {
         <div className="h-full flex flex-col overflow-hidden">
             <div className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8">
 
-                {/* Header */}
-                {/* Header */}
-                <div className="mb-6 flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold text-foreground">Rooms</h1>
+                {/* Header Pattern: Title/Sub + Actions (Property Select + Call to Action) */}
+                <div className="flex items-center justify-between w-full mb-6 relative z-20">
+                    <div className="flex flex-col">
+                        <h1 className="text-2xl font-bold leading-tight text-foreground">
+                            Rooms
+                        </h1>
                         <p className="text-sm text-muted-foreground">
                             View rooms grouped by floor
                         </p>
                     </div>
 
-                    {permission?.can_create && <Button
-                        variant="outline"
-                        onClick={() => {
-                            const existingFloors = roomsByFloor.map(f => f.floor);
-                            const nextFloor =
-                                existingFloors.length > 0
-                                    ? Math.max(...existingFloors) + 1
-                                    : 0;
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                        {isMultiProperty && (
+                            <div className="flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
+                                <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border uppercase tracking-tight">
+                                    Property
+                                </span>
+                                <NativeSelect
+                                    className="flex-1 bg-transparent px-2 focus:outline-none focus:ring-0 text-sm h-full truncate cursor-pointer"
+                                    value={propertyId ?? ""}
+                                    onChange={(e) => setPropertyId(e.target.value)}
+                                >
+                                    <option value="" disabled>Select Property</option>
+                                    {myProperties?.properties?.map((property: any) => (
+                                        <option key={property.id} value={property.id}>
+                                            {property.brand_name}
+                                        </option>
+                                    ))}
+                                </NativeSelect>
+                            </div>
+                        )}
 
-                            if (!addedFloors.includes(nextFloor)) {
-                                setAddedFloors(prev => [...prev, nextFloor]);
-                            }
+                        {permission?.can_create && (
+                            <Button
+                                variant="hero"
+                                className="h-10 px-4 flex items-center gap-2"
+                                onClick={() => {
+                                    const existingFloors = roomsByFloor.map(f => f.floor);
+                                    const nextFloor =
+                                        existingFloors.length > 0
+                                            ? Math.max(...existingFloors) + 1
+                                            : 0;
 
-                            toast.success(`Floor ${nextFloor} added`);
-                        }}
-                    >
-                        + Add Floor
-                    </Button>}
+                                    if (!addedFloors.includes(nextFloor)) {
+                                        setAddedFloors(prev => [...prev, nextFloor]);
+                                    }
 
+                                    toast.success(`Floor ${nextFloor} added`);
+                                }}
+                            >
+                                <Plus className="w-4 h-4" /> Add Floor
+                            </Button>
+                        )}
+                    </div>
                 </div>
 
-                {/* Property Filter */}
-                {(isSuperAdmin || isOwner) && Array.isArray(properties?.properties) && properties?.properties.length > 1 && <div className="mb-4 max-w-sm space-y-2">
-                    <Label>Property</Label>
-                    <NativeSelect
-                        className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
-                        value={propertyId}
-                        onChange={(e) => setPropertyId(e.target.value)}
-                    >
-                        <option value="" disabled>Select Properties</option>
 
-                        {!propertiesLoading &&
-                            properties?.properties?.map((property) => (
-                                <option key={property.id} value={property.id}>
-                                    {property.brand_name}
-                                </option>
-                            ))}
-                    </NativeSelect>
-
-                </div>}
 
                 {/* Floors */}
-                <div className="space-y-10">
-                    {roomsByFloor.map(({ floor, rooms }) => (
-                        <div key={floor} className="space-y-4">
-                            {/* Floor title */}
-                            <div className="flex items-center gap-3">
-                                <h2 className="text-lg font-semibold text-foreground">
-                                    Floor {floor}
-                                </h2>
-                                <span className="text-sm text-muted-foreground">
-                                    ({rooms.length} rooms)
-                                </span>
-                            </div>
-
-                            {/* Rooms grid */}
-                            <div
-                                className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4"
-                            >
-                                {rooms.map((room) => (
-                                    <div
-                                        key={room.id}
-                                        className={cn(
-                                            "aspect-square rounded-[3px] border border-border p-3 flex flex-col justify-between transition",
-                                            room.is_active ? "bg-card" : "bg-muted opacity-70"
-                                        )}
-                                    >
-                                        {/* Room Number */}
-                                        <input
-                                            className="bg-transparent text-sm font-semibold text-center outline-none border-b border-border"
-                                            value={room.room_no}
-                                            disabled
-                                            onChange={(e) =>
-                                                setEditedRooms((prev) =>
-                                                    prev.map((r) =>
-                                                        r.id === room.id ? { ...r, room_no: e.target.value } : r
-                                                    )
-                                                )
-                                            }
-                                        />
-
-                                        {/* Room Type */}
-                                        <NativeSelect
-                                            className="bg-transparent text-sm font-semibold text-center outline-none border-b border-border appearance-none cursor-pointer"
-                                            value={getRoomSelectValue(room, "category")}
-                                            onChange={(e) => {
-                                                const category = e.target.value;
-
-                                                const bed = getRoomSelectValue(room, "bed");
-                                                const ac = getRoomSelectValue(room, "ac");
-
-                                                const nextRoomTypeId = resolveRoomTypeId(category, bed, ac);
-
-                                                if (nextRoomTypeId) {
-                                                    setEditedRooms(prev =>
-                                                        prev.map(r =>
-                                                            r.id === room.id
-                                                                ? { ...r, room_type_id: nextRoomTypeId }
-                                                                : r
-                                                        )
-                                                    );
-                                                    setRoomDrafts(prev => {
-                                                        const { [room.id]: _, ...rest } = prev;
-                                                        return rest;
-                                                    });
-                                                } else {
-                                                    setRoomDrafts(prev => ({
-                                                        ...prev,
-                                                        [room.id]: { ...prev[room.id], category }
-                                                    }));
-                                                }
-                                            }}
-                                        >
-
-
-                                            <option value="" disabled>Category Type</option>
-                                            {roomCategories.map(c => (
-                                                <option key={c} value={c}>{c}</option>
-                                            ))}
-                                        </NativeSelect>
-                                        <NativeSelect
-                                            className="bg-transparent text-sm font-semibold text-center outline-none border-b border-border appearance-none cursor-pointer"
-                                            value={getRoomSelectValue(room, "bed")}
-                                            onChange={(e) => {
-                                                const bed = e.target.value;
-
-                                                const category = getRoomSelectValue(room, "category");
-                                                const ac = getRoomSelectValue(room, "ac");
-
-                                                const nextRoomTypeId = resolveRoomTypeId(category, bed, ac);
-
-                                                if (nextRoomTypeId) {
-                                                    setEditedRooms(prev =>
-                                                        prev.map(r =>
-                                                            r.id === room.id
-                                                                ? { ...r, room_type_id: nextRoomTypeId }
-                                                                : r
-                                                        )
-                                                    );
-                                                    setRoomDrafts(prev => {
-                                                        const { [room.id]: _, ...rest } = prev;
-                                                        return rest;
-                                                    });
-                                                } else {
-                                                    setRoomDrafts(prev => ({
-                                                        ...prev,
-                                                        [room.id]: { ...prev[room.id], bed }
-                                                    }));
-                                                }
-                                            }}
-                                        >
-
-
-                                            <option value="" disabled>Bed Type</option>
-                                            {bedTypes.map(b => (
-                                                <option key={b} value={b}>{b}</option>
-                                            ))}
-                                        </NativeSelect>
-                                        <NativeSelect
-                                            className="bg-transparent text-sm font-semibold text-center outline-none border-b border-border appearance-none cursor-pointer"
-                                            value={getRoomSelectValue(room, "ac")}
-                                            onChange={(e) => {
-                                                const ac = e.target.value;
-
-                                                const category = getRoomSelectValue(room, "category");
-                                                const bed = getRoomSelectValue(room, "bed");
-
-                                                const nextRoomTypeId = resolveRoomTypeId(category, bed, ac);
-
-                                                if (nextRoomTypeId) {
-                                                    setEditedRooms(prev =>
-                                                        prev.map(r =>
-                                                            r.id === room.id
-                                                                ? { ...r, room_type_id: nextRoomTypeId }
-                                                                : r
-                                                        )
-                                                    );
-                                                    setRoomDrafts(prev => {
-                                                        const { [room.id]: _, ...rest } = prev;
-                                                        return rest;
-                                                    });
-                                                } else {
-                                                    setRoomDrafts(prev => ({
-                                                        ...prev,
-                                                        [room.id]: { ...prev[room.id], ac }
-                                                    }));
-                                                }
-                                            }}
-                                        >
-
-
-                                            <option value="" disabled>AC Type</option>
-                                            {acTypes.map(a => (
-                                                <option key={a} value={a}>{a}</option>
-                                            ))}
-                                        </NativeSelect>
-
-                                        {/* Active Toggle */}
-                                        {/* <div className="flex items-center justify-center mt-2">
-                                                <Switch
-                                                    checked={room.is_active}
-                                                    onCheckedChange={(checked) =>
-                                                        setEditedRooms((prev) =>
-                                                            prev.map((r) =>
-                                                                r.id === room.id ? { ...r, is_active: checked } : r
-                                                            )
-                                                        )
-                                                    }
-                                                />
-                                            </div> */}
+                <div className="space-y-6">
+                    {roomsByFloor.map(({ floor, rooms }) => {
+                        const isExpanded = expandedFloors[floor] !== false;
+                        
+                        return (
+                            <div key={floor} className="border border-primary/10 rounded-xl overflow-hidden bg-primary/[0.02]">
+                                {/* Floor title (Collapsible Trigger) */}
+                                <div 
+                                    className="flex items-center justify-between p-4 cursor-pointer hover:bg-primary/5 transition-colors select-none"
+                                    onClick={() => setExpandedFloors(prev => ({ ...prev, [floor]: !isExpanded }))}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <h2 className="text-lg font-bold text-foreground">
+                                            Floor {floor}
+                                        </h2>
+                                        <span className="text-sm font-medium text-muted-foreground px-2 py-0.5 bg-background rounded-full border border-border">
+                                            {rooms.length} rooms
+                                        </span>
                                     </div>
+                                    
+                                    <div className="flex items-center gap-3">
+                                        {permission?.can_create && isExpanded && (
+                                            <button
+                                                type="button"
+                                                className="flex items-center gap-1.5 text-primary hover:underline text-sm font-medium transition-colors"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setSelectedFloor(floor);
+                                                    setRoomType("STANDARD");
+                                                    setOpen(true);
+                                                }}
+                                            >
+                                                <PlusCircle className="w-4 h-4" /> Add New Room(s)
+                                            </button>
+                                        )}
+                                        <div className={cn(
+                                            "w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center transition-transform duration-200",
+                                            isExpanded ? "rotate-0" : "rotate-180"
+                                        )}>
+                                            <ChevronDown className="w-4 h-4" />
+                                        </div>
+                                    </div>
+                                </div>
 
-                                ))}
+                                {/* Rooms grid */}
+                                <AnimatePresence initial={false}>
+                                    {isExpanded && (
+                                        <motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: "auto", opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            transition={{ duration: 0.3, ease: "easeInOut" }}
+                                            className="overflow-hidden"
+                                        >
+                                            <div className="p-4 pt-0">
+                                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4 pt-2">
+                                                    {rooms.map((room) => (
+                                                        <div
+                                                            key={room.id}
+                                                            className={cn(
+                                                                "group relative flex flex-col rounded-lg border border-primary/20 bg-primary/[0.04] shadow-sm hover:shadow-md hover:border-primary/40 transition-all duration-200",
+                                                                !room.is_active && "opacity-60 grayscale-[0.5]"
+                                                            )}
+                                                        >
+                                                            {/* Card Header (Room No) */}
+                                                            <div className="px-3 py-1.5 bg-primary text-white border-b border-primary/20 rounded-t-lg flex justify-between items-center transition-colors">
+                                                                <span className="text-[10px] font-bold opacity-80 uppercase tracking-wider">Room</span>
+                                                                <span className="text-sm font-bold">
+                                                                    {room.room_no}
+                                                                </span>
+                                                            </div>
 
-                                {/* Add Room Card */}
-                                {permission?.can_create && <div
-                                    onClick={() => {
-                                        setSelectedFloor(floor);
-                                        setRoomType("STANDARD");
-                                        setOpen(true);
-                                    }}
-                                    className="aspect-square rounded-[3px] border border-dashed border-border flex items-center justify-center cursor-pointer hover:bg-muted transition">
-                                    <Plus className="h-8 w-8 text-muted-foreground" />
-                                </div>}
+                                                            <div className="p-2 space-y-1.5 flex-1 flex flex-col justify-center bg-background/40">
+                                                                {/* Room Type Stack */}
+                                                                <div className="space-y-1 text-center">
+                                                                    {/* Category Dropdown */}
+                                                                    <NativeSelect
+                                                                        className="w-full bg-transparent text-[11px] font-medium text-center hover:bg-muted/50 rounded px-1 h-6 transition-all appearance-none cursor-pointer focus:ring-1 focus:ring-primary/20"
+                                                                        value={getRoomSelectValue(room, "category")}
+                                                                        onChange={(e) => {
+                                                                            const category = e.target.value;
+                                                                            const bed = getRoomSelectValue(room, "bed");
+                                                                            const ac = getRoomSelectValue(room, "ac");
+                                                                            const nextRoomTypeId = resolveRoomTypeId(category, bed, ac);
+                                                                            if (nextRoomTypeId) {
+                                                                                setEditedRooms(prev => prev.map(r => r.id === room.id ? { ...r, room_type_id: nextRoomTypeId } : r));
+                                                                                setRoomDrafts(prev => { const { [room.id]: _, ...rest } = prev; return rest; });
+                                                                            } else {
+                                                                                setRoomDrafts(prev => ({ ...prev, [room.id]: { ...prev[room.id], category } }));
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        <option value="" disabled>Category</option>
+                                                                        {roomCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                                                                    </NativeSelect>
 
+                                                                    {/* Bed Dropdown */}
+                                                                    <NativeSelect
+                                                                        className="w-full bg-transparent text-[10px] text-muted-foreground text-center hover:bg-muted/50 rounded px-1 h-5 transition-all appearance-none cursor-pointer"
+                                                                        value={getRoomSelectValue(room, "bed")}
+                                                                        onChange={(e) => {
+                                                                            const bed = e.target.value;
+                                                                            const category = getRoomSelectValue(room, "category");
+                                                                            const ac = getRoomSelectValue(room, "ac");
+                                                                            const nextRoomTypeId = resolveRoomTypeId(category, bed, ac);
+                                                                            if (nextRoomTypeId) {
+                                                                                setEditedRooms(prev => prev.map(r => r.id === room.id ? { ...r, room_type_id: nextRoomTypeId } : r));
+                                                                                setRoomDrafts(prev => { const { [room.id]: _, ...rest } = prev; return rest; });
+                                                                            } else {
+                                                                                setRoomDrafts(prev => ({ ...prev, [room.id]: { ...prev[room.id], bed } }));
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        <option value="" disabled>Bed Type</option>
+                                                                        {bedTypes.map(b => <option key={b} value={b}>{b}</option>)}
+                                                                    </NativeSelect>
+
+                                                                    {/* AC Dropdown */}
+                                                                    <NativeSelect
+                                                                        className="w-full bg-transparent text-[10px] text-muted-foreground text-center hover:bg-muted/50 rounded px-1 h-5 transition-all appearance-none cursor-pointer"
+                                                                        value={getRoomSelectValue(room, "ac")}
+                                                                        onChange={(e) => {
+                                                                            const ac = e.target.value;
+                                                                            const category = getRoomSelectValue(room, "category");
+                                                                            const bed = getRoomSelectValue(room, "bed");
+                                                                            const nextRoomTypeId = resolveRoomTypeId(category, bed, ac);
+                                                                            if (nextRoomTypeId) {
+                                                                                setEditedRooms(prev => prev.map(r => r.id === room.id ? { ...r, room_type_id: nextRoomTypeId } : r));
+                                                                                setRoomDrafts(prev => { const { [room.id]: _, ...rest } = prev; return rest; });
+                                                                            } else {
+                                                                                setRoomDrafts(prev => ({ ...prev, [room.id]: { ...prev[room.id], ac } }));
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        <option value="" disabled>AC Type</option>
+                                                                        {acTypes.map(a => <option key={a} value={a}>{a}</option>)}
+                                                                    </NativeSelect>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
 
                     {roomsByFloor.length === 0 && (
                         <div className="text-center text-muted-foreground py-12">

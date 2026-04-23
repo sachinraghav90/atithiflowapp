@@ -1,10 +1,14 @@
-import React, { useMemo } from "react"
+import React, { useMemo, useState } from "react"
 import { NativeSelect } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Check, ChevronDown } from "lucide-react";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 type Item = {
   id: number | string;
-  label: string;
+  label?: string;
   [key: string]: unknown;
 };
 
@@ -17,6 +21,7 @@ type Props = {
     extraClasses?: string
     itemName?: string
     placeholder?: string
+    forceNative?: boolean
 };
 
 export function MenuItemSelect({
@@ -27,9 +32,11 @@ export function MenuItemSelect({
     itemName = "item_name",
     disabled = false,
     extraClasses = "",
-    placeholder = "Select option"
-
+    placeholder = "Select option",
+    forceNative = false
 }: Props) {
+    const [open, setOpen] = useState(false);
+
     const normalizedItems = useMemo(() => {
         if (Array.isArray(items)) return items;
         if (Array.isArray(items?.data)) return items.data;
@@ -37,6 +44,89 @@ export function MenuItemSelect({
     }, [items]);
 
     const normalizedDisabledIds = disabledIds ?? [];
+
+    const filteredItems = useMemo(() => {
+        return normalizedItems.filter((item) => {
+            const itemId = item.id?.toString() || item.label?.toString();
+            const isDisabled = normalizedDisabledIds.some((disabledId) => String(disabledId) === itemId);
+            // Keep the item if it's not disabled OR if it's the currently selected value for this specific field
+            return !isDisabled || (value && String(value) === itemId);
+        });
+    }, [normalizedItems, normalizedDisabledIds, value]);
+
+    const isSearchable = filteredItems.length > 5;
+
+    const selectedItem = useMemo(() => {
+        if (!value) return null;
+        return normalizedItems.find(item => String(item.id) === String(value) || String(item.label) === String(value));
+    }, [normalizedItems, value]);
+
+    const getLabel = (item: any) => String(item[itemName] ?? item.label ?? item.id);
+
+    if (!forceNative && isSearchable && !disabled) {
+        return (
+            <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger asChild>
+                    <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={open}
+                        className={cn(
+                            "flex h-9 w-full items-center justify-between rounded-[3px] border border-input bg-background px-3 py-2 text-sm font-normal shadow-none hover:bg-background text-left transition-colors duration-150",
+                            !value && "text-muted-foreground",
+                            extraClasses
+                        )}
+                    >
+                        <span className="truncate">
+                            {selectedItem ? getLabel(selectedItem) : placeholder}
+                        </span>
+                        <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent 
+                    className="p-0 w-[var(--radix-popover-trigger-width)] shadow-2xl border-border bg-background" 
+                    align="start"
+                    side="bottom"
+                    sideOffset={4}
+                >
+                    <Command className="border-none shadow-none bg-background">
+                        <CommandInput placeholder={`Search ${placeholder.toLowerCase()}...`} className="h-9" />
+                        <CommandList 
+                            className="max-h-[250px] overflow-y-auto bg-background"
+                            onWheel={(e) => e.stopPropagation()}
+                        >
+                            <CommandEmpty className="py-4 text-xs italic text-muted-foreground">No results found.</CommandEmpty>
+                            <CommandGroup>
+                                {filteredItems.map((item) => {
+                                    const itemId = item.id?.toString() || item.label?.toString() || "";
+                                    const itemLabel = getLabel(item);
+                                    return (
+                                        <CommandItem
+                                            key={itemId}
+                                            value={itemLabel} // searching by label
+                                            onSelect={() => {
+                                                onSelect(Number(itemId) || itemId);
+                                                setOpen(false);
+                                            }}
+                                            className="flex items-center justify-between cursor-pointer py-2 px-3 text-sm"
+                                        >
+                                            <span className="truncate">{itemLabel}</span>
+                                            <Check
+                                                className={cn(
+                                                    "ml-auto h-3.5 w-3.5 text-primary",
+                                                    String(value) === itemId ? "opacity-100" : "opacity-0"
+                                                )}
+                                            />
+                                        </CommandItem>
+                                    );
+                                })}
+                            </CommandGroup>
+                        </CommandList>
+                    </Command>
+                </PopoverContent>
+            </Popover>
+        )
+    }
 
     return (
         <NativeSelect
@@ -47,34 +137,20 @@ export function MenuItemSelect({
                 }
             }}
             disabled={disabled}
-          className={cn(
-  "flex h-10 w-full rounded-md border border-input bg-background px-3 text-base ring-offset-background",
-  "placeholder:text-muted-foreground text-foreground",
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-  "disabled:cursor-not-allowed disabled:opacity-50",
-  "transition-colors duration-150 md:text-sm",
-  extraClasses
-)}
-
+            className={cn(
+                "flex h-9 w-full rounded-[3px] border border-input bg-background px-3 text-base ring-offset-background transition-colors duration-150 md:text-sm",
+                extraClasses
+            )}
+            placeholder={placeholder}
         >
-            <option value="" disabled>
-                {placeholder}
-            </option>
-            {normalizedItems.map((item) => {
-                const itemId = item.id?.toString() || item.label?.toString()
-                const itemLabel = String(item[itemName] ?? item.label ?? itemId)
-                const isDisabled = normalizedDisabledIds.some((disabledId) => String(disabledId) === itemId)
-
+            {filteredItems.map((item) => {
+                const itemId = item.id?.toString() || item.label?.toString() || "";
+                const itemLabel = getLabel(item);
                 return (
-                    <option
-                        key={itemId}
-                        value={itemId}
-                        disabled={isDisabled}
-                        className={isDisabled ? "opacity-50" : ""}
-                    >
+                    <option key={itemId} value={itemId}>
                         {itemLabel}
                     </option>
-                )
+                );
             })}
         </NativeSelect>
     )

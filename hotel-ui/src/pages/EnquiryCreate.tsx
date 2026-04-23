@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import DatePicker from "react-datepicker";
+import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
 import { useAppSelector } from "@/redux/hook";
 import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
 import { useAvailableRoomsQuery, useCreateEnquiryMutation, useGetMeQuery, useGetMyPropertiesQuery, useGetPackagesByPropertyQuery, useGetRoomTypesQuery } from "@/redux/services/hmsApi";
@@ -26,7 +26,7 @@ import {
     CommandInput,
     CommandItem,
 } from "@/components/ui/command";
-import { Check, ChevronDown, Delete, Trash, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Delete, Trash, Trash2, X, PlusCircle } from "lucide-react";
 import COUNTRY_CODES from '../utils/countryCode.json'
 
 type AvailableRoom = {
@@ -427,7 +427,7 @@ return (
                                     <Label>Name*</Label>
                                     <Input
                                         className={cn(
-                                            "bg-white",
+                                            "bg-background",
                                             submitted && formErrors.guest_name && "border-red-500"
                                         )}
                                         value={form.guest_name}
@@ -441,7 +441,7 @@ return (
                                 <div>
                                     <Label>Agent Type</Label>
                                     <NativeSelect
-                                        className="h-10 w-full rounded-[3px] border px-3 text-sm"
+                                        className="h-10 w-full rounded-[3px] border border-border bg-background px-3 text-sm"
                                         value={form.agent_type}
                                         onChange={(e) =>
                                             setForm({ ...form, agent_type: e.target.value })
@@ -457,7 +457,7 @@ return (
                                 <div>
                                     <Label>Contact Method</Label>
                                     <NativeSelect
-                                        className="h-10 w-full rounded-[3px] border px-3 text-sm"
+                                        className="h-10 w-full rounded-[3px] border border-border bg-background px-3 text-sm"
                                         value={form.contact_method}
                                         onChange={(e) =>
                                             setForm({ ...form, contact_method: e.target.value })
@@ -488,7 +488,7 @@ return (
                                             <PopoverTrigger asChild>
                                                 <Button
                                                     variant="outline"
-                                                    className="w-[4rem] bg-white"
+                                                    className="w-[4rem] bg-background"
                                                 >
                                                     {form.country_code}
                                                     <ChevronDown className="h-4 w-4 opacity-50" />
@@ -526,7 +526,7 @@ return (
                                         <Input
                                             value={form.mobile}
                                             className={cn(
-                                                "bg-white flex-1",
+                                                "bg-background flex-1",
                                                 formErrors.mobile && "border-red-500"
                                             )}
                                             onChange={(e) => {
@@ -543,7 +543,7 @@ return (
                                 <div>
                                     <Label>Email</Label>
                                     <Input
-                                        className={submitted && formErrors.email ? "border-red-500 bg-white" : "bg-white"}
+                                        className={submitted && formErrors.email ? "border-red-500 bg-background" : "bg-background"}
                                         value={form.email}
                                         onChange={(e) => {
                                             setForm({ ...form, email: e.target.value });
@@ -554,7 +554,7 @@ return (
                                 <div>
                                     <Label>City</Label>
                                     <Input
-                                        className={submitted && formErrors.city ? "border-red-500 bg-white" : "bg-white"}
+                                        className={submitted && formErrors.city ? "border-red-500 bg-background" : "bg-background"}
                                         value={form.city}
                                         onChange={(e) => {
                                             setForm({ ...form, city: e.target.value });
@@ -566,7 +566,7 @@ return (
                                 <div>
                                     <Label>Nationality</Label>
                                     <NativeSelect
-                                        className="h-10 w-full rounded-[3px] border px-3 text-sm"
+                                        className="h-10 w-full rounded-[3px] border border-border bg-background px-3 text-sm"
                                         value={form.nationality}
                                         onChange={(e) =>
                                             setForm({ ...form, nationality: e.target.value })
@@ -581,7 +581,7 @@ return (
                                 <div>
                                     <Label>Plan</Label>
                                     <NativeSelect
-                                        className="h-10 w-full rounded-[3px] border px-3 text-sm"
+                                        className="h-10 w-full rounded-[3px] border border-border bg-background px-3 text-sm"
                                         value={form.plan}
                                         onChange={(e) =>
                                             setForm({ ...form, plan: e.target.value })
@@ -608,7 +608,7 @@ return (
                                     <div>
                                         <Label>Senior Citizens</Label>
                                         <Input
-                                            className={submitted && formErrors.senior_citizens ? "border-red-500 bg-white" : "bg-white"}
+                                            className={submitted && formErrors.senior_citizens ? "border-red-500 bg-background" : "bg-background"}
                                             value={form.senior_citizens}
                                             onChange={(e) => {
                                                 setForm({ ...form, senior_citizens: normalizeNumberInput(e.target.value).toString() });
@@ -619,7 +619,7 @@ return (
                                     <div>
                                         <Label>Children</Label>
                                         <Input
-                                            className={submitted && formErrors.children ? "border-red-500 bg-white" : "bg-white"}
+                                            className={submitted && formErrors.children ? "border-red-500 bg-background" : "bg-background"}
                                             value={form.children}
                                             onChange={(e) => {
                                                 setForm({ ...form, children: normalizeNumberInput(e.target.value).toString() });
@@ -635,7 +635,7 @@ return (
                                         <Label>Adult</Label>
                                         <Input
                                             type="text"
-                                            className={submitted && formErrors.adults ? "border-red-500 bg-white" : "bg-white"}
+                                            className={submitted && formErrors.adults ? "border-red-500 bg-background" : "bg-background"}
                                             value={form.adults}
                                             onChange={(e) => {
                                                 setForm({ ...form, adults: normalizeNumberInput(e.target.value).toString() });
@@ -646,7 +646,7 @@ return (
                                     <div>
                                         <Label>Specially Abled</Label>
                                         <Input
-                                            className={submitted && formErrors.specially_abled ? "border-red-500 bg-white" : "bg-white"}
+                                            className={submitted && formErrors.specially_abled ? "border-red-500 bg-background" : "bg-background"}
                                             value={form.specially_abled}
                                             onChange={(e) => {
                                                 setForm({ ...form, specially_abled: normalizeNumberInput(e.target.value).toString() });
@@ -668,42 +668,27 @@ return (
                                     </div>
                                     <div>
                                         <Label>Check-in*</Label>
-                                        <div className="block">
-                                            <DatePicker
-                                                className="bg-white"
-                                                selected={parseDate(form.check_in)}
-                                                onChange={(d) => {
-                                                    setForm({ ...form, check_in: formatDate(d) });
-                                                    setFormErrors(p => ({ ...p, check_in: "" }));
-                                                }}
-                                                customInput={
-                                                    <Input
-                                                        readOnly
-                                                        className={submitted && formErrors.check_in ? "border-red-500" : ""}
-                                                    />
-                                                }
-                                            />
-                                        </div>
+                                        <ResponsiveDatePicker
+                                            value={parseDate(form.check_in)}
+                                            onChange={(d) => {
+                                                setForm({ ...form, check_in: formatDate(d) });
+                                                setFormErrors(p => ({ ...p, check_in: "" }));
+                                            }}
+                                            placeholder="DD/MM/YYYY"
+                                            className={cn(submitted && formErrors.check_in && "border-red-500")}
+                                        />
                                     </div>
                                     <div>
                                         <Label>Check-out*</Label>
-                                        <div className="block">
-                                            <DatePicker
-                                                className="bg-white"
-                                                selected={parseDate(form.check_out)}
-                                                onChange={(d) => {
-                                                    setForm({ ...form, check_out: formatDate(d) });
-                                                    setFormErrors(p => ({ ...p, check_out: "" }));
-                                                }}
-                                                customInput={
-                                                    <Input
-                                                        readOnly
-                                                        className={submitted && formErrors.check_out ? "border-red-500" : ""}
-                                                    />
-                                                }
-                                            />
-
-                                        </div>
+                                        <ResponsiveDatePicker
+                                            value={parseDate(form.check_out)}
+                                            onChange={(d) => {
+                                                setForm({ ...form, check_out: formatDate(d) });
+                                                setFormErrors(p => ({ ...p, check_out: "" }));
+                                            }}
+                                            placeholder="DD/MM/YYYY"
+                                            className={cn(submitted && formErrors.check_out && "border-red-500")}
+                                        />
                                     </div>
                                 </div>
                             </div>
@@ -734,7 +719,7 @@ return (
                                                     <Button
                                                         variant="outline"
                                                         className={cn(
-                                                            "w-full justify-between bg-white",
+                                                            "w-full justify-between bg-background",
                                                             submitted && !room.room_type && "border-red-500"
                                                         )}
                                                     >
@@ -813,7 +798,7 @@ return (
                                             {index === 0 && <Label className="text-xs">Rooms</Label>}
                                             <Input
                                                 type="number"
-                                                className="bg-white"
+                                                className="bg-background"
                                                 min={1}
                                                 value={room.no_of_rooms}
                                                 onChange={(e) => {
@@ -843,14 +828,13 @@ return (
                                     </div>
 
                                 ))}
-                                <Button
+                                <button
                                     type="button"
-                                    variant="ghost"
-                                    className="text-primary px-0 hover:bg-transparent"
+                                    className="flex items-center gap-1.5 text-primary hover:underline text-sm font-medium transition-colors"
                                     onClick={addRoomType}
                                 >
-                                    + Add another room type
-                                </Button>
+                                    <PlusCircle className="w-4 h-4" /> Add New Room Type(s)
+                                </button>
 
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3">
@@ -858,7 +842,7 @@ return (
                                 <div>
                                     <Label>Offer Amount</Label>
                                     <Input
-                                        className={submitted && formErrors.offer_amount ? "border-red-500 bg-white" : "bg-white"}
+                                        className={submitted && formErrors.offer_amount ? "border-red-500 bg-background" : "bg-background"}
                                         value={form.offer_amount}
                                         onChange={(e) => {
                                             setForm({ ...form, offer_amount: normalizeNumberInput(e.target.value).toString() });
@@ -869,7 +853,7 @@ return (
                                 <div>
                                     <Label>Quote Amount*</Label>
                                     <Input
-                                        className={submitted && formErrors.quote_amount ? "border-red-500 bg-white" : "bg-white"}
+                                        className={submitted && formErrors.quote_amount ? "border-red-500 bg-background" : "bg-background"}
                                         value={form.quote_amount}
                                         onChange={(e) => {
                                             setForm({ ...form, quote_amount: +normalizeNumberInput(e.target.value) });
@@ -887,29 +871,22 @@ return (
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <Label>Follow-up Date</Label>
-                                    <div className="block">
-                                        <DatePicker
-                                            className="bg-white"
-                                            selected={parseDate(form.follow_up_date)}
-                                            onChange={(d) => {
-                                                setForm({ ...form, follow_up_date: formatDate(d) });
-                                                setFormErrors(p => ({ ...p, follow_up_date: "" }));
-                                            }}
-                                            customInput={
-                                                <Input
-                                                    readOnly
-                                                    className={submitted && formErrors.follow_up_date ? "border-red-500" : ""}
-                                                />
-                                            }
-                                        />
-                                    </div>
+                                    <ResponsiveDatePicker
+                                        value={parseDate(form.follow_up_date)}
+                                        onChange={(d) => {
+                                            setForm({ ...form, follow_up_date: formatDate(d) });
+                                            setFormErrors(p => ({ ...p, follow_up_date: "" }));
+                                        }}
+                                        placeholder="DD/MM/YYYY"
+                                        className={cn(submitted && formErrors.follow_up_date && "border-red-500")}
+                                    />
                                 </div>
                             </div>
 
                             <div>
                                 <Label>Comments</Label>
                                 <textarea
-                                    className="w-full min-h-[90px] rounded-[3px] border px-3 py-2 text-sm"
+                                    className="w-full min-h-[90px] rounded-[3px] border border-border bg-background px-3 py-2 text-sm"
                                     value={form.comment}
                                     onChange={(e) =>
                                         setForm({ ...form, comment: e.target.value })
@@ -956,7 +933,7 @@ function FormSection({
     children: React.ReactNode;
 }) {
     return (
-        <div className="bg-card border border-border rounded-[5px] p-5 space-y-4">
+        <div className="bg-background border border-border rounded-[5px] p-5 space-y-4">
             <div>
                 <h3 className="text-sm font-semibold text-foreground">{title}</h3>
                 {description && (

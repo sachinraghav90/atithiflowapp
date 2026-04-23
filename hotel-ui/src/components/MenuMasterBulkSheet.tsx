@@ -6,18 +6,16 @@ import {
     SheetTitle
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow
-} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { normalizeNumberInput } from "@/utils/normalizeTextInput";
+import { normalizeNumberInput, normalizePriceInput } from "@/utils/normalizeTextInput";
 import { Switch } from "./ui/switch";
 import { MenuItemSelect } from "./MenuItemSelect";
+import { DataGrid, DataGridHeader, DataGridRow, DataGridHead, DataGridCell } from "@/components/ui/data-grid";
+import { Input } from "@/components/ui/input";
+import { Trash2, Plus, PlusCircle } from "lucide-react";
+import { ValidationTooltip } from "@/components/ui/validation-tooltip";
+
+const DUPLICATE_ITEMS_MESSAGE = "Duplicate Items Not Allowed";
 
 type Row = {
     id: string;
@@ -29,6 +27,8 @@ type Row = {
     isActive: boolean;
     touched?: {
         itemName?: boolean;
+        price?: boolean;
+        menuItemGroupId?: boolean;
     };
 };
 
@@ -58,7 +58,7 @@ export default function MenuMasterBulkSheet({
         menuItemGroupId: "",
         isVeg: true,
         isActive: true,
-        touched: {}
+        touched: {},
     });
 
     const [rows, setRows] = useState<Row[]>([emptyRow()]);
@@ -85,13 +85,15 @@ export default function MenuMasterBulkSheet({
     };
 
     const removeRow = (id: string) => {
+        if (rows.length === 1) {
+            setRows([emptyRow()]);
+            setShowErrors(false);
+            return;
+        }
         setRows(prev => prev.filter(r => r.id !== id));
     };
 
-    /* ===== VALIDATION (same concept as inventory bulk) ===== */
-
     function getRowErrors(row: Row) {
-
         const duplicateInForm =
             row.itemName.trim() &&
             rows.filter(r =>
@@ -113,7 +115,6 @@ export default function MenuMasterBulkSheet({
     }
 
     const handleSubmit = () => {
-
         setShowErrors(true);
 
         const hasError = rows.some(r => {
@@ -134,8 +135,8 @@ export default function MenuMasterBulkSheet({
             items: rows.map(r => ({
                 itemName: r.itemName,
                 description: r.description,
-                price: r.price,
-                menuItemGroupId: r.menuItemGroupId,
+                price: Number(r.price),
+                menuItemGroupId: Number(r.menuItemGroupId),
                 isVeg: r.isVeg,
                 isActive: r.isActive
             }))
@@ -144,174 +145,180 @@ export default function MenuMasterBulkSheet({
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent
-                side="right"
-                className="w-full sm:max-w-4xl h-full overflow-y-auto"
-            >
-
-                <SheetHeader>
-                    <SheetTitle>Bulk Create Menu Items</SheetTitle>
+            <SheetContent side="right" onOpenAutoFocus={(event) => event.preventDefault()} className="w-full sm:max-w-4xl flex flex-col p-0 bg-background">
+                <SheetHeader className="px-6 py-4 border-b bg-background">
+                    <SheetTitle>Add Menu Items</SheetTitle>
                 </SheetHeader>
 
-                <div className="mt-6 space-y-4">
+                <div className="flex-1 overflow-y-auto bg-background">
+                    <div className="p-6 space-y-6">
+                        <div className="space-y-4">
 
-                    <div className="border rounded-md overflow-hidden">
 
-                        <Table className="text-sm">
+                        <div className="editable-grid-compact border rounded-[5px] overflow-hidden flex flex-col bg-background/50 border-border">
+                            <div className="overflow-x-auto w-full bg-background/50">
+                                <div className="w-full min-w-[800px]">
+                                    <DataGrid>
+                                        <DataGridHeader>
+                                            <DataGridHead>Item Name *</DataGridHead>
+                                            <DataGridHead>Group *</DataGridHead>
+                                            <DataGridHead className="w-32 text-center">Price *</DataGridHead>
+                                            <DataGridHead className="w-32 text-center">Veg/Non-Veg</DataGridHead>
+                                            {rows.length > 1 && (
+                                                <DataGridHead className="w-16 text-center">Action</DataGridHead>
+                                            )}
+                                        </DataGridHeader>
 
-                            <TableHeader>
-                                <TableRow className="h-9">
-                                    <TableHead>Item Name *</TableHead>
-                                    <TableHead>Group *</TableHead>
-                                    <TableHead>Price *</TableHead>
-                                    <TableHead>Veg</TableHead>
-                                    <TableHead className="w-12"></TableHead>
-                                </TableRow>
-                            </TableHeader>
+                                        <tbody>
+                                             {rows.map((row, index) => {
+                                                const errors = getRowErrors(row);
+                                                const isItemNameInvalid =
+                                                    (showErrors && (errors.itemName || errors.duplicateInForm || errors.duplicateExisting)) ||
+                                                    (!!row.touched?.itemName && (errors.duplicateInForm || errors.duplicateExisting));
+                                                const isPriceInvalid = showErrors && errors.price;
+                                                const isGroupInvalid = (showErrors || row.touched?.menuItemGroupId) && errors.group;
 
-                            <TableBody>
+                                                return (
+                                                    <DataGridRow key={row.id}>
+                                                        {/* NAME */}
+                                                         <DataGridCell>
+                                                             <ValidationTooltip
+                                                                 isValid={!isItemNameInvalid}
+                                                                 message={
+                                                                     errors.duplicateInForm
+                                                                         ? DUPLICATE_ITEMS_MESSAGE
+                                                                         : errors.duplicateExisting
+                                                                             ? DUPLICATE_ITEMS_MESSAGE
+                                                                             : errors.itemName
+                                                                                 ? "Required field"
+                                                                                 : ""
+                                                                 }
+                                                             >
+                                                                 <Input
+                                                                     className={cn(
+                                                                         "h-9 w-full rounded-[3px] border border-input bg-background px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary",
+                                                                         isItemNameInvalid && "border-red-500"
+                                                                     )}
+                                                                     value={row.itemName}
+                                                                     placeholder="Enter item name"
+                                                                     onChange={(e) => updateRow(index, { itemName: e.target.value })}
+                                                                     onBlur={() => updateRow(index, { touched: { ...row.touched, itemName: true } })}
+                                                                 />
+                                                             </ValidationTooltip>
+                                                         </DataGridCell>
 
-                                {rows.map((row, index) => {
+                                                        {/* GROUP */}
+                                                         <DataGridCell>
+                                                             <ValidationTooltip
+                                                                 isValid={!isGroupInvalid}
+                                                                 message="Required field"
+                                                             >
+                                                                <MenuItemSelect
+                                                                    value={Number(row.menuItemGroupId) || null}
+                                                                    items={menuGroups || []}
+                                                                    disabledIds={[]}
+                                                                    itemName="name"
+                                                                     extraClasses={cn(
+                                                                        "h-9 w-full rounded-[3px] border border-input bg-background text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary",
+                                                                        isGroupInvalid && "border-red-500"
+                                                                    )}
+                                                                     onSelect={(id) => updateRow(index, {
+                                                                        menuItemGroupId: String(id),
+                                                                        touched: { ...row.touched, menuItemGroupId: true }
+                                                                     })}
+                                                                />
+                                                            </ValidationTooltip>
+                                                        </DataGridCell>
 
-                                    const errors = getRowErrors(row);
+                                                        {/* PRICE */}
+                                                         <DataGridCell>
+                                                             <ValidationTooltip
+                                                                 isValid={!isPriceInvalid}
+                                                                 message="Required field"
+                                                             >
+                                                                <Input
+                                                                     className={cn(
+                                                                         "h-9 w-full rounded-[3px] border border-input bg-background text-center text-sm font-bold shadow-none focus-visible:ring-1 focus-visible:ring-primary",
+                                                                         isPriceInvalid && "border-red-500"
+                                                                     )}
+                                                                     value={row.price}
+                                                                     placeholder="0.00"
+                                                                     onChange={(e) =>
+                                                                         updateRow(index, {
+                                                                             price: normalizePriceInput(e.target.value)
+                                                                         })
+                                                                     }
+                                                                     onBlur={() => updateRow(index, { touched: { ...row.touched, price: true } })}
+                                                                 />
+                                                            </ValidationTooltip>
+                                                        </DataGridCell>
 
-                                    return (
+                                                        {/* VEG */}
+                                                        <DataGridCell>
+                                                            <div className="flex h-9 items-center justify-center gap-2">
+                                                                <Switch
+                                                                    checked={row.isVeg}
+                                                                    onCheckedChange={(val) => updateRow(index, { isVeg: val })}
+                                                                />
+                                                                <span className={cn(
+                                                                    "text-[10px] font-bold uppercase tracking-wider",
+                                                                    row.isVeg ? "text-green-600" : "text-red-600"
+                                                                )}>
+                                                                    {row.isVeg ? "Veg" : "Non-Veg"}
+                                                                </span>
+                                                            </div>
+                                                        </DataGridCell>
 
-                                        <TableRow key={row.id} className="border-b hover:bg-muted/30">
-
-                                            {/* NAME */}
-                                            <TableCell className="border-r p-1">
-                                                <input
-                                                    className={cn(
-                                                        "w-full h-8 px-2 text-sm rounded border border-input",
-                                                        (
-                                                            (showErrors || row.touched?.itemName) &&
-                                                            (
-                                                                errors.itemName ||
-                                                                errors.duplicateInForm ||
-                                                                errors.duplicateExisting
-                                                            )
-                                                        ) && "border-red-500"
-                                                    )}
-                                                    value={row.itemName}
-                                                    title={
-                                                        (showErrors || row.touched?.itemName)
-                                                            ? errors.duplicateExisting
-                                                                ? "Item already exists"
-                                                                : errors.duplicateInForm
-                                                                    ? "Duplicate item in list"
-                                                                    : errors.itemName
-                                                                        ? "Required"
-                                                                        : ""
-                                                            : ""
-                                                    }
-                                                    onChange={(e) =>
-                                                        updateRow(index, { itemName: e.target.value })
-                                                    }
-                                                    onBlur={() =>
-                                                        updateRow(index, {
-                                                            touched: { ...row.touched, itemName: true }
-                                                        })
-                                                    }
-                                                />
-                                            </TableCell>
-
-                                            {/* GROUP */}
-                                            <TableCell className="border-r p-1">
-
-                                                <MenuItemSelect
-                                                    value={Number(row.menuItemGroupId) || null}
-                                                    items={menuGroups || []}
-                                                    disabledIds={[]}
-                                                    itemName="name"   // ⭐ IMPORTANT
-                                                    extraClasses={cn(
-                                                        "h-8 text-sm",
-                                                        showErrors && errors.group && "border border-red-500"
-                                                    )}
-                                                    onSelect={(id) =>
-                                                        updateRow(index, { menuItemGroupId: String(id) })
-                                                    }
-                                                />
-
-                                            </TableCell>
-
-                                            {/* PRICE */}
-                                            <TableCell className="border-r p-1">
-                                                <input
-                                                    className={cn(
-                                                        "w-full h-8 px-2 text-sm rounded border border-input",
-                                                        showErrors && errors.price && "border-red-500"
-                                                    )}
-                                                    value={row.price}
-                                                    onChange={(e) =>
-                                                        updateRow(index, {
-                                                            price: normalizeNumberInput(e.target.value).toString()
-                                                        })
-                                                    }
-                                                />
-                                            </TableCell>
-
-                                            {/* VEG */}
-                                            {/* VEG */}
-                                            <TableCell className="p-1 border-r">
-                                                <div className="flex items-center justify-center gap-2 h-8">
-                                                    <Switch
-                                                        checked={row.isVeg}
-                                                        onCheckedChange={(val) =>
-                                                            updateRow(index, { isVeg: val })
-                                                        }
-                                                    />
-                                                    <span
-                                                        className={cn(
-                                                            "text-xs font-medium",
-                                                            row.isVeg ? "text-green-600" : "text-red-600"
+                                                        {/* ACTION */}
+                                                        {rows.length > 1 && (
+                                                            <DataGridCell className="text-center">
+                                                                <Button
+                                                                    size="icon"
+                                                                    variant="ghost"
+                                                                    className="editable-grid-remove-btn h-10 w-10 text-destructive hover:text-destructive/80 transition-colors"
+                                                                    onClick={() => removeRow(row.id)}
+                                                                >
+                                                                    <Trash2 className="w-5 h-5" />
+                                                                </Button>
+                                                            </DataGridCell>
                                                         )}
-                                                    >
-                                                        {row.isVeg ? "Veg" : "Non-Veg"}
-                                                    </span>
-                                                </div>
-                                            </TableCell>
-
-                                            {/* REMOVE */}
-                                            <TableCell className="p-1 w-12 text-center">
-                                                <button
-                                                    type="button"
-                                                    className="text-red-500 hover:text-red-700 text-sm"
-                                                    onClick={() => removeRow(row.id)}
-                                                    disabled={rows.length === 1}
-                                                >
-                                                    ✕
-                                                </button>
-                                            </TableCell>
-
-
-                                        </TableRow>
-
-                                    );
-                                })}
-
-                            </TableBody>
-
-                        </Table>
-
+                                                    </DataGridRow>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </DataGrid>
+                                </div>
+                            </div>
+                            <div className="editable-grid-footer p-3 bg-muted/10">
+                                <div className="flex flex-col gap-2">
+                                    <button
+                                        type="button"
+                                        className="flex items-center gap-1.5 text-primary hover:underline text-sm font-semibold transition-colors"
+                                        onClick={addRow}
+                                    >
+                                        <PlusCircle className="w-4 h-4" /> Add New Menu Item(s)
+                                    </button>
+                                    {showErrors && rows.some(r => getRowErrors(r).duplicateInForm) && (
+                                        <p className="text-xs text-red-600 font-medium">
+                                            * {DUPLICATE_ITEMS_MESSAGE}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="flex justify-between">
-
-                        <Button variant="heroOutline" onClick={addRow}>
-                            + Add Row
+                    <div className="p-6 border-t bg-background flex justify-end gap-3">
+                        <Button variant="outline" onClick={() => onOpenChange(false)}>
+                            Cancel
                         </Button>
-
-                        <Button variant="hero" onClick={handleSubmit}>
+                        <Button variant="hero" className="min-w-[140px]" onClick={handleSubmit}>
                             Create Items
                         </Button>
-
                     </div>
-
                 </div>
-
+            </div>
             </SheetContent>
         </Sheet>
     );
 }
-

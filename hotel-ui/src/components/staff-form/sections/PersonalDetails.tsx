@@ -1,7 +1,7 @@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { User } from "lucide-react";
-import DatePicker from "react-datepicker";
+import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
 import FormInput from "@/components/forms/FormInput";
 import { NativeSelect } from "@/components/ui/native-select";
 
@@ -40,7 +40,7 @@ export default function PersonalDetails({
     };
 
     return (
-        <div className="space-y-6 border border-border rounded-[5px] p-5 bg-card">
+        <div className="space-y-6 border border-border rounded-[5px] p-5 bg-transparent">
 
             <h3 className="font-semibold text-base">
                 Personal Details
@@ -109,7 +109,7 @@ export default function PersonalDetails({
 
                         <NativeSelect
                             disabled={viewMode}
-                            className={`w-full h-10 rounded-[3px] border px-2 text-sm ${errors.salutation ? "border-red-500" : "border-border"
+                            className={`w-full h-10 rounded-[3px] border bg-background px-2 text-sm ${errors.salutation ? "border-red-500" : "border-border"
                                 }`}
                             value={value.salutation || ""}
                             onChange={(e) => {
@@ -237,9 +237,8 @@ export default function PersonalDetails({
 
                     <Label>Date of Birth*</Label>
 
-                    <DatePicker
-                        className="bg-white"
-                        selected={parseDate(value.dob)}
+                    <ResponsiveDatePicker
+                        value={parseDate(value.dob)}
                         onChange={(date) =>
                             setValue((prev: any) => ({
                                 ...prev,
@@ -247,17 +246,13 @@ export default function PersonalDetails({
                             }))
                         }
                         minDate={new Date(1900, 0, 1)}
-                        dateFormat="dd-MM-yyyy"
-                        customInput={
-                            <Input
-                                readOnly
-                                className={errors.dob ? "border-red-500 bg-white" : "bg-white"}
-                                title={errors.dob?.type === "required" ? errors.dob.message : ""}
-                            />
-                        }
+                        placeholder="DD-MM-YYYY"
+                        label="Date of Birth"
+                        disabled={viewMode}
+                        className={errors.dob ? "border-red-500" : ""}
                     />
                     {errors.dob?.type === "invalid" && (
-                        <p className="text-xs text-red-500">
+                        <p className="text-xs text-red-500 animate-in fade-in slide-in-from-top-1">
                             {errors.dob.message}
                         </p>
                     )}
@@ -289,7 +284,7 @@ function SelectField({
 
             <NativeSelect
                 disabled={viewMode}
-                className={`w-full h-10 rounded-[3px] border px-3 text-sm ${errors[field] ? "border-red-500" : "border-border"
+                className={`w-full h-10 rounded-[3px] border bg-background px-3 text-sm ${errors[field] ? "border-red-500" : "border-border"
                     }`}
                 value={value[field] || ""}
                 onChange={(e) => {

@@ -247,11 +247,11 @@ function TableInput({
                     rounded
                     border
                     border-input
-                    bg-white
+                    bg-background
                     outline-none
                     focus:ring-1
                     focus:ring-primary
-                    ${error ? "border-red-500 bg-red-50" : ""}
+                    ${error ? "border-red-500" : ""}
                 `}
                 onChange={(e) => {
 

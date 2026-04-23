@@ -24,6 +24,13 @@ import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, Gri
 import { useGridPagination } from "@/hooks/useGridPagination";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
+import {
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet";
+import { motion } from "framer-motion";
 
 /* ---------------- Types ---------------- */
 type RateRow = {
@@ -32,12 +39,13 @@ type RateRow = {
     bed_type_name: string;
     ac_type_name: string;
     base_price: string;
+    system_generated?: boolean;
 };
 
 /* ---------------- Component ---------------- */
 export default function RoomTypeBasePriceManagement() {
     const [propertyId, setPropertyId] = useState<number | null>(null);
-    const { myProperties, isMultiProperty } = useAutoPropertySelect(propertyId, setPropertyId);
+    const { myProperties, isMultiProperty, isInitializing } = useAutoPropertySelect(propertyId, setPropertyId);
 
     const [rows, setRows] = useState<RateRow[]>([]);
     const [editMode, setEditMode] = useState(false);
@@ -50,6 +58,14 @@ export default function RoomTypeBasePriceManagement() {
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
     const isSuperAdmin = useAppSelector(selectIsSuperAdmin)
     const isOwner = useAppSelector(selectIsOwner)
+ 
+    const [sheetOpen, setSheetOpen] = useState(false);
+    const [mode, setMode] = useState<"view" | "edit">("view");
+    const [selectedRow, setSelectedRow] = useState<RateRow | null>(null);
+    const [formPrice, setFormPrice] = useState("");
+    const [formCategory, setFormCategory] = useState("");
+    const [formBedType, setFormBedType] = useState("");
+    const [formAcType, setFormAcType] = useState("");
 
     const { page, limit, setPage, resetPage, handleLimitChange } = useGridPagination({
         initialLimit: 10,
@@ -143,6 +159,41 @@ export default function RoomTypeBasePriceManagement() {
         setEditMode(false);
     }
 
+    const handleOpenRowSheet = (row: RateRow, forceMode: "view" | "edit") => {
+        setSelectedRow(row);
+        setFormPrice(row.base_price || "0");
+        setFormCategory(row.room_category_name || "");
+        setFormBedType(row.bed_type_name || "");
+        setFormAcType(row.ac_type_name || "");
+        setMode(forceMode);
+        setSheetOpen(true);
+    };
+
+    const handleSingleRowUpdate = async () => {
+        if (!selectedRow) return;
+
+        const singlePayload = {
+            property_id: propertyId,
+            rates: [{
+                id: selectedRow.id,
+                room_category_name: formCategory,
+                bed_type_name: formBedType,
+                ac_type_name: formAcType,
+                base_price: Number(formPrice)
+            }]
+        };
+
+        const promise = updateRoomTypes({ payload: singlePayload }).unwrap();
+        toast.promise(promise, {
+            pending: "Updating room category...",
+            success: "Room category updated successfully",
+            error: "Error updating room category"
+        });
+
+        await promise;
+        setSheetOpen(false);
+    };
+
 
     const pathname = useLocation().pathname
     const { permission } = usePermission(pathname)
@@ -234,11 +285,11 @@ export default function RoomTypeBasePriceManagement() {
                             </div>
                         )}
 
-                        {permission?.can_create && editMode && (
-                            <>
+                        {editMode ? (
+                            <div className="flex gap-2">
                                 <Button
                                     variant="heroOutline"
-                                    className="h-10"
+                                    className="h-10 px-6"
                                     onClick={() => {
                                         setRows(
                                             (roomTypesData?.data ?? []).map((row: RateRow) => ({
@@ -251,16 +302,26 @@ export default function RoomTypeBasePriceManagement() {
                                 >
                                     Cancel
                                 </Button>
-
+ 
                                 <Button
                                     variant="hero"
-                                    className="h-10"
+                                    className="h-10 px-6"
                                     disabled={updatedRates.length === 0}
                                     onClick={() => setConfirmOpen(true)}
                                 >
                                     Update
                                 </Button>
-                            </>
+                            </div>
+                        ) : (
+                            permission?.can_create && (
+                                <Button
+                                    variant="hero"
+                                    className="h-10 px-6 font-semibold"
+                                    onClick={() => setEditMode(true)}
+                                >
+                                    Edit Prices
+                                </Button>
+                            )
                         )}
                     </div>
                 </div>
@@ -285,11 +346,11 @@ export default function RoomTypeBasePriceManagement() {
                                 />
 
                                 <GridToolbarSelect
-                                    label="CATEGORY"
+                                    label="Category"
                                     value={filterCategory}
                                     onChange={setFilterCategory}
                                     options={[
-                                        { label: "Any", value: "" },
+                                        { label: "All", value: "" },
                                         ...categoryOptions.map(v => ({ label: v, value: v }))
                                     ]}
                                 />
@@ -299,7 +360,7 @@ export default function RoomTypeBasePriceManagement() {
                                     value={filterBedType}
                                     onChange={setFilterBedType}
                                     options={[
-                                        { label: "Any", value: "" },
+                                        { label: "All", value: "" },
                                         ...bedOptions.map(v => ({ label: v, value: v }))
                                     ]}
                                 />
@@ -336,7 +397,7 @@ export default function RoomTypeBasePriceManagement() {
                                     value={filterAcType}
                                     onChange={setFilterAcType}
                                     options={[
-                                        { label: "Any", value: "" },
+                                        { label: "All", value: "" },
                                         ...acOptions.map(v => ({ label: v, value: v }))
                                     ]}
                                 />
@@ -356,9 +417,13 @@ export default function RoomTypeBasePriceManagement() {
                             headClassName: "text-center",
                             cellClassName: "text-center font-medium min-w-[90px]",
                             render: (r: RateRow) => (
-                                <span className="inline-flex items-center font-semibold text-primary text-sm tracking-wide">
+                                <button
+                                    type="button"
+                                    className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
+                                    onClick={() => handleOpenRowSheet(r, "view")}
+                                >
                                     {formatModuleDisplayId("room", r.id)}
-                                </span>
+                                </button>
                             ),
                         },
                         {
@@ -400,11 +465,12 @@ export default function RoomTypeBasePriceManagement() {
                         },
                     ] as ColumnDef[]}
                     data={filteredRows}
-                    loading={roomTypesLoading}
+                    loading={roomTypesLoading || isInitializing}
                     emptyText="No room categories found"
                     minWidth="760px"
                     actionLabel=""
                     actionClassName="text-center w-[60px]"
+                    showActions={!editMode && permission?.can_create}
                     actions={(r: RateRow) => (
                         <Tooltip>
                             <TooltipTrigger asChild>
@@ -413,7 +479,7 @@ export default function RoomTypeBasePriceManagement() {
                                     variant="ghost"
                                     className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
                                     aria-label={`Edit price for ${r.room_category_name}`}
-                                    onClick={() => setEditMode(true)}
+                                    onClick={() => handleOpenRowSheet(r, "edit")}
                                 >
                                     <Pencil className="w-4 h-4 mx-auto" />
                                 </Button>
@@ -435,6 +501,114 @@ export default function RoomTypeBasePriceManagement() {
                     </div>
                 </div>
             </section>
+
+            <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+                <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto scrollbar-hide">
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-6 mt-4"
+                    >
+                        <SheetHeader>
+                            <SheetTitle>
+                                {mode === "view" ? "Room summary" : "Edit room category"}
+                            </SheetTitle>
+                        </SheetHeader>
+
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label className="text-xs uppercase tracking-wider">Room Category</Label>
+                                {mode === "view" || (mode === "edit" && selectedRow?.system_generated) ? (
+                                    <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">
+                                        {selectedRow?.room_category_name}
+                                    </p>
+                                ) : (
+                                    <Input
+                                        className="h-10 w-full rounded focus-visible:ring-1 focus-visible:ring-primary"
+                                        value={formCategory}
+                                        onChange={(e) => setFormCategory(e.target.value)}
+                                    />
+                                )}
+                            </div>
+ 
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-xs uppercase tracking-wider block">Bed Type</Label>
+                                    {mode === "view" || (mode === "edit" && selectedRow?.system_generated) ? (
+                                        <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">
+                                            {selectedRow?.bed_type_name}
+                                        </p>
+                                    ) : (
+                                        <NativeSelect
+                                            className="h-10 w-full border border-border bg-background rounded px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                                            value={formBedType}
+                                            onChange={(e) => setFormBedType(e.target.value)}
+                                        >
+                                            <option value="" disabled>Select Bed Type</option>
+                                            {bedOptions.map(opt => (
+                                                <option key={opt} value={opt}>{opt}</option>
+                                            ))}
+                                        </NativeSelect>
+                                    )}
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs uppercase tracking-wider block">AC Type</Label>
+                                    {mode === "view" || (mode === "edit" && selectedRow?.system_generated) ? (
+                                        <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">
+                                            {selectedRow?.ac_type_name}
+                                        </p>
+                                    ) : (
+                                        <NativeSelect
+                                            className="h-10 w-full border border-border bg-background rounded px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                                            value={formAcType}
+                                            onChange={(e) => setFormAcType(e.target.value)}
+                                        >
+                                            <option value="" disabled>Select AC Type</option>
+                                            {acOptions.map(opt => (
+                                                <option key={opt} value={opt}>{opt}</option>
+                                            ))}
+                                        </NativeSelect>
+                                    )}
+                                </div>
+                            </div>
+ 
+                            <div className="space-y-2 pt-4 border-t border-border">
+                                <Label className="text-xs uppercase tracking-wider">Base Price</Label>
+                                {mode === "view" ? (
+                                    <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">
+                                        ₹ {selectedRow?.base_price || "0.00"}
+                                    </p>
+                                ) : (
+                                    <Input
+                                        type="text"
+                                        className="h-10 w-full rounded focus-visible:ring-1 focus-visible:ring-primary"
+                                        value={formPrice}
+                                        onChange={(e) => setFormPrice(normalizeNumberInput(e.target.value).toString())}
+                                    />
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                            <Button
+                                variant="heroOutline"
+                                onClick={() => setSheetOpen(false)}
+                            >
+                                {mode === "view" ? "Close" : "Cancel"}
+                            </Button>
+
+                            {mode === "edit" && (
+                                <Button
+                                    variant="hero"
+                                    onClick={handleSingleRowUpdate}
+                                >
+                                    Save Changes
+                                </Button>
+                            )}
+                        </div>
+                    </motion.div>
+                </SheetContent>
+            </Sheet>
 
             {/* Confirm Update */}
             <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>

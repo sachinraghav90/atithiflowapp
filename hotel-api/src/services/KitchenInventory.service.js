@@ -331,7 +331,7 @@ class KitchenInventoryService {
             property_id,
             event_id: inventory.id,
             table_name: "kitchen_inventory",
-            event_type: "CREATE",
+            event_type: "UPDATE",
             task_name: "Adjust Kitchen Inventory Stock",
             comments: "Kitchen inventory stock adjusted",
             details: JSON.stringify({

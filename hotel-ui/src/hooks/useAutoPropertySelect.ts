@@ -50,12 +50,18 @@ export function useAutoPropertySelect(
     const isMultiLoading = (isSuperAdmin || isOwner) && myPropertiesLoading;
     const isStaffLoading = (!isSuperAdmin && !isOwner) && staffPropertyLoading;
 
+    // We are "Initializing" if we are still fetching properties OR we have properties but haven't set the ID yet
+    const isInitializing = 
+        (isMultiLoading || isStaffLoading) || 
+        (isLoggedIn && !selectedPropertyId);
+
     return {
         myProperties,
         staffProperty,
         isSuperAdmin,
         isOwner,
         isMultiProperty: isSuperAdmin || isOwner,
-        isLoading: isMultiLoading || isStaffLoading
+        isLoading: isMultiLoading || isStaffLoading,
+        isInitializing // New: specifically for the "gap" before selectedPropertyId is set
     };
 }

@@ -22,7 +22,7 @@ import { usePermission } from "@/rbac/usePermission";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect } from "@/components/ui/grid-toolbar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Download, FilterX, Pencil, RefreshCcw } from "lucide-react";
+import { Download, FilterX, Pencil, Plus, RefreshCcw } from "lucide-react";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { filterGridRowsByQuery } from "@/utils/filterGridRows";
@@ -144,7 +144,7 @@ function getEnquiryStatusClassName(status?: EnquiryStatus | null) {
 export default function EnquiriesManagement() {
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
     const [page, setPage] = useState(1);
-    const [limit, setLimit] = useState(10);
+    const [limit, setLimit] = useState(5);
     const [open, setOpen] = useState(false);
     const [editMode, setEditMode] = useState(false);
     const [selected, setSelected] = useState<Enquiry | null>(null);
@@ -167,7 +167,7 @@ export default function EnquiriesManagement() {
         setEditMode(isEdit);
         setOpen(true);
     };
-    const { myProperties, isMultiProperty } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
+    const { myProperties, isMultiProperty, isInitializing } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
 
     const { data: enquiries, isLoading: enquiryLoading, refetch } = useGetPropertyEnquiriesQuery({ propertyId: selectedPropertyId, page, limit }, {
         skip: !isLoggedIn || !selectedPropertyId
@@ -378,11 +378,11 @@ export default function EnquiriesManagement() {
 
                         {permission?.can_create && (
                             <Button
-                                variant="heroOutline"
-                                className="h-9"
+                                variant="hero"
+                                className="h-10 px-4 flex items-center gap-2"
                                 onClick={() => navigate("/create-enquiry")}
                             >
-                                + New Enquiry
+                                <Plus className="w-4 h-4" /> New Enquiry
                             </Button>
                         )}
                     </div>
@@ -402,14 +402,14 @@ export default function EnquiriesManagement() {
                                 />
 
                                 <GridToolbarSelect
-                                    label="STATUS"
+                                    label="Status"
                                     value={statusFilter}
                                     onChange={(value) => {
                                         setStatusFilter(value as EnquiryStatus | "");
                                         setPage(1);
                                     }}
                                     options={[
-                                        { label: "Any", value: "" },
+                                        { label: "All", value: "" },
                                         ...ENQUIRY_STATUS_OPTIONS,
                                     ]}
                                 />
@@ -447,7 +447,7 @@ export default function EnquiriesManagement() {
                         <AppDataGrid
                             columns={enquiryColumns}
                             data={filteredEnquiries}
-                            loading={enquiryLoading}
+                            loading={enquiryLoading || isInitializing}
                             emptyText="No enquiries found"
                             minWidth="1080px"
                             actionClassName="text-center w-[60px]"

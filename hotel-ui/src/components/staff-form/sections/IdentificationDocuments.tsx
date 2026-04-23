@@ -48,7 +48,7 @@ export default function IdentificationDocuments({
     };
 
     return (
-        <div className="space-y-6 border border-border rounded-[5px] p-5 bg-card">
+        <div className="space-y-6 border border-border rounded-[5px] p-5 bg-transparent">
 
             <h3 className="font-semibold text-base">
                 Identification & Documents
@@ -66,7 +66,7 @@ export default function IdentificationDocuments({
 
                     <NativeSelect
                         disabled={viewMode}
-                        className="w-full h-10 rounded-[3px] border border-border px-3 text-sm"
+                        className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
                         value={idProofMode === "other" ? "Other" : value.id_proof_type}
                         onChange={(e) => {
 

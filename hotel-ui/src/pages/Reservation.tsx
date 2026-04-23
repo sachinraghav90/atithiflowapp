@@ -10,7 +10,6 @@ import { useAddGuestsByBookingMutation, useAvailableRoomsQuery, useCreateBooking
 import { normalizeNumberInput, normalizeTextInput } from "@/utils/normalizeTextInput";
 import { toast } from "react-toastify";
 import { useLocation, useNavigate } from "react-router-dom";
-import DatePicker from 'react-datepicker'
 import countries from '../utils/countries.json'
 import { usePermission } from "@/rbac/usePermission";
 import {
@@ -26,7 +25,7 @@ import {
     CommandInput,
     CommandItem,
 } from "@/components/ui/command";
-import { BookType, Check, ChevronDown } from "lucide-react";
+import { BookType, Check, ChevronDown, X } from "lucide-react";
 import COUNTRY_CODES from '../utils/countryCode.json'
 import {
     Dialog,
@@ -36,6 +35,7 @@ import {
 } from "@/components/ui/dialog";
 import FormInput from "@/components/forms/FormInput";
 import FormDatePicker from "@/components/forms/FormDatePicker";
+import FormDateRangePicker from "@/components/forms/FormDateRangePicker";
 import FormSelect from "@/components/forms/FormSelect";
 
 /* -------------------- Types -------------------- */
@@ -561,28 +561,27 @@ export default function ReservationManagement() {
         return new Date(a) > new Date(b);
     };
 
-    const handleArrivalChange = (value: string) => {
-        setArrivalDate(value);
+    const handleBookingRangeChange = ([start, end]: [Date | null, Date | null]) => {
+        const nextArrival = start ? formatDate(start) : "";
+        const nextDeparture = end ? formatDate(end) : "";
 
-        if (value < todayISO()) {
+        setArrivalDate(nextArrival);
+        setDepartureDate(nextDeparture);
+
+        if (nextArrival && nextArrival < todayISO()) {
             setArrivalError("Arrival date cannot be in the past");
         } else {
             setArrivalError("");
         }
 
-        if (departureDate && !isAfter(departureDate, value)) {
-            setDepartureError("Departure must be after arrival date");
-        } else {
+        if (!nextDeparture) {
             setDepartureError("");
+            return;
         }
-    };
 
-    const handleDepartureChange = (value: string) => {
-        setDepartureDate(value);
-
-        if (!arrivalDate) {
+        if (!nextArrival) {
             setDepartureError("Select arrival date first");
-        } else if (!isAfter(value, arrivalDate)) {
+        } else if (!isAfter(nextDeparture, nextArrival)) {
             setDepartureError("Departure must be after arrival date");
         } else {
             setDepartureError("");
@@ -895,16 +894,27 @@ export default function ReservationManagement() {
 
     /* -------------------- UI -------------------- */
     return (
-        <div className="h-full flex flex-col overflow-hidden">
+        <div className="h-full flex flex-col overflow-hidden bg-background">
             <div className="grid grid-cols-1 lg:grid-cols-[1fr] flex-1 overflow-hidden">
 
                 {/* =================== BOOKING FORM =================== */}
-                <section className="flex-1 overflow-y-auto scrollbar-hide p-4 lg:p-4 border-r border-border">
-                    <div className="mb-6">
-                        <h1 className="text-2xl font-bold text-foreground">New Booking</h1>
-                        <p className="text-sm text-muted-foreground mt-1">
-                            Create a direct booking.
-                        </p>
+                <section className="flex-1 overflow-y-auto scrollbar-hide p-4 lg:p-4 border-r border-border bg-background">
+                    <div className="mb-6 flex items-start justify-between">
+                        <div>
+                            <h1 className="text-2xl font-bold text-foreground">New Booking</h1>
+                            <p className="text-sm text-muted-foreground mt-1">
+                                Create a direct booking.
+                            </p>
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground transition-colors"
+                            onClick={() => navigate("/bookings")}
+                            aria-label="Close booking form"
+                        >
+                            <X className="h-5 w-5" />
+                        </Button>
                     </div>
                     {fromEnquiry && (
                         <div className="mb-4 rounded-[3px] bg-blue-50 border border-blue-200 p-3 text-sm text-blue-700">
@@ -1016,32 +1026,21 @@ export default function ReservationManagement() {
 
                                 {/* ARRIVAL DATE */}
 
-                                <FormDatePicker
-                                    label="Arrival Date"
-                                    field="arrivalDate"
-                                    selected={parseDate(arrivalDate)}
-                                    onChange={(date: any) => {
-                                        handleArrivalChange(formatDate(date));
-                                    }}
-                                    errors={reservationErrors}
-                                    setErrors={setReservationErrors}
-                                    required
-                                />
-
-
-                                {/* DEPARTURE DATE */}
-
-                                <FormDatePicker
-                                    label="Departure Date"
-                                    field="departureDate"
-                                    selected={parseDate(departureDate)}
-                                    onChange={(date: any) => {
-                                        handleDepartureChange(formatDate(date));
-                                    }}
-                                    errors={reservationErrors}
-                                    setErrors={setReservationErrors}
-                                    required
-                                />
+                                <div className="col-span-2">
+                                    <FormDateRangePicker
+                                        startLabel="Arrival Date"
+                                        endLabel="Departure Date"
+                                        startField="arrivalDate"
+                                        endField="departureDate"
+                                        startDate={parseDate(arrivalDate)}
+                                        endDate={parseDate(departureDate)}
+                                        onChange={handleBookingRangeChange}
+                                        errors={reservationErrors}
+                                        setErrors={setReservationErrors}
+                                        required
+                                        minDate={new Date()}
+                                    />
+                                </div>
 
                                 {/* BOOKING TYPE */}
 
@@ -1256,7 +1255,7 @@ export default function ReservationManagement() {
                                                 <Button
                                                     variant="outline"
                                                     className={cn(
-                                                        "w-full h-10 justify-between bg-white",
+                                                        "w-full h-10 justify-between bg-background",
                                                         reservationErrors.country && "border-red-500"
                                                     )}
                                                 >
@@ -1311,7 +1310,7 @@ export default function ReservationManagement() {
                                                     <Button
                                                         variant="outline"
                                                         className={cn(
-                                                            "h-10 bg-white justify-between rounded-r-none",
+                                                            "h-10 bg-background justify-between rounded-r-none",
                                                             reservationErrors.country_code && "border-red-500"
                                                         )}
                                                     >
@@ -1360,7 +1359,7 @@ export default function ReservationManagement() {
                                                 value={guest.phone || ""}
                                                 title={hoverError}
                                                 className={cn(
-                                                    "h-10 bg-white rounded-l-none",
+                                                    "h-10 bg-background rounded-l-none",
                                                     reservationErrors.phone && "border-red-500"
                                                 )}
                                                 onChange={(e) => {
@@ -1579,7 +1578,7 @@ export default function ReservationManagement() {
 
                                     <Input
                                         className={cn(
-                                            "bg-white",
+                                            "bg-background",
                                             reservationErrors.id_proof && "border-red-500"
                                         )}
                                         disabled={isBooking}
@@ -1768,7 +1767,7 @@ export default function ReservationManagement() {
 
                             <Field label="Comments">
                                 <textarea
-                                    className={cn("w-full min-h-[96px] rounded-[3px] border border-border bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                                    className={cn("w-full min-h-[96px] rounded-[3px] border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                                         reservationErrors.comments && "border-red-500"
                                     )}
                                     value={comments}
@@ -1859,7 +1858,7 @@ export default function ReservationManagement() {
                             <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-3 gap-3">
                                 <div className="space-y-1 mb-4">
                                     <NativeSelect
-                                        className="w-full h-10 rounded-[3px] border border-border bg-white px-3 text-sm"
+                                        className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
                                         value={roomFilters.bedType}
                                         onChange={(e) => {
                                             setRoomFilters({ ...roomFilters, bedType: e.target.value })
@@ -1875,7 +1874,7 @@ export default function ReservationManagement() {
                                 </div>
                                 <div className="space-y-1 mb-4">
                                     <NativeSelect
-                                        className="w-full h-10 rounded-[3px] border border-border bg-white px-3 text-sm"
+                                        className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
                                         value={roomFilters.roomCategory}
                                         onChange={(e) => {
                                             setRoomFilters({ ...roomFilters, roomCategory: e.target.value })
@@ -1891,7 +1890,7 @@ export default function ReservationManagement() {
                                 </div>
                                 <div className="space-y-1 mb-4">
                                     <NativeSelect
-                                        className="w-full h-10 rounded-[3px] border border-border bg-white px-3 text-sm"
+                                        className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
                                         value={roomFilters.floor}
                                         onChange={(e) => {
                                             setRoomFilters({ ...roomFilters, floor: e.target.value })
@@ -1985,7 +1984,7 @@ export default function ReservationManagement() {
 }
 
 const CardSection = ({ title, subtitle, children }) => (
-    <div className="rounded-[5px] border border-border bg-card p-5 shadow-sm">
+    <div className="rounded-[5px] border border-border bg-background p-5">
         <div className="mb-4">
             <h3 className="text-base font-semibold text-foreground">{title}</h3>
             {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}

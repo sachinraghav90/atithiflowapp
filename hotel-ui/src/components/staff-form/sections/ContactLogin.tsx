@@ -72,7 +72,7 @@ export default function ContactLogin({
     };
 
     return (
-        <div className="space-y-6 border border-border rounded-[5px] p-5 bg-card">
+        <div className="space-y-6 border border-border rounded-[5px] p-5 bg-transparent">
 
             <h3 className="font-semibold text-base">
                 Contact & Login
@@ -150,7 +150,7 @@ export default function ContactLogin({
                                             variant="outline"
                                             disabled={viewMode}
                                             className={cn(
-                                                "h-10 bg-white justify-between rounded-r-none w-[85px]",
+                                                "h-10 bg-background justify-between rounded-r-none w-[85px]",
                                                 error && "border-red-500"
                                             )}
                                         >
@@ -208,7 +208,7 @@ export default function ContactLogin({
                                     title={error?.type === "required" ? error.message : ""}
                                     maxLength={15}
                                     className={cn(
-                                        "h-10 rounded-l-none bg-white",
+                                        "h-10 rounded-l-none bg-background",
                                         error && "border-red-500"
                                     )}
                                     onChange={(e) => {
@@ -295,7 +295,7 @@ export default function ContactLogin({
                                             variant="outline"
                                             disabled={viewMode}
                                             className={cn(
-                                                "h-10 bg-white justify-between rounded-r-none w-[85px]",
+                                                "h-10 bg-background justify-between rounded-r-none w-[85px]",
                                                 error && "border-red-500"
                                             )}
                                         >
@@ -357,7 +357,7 @@ export default function ContactLogin({
                                     title={error?.type === "required" ? error.message : ""}
                                     maxLength={15}
                                     className={cn(
-                                        "h-10 rounded-l-none bg-white",
+                                        "h-10 rounded-l-none bg-background",
                                         error && "border-red-500"
                                     )}
                                     onChange={(e) => {
@@ -416,7 +416,7 @@ export default function ContactLogin({
                 <textarea
                     disabled={viewMode}
                     value={value.address || ""}
-                    className={`w-full min-h-[80px] rounded-[3px] border border-border px-3 py-2 text-sm ${errors.address ? "border-red-500" : ""
+                    className={`w-full min-h-[80px] rounded-[3px] border border-border bg-background px-3 py-2 text-sm ${errors.address ? "border-red-500" : ""
                         }`}
                     onChange={(e) => {
 

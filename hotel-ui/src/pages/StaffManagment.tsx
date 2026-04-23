@@ -135,7 +135,7 @@ export default function StaffManagement() {
     const viewMode = mode === "view";
 
     const { page, limit, setPage, resetPage, handleLimitChange } = useGridPagination({
-        initialLimit: 10,
+        initialLimit: 5,
         resetDeps: [selectedPropertyId, statusFilter, searchQuery],
     });
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
@@ -144,6 +144,7 @@ export default function StaffManagement() {
         isMultiProperty, 
         isSuperAdmin, 
         isOwner,
+        isInitializing,
         isLoading: myPropertiesLoading
     } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
 
@@ -397,9 +398,9 @@ export default function StaffManagement() {
         toast.success("Export completed");
     };
 
-    const openStaffDetails = async (staffMember: Staff) => {
+    const openStaffDetails = async (staffMember: Staff, forceMode: "view" | "edit" = "view") => {
         try {
-            setMode("view");
+            setMode(forceMode);
             setSheetOpen(true);
 
             const data = await getStaffById(staffMember.id!).unwrap();
@@ -430,7 +431,7 @@ export default function StaffManagement() {
                 <button
                     type="button"
                     className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
-                    onClick={() => openStaffDetails(s)}
+                    onClick={() => openStaffDetails(s, "view")}
                     aria-label={`Open summary view for staff ${formatModuleDisplayId("staff", s.id)}`}
                 >
                     {formatModuleDisplayId("staff", s.id)}
@@ -497,7 +498,7 @@ export default function StaffManagement() {
             <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8 space-y-6">
                 <div className="flex items-center justify-between w-full">
                     <div className="flex flex-col">
-                        <h1 className="text-2xl font-bold leading-tight">Staff Directory</h1>
+                        <h1 className="text-2xl font-bold leading-tight">Staff</h1>
                         <p className="text-sm text-muted-foreground">
                             Manage your hotel staff and their roles
                         </p>
@@ -564,15 +565,18 @@ export default function StaffManagement() {
                                 />
 
                                 <GridToolbarSelect
-                                    label="STATUS"
+                                    label="Status"
                                     value={statusFilter}
                                     onChange={(value) => {
                                         setStatusFilter(value);
                                         resetPage();
                                     }}
                                     options={[
-                                        { label: "Any", value: "" },
-                                        ...STAFF_STATUSES.map((s) => ({ label: s, value: s })),
+                                        { label: "All", value: "" },
+                                        ...STAFF_STATUSES.map((s) => ({ 
+                                            label: s, 
+                                            value: s 
+                                        })),
                                     ]}
                                 />
 
@@ -608,43 +612,48 @@ export default function StaffManagement() {
                         <AppDataGrid
                             columns={staffColumns}
                             data={staffRows}
-                            loading={isLoading || isFetching}
+                            loading={isLoading || isFetching || isInitializing}
                             emptyText="No staff added yet"
                             minWidth="700px"
                             rowKey={(s: Staff, idx: number) => s.id ?? idx}
                             actionLabel=""
                             actionClassName="text-center w-[96px]"
+                             showActions={permission?.can_create}
                             actions={(s: Staff) => (
                                 <div className="flex justify-center gap-2">
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                size="icon"
-                                                variant="ghost"
-                                                className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
-                                                aria-label={`View and edit details for ${s.first_name} ${s.last_name}`}
-                                                onClick={() => openStaffDetails(s)}
-                                            >
-                                                <Pencil className="w-4 h-4 mx-auto" />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>View / Edit Details</TooltipContent>
-                                    </Tooltip>
+                                    {permission?.can_create && (
+                                        <>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                                        aria-label={`View and edit details for ${s.first_name} ${s.last_name}`}
+                                                        onClick={() => openStaffDetails(s, "edit")}
+                                                    >
+                                                        <Pencil className="w-4 h-4 mx-auto" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>View / Edit Details</TooltipContent>
+                                            </Tooltip>
 
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                size="icon"
-                                                variant="outline"
-                                                className="h-8 w-8 rounded-[3px] shadow-sm"
-                                                onClick={() => openPasswordModal(s)}
-                                                aria-label={`Update password for ${s.first_name} ${s.last_name}`}
-                                            >
-                                                <KeyRound className="h-4 w-4" />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>Update Password</TooltipContent>
-                                    </Tooltip>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        size="icon"
+                                                        variant="outline"
+                                                        className="h-8 w-8 rounded-[3px] shadow-sm"
+                                                        onClick={() => openPasswordModal(s)}
+                                                        aria-label={`Update password for ${s.first_name} ${s.last_name}`}
+                                                    >
+                                                        <KeyRound className="h-4 w-4" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>Update Password</TooltipContent>
+                                            </Tooltip>
+                                        </>
+                                    )}
                                 </div>
                             )}
                             enablePagination={!!staffData?.pagination}
@@ -662,7 +671,7 @@ export default function StaffManagement() {
                 </div>
             </section>
     <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto">
+                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -824,15 +833,6 @@ export default function StaffManagement() {
                                 Close
                             </Button>
 
-                            {/* VIEW MODE -> show edit button */}
-                            {mode === "view" && (
-                                <Button
-                                    variant="hero"
-                                    onClick={() => setMode("edit")}
-                                >
-                                    Edit Staff
-                                </Button>
-                            )}
 
                             {/* CREATE */}
                             {mode === "add" && permission?.can_create && (
@@ -926,7 +926,7 @@ function ViewField({ label, value }) {
 
 function StaffViewSection({ title, children }) {
     return (
-        <div className="space-y-4 rounded-[5px] border border-border bg-card p-5">
+        <div className="space-y-4 rounded-[5px] border border-border bg-transparent p-5">
             <h3 className="text-base font-semibold text-foreground">
                 {title}
             </h3>

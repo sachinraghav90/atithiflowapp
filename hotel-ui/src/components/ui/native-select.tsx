@@ -54,7 +54,14 @@ const NativeSelect = React.forwardRef<HTMLSelectElement, NativeSelectProps>(
         : childArray;
 
     return (
-      <select ref={ref} className={cn(className)} {...props}>
+      <select
+        ref={ref}
+        className={cn(
+          "flex h-10 w-full rounded-md border border-input bg-transparent px-3 text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+          className
+        )}
+        {...props}
+      >
         {shouldInjectPlaceholder ? (
           <option value="" disabled={placeholderDisabled}>
             {placeholder}

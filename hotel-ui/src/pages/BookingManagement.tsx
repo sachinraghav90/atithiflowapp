@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
-import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarDatePicker, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
+import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarRangePicker, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
 import {
     Dialog,
     DialogContent,
@@ -44,28 +44,25 @@ import { normalizeNumberInput } from "@/utils/normalizeTextInput";
 import { useNavigate } from "react-router-dom";
 import GuestsEmbedded from "@/components/layout/GuestsEmbedded";
 import VehiclesEmbedded from "@/components/layout/VehiclesEmbedded";
-import DatePicker from "react-datepicker";
 import PaymentsEmbedded from "@/components/layout/PaymentEmbedded";
 import { formatToDDMMYYYY } from "@/utils/formatToDDMMYYYY";
 import LaundryEmbedded from "@/components/layout/LaundryEmbedded";
 import BookingLogsEmbedded from "@/components/layout/BookingLogsEmbedded";
 import RestaurantOrdersEmbedded from "@/components/layout/RestaurantOrdersEmbedded";
 import { exportToExcel } from "@/utils/exportToExcel";
-import { Download, Eye, FilterX, Pencil, RefreshCcw } from "lucide-react";
+import { Download, Eye, FilterX, Pencil, Plus, RefreshCcw, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getStatusColor } from "@/constants/statusColors";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { filterGridRowsByQuery } from "@/utils/filterGridRows";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
+
 const REQUIRED_SCOPE_BY_STATUS: Record<string, "upcoming" | "past" | "all"> = {
     CONFIRMED: "upcoming",
     CHECKED_IN: "upcoming",
-
     CHECKED_OUT: "past",
-
     CANCELLED: "all",
     NO_SHOW: "all",
-    // RESERVED: "all",
 };
 
 const UPDATABLE_STATUSES = [
@@ -83,6 +80,17 @@ const BOOKING_STATUSES = [
 ] as const;
 
 
+const parseDate = (value?: string) =>
+    value ? new Date(value) : null;
+
+const formatDate = (date: Date | null) => {
+    if (!date) return "";
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;   // local timezone safe
+};
+
 export default function BookingsManagement() {
 
     const todayISO = () => {
@@ -99,13 +107,13 @@ export default function BookingsManagement() {
     };
 
     const [page, setPage] = useState(1);
-    const [limit, setLimit] = useState(10);
+    const [limit, setLimit] = useState(5);
     const [propertyId, setPropertyId] = useState<number | undefined>();
     const [searchInput, setSearchInput] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
 
-    const [fromDate, setFromDate] = useState<string>(todayISO());
-    const [toDate, setToDate] = useState<string>(tomorrowISO());
+    const [fromDate, setFromDate] = useState<string>("");
+    const [toDate, setToDate] = useState<string>("");
 
     const [detailsOpen, setDetailsOpen] = useState(false);
     const [editMode, setEditMode] = useState(false);
@@ -117,8 +125,11 @@ export default function BookingsManagement() {
 
     const [updatedStatus, setUpdatedStatus] = useState<string>("");
 
-    const [scope, setScope] = useState("upcoming")
-    const [status, setStatus] = useState("CONFIRMED")
+    const [scope, setScope] = useState("")
+    const [status, setStatus] = useState("")
+
+    const memoizedFromDate = useMemo(() => parseDate(fromDate), [fromDate]);
+    const memoizedToDate = useMemo(() => parseDate(toDate), [toDate]);
 
     const [confirmStatusOpen, setConfirmStatusOpen] = useState(false)
 
@@ -126,7 +137,7 @@ export default function BookingsManagement() {
 
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
 
-    const { myProperties, isMultiProperty, isOwner, isSuperAdmin } = useAutoPropertySelect(propertyId, setPropertyId);
+    const { myProperties, isMultiProperty, isOwner, isSuperAdmin, isInitializing } = useAutoPropertySelect(propertyId, setPropertyId);
 
     const { data: bookings, isLoading: bookingsLoading, isFetching: bookingsFetching, isUninitialized: bookingsUninitialized, refetch: refetchBookings } = useGetBookingsQuery({
         propertyId,
@@ -176,32 +187,23 @@ export default function BookingsManagement() {
     }
 
     function exportBookingsSheet() {
-        if (!fromDate || !toDate) {
-            toast.error("Please select From Date & To Date to export bookings")
-            return
+        if (!filteredBookings || filteredBookings.length === 0) {
+            toast.info("No bookings found to export");
+            return;
         }
 
-        const promise = getAllBookings({ propertyId, fromDate, toDate }).unwrap()
-        toast.promise(
-            promise.then((data) => {
-                if (!data || data.length === 0) {
-                    throw new Error("NO_DATA");
-                }
+        const formatted = filteredBookings.map(b => ({
+            "Booking": formatModuleDisplayId("booking", b.id),
+            "Status": b.booking_status?.replace("_", " "),
+            "Arrival": formatToDDMMYYYY(b.estimated_arrival),
+            "Departure": formatToDDMMYYYY(b.estimated_departure),
+            "Amount": `₹ ${b.final_amount}`,
+            "Room number(s)": Array.isArray(b.room_numbers) ? b.room_numbers.join(", ") : (b.room_numbers?.toString() || "-"),
+            "Pickup / Drop": `${b.pickup ? "Yes" : "No"} / ${b.drop ? "Yes" : "No"}`,
+        }));
 
-            }),
-            {
-                pending: "Preparing bookings export...",
-                success: "Bookings exported successfully",
-                error: {
-                    render({ data }) {
-                        if (data instanceof Error && data?.message === "NO_DATA") {
-                            return "No bookings found for the selected dates";
-                        }
-                        return "Failed to export bookings";
-                    },
-                },
-            }
-        );
+        exportToExcel(formatted, "bookings.xlsx");
+        toast.success("Bookings exported successfully");
     }
 
     async function handleUpdateBooking() {
@@ -224,22 +226,6 @@ export default function BookingsManagement() {
 
     }
 
-    useEffect(() => {
-        if (!exportedData) return
-
-        const formatted = exportedData.map(b => ({
-            "Booking": formatModuleDisplayId("booking", b.id),
-            "Status": b.booking_status?.replace("_", " "),
-            "Arrival": formatToDDMMYYYY(b.estimated_arrival),
-            "Departure": formatToDDMMYYYY(b.estimated_departure),
-            "Amount": `₹ ${b.final_amount}`,
-            "Room number(s)": Array.isArray(b.room_numbers) ? b.room_numbers.join(", ") : (b.room_numbers?.toString() || "-"),
-            "Pickup / Drop": `${b.pickup ? "Yes" : "No"} / ${b.drop ? "Yes" : "No"}`,
-        }));
-
-        exportToExcel(formatted, "bookings.xlsx")
-        reset()
-    }, [exportedData])
 
     useEffect(() => {
         const requiredScope = REQUIRED_SCOPE_BY_STATUS[status];
@@ -268,8 +254,8 @@ export default function BookingsManagement() {
             setPropertyId(Number(myProperties.properties[0].id));
         }
         setSearchQuery("");
-        setScope("upcoming");
-        setStatus("CONFIRMED");
+        setScope("");
+        setStatus("");
         setFromDate("");
         setToDate("");
         setPage(1);
@@ -292,49 +278,28 @@ export default function BookingsManagement() {
         ]);
     }, [bookings?.bookings, bookingsLoading, bookingsUninitialized, searchQuery]);
 
-    // const today = () => {
-    //     const d = new Date();
-    //     d.setHours(0, 0, 0, 0);
-    //     return d;
-    // };
-
-    // const to = (dateStr?: string) => {
-    //     if (!dateStr) return null;
-    //     const d = new Date(dateStr);
-    //     d.setHours(0, 0, 0, 0);
-    //     return d;
-    // };
-
-    // const bookingArrival = to(selectedBooking?.booking?.estimated_arrival);
-    // const bookingDeparture = to(selectedBooking?.booking?.estimated_departure);
-
-    // const canCheckIn =
-    //     bookingArrival &&
-    //     today() >= bookingArrival;
-
-    // const canCheckOut =
-    //     selectedBooking?.booking?.booking_status === "CHECKED_IN";
-
-    // const canNoShow =
-    //     bookingDeparture &&
-    //     today() > bookingDeparture;
-
-    // const canCancel =
-    //     bookingDeparture &&
-    //     today() < bookingDeparture;
-
 
     function BookingSummaryTab({ booking }: any) {
+        const finalAmt = +(booking?.final_amount || 0);
+        const restTotal = +(booking?.restaurant_total_amount || 0);
+        const totalAmt = finalAmt + restTotal;
+
+        const paidAmt = +(booking?.paid_amount || 0);
+        const restPaid = +(booking?.restaurant_paid_amount || 0);
+        const totalPaid = paidAmt + restPaid;
+
+        const remaining = totalAmt - totalPaid;
+
         return (
             <>
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                     {/* Left Stats */}
                     <div className="space-y-4">
-                        <SummaryCard label="Final Amount" value={`₹ ${+(booking?.final_amount || 0) + +(booking?.restaurant_total_amount || 0)}`} />
-                        <SummaryCard label="Paid Amount" value={`₹ ${+(booking?.paid_amount ?? 0) + +(booking?.restaurant_paid_amount || 0)}`} />
+                        <SummaryCard label="Final Amount" value={`₹ ${totalAmt}`} />
+                        <SummaryCard label="Paid Amount" value={`₹ ${totalPaid}`} />
                         <SummaryCard
                             label="Remaining Amount"
-                            value={`₹ ${(+(booking?.final_amount || 0) + +(booking?.restaurant_total_amount || 0)) - (+(booking?.paid_amount ?? 0) + +(booking?.restaurant_paid_amount || 0)) || 0}`}
+                            value={`₹ ${remaining}`}
                         // highlight
                         />
                     </div>
@@ -343,17 +308,16 @@ export default function BookingsManagement() {
                     <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
                         <InfoCard label="Estimated Arrival" value={formatToDDMMYYYY(booking?.estimated_arrival)} />
                         <InfoCard label="Estimated Departure" value={formatToDDMMYYYY(booking?.estimated_departure)} />
-                        <InfoCard label="Nights" value={booking?.booking_nights} />
-                        <InfoCard label="Booking Type" value={booking?.booking_type} />
-                        <InfoCard label="Booking Status" value={booking?.booking_status} />
-                        <InfoCard label="Discount" value={`₹ ${booking?.discount_amount}`} />
+                        <InfoCard label="Nights" value={booking?.booking_nights || 0} />
+                        <InfoCard label="Booking Type" value={booking?.booking_type || "-"} />
+                        <InfoCard label="Booking Status" value={booking?.booking_status || "-"} />
+                        <InfoCard label="Discount" value={`₹ ${booking?.discount_amount || 0}`} />
                     </div>
 
                     {/* Right Stats */}
                     <div className="space-y-4">
-                        {/* <SummaryCard label="Laundry Amount" value="₹ 250" /> */}
-                        <SummaryCard label="Total Guests" value={booking?.adult + booking?.child} />
-                        <SummaryCard label="Rooms Booked" value={booking?.rooms.length} />
+                        <SummaryCard label="Total Guests" value={(booking?.adult || 0) + (booking?.child || 0)} />
+                        <SummaryCard label="Rooms Booked" value={booking?.rooms?.length || 0} />
                         <SummaryCard label="Booking Date" value={formatToDDMMYYYY(booking?.booking_date)} />
                     </div>
                 </div>
@@ -490,16 +454,6 @@ export default function BookingsManagement() {
         );
     }
 
-    const parseDate = (value?: string) =>
-        value ? new Date(value) : null;
-
-    const formatDate = (date: Date | null) => {
-        if (!date) return "";
-        const y = date.getFullYear();
-        const m = String(date.getMonth() + 1).padStart(2, "0");
-        const d = String(date.getDate()).padStart(2, "0");
-        return `${y}-${m}-${d}`;   // local timezone safe
-    };
 
 
 
@@ -520,7 +474,7 @@ export default function BookingsManagement() {
                     <div className="flex items-center gap-3 flex-shrink-0">
                         {(isSuperAdmin || isOwner) && (
                             <div className="flex items-center h-9 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
-                                <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border">
+                                <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border uppercase">
                                     PROPERTY
                                 </span>
                                 <NativeSelect
@@ -542,11 +496,11 @@ export default function BookingsManagement() {
                         )}
 
                         <Button
-                            size="sm"
-                            variant="heroOutline"
+                            variant="hero"
+                            className="h-10 px-4 flex items-center gap-2"
                             onClick={() => navigate("/reservation")}
                         >
-                            + New Booking
+                            <Plus className="w-4 h-4" /> New Booking
                         </Button>
                     </div>
                 </div>
@@ -566,29 +520,28 @@ export default function BookingsManagement() {
                                 />
 
                                 <GridToolbarSelect
-                                    label="SCOPE"
+                                    label="Scope"
                                     value={scope}
                                     onChange={(value) => {
                                         setScope(value);
                                         setPage(1);
                                     }}
                                     options={[
-                                        { label: "Any", value: "" },
+                                        { label: "All", value: "" },
                                         { label: "Upcoming", value: "upcoming" },
                                         { label: "Past", value: "past" },
-                                        { label: "All", value: "all" },
                                     ]}
                                 />
 
                                 <GridToolbarSelect
-                                    label="STATUS"
+                                    label="Status"
                                     value={status}
                                     onChange={(value) => {
                                         setStatus(value);
                                         setPage(1);
                                     }}
                                     options={[
-                                        { label: "Any", value: "" },
+                                        { label: "All", value: "" },
                                         ...BOOKING_STATUSES.map((s) => ({ label: s, value: s })),
                                     ]}
                                 />
@@ -621,136 +574,129 @@ export default function BookingsManagement() {
 
                             {/* Row 2 */}
                             <GridToolbarRow className="gap-2">
-                                <GridToolbarDatePicker
-                                    label="FROM"
-                                    value={parseDate(fromDate)}
-                                    onChange={(date) => {
+                                <GridToolbarRangePicker
+                                    className="md:col-span-2"
+                                    startDate={memoizedFromDate}
+                                    endDate={memoizedToDate}
+                                    startLabel="From"
+                                    endLabel="To"
+                                    onChange={([start, end]) => {
                                         setPage(1);
-                                        setFromDate(formatDate(date));
+                                        setFromDate(start ? formatDate(start) : "");
+                                        setToDate(end ? formatDate(end) : "");
                                     }}
                                 />
 
-                                <GridToolbarDatePicker
-                                    label="TO"
-                                    value={parseDate(toDate)}
-                                    onChange={(date) => {
-                                        setPage(1);
-                                        setToDate(formatDate(date));
-                                    }}
-                                    minDate={fromDate ? new Date(fromDate) : undefined}
-                                    disabled={!fromDate}
-                                />
-
-                                <GridToolbarSpacer /> {/* Col 3 Spacer */}
-                                <GridToolbarSpacer type="actions" /> {/* Col 4 Spacer */}
+                                <GridToolbarSpacer className="hidden md:block" />
+                                <GridToolbarSpacer type="actions" className="hidden md:block" />
                             </GridToolbarRow>
                         </GridToolbar>
                     </div>
 
                     <div className="px-2 pb-2">
                         <AppDataGrid
-                    columns={[
-                        {
-                            label: "Booking",
-                            cellClassName: "font-medium",
-                            render: (b: any) => (
-                                <button
-                                    type="button"
-                                    className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
-                                    onClick={() => handleManage(b.id, false)}
-                                    aria-label={`Open summary view for booking ${formatModuleDisplayId("booking", b.id)}`}
-                                >
-                                    {formatModuleDisplayId("booking", b.id)}
-                                </button>
-                            ),
-                        },
-                        {
-                            label: "Status",
-                            headClassName: "text-center",
-                            cellClassName: "text-center",
-                            render: (b: any) => (
-                                <span className={cn(
-                                    "px-2 py-0.5 rounded-[3px] text-xs font-semibold uppercase tracking-wider",
-                                    getStatusColor(b.booking_status, "booking")
-                                )}>
-                                    {b.booking_status?.replace("_", " ")}
-                                </span>
-                            )
-                        },
-                        {
-                            label: "Arrival",
-                            headClassName: "text-center",
-                            cellClassName: "text-center font-medium text-xs whitespace-nowrap",
-                            render: (b: any) => formatToDDMMYYYY(b.estimated_arrival)
-                        },
-                        {
-                            label: "Departure",
-                            headClassName: "text-center",
-                            cellClassName: "text-center font-medium text-xs whitespace-nowrap",
-                            render: (b: any) => formatToDDMMYYYY(b.estimated_departure)
-                        },
-                        {
-                            label: "Room number(s)",
-                            headClassName: "text-center",
-                            cellClassName: "text-center",
-                            render: (b: any) => (
-                                <div className="max-w-[150px] truncate mx-auto" title={Array.isArray(b.room_numbers) ? b.room_numbers.join(", ") : b.room_numbers?.toString()}>
-                                    {Array.isArray(b.room_numbers) ? b.room_numbers.slice(0, 4).join(", ") : (b.room_numbers?.toString() || "-")}{(b.room_numbers?.length || 0) > 4 ? "..." : ""}
-                                </div>
-                            )
-                        },
-                        {
-                            label: "Pickup / Drop",
-                            headClassName: "text-center",
-                            cellClassName: "text-center",
-                            render: (b: any) => `${b.pickup ? "Yes" : "No"} / ${b.drop ? "Yes" : "No"}`
-                        },
-                        {
-                            label: "Amount",
-                            headClassName: "text-center",
-                            cellClassName: "text-center font-medium",
-                            render: (b: any) => <span className="inline-flex min-w-[60px] justify-center rounded-[3px] bg-muted/40 px-2 py-1 text-xs font-semibold">₹ {b.final_amount}</span>
-                        }
-                    ] as ColumnDef<any>[]}
-                    data={filteredBookings}
-                    loading={bookingsLoading}
-                    emptyText="No bookings found"
-                    minWidth="800px"
-                    actionLabel=""
-                    actionClassName="text-center w-[60px]"
-                    actions={(b: any) => (
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
-                                    onClick={() => handleManage(b.id, true)}
-                                    aria-label={`Manage booking ${b.id}`}
-                                >
-                                    <Pencil className="w-4 h-4 mx-auto" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Manage Booking</TooltipContent>
-                        </Tooltip>
-                    )}
-                    enablePagination={!!bookings?.pagination}
-                    paginationProps={{
-                        page,
-                        totalPages: bookings?.pagination?.totalPages ?? 1,
-                        setPage: (p: any) => setPage(p),
-                        disabled: bookingsLoading,
-                        totalRecords: bookings?.pagination?.totalItems ?? bookings?.pagination?.total ?? bookings?.bookings?.length ?? 0,
-                        limit,
-                        onLimitChange: (value) => {
-                            setLimit(value);
-                            setPage(1);
-                        }
-                    }}
-                    />
+                            columns={[
+                                {
+                                    label: "Booking ID",
+                                    cellClassName: "font-medium",
+                                    render: (b: any) => (
+                                        <button
+                                            type="button"
+                                            className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
+                                            onClick={() => handleManage(b.id, false)}
+                                            aria-label={`Open summary view for booking ${formatModuleDisplayId("booking", b.id)}`}
+                                        >
+                                            {formatModuleDisplayId("booking", b.id)}
+                                        </button>
+                                    ),
+                                },
+                                {
+                                    label: "Status",
+                                    headClassName: "text-center",
+                                    cellClassName: "text-center",
+                                    render: (b: any) => (
+                                        <span className={cn(
+                                            "px-2 py-0.5 rounded-[3px] text-xs font-semibold uppercase tracking-wider",
+                                            getStatusColor(b.booking_status, "booking")
+                                        )}>
+                                            {b.booking_status?.replace("_", " ")}
+                                        </span>
+                                    )
+                                },
+                                {
+                                    label: "Arrival",
+                                    headClassName: "text-center",
+                                    cellClassName: "text-center font-medium text-xs whitespace-nowrap",
+                                    render: (b: any) => formatToDDMMYYYY(b.estimated_arrival)
+                                },
+                                {
+                                    label: "Departure",
+                                    headClassName: "text-center",
+                                    cellClassName: "text-center font-medium text-xs whitespace-nowrap",
+                                    render: (b: any) => formatToDDMMYYYY(b.estimated_departure)
+                                },
+                                {
+                                    label: "Room number(s)",
+                                    headClassName: "text-center",
+                                    cellClassName: "text-center",
+                                    render: (b: any) => (
+                                        <div className="max-w-[150px] truncate mx-auto" title={Array.isArray(b.room_numbers) ? b.room_numbers.join(", ") : b.room_numbers?.toString()}>
+                                            {Array.isArray(b.room_numbers) ? b.room_numbers.slice(0, 4).join(", ") : (b.room_numbers?.toString() || "-")}{(b.room_numbers?.length || 0) > 4 ? "..." : ""}
+                                        </div>
+                                    )
+                                },
+                                {
+                                    label: "Pickup / Drop",
+                                    headClassName: "text-center",
+                                    cellClassName: "text-center",
+                                    render: (b: any) => `${b.pickup ? "Yes" : "No"} / ${b.drop ? "Yes" : "No"}`
+                                },
+                                {
+                                    label: "Amount",
+                                    headClassName: "text-center",
+                                    cellClassName: "text-center font-medium",
+                                    render: (b: any) => <span className="inline-flex min-w-[60px] justify-center rounded-[3px] bg-muted/40 px-2 py-1 text-xs font-semibold">₹ {b.final_amount}</span>
+                                }
+                            ] as ColumnDef<any>[]}
+                            data={filteredBookings}
+                            loading={bookingsLoading || isInitializing}
+                            emptyText="No bookings found"
+                            minWidth="800px"
+                            actionLabel=""
+                            actionClassName="text-center w-[60px]"
+                            actions={(b: any) => (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                            onClick={() => handleManage(b.id, true)}
+                                            aria-label={`Manage booking ${b.id}`}
+                                        >
+                                            <Pencil className="w-4 h-4 mx-auto" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Manage Booking</TooltipContent>
+                                </Tooltip>
+                            )}
+                            enablePagination={!!bookings?.pagination}
+                            paginationProps={{
+                                page,
+                                totalPages: bookings?.pagination?.totalPages ?? 1,
+                                setPage: (p: any) => setPage(p),
+                                disabled: bookingsLoading,
+                                totalRecords: bookings?.pagination?.totalItems ?? bookings?.pagination?.total ?? bookings?.bookings?.length ?? 0,
+                                limit,
+                                onLimitChange: (value) => {
+                                    setLimit(value);
+                                    setPage(1);
+                                }
+                            }}
+                        />
+                    </div>
                 </div>
-            </div>
-        </section>
+            </section>
 
             {/* Booking Details (Read-only) */}
             <Sheet open={detailsOpen} onOpenChange={setDetailsOpen}>
@@ -758,12 +704,29 @@ export default function BookingsManagement() {
                     side="right"
                     className="w-full sm:max-w-5xl p-0 overflow-hidden"
                 >
+                    <SheetHeader className="sr-only">
+                        <SheetTitle>
+                            {editMode ? "Manage Booking" : "Booking Summary"} ({formatModuleDisplayId("booking", bookingId)})
+                        </SheetTitle>
+                    </SheetHeader>
+
                     {/* Header */}
                     <div className="h-14 border-b border-border flex items-center justify-between px-6">
                         <div>
                             <h2 className="text-lg font-semibold">
                                 {editMode ? "Manage Booking" : "Booking Summary"} ({formatModuleDisplayId("booking", bookingId)})
                             </h2>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setDetailsOpen(false)}
+                                className="h-9 w-9 rounded-full hover:bg-slate-100"
+                            >
+                                <X className="w-5 h-5 text-muted-foreground" />
+                            </Button>
                         </div>
 
                         {/* Status Update */}
@@ -919,8 +882,7 @@ function Price({ label, value }: { label: string; value: any }) {
     );
 }
 
-function formatDate(date?: string) {
+function formatDateDisplay(date?: string) {
     if (!date) return "—";
     return new Date(date).toLocaleDateString();
 }
-

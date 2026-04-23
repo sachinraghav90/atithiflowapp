@@ -208,7 +208,7 @@ export default function PaymentsEmbedded({
                                 <Input
                                     readOnly
                                     type="datetime-local"
-                                    className="bg-white"
+                                    className="bg-background"
                                     value={paymentDate}
                                     onChange={(e) => setPaymentDate(e.target.value)}
                                 />
@@ -216,7 +216,7 @@ export default function PaymentsEmbedded({
                             <div className="space-y-1">
                                 <Label>Amount</Label>
                                 <Input
-                                    className="bg-white"
+                                    className="bg-background"
                                     type="number"
                                     value={amount}
                                     min={0}
@@ -228,7 +228,7 @@ export default function PaymentsEmbedded({
                             <div className="space-y-1">
                                 <Label>Method</Label>
                                 <NativeSelect
-                                    className="w-full h-10 rounded-[3px] border px-3 text-sm"
+                                    className="w-full h-10 rounded-[3px] border px-3 text-sm bg-background"
                                     value={method}
                                     onChange={(e) => {
                                         setMethod(e.target.value);
@@ -247,7 +247,7 @@ export default function PaymentsEmbedded({
                             <div className="space-y-1">
                                 <Label>Type</Label>
                                 <NativeSelect
-                                    className="w-full h-10 rounded-[3px] border px-3 text-sm"
+                                    className="w-full h-10 rounded-[3px] border px-3 text-sm bg-background"
                                     value={type}
                                     onChange={(e) => setType(e.target.value)}
                                 >
@@ -261,7 +261,7 @@ export default function PaymentsEmbedded({
                                 <div className="space-y-1">
                                     <Label>Transaction Id</Label>
                                     <Input
-                                        className="bg-white"
+                                        className="bg-background"
                                         type="text"
                                         value={transactionId}
                                         onChange={(e) =>
@@ -277,7 +277,7 @@ export default function PaymentsEmbedded({
                                 <div className="space-y-1">
                                     <Label>Bank Account</Label>
                                     <NativeSelect
-                                        className="w-full h-10 rounded-[3px] border px-3 text-sm"
+                                        className="w-full h-10 rounded-[3px] border px-3 text-sm bg-background"
                                         value={bankName}
                                         onChange={(e) => setBankName(e.target.value)}
                                     >
@@ -295,7 +295,7 @@ export default function PaymentsEmbedded({
                         <div className="space-y-1">
                             <Label>Comments</Label>
                             <textarea
-                                className="w-full min-h-[50px] rounded-[3px] border px-3 py-2 text-sm"
+                                className="w-full min-h-[50px] rounded-[3px] border px-3 py-2 text-sm bg-background"
                                 value={comments}
                                 onChange={(e) => setComments(e.target.value)}
                             />

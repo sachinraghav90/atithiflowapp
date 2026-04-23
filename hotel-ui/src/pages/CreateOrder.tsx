@@ -1,3 +1,5 @@
+import { ValidationTooltip } from "@/components/ui/validation-tooltip";
+import { cn } from "@/lib/utils";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DataGrid, DataGridHeader, DataGridRow, DataGridHead, DataGridCell } from "@/components/ui/data-grid";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -22,8 +24,8 @@ import {
 } from "@/redux/services/hmsApi";
 import { NativeSelect } from "@/components/ui/native-select";
 import { normalizeNumberInput } from "@/utils/normalizeTextInput";
-import { Trash2 } from "lucide-react";
-import DatePicker from "react-datepicker";
+import { Trash2, PlusCircle } from "lucide-react";
+import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
 import { toast } from "react-toastify";
 import { MenuItemSelect } from "@/components/MenuItemSelect";
 import { useLocation } from "react-router-dom";
@@ -35,6 +37,11 @@ type OrderItemForm = {
     item_total: number;
     notes?: string;
     item_name: string;
+    touched?: {
+        group?: boolean;
+        item?: boolean;
+        quantity?: boolean;
+    };
 };
 
 export function CreateOrder() {
@@ -56,7 +63,6 @@ export function CreateOrder() {
         order_type: "",
         delivery_partner_id: ""
     });
-    console.log("🚀 ~ CreateOrder ~ order:", order)
 
     const [items, setItems] = useState<OrderItemForm[]>([]);
     const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
@@ -65,6 +71,7 @@ export function CreateOrder() {
     const [selectedMenuGroups, setSelectedMenuGroups] = useState({})
     const [formErrors, setFormErrors] = useState<Record<string, string>>({});
     const [itemErrors, setItemErrors] = useState<Record<number, any>>({});
+    const [orderSubmitted, setOrderSubmitted] = useState(false);
     const location = useLocation();
     const prefillApplied = useRef(false);
     const prefilledBookingId = location.state?.bookingId;
@@ -179,13 +186,8 @@ export function CreateOrder() {
        ITEM HANDLERS
     ============================ */
     const getFilteredMenuItems = (index: number) => {
-
         const selectedGroupId = selectedMenuGroups[index];
-
-        if (!selectedGroupId) return []
-
-        if (!selectedGroupId) return menuItems;
-
+        if (!selectedGroupId) return [];
         return menuItems.filter(
             item => item.menu_item_group_id == selectedGroupId && item.is_active
         );
@@ -195,16 +197,11 @@ export function CreateOrder() {
         setItems(prev => {
             const updated = [...prev];
             updated[index] = { ...updated[index], ...patch };
-
-            updated[index].item_total =
-                updated[index].quantity * updated[index].unit_price;
-
-            // only auto-update total if NOT manual override
+            updated[index].item_total = updated[index].quantity * updated[index].unit_price;
             if (!isTotalManual) {
                 const total = updated.reduce((s, i) => s + i.item_total, 0);
                 setOrder(o => ({ ...o, total_amount: total }));
             }
-
             return updated;
         });
     };
@@ -218,37 +215,27 @@ export function CreateOrder() {
         });
     };
 
-  /* ============================
+    /* ============================
        CREATE ORDER
     ============================ */
     const handleCreateOrder = async () => {
+        setOrderSubmitted(true);
         const errors = validateOrder();
         setFormErrors(errors);
-
         const rowErrors = validateItems();
         setItemErrors(rowErrors);
-
         if (Object.keys(rowErrors).length > 0 || Object.keys(errors).length > 0) return;
-
         const payload = {
-            order: {
-                ...order,
-                expected_delivery_time: order.expected_delivery_time || null
-            },
+            order: { ...order, expected_delivery_time: order.expected_delivery_time || null },
             items
         };
-
-        // ✅ toast.promise handles error internally — no try/catch needed
-        // Reset only runs if API succeeds (toast.promise re-throws on error)
         await toast.promise(createOrder(payload).unwrap(), {
             pending: "Creating order please wait",
             success: "Order created",
             error: "Error creating order",
         });
-
-        // ✅ Full reset — only reached on success
         setOrder({
-            property_id: selectedPropertyId,   // keep property selected
+            property_id: selectedPropertyId,
             table_no: "",
             guest_name: "",
             guest_mobile: "",
@@ -262,99 +249,52 @@ export function CreateOrder() {
             order_type: "",
             delivery_partner_id: ""
         });
-        setItems([{ menu_item_id: null, item_name: "", quantity: 1, unit_price: 0, item_total: 0, notes: "" }]);
+        setItems([{ menu_item_id: null, item_name: "", quantity: 1, unit_price: 0, item_total: 0, notes: "", touched: {} }]);
         setSelectedMenuGroups({});
         setExpectedDelivery(null);
         setIsTotalManual(false);
         setFormErrors({});
         setItemErrors({});
+        setOrderSubmitted(false);
     };
+
     const validateItems = () => {
-
         const errors: Record<number, any> = {};
-
         items.forEach((item, index) => {
-
             const rowError: any = {};
-
-            if (!selectedMenuGroups[index]) {
-                rowError.group = true;
-            }
-
-            if (!item.menu_item_id) {
-                rowError.item = true;
-            }
-
-            if (!item.quantity || item.quantity <= 0) {
-                rowError.quantity = true;
-            }
-
-            if (Object.keys(rowError).length > 0) {
-                errors[index] = rowError;
-            }
-
+            if (!selectedMenuGroups[index]) rowError.group = true;
+            if (!item.menu_item_id) rowError.item = true;
+            if (!item.quantity || item.quantity <= 0) rowError.quantity = true;
+            if (Object.keys(rowError).length > 0) errors[index] = rowError;
         });
-
         return errors;
     };
 
     const validateOrder = () => {
         const errors: Record<string, string> = {};
         const PHONE_REGEX = /^[0-9()]{10,15}$/;
-
-        if (!order.guest_name.trim()) {
-            errors.guest_name = "Guest name required";
-        }
-
-        if (!order.expected_delivery_time) {
-            errors.expected_delivery_time = "Expected delivery time required";
-        }
-
-        if (!order.order_type) {
-            errors.order_type = "Order type required";
-        }
-
-        // Require table_no only for Restaurant orders
-        if (order.order_type === "Restaurant" && !order.table_no) {
-            errors.table_no = "Table number required.";
-        }
-
+        if (!order.guest_name.trim()) errors.guest_name = "Guest name required";
+        if (!order.expected_delivery_time) errors.expected_delivery_time = "Expected delivery time required";
+        if (!order.order_type) errors.order_type = "Order type required";
+        if (order.order_type === "Restaurant" && !order.table_no) errors.table_no = "Table number required.";
         if (order.order_type === "Delivery") {
-            if (!order.guest_mobile) {
-                errors.guest_mobile = "Mobile required for delivery";
-            }
-            if (!order.delivery_partner_id) {
-                errors.delivery_partner_id = "Delivery partner required";
-            }
+            if (!order.guest_mobile) errors.guest_mobile = "Mobile required for delivery";
+            if (!order.delivery_partner_id) errors.delivery_partner_id = "Delivery partner required";
         }
-
-        if (order.guest_mobile && !PHONE_REGEX.test(order.guest_mobile)) {
-            errors.guest_mobile = "Invalid mobile number";
-        }
-
+        if (order.guest_mobile && !PHONE_REGEX.test(order.guest_mobile)) errors.guest_mobile = "Invalid mobile number";
         if (order.order_type === "Room Service") {
             if (!order.booking_id) errors.booking_id = "Booking required";
             if (!order.room_id) errors.room_id = "Room required";
         }
-
-        if (!items.length) {
-            errors.items = "Add at least one item";
-        }
-
+        if (!items.length) errors.items = "Add at least one item";
         return errors;
     };
 
     const addRow = () => {
+        setOrderSubmitted(false);
         setItems(prev => [
             ...prev,
-            {
-                menu_item_id: null,
-                item_name: "",
-                quantity: 1,
-                unit_price: 0,
-                item_total: 0,
-                notes: "",
-            }
+            { menu_item_id: null, item_name: "", quantity: 1, unit_price: 0, item_total: 0, notes: "", touched: {} }
         ]);
     };
 
@@ -373,10 +313,8 @@ export function CreateOrder() {
             toast.warning("This item is already added to the order.");
             return;
         }
-
         const menu = menuItems.find(m => Number(m.id) === menuId);
         if (!menu) return;
-
         setItems(prev => {
             const updated = [...prev];
             updated[index] = {
@@ -386,12 +324,10 @@ export function CreateOrder() {
                 unit_price: Number(menu.price),
                 item_total: updated[index].quantity * Number(menu.price),
             };
-
             if (!isTotalManual) {
                 const total = updated.reduce((s, i) => s + i.item_total, 0);
                 setOrder(o => ({ ...o, total_amount: total }));
             }
-
             return updated;
         });
     };
@@ -399,6 +335,43 @@ export function CreateOrder() {
     const selectedMenuIds = items
         .map(i => i.menu_item_id)
         .filter(Boolean);
+
+    const exhaustedGroupIds = useMemo(() => {
+        if (!menuGroups?.length || !menuItems?.length) return [];
+
+        // 1. Index active items by their Group ID
+        const itemsByGroup = menuItems.reduce((acc, item) => {
+            if (!item.is_active) return acc;
+            const gid = String(item.menu_item_group_id);
+            if (!acc[gid]) acc[gid] = [];
+            acc[gid].push(Number(item.id));
+            return acc;
+        }, {} as Record<string, number[]>);
+
+        // 2. Set of all item IDs already finalized in the grid
+        const pickedItemIds = new Set(items.map(i => Number(i.menu_item_id)).filter(id => id > 0));
+
+        return menuGroups
+            .filter(group => {
+                const gid = String(group.id);
+                const groupItemIds = itemsByGroup[gid] || [];
+                if (groupItemIds.length === 0) return true; // No items = already exhausted
+
+                // 3. Find items in this group that are NOT yet picked
+                const unpickedItemsCount = groupItemIds.filter(id => !pickedItemIds.has(id)).length;
+
+                // 4. Count rows that have "reserved" this group but haven't picked an item yet
+                const reservationCount = items.filter((item, idx) => {
+                    const isGroupClaimed = String(selectedMenuGroups[idx]) === gid;
+                    const hasNoItemYet = !item.menu_item_id;
+                    return isGroupClaimed && hasNoItemYet;
+                }).length;
+
+                // Group is exhausted if reservations meet or exceed remaining items
+                return reservationCount >= unpickedItemsCount;
+            })
+            .map(group => group.id);
+    }, [menuGroups, menuItems, items, selectedMenuGroups]);
 
     const availableMenuCount = menuItems.filter(
         m => !selectedMenuIds.includes(Number(m.id))
@@ -409,13 +382,14 @@ export function CreateOrder() {
     }, []);
 
     const hasEmptyRow = items.some(i => !i.menu_item_id);
+    const canAddRow = items.length === 0 || !hasEmptyRow;
 
     /* ============================
        UI
     ============================ */
     return (
-        <div className="h-full flex flex-col overflow-hidden">
-            <section className="flex flex-col flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8 gap-6">
+        <div className="h-full min-h-0 flex flex-col overflow-hidden">
+            <section className="flex min-h-0 flex-col flex-1 overflow-y-auto p-6 lg:p-8 gap-6">
 
                 <h1 className="text-2xl font-bold">Create Order</h1>
 
@@ -445,7 +419,6 @@ export function CreateOrder() {
                 {/* Order Info */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
 
-                    {/* Guest Name */}
                     <div className="flex flex-col gap-1">
                         <Label>Guest Name *</Label>
                         <Input
@@ -651,17 +624,14 @@ export function CreateOrder() {
                     <div className="flex flex-col gap-1">
                         <Label>Expected Delivery</Label>
 
-                        <DatePicker
-                            selected={expectedDelivery}
+                        <ResponsiveDatePicker
+                            value={expectedDelivery}
                             onChange={(date: Date | null) => setExpectedDelivery(date)}
-                            showTimeSelect
-                            timeFormat="HH:mm"
-                            timeIntervals={15}
-                            dateFormat="dd/MM/yyyy HH:mm"
-                            placeholderText="Select date & time"
-                            className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                            wrapperClassName="w-full"
+                            showTime
                             minDate={new Date()}
+                            placeholder="Select date & time"
+                            label="Expected Delivery"
+                            className={cn(formErrors.expected_delivery_time && "border-red-500")}
                         />
                         <p className="min-h-[16px] text-xs text-red-500">
                             {formErrors.expected_delivery_time ?? ""}
@@ -678,18 +648,20 @@ export function CreateOrder() {
                 <div className="space-y-3">
                     <Label className="text-base font-semibold">Order Items</Label>
 
-                    <div className="grid-header-inside-table border rounded-[5px] overflow-hidden flex flex-col">
+                    <div className="editable-grid-compact grid-header-inside-table border rounded-[5px] overflow-hidden flex flex-col">
                         <div className="overflow-x-auto overflow-y-auto w-full flex-1 min-h-0 bg-background">
                             <div className="w-full min-w-[800px]">
                                 <DataGrid>
                                     {/* HEADER */}
                                     <DataGridHeader>
-                                        <DataGridHead>Group</DataGridHead>
-                                        <DataGridHead>Item</DataGridHead>
-                                        <DataGridHead className="w-24">Qty</DataGridHead>
-                                        <DataGridHead className="w-32">Unit Price</DataGridHead>
-                                        <DataGridHead className="w-32">Total</DataGridHead>
-                                        <DataGridHead className="w-20 text-center">Action</DataGridHead>
+                                        <DataGridHead className="border-r border-slate-200/20">Group</DataGridHead>
+                                        <DataGridHead className="border-r border-slate-200/20">Item</DataGridHead>
+                                        <DataGridHead className="w-24 border-r border-slate-200/20">Qty</DataGridHead>
+                                        <DataGridHead className="w-32 border-r border-slate-200/20">Unit Price</DataGridHead>
+                                        <DataGridHead className="w-32 border-r border-slate-200/20">Total</DataGridHead>
+                                        {items.length > 1 && (
+                                            <DataGridHead className="w-20 text-center">Action</DataGridHead>
+                                        )}
                                     </DataGridHeader>
 
                                     {/* BODY */}
@@ -697,187 +669,203 @@ export function CreateOrder() {
                                         {items.map((item, index) => (
                                             <DataGridRow key={index}>
                                                 {/* GROUP */}
-                                                <DataGridCell>
-                                                    <MenuItemSelect
-                                                        extraClasses={itemErrors[index]?.group ? "border-red-500" : ""}
-                                                        value={selectedMenuGroups[index]}
-                                                        items={menuGroups}
-                                                        disabledIds={[]}
-                                                        onSelect={(menuGroupId) => {
-                                                            setSelectedMenuGroups(g => ({
-                                                                ...g,
-                                                                [index]: menuGroupId
-                                                            }));
+                                                <DataGridCell className="border-r border-slate-200/40">
+                                                    <ValidationTooltip isValid={!((orderSubmitted || item.touched?.group) && itemErrors[index]?.group)} message="Required field">
+                                                        <MenuItemSelect
+                                                            extraClasses={cn(
+                                                                "h-9 w-full rounded-[3px] border bg-background px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
+                                                                (orderSubmitted || item.touched?.group) && itemErrors[index]?.group ? "border-red-500" : "border-border"
+                                                            )}
+                                                            value={selectedMenuGroups[index]}
+                                                            items={menuGroups}
+                                                            forceNative={true}
+                                                            disabledIds={exhaustedGroupIds}
+                                                            onSelect={(menuGroupId) => {
+                                                                setSelectedMenuGroups(g => ({
+                                                                    ...g,
+                                                                    [index]: menuGroupId
+                                                                }));
 
-                                                            updateItem(index, {
-                                                                menu_item_id: null,
-                                                                item_name: "",
-                                                                unit_price: 0,
-                                                                item_total: 0
-                                                            });
+                                                                updateItem(index, {
+                                                                    menu_item_id: null,
+                                                                    item_name: "",
+                                                                    unit_price: 0,
+                                                                    item_total: 0,
+                                                                    touched: { ...item.touched, group: true }
+                                                                });
 
-                                                            setItemErrors(prev => {
-                                                                const copy = { ...prev };
-                                                                if (copy[index]) delete copy[index].group;
-                                                                return copy;
-                                                            });
-                                                        }}
-                                                        placeholder="Select group"
-                                                        itemName="name"
-                                                    />
+                                                                setItemErrors(prev => {
+                                                                    const copy = { ...prev };
+                                                                    if (copy[index]) delete copy[index].group;
+                                                                    return copy;
+                                                                });
+                                                            }}
+                                                            placeholder="Select group"
+                                                            itemName="name"
+                                                        />
+                                                    </ValidationTooltip>
                                                 </DataGridCell>
 
                                                 {/* ITEM */}
-                                                <DataGridCell>
-                                                    <MenuItemSelect
-                                                        extraClasses={itemErrors[index]?.item ? "border-red-500" : ""}
-                                                        value={item.menu_item_id}
-                                                        items={getFilteredMenuItems(index)}
-                                                        disabledIds={selectedMenuIds}
-                                                        onSelect={(menuId) => {
-                                                            onMenuSelect(index, menuId as number);
-                                                            setItemErrors(prev => {
-                                                                const copy = { ...prev };
-                                                                if (copy[index]) delete copy[index].item;
-                                                                return copy;
-                                                            });
-                                                        }}
-                                                        placeholder="Select item"
-                                                        disabled={!Object.prototype.hasOwnProperty.call(selectedMenuGroups, index)}
-                                                        itemName="item_name"
-                                                    />
+                                                <DataGridCell className="border-r border-slate-200/40">
+                                                    <ValidationTooltip isValid={!((orderSubmitted || item.touched?.item) && itemErrors[index]?.item)} message="Required field">
+                                                        <MenuItemSelect
+                                                            extraClasses={cn(
+                                                                "h-9 w-full rounded-[3px] border bg-background px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
+                                                                (orderSubmitted || item.touched?.item) && itemErrors[index]?.item ? "border-red-500" : "border-border"
+                                                            )}
+                                                            value={item.menu_item_id}
+                                                            items={getFilteredMenuItems(index)}
+                                                            forceNative={true}
+                                                            disabledIds={selectedMenuIds}
+                                                            onSelect={(menuId) => {
+                                                                onMenuSelect(index, menuId as number);
+                                                                updateItem(index, { touched: { ...item.touched, item: true } });
+                                                                setItemErrors(prev => {
+                                                                    const copy = { ...prev };
+                                                                    if (copy[index]) delete copy[index].item;
+                                                                    return copy;
+                                                                });
+                                                            }}
+                                                            placeholder="Select item"
+                                                            disabled={!Object.prototype.hasOwnProperty.call(selectedMenuGroups, index)}
+                                                            itemName="item_name"
+                                                        />
+                                                    </ValidationTooltip>
                                                 </DataGridCell>
 
                                                 {/* QTY */}
-                                                <DataGridCell>
-                                                    <Input
-                                                        type="number"
-                                                        min={0}
-                                                        max={999999}
-                                                        className={`flex h-9 w-24 rounded-md border bg-background px-3 text-sm text-foreground
-                                                            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
+                                                <DataGridCell className="border-r border-slate-200/40">
+                                                    <ValidationTooltip isValid={!((orderSubmitted || item.touched?.quantity) && itemErrors[index]?.quantity)} message="Required field">
+                                                        <Input
+                                                            type="number"
+                                                            min={0}
+                                                            max={999999}
+                                                            className={`h-9 w-full rounded-[3px] border bg-background px-3 text-sm text-foreground shadow-none
+                                                            focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0
                                                             disabled:cursor-not-allowed disabled:opacity-50 transition-colors duration-150
-                                                            ${itemErrors[index]?.quantity ? "border-red-500" : "border-input"}`}
-                                                        value={item.quantity}
-                                                        onChange={e => {
-                                                            let value = e.target.value;
-                                                            if (value.length > 6) value = value.slice(0, 6);
-                                                            if (+value < 0) value = "0";
+                                                            ${(orderSubmitted || item.touched?.quantity) && itemErrors[index]?.quantity ? "border-red-500" : "border-border"}`}
+                                                            value={item.quantity}
+                                                            onChange={e => {
+                                                                let value = e.target.value;
+                                                                if (value.length > 6) value = value.slice(0, 6);
+                                                                if (+value < 0) value = "0";
 
-                                                            updateItem(index, {
-                                                                quantity: +normalizeNumberInput(value),
-                                                            });
+                                                                updateItem(index, {
+                                                                    quantity: +normalizeNumberInput(value),
+                                                                });
 
-                                                            setItemErrors(prev => {
-                                                                const copy = { ...prev };
-                                                                if (copy[index]) delete copy[index].quantity;
-                                                                return copy;
-                                                            });
-                                                        }}
-                                                    />
+                                                                setItemErrors(prev => {
+                                                                    const copy = { ...prev };
+                                                                    if (copy[index]) delete copy[index].quantity;
+                                                                    return copy;
+                                                                });
+                                                            }}
+                                                            onBlur={(e) => {
+                                                                const normalized = normalizeNumberInput(e.target.value);
+                                                                const quantity = normalized === "" ? 0 : Number(normalized);
+                                                                e.target.value = String(quantity);
+                                                                updateItem(index, {
+                                                                    quantity,
+                                                                    touched: { ...item.touched, quantity: true }
+                                                                });
+                                                            }}
+                                                        />
+                                                    </ValidationTooltip>
                                                 </DataGridCell>
 
                                                 {/* UNIT PRICE */}
-                                                <DataGridCell>
-                                                    <div className="font-medium text-foreground">
+                                                <DataGridCell className="border-r border-slate-200/40 text-center">
+                                                    <div className="font-medium text-slate-600 text-sm">
                                                         ₹ {item.unit_price}
                                                     </div>
                                                 </DataGridCell>
 
                                                 {/* TOTAL */}
-                                                <DataGridCell>
-                                                    <div className="font-semibold text-foreground">
+                                                <DataGridCell className="border-r border-slate-200/40 text-center">
+                                                    <div className="font-semibold text-slate-800 text-sm">
                                                         ₹ {item.item_total}
                                                     </div>
                                                 </DataGridCell>
 
                                                 {/* REMOVE ICON */}
-                                                <DataGridCell className="text-center">
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Trash2
-                                                                className="w-4 h-4 mx-auto text-red-500 cursor-pointer transition-colors hover:text-red-700"
-                                                                aria-label={`Remove ${item.item_name || 'empty item'} from order`}
-                                                                onClick={() => removeRow(index)}
-                                                            />
-                                                        </TooltipTrigger>
-                                                        <TooltipContent className="bg-white text-black shadow-md">
-                                                            Remove Item
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                </DataGridCell>
+                                                {items.length > 1 && (
+                                                    <DataGridCell className="text-center">
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button
+                                                                    type="button"
+                                                                    size="icon"
+                                                                    variant="ghost"
+                                                                    className="editable-grid-remove-btn h-8 w-8 text-destructive hover:text-destructive/80 transition-colors mx-auto"
+                                                                    aria-label={`Remove ${item.item_name || "empty item"} from order`}
+                                                                    onClick={() => removeRow(index)}
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent className="shadow-md">
+                                                                Remove Item
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </DataGridCell>
+                                                )}
                                             </DataGridRow>
                                         ))}
                                     </tbody>
                                 </DataGrid>
                             </div>
                         </div>
-                    </div>
-                    <div className="flex items-center gap-4 pt-2">
-                        {/* ADD BUTTON */}
-                        <Button
-                            size="sm"
-                            disabled={availableMenuCount === 0 || hasEmptyRow}
-                            variant="outline"
-                            onClick={addRow}
-                        >
-                            + Add Item
-                        </Button>
 
-                        {hasEmptyRow && (
-                            <p className="text-xs text-muted-foreground">
-                                *Select an item before adding another row
-                            </p>
-                        )}
+                        {/* PILOT ADD ROW + TOTAL FOOTER */}
+                        <div className="editable-grid-footer p-3 bg-background  border-slate-200 flex items-center justify-between min-w-[800px]">
+                            <div className="flex items-center gap-4">
+                                <button
+                                    type="button"
+                                    className="flex items-center gap-1.5 text-primary hover:underline text-sm font-semibold transition-colors disabled:opacity-50 disabled:no-underline px-1"
+                                    onClick={addRow}
+                                    disabled={availableMenuCount === 0}
+                                >
+                                    <PlusCircle className="w-4 h-4" /> Add New Order Item(s)
+                                </button>
 
-                        {availableMenuCount === 0 && (
-                            <p className="text-xs text-muted-foreground">
-                                All menu items have already been added
-                            </p>
-                        )}
+                                {availableMenuCount === 0 && (
+                                    <p className="text-[10px] text-muted-foreground italic">
+                                        All menu items added
+                                    </p>
+                                )}
 
-                        {formErrors.items && (
-                            <p className="text-xs text-red-500">{formErrors.items}</p>
-                        )}
+                                {formErrors.items && (
+                                    <p className="text-[11px] text-red-500 font-medium">{formErrors.items}</p>
+                                )}
+                            </div>
 
-
-                        {/* Total Amount */}
-                        <div className="flex flex-col gap-1 justify-end ml-auto">
-                            <Label className="flex focus:outline-none  items-center gap-2">
-                                Total Amount
-                            </Label>
-
-                            <Input
-                                className="item-total-input focus:outline-none border-none bold text-lg"
-                                type="text"
-                                readOnly={true}
-                                value={order.total_amount ? `₹ ${order.total_amount}` : ""}
-                                onFocus={(e) => e.target.blur()} // 👈 removes focus immediately
-                                onChange={(e) => {
-                                    setIsTotalManual(true);
-                                    setOrder(o => ({
-                                        ...o,
-                                        total_amount: +normalizeNumberInput(e.target.value)
-                                    }));
-                                }}
-                            />
-                            <p className="min-h-[16px] text-xs text-muted-foreground"></p>
+                            <div className="flex items-center gap-6">
+                                {isTotalManual && (
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 text-[10px] px-2 border-slate-300 text-slate-600"
+                                        onClick={() => {
+                                            const total = items.reduce((s, i) => s + i.item_total, 0);
+                                            setOrder(o => ({ ...o, total_amount: total }));
+                                            setIsTotalManual(false);
+                                        }}
+                                    >
+                                        Recalculate
+                                    </Button>
+                                )}
+                                <div className="flex items-center gap-3">
+                                    <span className="text-sm font-medium text-slate-500">Total Amount : </span>
+                                    <span className="text-lg font-bold text-slate-900 pr-2">
+                                        ₹ {order.total_amount || 0}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
-                        {isTotalManual && (
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-xs w-fit"
-                                onClick={() => {
-                                    const total = items.reduce((s, i) => s + i.item_total, 0);
-                                    setOrder(o => ({ ...o, total_amount: total }));
-                                    setIsTotalManual(false);
-                                }}
-                            >
-                                Recalculate Total
-                            </Button>
-                        )}</div>
+                    </div>
                 </div>
+
                 {/* Submit */}
                 <div className="pt-4 border-t flex justify-end">
                     <Button variant="hero" disabled={!items.length} onClick={handleCreateOrder}>
@@ -889,4 +877,3 @@ export function CreateOrder() {
         </div>
     );
 }
-

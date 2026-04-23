@@ -1,14 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
+import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import {
     Sheet,
@@ -19,19 +12,21 @@ import {
 import { cn } from "@/lib/utils";
 import { useAppSelector } from "@/redux/hook";
 import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
-import { useCreateLaundryPricingMutation, useGetMyPropertiesQuery, useGetPropertyLaundryPricingQuery, useUpdateLaundryPricingMutation } from "@/redux/services/hmsApi";
-import { normalizeNumberInput } from "@/utils/normalizeTextInput";
+import { useCreateLaundryPricingMutation, useGetPropertyLaundryPricingQuery, useUpdateLaundryPricingMutation } from "@/redux/services/hmsApi";
+import { normalizeNumberInput, normalizeTextInput } from "@/utils/normalizeTextInput";
 import { usePermission } from "@/rbac/usePermission";
 import { useLocation } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
-import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
+import { AppDataGrid, DataGrid, DataGridHeader, DataGridRow, DataGridHead, DataGridCell, type ColumnDef } from "@/components/ui/data-grid";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
-import { FilterX, RefreshCcw, Download, Pencil } from "lucide-react";
+import { FilterX, RefreshCcw, Download, Pencil, Trash2, Plus, PlusCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ValidationTooltip } from "@/components/ui/validation-tooltip";
 import { getStatusColor } from "@/constants/statusColors";
 import { toast } from "react-toastify";
 import { filterGridRowsByQuery } from "@/utils/filterGridRows";
 import { exportToExcel } from "@/utils/exportToExcel";
+import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { useGridPagination } from "@/hooks/useGridPagination";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 
@@ -46,25 +41,67 @@ type LaundryItem = {
     is_active: boolean;
 };
 
-type EditableLaundry = LaundryItem & {
-    _edited?: boolean;
-};
-
 type CreateLaundryForm = {
     itemName: string;
     description?: string;
     itemRate: number | "";
+    isActive?: boolean;
+    touched?: {
+        itemName?: boolean;
+        itemRate?: boolean;
+    };
 };
+
+type LaundryFormState = {
+    item_name: string;
+    description: string;
+    item_rate: string;
+    is_active: boolean;
+};
+
+const DUPLICATE_ITEMS_MESSAGE = "Duplicate Items Not Allowed";
+
+const THEME_SURFACE_CLASS = "bg-background";
+const THEME_INPUT_CLASS = "bg-background border-border";
+
+function createEmptyLaundryPriceForm(): LaundryFormState {
+    return {
+        item_name: "",
+        description: "",
+        item_rate: "",
+        is_active: true,
+    };
+}
+
+function createEmptyLaundryCreateRow(): CreateLaundryForm {
+    return {
+        itemName: "",
+        description: "",
+        itemRate: "",
+        isActive: true,
+        touched: {},
+    };
+}
+
+function normalizeLaundryName(value?: string | null) {
+    return value?.trim().toLowerCase() ?? "";
+}
 
 /* ---------------- Component ---------------- */
 export default function LaundryPricingManagement() {
     /* ---------------- State ---------------- */
-    const [items, setItems] = useState<EditableLaundry[]>([]);
-    const [editMode, setEditMode] = useState(false);
+    const [items, setItems] = useState<LaundryItem[]>([]);
 
+    // UI STates
     const [sheetOpen, setSheetOpen] = useState(false);
+    const [mode, setMode] = useState<"edit" | "view" | "bulk_add">("view");
+    const [selectedItem, setSelectedItem] = useState<LaundryItem | null>(null);
+
+    // Form States
+    const [form, setForm] = useState<LaundryFormState>(createEmptyLaundryPriceForm);
+
     const [createRows, setCreateRows] = useState<CreateLaundryForm[]>([
-        { itemName: "", description: "", itemRate: "" }
+        createEmptyLaundryCreateRow()
     ]);
 
     const [selectedPropertyId, setSelectedPropertyId] = useState("");
@@ -72,8 +109,11 @@ export default function LaundryPricingManagement() {
     const [searchInput, setSearchInput] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
+    const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+    const [submitted, setSubmitted] = useState(false);
+
     const { page, limit, setPage, resetPage, handleLimitChange } = useGridPagination({
-        initialLimit: 10,
+        initialLimit: 5,
         resetDeps: [selectedPropertyId, statusFilter, searchQuery],
     });
 
@@ -81,9 +121,7 @@ export default function LaundryPricingManagement() {
     const isSuperAdmin = useAppSelector(selectIsSuperAdmin)
     const isOwner = useAppSelector(selectIsOwner)
 
-    const { data: myProperties } = useGetMyPropertiesQuery(undefined, {
-        skip: !isLoggedIn
-    })
+    const { myProperties, isInitializing } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
 
     const {
         data,
@@ -94,8 +132,13 @@ export default function LaundryPricingManagement() {
         skip: !isLoggedIn || !selectedPropertyId
     })
 
+    const { data: allLaundryData } = useGetPropertyLaundryPricingQuery({ propertyId: selectedPropertyId, page: 1, limit: 1000 }, {
+        skip: !isLoggedIn || !selectedPropertyId
+    })
+    const allLaundryItems = allLaundryData?.data?.data || [];
+
     const [createLaundryPrice] = useCreateLaundryPricingMutation()
-    const [updateBulkLaundryPricing] = useUpdateLaundryPricingMutation()
+    const [updateLaundryPricing] = useUpdateLaundryPricingMutation()
 
     useEffect(() => {
         if (!selectedPropertyId && myProperties?.properties?.length > 0) {
@@ -105,225 +148,183 @@ export default function LaundryPricingManagement() {
 
     useEffect(() => {
         if (Array.isArray(data?.data?.data)) {
-            setItems(
-                data.data.data.map((i: LaundryItem) => ({
-                    ...i,
-                    _edited: false,
-                }))
-            );
+            setItems(data.data.data);
             return;
         }
-
         setItems([]);
     }, [data]);
 
-    /* ---------------- Helpers ---------------- */
-    const updateItem = (
-        id: string,
-        patch: Partial<EditableLaundry>
-    ) => {
-        setItems((prev) =>
-            prev.map((i) =>
-                i.id === id ? { ...i, ...patch, _edited: true } : i
-            )
+    const totalPages = data?.data?.pagination?.totalPages ?? 1;
+    const hasExistingLaundryName = (name: string, excludeId?: string) =>
+        allLaundryItems.some(
+            (existing) =>
+                normalizeLaundryName(existing.item_name) === normalizeLaundryName(name) &&
+                existing.id !== excludeId
         );
+
+    /* ---------------- Handlers ---------------- */
+    const openSheet = (item: LaundryItem | null, newMode: "edit" | "view" | "bulk_add") => {
+        setMode(newMode);
+        setSelectedItem(item);
+        setFormErrors({});
+        setSubmitted(false);
+
+        if (newMode === "edit" || newMode === "view") {
+            if (item) {
+                setForm({
+                    item_name: item.item_name,
+                    description: item.description || "",
+                    item_rate: item.item_rate,
+                    is_active: item.is_active
+                });
+            }
+        } else if (newMode === "bulk_add") {
+            setCreateRows([createEmptyLaundryCreateRow()]);
+            setShowCreateErrors(false);
+        }
+
+        setSheetOpen(true);
     };
 
-    const hasUpdates = useMemo(
-        () => items.some((i) => i._edited),
-        [items]
-    );
+    const handleSave = async () => {
+        setSubmitted(true);
+        if (!selectedPropertyId) return;
 
-    const totalPages = data?.data?.pagination?.totalPages ?? 1;
+        if (mode === "edit") {
+            const errors: Record<string, string> = {};
+            if (!form.item_name.trim()) errors.item_name = "Item name is required";
+            if (!form.item_rate || Number(form.item_rate) <= 0) errors.item_rate = "Valid rate is required";
+            if (form.item_name.trim() && hasExistingLaundryName(form.item_name, selectedItem?.id)) {
+                errors.item_name = "Item name already exists";
+            }
 
-    function buildCreateLaundryPayload(
-        propertyId: number,
-        form: CreateLaundryForm
-    ) {
-        return {
-            propertyId,
-            itemName: form.itemName,
-            description: form.description || null,
-            itemRate: Number(form.itemRate),
-        };
-    }
+            if (Object.keys(errors).length > 0) {
+                setFormErrors(errors);
+                return;
+            }
 
-    function buildLaundryBulkUpdatePayload(
-        items: EditableLaundry[]
-    ) {
-        return {
-            updates: items
-                .filter((i) => i._edited)
-                .map((i) => {
-                    const payload: {
-                        id: number;
-                        itemRate: number;
-                        is_active: boolean;
-                        description?: string | null;
-                        itemName?: string;
-                    } = {
-                        id: Number(i.id),
-                        itemRate: Number(i.item_rate),
-                        is_active: i.is_active
-                    };
-
-                    if (i.description !== undefined) {
-                        payload.description = i.description;
+            const payload = {
+                property_id: Number(selectedPropertyId),
+                updates: [
+                    {
+                        ...(mode === "edit" ? { id: Number(selectedItem?.id) } : {}),
+                        itemName: form.item_name,
+                        description: form.description || null,
+                        itemRate: Number(form.item_rate),
+                        is_active: form.is_active
                     }
+                ]
+            };
 
-                    if (!i.system_generated) {
-                        payload.itemName = i.item_name;
-                    }
+            const promise = updateLaundryPricing(payload).unwrap();
 
-                    return payload;
-                }),
-        };
-    }
+            toast.promise(promise, {
+                pending: "Updating item...",
+                success: "Item updated successfully",
+                error: "Failed to save item"
+            });
+
+            try {
+                await promise;
+                setSheetOpen(false);
+            } catch (err) {
+                console.error("Save failed", err);
+            }
+        }
+
+        // Validation/Save for Bulk Add
+        else if (mode === "bulk_add") {
+            setShowCreateErrors(true);
+            const hasError = createRows.some((r, i) => {
+                const err = getCreateRowErrors(r, i);
+                return err.itemName || err.itemRate;
+            });
+
+            if (hasError) return;
+
+            const payload = {
+                property_id: Number(selectedPropertyId),
+                items: createRows
+                    .filter(r => r.itemName?.trim())
+                    .map(r => ({
+                        itemName: r.itemName.trim(),
+                        description: r.description || null,
+                        itemRate: Number(r.itemRate || 0),
+                        isActive: r.isActive !== false,
+                    }))
+            };
+
+            try {
+                await createLaundryPrice(payload).unwrap();
+                toast.success("Items created successfully");
+                setSheetOpen(false);
+            } catch (err: any) {
+                console.error("Bulk create error:", err);
+                const msg = err?.data?.message || err?.message || "";
+                if (!(msg.includes("unique constraint") || msg.includes("already exists") || msg.toLowerCase().includes("duplicate"))) {
+                    toast.error("Process Failed: Could not create laundry items at this time.");
+                }
+            }
+        }
+    };
 
     const addCreateRow = () => {
-        setShowCreateErrors(false)
-        setCreateRows(prev => [
-            ...prev,
-            { itemName: "", description: "", itemRate: "" }
-        ]);
+        setCreateRows(prev => [...prev, createEmptyLaundryCreateRow()]);
     };
 
     const removeCreateRow = (index: number) => {
         setCreateRows(prev => prev.filter((_, i) => i !== index));
     };
 
-    const updateCreateRow = (
-        index: number,
-        patch: Partial<CreateLaundryForm>
-    ) => {
-        setCreateRows(prev =>
-            prev.map((r, i) =>
-                i === index ? { ...r, ...patch } : r
-            )
-        );
+    const updateCreateRow = (index: number, patch: Partial<CreateLaundryForm>) => {
+        setCreateRows(prev => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
     };
 
-    const handleCreateLaundry = async () => {
-
-        setShowCreateErrors(true);
-
-        const hasError = createRows.some((r, i) => {
-            const err = getCreateRowErrors(r, i);
-            return err.itemName || err.itemRate;
-        });
-
-        if (hasError) {
-            return;
-        }
-    }
-
-    /* ---------------- Handlers ---------------- */
-    const handleBulkUpdate = async () => {
-        const payload = buildLaundryBulkUpdatePayload(items);
-
-        if (!payload.updates.length) return;
-
-        try {
-            await updateBulkLaundryPricing(payload).unwrap();
-
-            setItems((prev) =>
-                prev.map((i) => ({ ...i, _edited: false }))
-            );
-
-            setEditMode(false);
-        } catch (err) {
-            console.error("Bulk update failed", err);
-        }
-    };
-
-    function buildBulkCreateLaundryPayload(
-        propertyId: number,
-        rows: CreateLaundryForm[]
-    ) {
-
-        return {
-            property_id: propertyId,
-            items: rows
-                .filter(r => r.itemName?.trim()) // only valid rows
-                .map(r => ({
-                    itemName: r.itemName.trim(),
-                    description: r.description || null,
-                    itemRate: Number(r.itemRate || 0),
-                }))
-        };
-    }
-
-    function getCreateRowErrors(
-        row: CreateLaundryForm,
-        index: number
-    ) {
-
-        const name = row.itemName?.trim().toLowerCase();
-
-        /* ---------- empty validations ---------- */
-
+    function getCreateRowErrors(row: CreateLaundryForm, index: number) {
+        const name = normalizeLaundryName(row.itemName);
         const itemNameRequired = !name;
         const itemRateRequired = !row.itemRate || Number(row.itemRate) <= 0;
 
-        /* ---------- duplicate in createRows ---------- */
-
-        const duplicateInForm = createRows.some((r, i) => {
-
-            if (i === index) return false;
-
-            return r.itemName?.trim().toLowerCase() === name;
-        });
-
-        /* ---------- duplicate against existing DB items ---------- */
-
-        const duplicateExisting = items.some((existing) => {
-
-            return existing.item_name?.trim().toLowerCase() === name;
-        });
+        const duplicateInForm = !!(name && createRows.some((r, i) => i !== index && normalizeLaundryName(r.itemName) === name));
+        const duplicateExisting = !!(name && hasExistingLaundryName(name));
 
         return {
             itemName: itemNameRequired || duplicateInForm || duplicateExisting,
             itemRate: itemRateRequired,
             duplicateInForm,
-            duplicateExisting
+            duplicateExisting,
+            itemNameMessage: duplicateInForm
+                ? DUPLICATE_ITEMS_MESSAGE
+                : duplicateExisting
+                    ? DUPLICATE_ITEMS_MESSAGE
+                    : "Required field"
         };
     }
 
-    const pathname = useLocation().pathname
-    const { permission } = usePermission(pathname)
-
-    useEffect(() => {
-        setPage(1);
-    }, [selectedPropertyId]);
+    const pathname = useLocation().pathname;
+    const { permission } = usePermission(pathname);
 
     const refreshTable = async () => {
         if (laundryFetching) return;
         const toastId = toast.loading("Refreshing laundry pricing...");
-
         try {
             await refetchLaundryPricing();
             toast.dismiss(toastId);
             toast.success("Laundry pricing refreshed");
         } catch {
             toast.dismiss(toastId);
-            toast.error("Failed to refresh laundry pricing");
         }
     };
 
     const exportPricesSheet = () => {
-        if (!filteredItems || filteredItems.length === 0) {
-            toast.info("No data to export");
-            return;
-        }
-
+        if (!filteredItems.length) return toast.info("No data to export");
         const formatted = filteredItems.map(item => ({
-            "Laundry ID": formatModuleDisplayId("laundry", item.id),
+            "Laundry ID": formatModuleDisplayId("laundry_pricing", item.id),
             "Item": item.item_name,
             "Description": item.description || "-",
             "Rate": `Rs ${item.item_rate}`,
             "Status": item.is_active ? "Active" : "Inactive"
         }));
-
         exportToExcel(formatted, "Laundry_Pricing.xlsx");
         toast.success("Export completed");
     };
@@ -337,11 +338,9 @@ export default function LaundryPricingManagement() {
 
     const filteredItems = useMemo(() => {
         let filtered = items;
-
         if (statusFilter) {
             filtered = filtered.filter((item) => String(item.is_active) === statusFilter);
         }
-
         return filterGridRowsByQuery(filtered, searchQuery, [
             (item) => item.item_name,
             (item) => item.description,
@@ -350,102 +349,68 @@ export default function LaundryPricingManagement() {
         ]);
     }, [items, searchQuery, statusFilter]);
 
-    const laundryColumns = useMemo<ColumnDef<EditableLaundry>[]>(() => [
+    const laundryColumns = useMemo<ColumnDef<LaundryItem>[]>(() => [
         {
             label: "Laundry ID",
             headClassName: "text-center",
             cellClassName: "text-center font-medium min-w-[90px]",
             render: (item) => (
-                <span className="inline-flex items-center font-semibold text-primary text-sm tracking-wide">
-                    {formatModuleDisplayId("laundry", item.id)}
-                </span>
+                <button
+                    type="button"
+                    className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
+                    onClick={() => openSheet(item, "view")}
+                >
+                    {formatModuleDisplayId("laundry_pricing", item.id)}
+                </button>
             ),
         },
         {
             label: "Item",
             cellClassName: "font-semibold text-foreground",
-            render: (item) =>
-                editMode && !item.system_generated ? (
-                    <Input
-                        className="h-8 text-sm"
-                        value={item.item_name}
-                        onChange={(e) => updateItem(item.id, { item_name: e.target.value })}
-                    />
-                ) : (
-                    item.item_name
-                ),
+            render: (item) => item.item_name,
         },
         {
             label: "Description",
             cellClassName: "text-muted-foreground",
-            render: (item) =>
-                editMode ? (
-                    <Input
-                        className="h-8 text-sm"
-                        value={item.description ?? ""}
-                        onChange={(e) => updateItem(item.id, { description: e.target.value })}
-                    />
-                ) : (
-                    item.description || "-"
-                ),
+            render: (item) => item.description || "-",
         },
         {
             label: "Rate",
             headClassName: "text-center",
             cellClassName: "text-center",
-            render: (item) =>
-                editMode ? (
-                    <div className="flex justify-center">
-                        <Input
-                            type="text"
-                            className="h-8 w-28 text-sm text-center"
-                            value={item.item_rate}
-                            onChange={(e) =>
-                                updateItem(item.id, {
-                                    item_rate: normalizeNumberInput(e.target.value).toString(),
-                                })
-                            }
-                        />
-                    </div>
-                ) : (
-                    <span className="inline-flex min-w-[96px] justify-center rounded-[3px] bg-muted/40 px-3 py-1 text-sm font-semibold">
-                        Rs {item.item_rate}
-                    </span>
-                ),
+            render: (item) => (
+                <span className="inline-flex min-w-[96px] justify-center rounded-[3px] bg-muted/40 px-3 py-1 text-sm font-semibold">
+                    Rs {item.item_rate}
+                </span>
+            ),
         },
         {
             label: "Status",
             headClassName: "text-center",
             cellClassName: "text-center",
-            render: (item) =>
-                editMode ? (
-                    <div className="flex justify-center">
-                        <Switch
-                            checked={item.is_active}
-                            onCheckedChange={(val) => updateItem(item.id, { is_active: val })}
-                        />
-                    </div>
-                ) : (
-                    <span
-                        className={cn(
-                            "inline-flex min-w-[88px] justify-center px-3 py-1 text-xs font-semibold rounded-[3px]",
-                            getStatusColor(item.is_active ? "active" : "inactive", "toggle")
-                        )}
-                    >
-                        {item.is_active ? "Active" : "Inactive"}
-                    </span>
-                ),
+            render: (item) => (
+                <span
+                    className={cn(
+                        "inline-flex min-w-[88px] justify-center px-3 py-1 text-xs font-semibold rounded-[3px]",
+                        getStatusColor(item.is_active ? "active" : "inactive", "toggle")
+                    )}
+                >
+                    {item.is_active ? "Active" : "Inactive"}
+                </span>
+            ),
         },
-    ], [editMode, items]);
+    ], [items]);
 
     /* ---------------- UI ---------------- */
     return (
-        <div className="h-full flex flex-col overflow-hidden">
-            <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8 space-y-6">
+        <div className="h-full flex flex-col overflow-hidden bg-background">
+            <section className="flex flex-col flex-1 overflow-hidden p-6 lg:p-8 gap-6">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-2xl font-bold">Laundry Pricing</h1>
-                        <p className="text-sm text-muted-foreground">Manage laundry items & pricing</p>
+                        <h1 className="text-2xl font-bold leading-tight">Laundry Pricing</h1>
+                        <p className="text-sm text-muted-foreground mt-1">
+                            Configure laundry item rates and availability
+                        </p>
                     </div>
 
                     <div className="flex items-center gap-3">
@@ -474,25 +439,16 @@ export default function LaundryPricingManagement() {
 
                         {permission?.can_create && (
                             <div className="flex gap-2">
-                                <Button variant="heroOutline" className="h-10" onClick={() => setSheetOpen(true)}>
-                                    Add Item
+                                <Button variant="hero" className="h-10 px-4 flex items-center gap-2" onClick={() => openSheet(null, "bulk_add")}>
+                                    <Plus className="w-4 h-4" /> Add Laundry Items
                                 </Button>
-
-                                {editMode && (
-                                    <>
-                                        <Button variant="hero" className="h-10" disabled={!hasUpdates} onClick={handleBulkUpdate}>
-                                            Update Prices
-                                        </Button>
-                                        <Button variant="heroOutline" className="h-10" onClick={() => setEditMode(false)}>
-                                            Cancel
-                                        </Button>
-                                    </>
-                                )}
                             </div>
                         )}
                     </div>
                 </div>
-                <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
+
+                <div className="flex-1 overflow-y-auto scrollbar-hide">
+                    <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
                     <div className="w-full">
                         <GridToolbar className="border-b-0">
                             <GridToolbarRow className="gap-2">
@@ -512,14 +468,14 @@ export default function LaundryPricingManagement() {
                                 />
 
                                 <GridToolbarSelect
-                                    label="STATUS"
+                                    label="Status"
                                     value={statusFilter}
                                     onChange={(value) => {
                                         setStatusFilter(value);
                                         resetPage();
                                     }}
                                     options={[
-                                        { label: "Any", value: "" },
+                                        { label: "All", value: "" },
                                         { label: "Active", value: "true" },
                                         { label: "Inactive", value: "false" },
                                     ]}
@@ -560,7 +516,7 @@ export default function LaundryPricingManagement() {
                             columns={laundryColumns}
                             data={filteredItems}
                             rowKey={(item) => item.id}
-                            loading={laundryLoading || laundryFetching}
+                            loading={laundryLoading || laundryFetching || isInitializing}
                             emptyText="No laundry items found"
                             actionLabel=""
                             actionClassName="text-center w-[60px]"
@@ -572,7 +528,7 @@ export default function LaundryPricingManagement() {
                                             variant="ghost"
                                             className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
                                             aria-label={`Edit laundry item ${item.item_name}`}
-                                            onClick={() => setEditMode(true)}
+                                            onClick={() => openSheet(item, "edit")}
                                         >
                                             <Pencil className="w-4 h-4 mx-auto" />
                                         </Button>
@@ -592,174 +548,250 @@ export default function LaundryPricingManagement() {
                             } : undefined}
                         />
                     </div>
+                    </div>
                 </div>
             </section>
 
-            {/* Create Laundry Item Sheet */}
+            {/* Combined View/Add/Edit/Bulk Sheet */}
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetContent side="right" className="w-full sm:max-w-4xl overflow-y-auto">
-
-                    <SheetHeader>
-                        <SheetTitle>Add Laundry Items</SheetTitle>
+                <SheetContent
+                    side="right"
+                    onOpenAutoFocus={(event) => event.preventDefault()}
+                    className={cn(
+                        "w-full p-0 flex flex-col bg-background",
+                        mode === "bulk_add" ? "sm:max-w-4xl" : "sm:max-w-xl"
+                    )}
+                >
+                    <SheetHeader className="px-6 py-4 border-b bg-background">
+                        <SheetTitle>
+                            {mode === "edit" ? "Edit Laundry Item" :
+                             mode === "bulk_add" ? "Add Laundry Items With There Pricing" :
+                             "Laundry Item Summary"}
+                        </SheetTitle>
                     </SheetHeader>
 
-                    <div className="mt-6 space-y-4">
-
-                        {/* TABLE */}
-
-                        <div className="border rounded-md overflow-hidden">
-
-                            <Table className="text-sm">
-
-                                <TableHeader>
-                                    <TableRow className="h-9">
-                                        <TableHead className="px-3">Item Name *</TableHead>
-                                        <TableHead className="px-3">Description</TableHead>
-                                        <TableHead className="px-3 w-[140px]">Rate (₹)</TableHead>
-                                        <TableHead className="w-12"></TableHead>
-                                    </TableRow>
-                                </TableHeader>
-
-                                <TableBody>
-
-                                    {createRows.map((row, index) => {
-                                        const errors = getCreateRowErrors(row, index);
-                                        return <TableRow
-                                            key={index}
-                                            className="border-b last:border-b-0 hover:bg-muted/30"
-                                        >
-
-                                            {/* ITEM NAME */}
-                                            <TableCell className="border-r p-1">
-
-                                                <Input
-                                                    id={`laundry-create-item-name-${index}`}
-                                                    name={`laundry_create_item_name_${index}`}
-                                                    className={cn(
-                                                        "h-8 text-sm",
-                                                        showCreateErrors && errors.itemName && "border-red-500"
-                                                    )}
-                                                    title={
-                                                        showCreateErrors
-                                                            ? errors.duplicateExisting
-                                                                ? "Item already exists"
-                                                                : errors.duplicateInForm
-                                                                    ? "Duplicate item in list"
-                                                                    : errors.itemName
-                                                                        ? "Item name required"
-                                                                        : ""
-                                                            : ""
-                                                    }
-                                                    value={row.itemName}
-                                                    onChange={(e) =>
-                                                        updateCreateRow(index, {
-                                                            itemName: e.target.value
-                                                        })
-                                                    }
-                                                />
-
-                                            </TableCell>
-
-
-                                            {/* DESCRIPTION */}
-                                            <TableCell className="border-r p-1">
-
-                                                <Input
-                                                    id={`laundry-create-description-${index}`}
-                                                    name={`laundry_create_description_${index}`}
-                                                    className="h-8 text-sm"
-                                                    value={row.description}
-                                                    onChange={(e) =>
-                                                        updateCreateRow(index, {
-                                                            description: e.target.value
-                                                        })
-                                                    }
-                                                />
-
-                                            </TableCell>
-
-
-                                            {/* RATE */}
-                                            <TableCell className="border-r p-1">
-
-                                                <Input
-                                                    id={`laundry-create-rate-${index}`}
-                                                    name={`laundry_create_rate_${index}`}
-                                                    type="text"
-                                                    className="h-8 text-sm"
-                                                    value={row.itemRate}
-                                                    onChange={(e) =>
-                                                        updateCreateRow(index, {
-                                                            itemRate: normalizeNumberInput(e.target.value)
-                                                        })
-                                                    }
-                                                />
-
-                                            </TableCell>
-
-
-                                            {/* REMOVE BUTTON */}
-                                            <TableCell className="flex items-center justify-center p-1">
-
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    className="h-8 px-2 text-red-500 hover:text-red-700 hover:bg-transparent"
-                                                    onClick={() => removeCreateRow(index)}
-                                                    disabled={createRows.length === 1}
-                                                >
-                                                    X
-                                                </Button>
-
-                                            </TableCell>
-
-                                        </TableRow>
-
-                                    })}
-
-                                </TableBody>
-                            </Table>
-
-                        </div>
-
-                        {/* ACTIONS */}
-
-                        <div className="flex justify-between">
-
-                            <Button
-                                variant="heroOutline"
-                                onClick={addCreateRow}
-                            >
-                                + Add Row
-                            </Button>
-
-                            <div className="flex gap-2">
-
-                                <Button
-                                    variant="heroOutline"
-                                    onClick={() => setSheetOpen(false)}
-                                >
-                                    Cancel
-                                </Button>
-
-                                <Button
-                                    variant="hero"
-                                    onClick={handleCreateLaundry}
-                                >
-                                    Create Items
-                                </Button>
-
+                    <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-background">
+                        {mode === "view" && selectedItem && (
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1 rounded-[5px] border p-4 bg-background border-border">
+                                        <Label className="text-xs text-muted-foreground uppercase tracking-wider">Item ID</Label>
+                                        <p className="font-semibold text-primary">{formatModuleDisplayId("laundry", selectedItem.id)}</p>
+                                    </div>
+                                    <div className="space-y-1 rounded-[5px] border p-4 bg-background border-border">
+                                        <Label className="text-xs text-muted-foreground uppercase tracking-wider">Status</Label>
+                                        <div>
+                                            <span className={cn("px-3 py-1 text-xs font-semibold rounded-[3px]", getStatusColor(selectedItem.is_active ? "active" : "inactive", "toggle"))}>
+                                                {selectedItem.is_active ? "Active" : "Inactive"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="space-y-1 rounded-[5px] border p-4 bg-background border-border">
+                                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">Item Name</Label>
+                                    <p className="text-lg font-bold">{selectedItem.item_name}</p>
+                                </div>
+                                {!!selectedItem.description && (
+                                    <div className="space-y-1 rounded-[5px] border p-4 bg-background border-border">
+                                        <Label className="text-xs text-muted-foreground uppercase tracking-wider">Description</Label>
+                                        <p className="text-sm text-foreground/80">{selectedItem.description}</p>
+                                    </div>
+                                )}
+                                <div className="space-y-1 rounded-[5px] border p-4 bg-background border-border">
+                                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">Rate</Label>
+                                    <p className="text-2xl font-bold text-foreground">Rs {selectedItem.item_rate}</p>
+                                </div>
                             </div>
+                        )}
 
+                        {mode === "edit" && (
+                            <div className="space-y-4">
+                                <div>
+                                    <Label htmlFor="item-name">Item Name *</Label>
+                                    <Input
+                                        id="item-name"
+                                        className={cn("mt-1 h-9 bg-background border-border", submitted && formErrors.item_name && "border-red-500")}
+                                        value={form.item_name}
+                                        onChange={(e) => {
+                                            setForm(p => ({ ...p, item_name: normalizeTextInput(e.target.value) }));
+                                            setFormErrors(p => ({ ...p, item_name: "" }));
+                                        }}
+                                        disabled={mode === "edit" && selectedItem?.system_generated}
+                                    />
+                                    {submitted && formErrors.item_name && <p className="text-xs text-red-500 mt-1">{formErrors.item_name}</p>}
+                                </div>
+                                <div>
+                                    <Label htmlFor="description">Description</Label>
+                                    <Input
+                                        id="description"
+                                        className={cn("mt-1 h-9 bg-background border-border")}
+                                        value={form.description}
+                                        onChange={(e) => setForm(p => ({ ...p, description: normalizeTextInput(e.target.value) }))}
+                                    />
+                                </div>
+                                <div>
+                                    <Label htmlFor="rate">Rate (₹) *</Label>
+                                    <Input
+                                        id="rate"
+                                        className={cn("mt-1 h-9 bg-background border-border", submitted && formErrors.item_rate && "border-red-500")}
+                                        value={form.item_rate}
+                                        onChange={(e) => {
+                                            setForm(p => ({ ...p, item_rate: normalizeNumberInput(e.target.value) }));
+                                            setFormErrors(p => ({ ...p, item_rate: "" }));
+                                        }}
+                                    />
+                                    {submitted && formErrors.item_rate && <p className="text-xs text-red-500 mt-1">{formErrors.item_rate}</p>}
+                                </div>
+                                <div className="flex items-center gap-2 rounded-[5px] border px-4 py-3 h-9 bg-background border-border">
+                                    <Switch
+                                        id="item-active"
+                                        checked={form.is_active}
+                                        onCheckedChange={(val) => setForm(p => ({ ...p, is_active: val }))}
+                                    />
+                                    <Label htmlFor="item-active">Active</Label>
+                                </div>
+                            </div>
+                        )}
+
+                        {mode === "bulk_add" && (
+                            <div className="space-y-4">
+
+
+                                <div className="editable-grid-compact overflow-hidden rounded-[5px] border border-border bg-background/50">
+                                    <DataGrid>
+                                         <DataGridHeader>
+                                             <DataGridHead>Item Name *</DataGridHead>
+                                             <DataGridHead>Description</DataGridHead>
+                                             <DataGridHead className="w-32 text-center">Rate (₹) *</DataGridHead>
+                                             {createRows.length > 1 && (
+                                                 <DataGridHead className="w-16 text-center">Action</DataGridHead>
+                                             )}
+                                         </DataGridHeader>
+
+                                         <tbody>
+                                             {createRows.map((row, index) => {
+                                                 const errors = getCreateRowErrors(row, index);
+                                                 const isItemNameInvalid =
+                                                     (showCreateErrors && errors.itemName) ||
+                                                     (!!row.touched?.itemName && (errors.duplicateInForm || errors.duplicateExisting));
+                                                 const isItemRateInvalid = showCreateErrors && errors.itemRate;
+
+                                                 return (
+                                                     <DataGridRow key={index}>
+                                                         {/* NAME */}
+                                                         <DataGridCell>
+                                                             <ValidationTooltip
+                                                                 isValid={!isItemNameInvalid}
+                                                                 message={errors.itemNameMessage}
+                                                             >
+                                                                 <Input
+                                                                     className={cn(
+                                                                         "h-9 w-full rounded-[3px] border border-input bg-background px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary",
+                                                                         isItemNameInvalid && "border-red-500"
+                                                                     )}
+                                                                     value={row.itemName}
+                                                                     placeholder="Enter item name"
+                                                                     onChange={(e) => updateCreateRow(index, { itemName: normalizeTextInput(e.target.value) })}
+                                                                     onBlur={() => updateCreateRow(index, { touched: { ...row.touched, itemName: true } })}
+                                                                     onKeyDown={(e) => {
+                                                                         if (e.key === "Enter") addCreateRow();
+                                                                     }}
+                                                                 />
+                                                             </ValidationTooltip>
+                                                         </DataGridCell>
+
+                                                         {/* DESCRIPTION */}
+                                                         <DataGridCell>
+                                                             <Input
+                                                                 className="h-9 w-full rounded-[3px] border border-input bg-background px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary"
+                                                                 value={row.description}
+                                                                 placeholder="Short description (optional)"
+                                                                 onChange={(e) => updateCreateRow(index, { description: normalizeTextInput(e.target.value) })}
+                                                                 onKeyDown={(e) => {
+                                                                     if (e.key === "Enter") addCreateRow();
+                                                                 }}
+                                                             />
+                                                         </DataGridCell>
+
+                                                         {/* RATE */}
+                                                         <DataGridCell className="text-center">
+                                                             <ValidationTooltip
+                                                                 isValid={!isItemRateInvalid}
+                                                                 message="Required field"
+                                                             >
+                                                                 <Input
+                                                                     className={cn(
+                                                                         "h-9 w-full rounded-[3px] border border-input bg-background text-center text-sm font-bold shadow-none focus-visible:ring-1 focus-visible:ring-primary",
+                                                                         isItemRateInvalid && "border-red-500"
+                                                                     )}
+                                                                     value={row.itemRate}
+                                                                     placeholder="0.00"
+                                                                     onChange={(e) => updateCreateRow(index, { itemRate: normalizeNumberInput(e.target.value) })}
+                                                                     onBlur={() => updateCreateRow(index, { touched: { ...row.touched, itemRate: true } })}
+                                                                     onKeyDown={(e) => {
+                                                                         if (e.key === "Enter") addCreateRow();
+                                                                     }}
+                                                                 />
+                                                             </ValidationTooltip>
+                                                         </DataGridCell>
+
+                                                         {/* ACTION */}
+                                                         {createRows.length > 1 && (
+                                                             <DataGridCell className="text-center">
+                                                                 <Button
+                                                                     size="icon"
+                                                                     variant="ghost"
+                                                                     className="editable-grid-remove-btn h-10 w-10 text-destructive hover:text-destructive/80 transition-colors"
+                                                                     onClick={() => removeCreateRow(index)}
+                                                                 >
+                                                                     <Trash2 className="w-5 h-5" />
+                                                                 </Button>
+                                                             </DataGridCell>
+                                                         )}
+                                                     </DataGridRow>
+                                                 );
+                                             })}
+                                         </tbody>
+                                    </DataGrid>
+
+                                    <div className="editable-grid-footer p-3 bg-muted/10">
+                                        <div className="flex flex-col gap-2">
+                                            <button
+                                                type="button"
+                                                className="flex items-center gap-1.5 text-primary hover:underline text-sm font-semibold transition-colors"
+                                                onClick={addCreateRow}
+                                            >
+                                                <PlusCircle className="w-4 h-4" /> Add New Pricing Item(s)
+                                            </button>
+                                            {showCreateErrors && (errors => {
+                                                const formDups = createRows.some((row, index) => getCreateRowErrors(row, index).duplicateInForm);
+                                                const existDups = createRows.some((row, index) => getCreateRowErrors(row, index).duplicateExisting);
+                                                if (!formDups && !existDups) return null;
+                                                return (
+                                                    <p className="text-[10px] text-red-600 font-medium italic">
+                                                        * {DUPLICATE_ITEMS_MESSAGE}
+                                                    </p>
+                                                );
+                                            })()}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="p-6 border-t bg-muted/20 flex justify-end gap-3 shrink-0">
+                            <Button variant="outline" onClick={() => setSheetOpen(false)}>
+                                {mode === "view" ? "Close" : "Cancel"}
+                            </Button>
+                            {mode !== "view" && (
+                                <Button variant="hero" className="min-w-[140px]" onClick={handleSave}>
+                                    {mode === "edit" ? "Save Changes" : "Create Items"}
+                                </Button>
+                            )}
                         </div>
-
                     </div>
-
                 </SheetContent>
-
             </Sheet>
         </div >
     );
 }
-
-

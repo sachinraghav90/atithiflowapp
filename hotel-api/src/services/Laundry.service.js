@@ -109,6 +109,7 @@ class LaundryService {
         const names = items.map(i => i.itemName?.trim());
         const descriptions = items.map(i => i.description ?? null);
         const rates = items.map(i => i.itemRate ?? 0);
+        const isActive = items.map(i => i.isActive !== false);
 
         const query = `
                     insert into public.laundry (
@@ -116,6 +117,7 @@ class LaundryService {
                         item_name,
                         description,
                         item_rate,
+                        is_active,
                         system_generated,
                         created_by
                     )
@@ -124,8 +126,9 @@ class LaundryService {
                         unnest($2::text[]),
                         unnest($3::text[]),
                         unnest($4::numeric[]),
+                        unnest($5::boolean[]),
                         false,
-                        $5
+                        $6
                     on conflict (property_id, item_name) do nothing
                     returning *;
                 `;
@@ -135,27 +138,41 @@ class LaundryService {
             names,
             descriptions,
             rates,
+            isActive,
             userId
         ]);
 
-        /* ---------- AUDIT ---------- */
+        if (rows.length > 0) {
+            const itemMap = new Map(
+                items.map((item) => [
+                    item.itemName?.trim()?.toLowerCase(),
+                    item
+                ])
+            );
 
-        // if (rows.length > 0) {
-        //     await AuditService.log({
-        //         property_id: propertyId,
-        //         event_id: null,
-        //         table_name: "laundry",
-        //         event_type: "BULK_CREATE",
-        //         task_name: "Bulk Create Laundry Items",
-        //         comments: "Laundry items created in bulk (duplicates ignored)",
-        //         details: JSON.stringify({
-        //             inserted_ids: rows.map(r => r.id),
-        //             total_attempted: items.length,
-        //             total_inserted: rows.length
-        //         }),
-        //         user_id: userId
-        //     });
-        // }
+            await Promise.all(
+                rows.map((row) =>
+                    AuditService.log({
+                        property_id: propertyId,
+                        event_id: row.id,
+                        table_name: "laundry",
+                        event_type: "CREATE",
+                        task_name: "Create Laundry Item",
+                        comments: "Laundry item created",
+                        details: JSON.stringify({
+                            laundry_id: row.id,
+                            item_name: row.item_name,
+                            description: row.description ?? null,
+                            item_rate: row.item_rate ?? 0,
+                            is_active: row.is_active,
+                            system_generated: false,
+                            requested: itemMap.get(row.item_name?.trim()?.toLowerCase()) ?? null
+                        }),
+                        user_id: userId
+                    })
+                )
+            );
+        }
 
         return rows;
     }

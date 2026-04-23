@@ -118,6 +118,41 @@ class InventoryController {
                 err
             );
 
+            if (err.code === "23505") {
+                return res.status(409).json({
+                    message: "One or more inventory items already exist in this category"
+                });
+            }
+
+            return res.status(500).json({
+                message: err.message || "Internal server error"
+            });
+        }
+    }
+
+    /* =====================================================
+        CHECK DUPLICATES INVENTORY
+    ===================================================== */
+
+    async checkDuplicates(req, res) {
+        try {
+            const { items } = req.body;
+
+            if (!items || !Array.isArray(items)) {
+                return res.status(400).json({
+                    message: "Items array is required"
+                });
+            }
+
+            const duplicates = await InventoryService.checkDuplicates(items);
+
+            return res.status(200).json({
+                duplicates
+            });
+
+        } catch (err) {
+            console.error("InventoryController ~ checkDuplicates ~ error:", err);
+
             return res.status(500).json({
                 message: err.message || "Internal server error"
             });
@@ -147,6 +182,12 @@ class InventoryController {
         } catch (error) {
 
             console.error("updateInventory error:", error);
+
+            if (error.code === "23505" || error.code === "INVENTORY_DUPLICATE" || error.statusCode === 409) {
+                return res.status(409).json({
+                    message: "Inventory item already exists in this category"
+                });
+            }
 
             return res.status(500).json({
                 message: "Failed to update inventory"

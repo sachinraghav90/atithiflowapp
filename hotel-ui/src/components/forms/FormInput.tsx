@@ -66,8 +66,8 @@ export default function FormInput({
                 maxLength={maxLength}
                 className={
                     error
-                        ? "border-red-500 bg-white"
-                        : "bg-white"
+                        ? "border-red-500"
+                        : ""
                 }
                 onChange={(e) => {
 

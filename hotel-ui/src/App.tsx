@@ -24,7 +24,6 @@ import PackageManagement from "./pages/PackageManagement.tsx";
 import BookingsManagement from "./pages/BookingManagement.tsx";
 // import GuestsCreationManagement from "./pages/GuestsCreationManagement.tsx";
 // import GuestsManagement from "./pages/GuestManagement.tsx";
-import "react-datepicker/dist/react-datepicker.css";
 import PaymentsManagement from "./pages/PaymentManagement.tsx";
 import RoomTypeBasePriceManagement from "./pages/RoomTypeBasePriceManagement.tsx";
 import { useAutoLogout } from "./hooks/useAutoLogout.ts";

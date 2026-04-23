@@ -20,6 +20,7 @@ import {
     useAddVehiclesMutation,
 } from "@/redux/services/hmsApi";
 import { useAppSelector } from "@/redux/hook";
+import { PlusCircle } from "lucide-react";
 
 /* ---------------- Types ---------------- */
 type GuestForm = {
@@ -225,13 +226,14 @@ export default function BookingGuestsManagement() {
                             </p>
                         </div>
 
-                        <div className="flex gap-2">
-                            <Button
-                                variant="heroOutline"
+                        <div className="flex items-center gap-4">
+                            <button
+                                type="button"
+                                className="flex items-center gap-1.5 text-primary hover:underline text-sm font-medium transition-colors"
                                 onClick={addGuest}
                             >
-                                + Add Guest
-                            </Button>
+                                <PlusCircle className="w-4 h-4" /> Add New Guest(s)
+                            </button>
 
                             <Button
                                 variant="hero"
@@ -361,13 +363,13 @@ export default function BookingGuestsManagement() {
                                         <div className="flex items-center justify-between">
                                             <p className="font-semibold">Vehicle Details</p>
 
-                                            <Button
-                                                size="sm"
-                                                variant="heroOutline"
+                                            <button
+                                                type="button"
+                                                className="flex items-center gap-1.5 text-primary hover:underline text-sm font-medium transition-colors"
                                                 onClick={addVehicle}
                                             >
-                                                + Add Vehicle
-                                            </Button>
+                                                <PlusCircle className="w-4 h-4" /> Add New Vehicle(s)
+                                            </button>
                                         </div>
 
                                         {vehicles.length === 0 && (
@@ -477,4 +479,3 @@ export default function BookingGuestsManagement() {
         </div>
     );
 }
-
