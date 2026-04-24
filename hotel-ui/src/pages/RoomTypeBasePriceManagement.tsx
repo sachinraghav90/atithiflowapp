@@ -80,8 +80,8 @@ export default function RoomTypeBasePriceManagement() {
         refetch: refetchRoomTypes
     } = useGetRoomTypesQuery({
         propertyId,
-        page,
-        limit,
+        page: 1,
+        limit: 1000,
         category: filterCategory || undefined,
         bedType: filterBedType || undefined,
         acType: filterAcType || undefined,
@@ -145,8 +145,6 @@ export default function RoomTypeBasePriceManagement() {
         return roomTypesData?.filters?.acTypes ?? [];
     }, [roomTypesData]);
 
-    const totalPages = roomTypesData?.pagination?.totalPages ?? 1;
-
     const updateRoomRates = () => {
 
         const promise = updateRoomTypes({ payload }).unwrap()
@@ -208,6 +206,19 @@ export default function RoomTypeBasePriceManagement() {
         );
     }, [rows, searchQuery]);
 
+    const totalRecords = filteredRows.length;
+    const totalPages = Math.max(1, Math.ceil(totalRecords / limit));
+    const paginatedRows = useMemo(() => {
+        const start = (page - 1) * limit;
+        return filteredRows.slice(start, start + limit);
+    }, [filteredRows, page, limit]);
+
+    useEffect(() => {
+        if (page > totalPages) {
+            setPage(totalPages);
+        }
+    }, [page, totalPages]);
+
     const resetFiltersHandler = () => {
         setSearchInput("");
         setSearchQuery("");
@@ -230,7 +241,7 @@ export default function RoomTypeBasePriceManagement() {
         }
     };
 
-    const formatted = roomTypesData?.data?.map((r: RateRow) => ({
+    const formatted = filteredRows.map((r: RateRow) => ({
         // ID: r.id,
         // Property: r.property_id,
         Category: r.room_category_name,
@@ -411,6 +422,7 @@ export default function RoomTypeBasePriceManagement() {
 
                     <div className="px-2 pb-2">
                     <AppDataGrid
+                        density="compact"
                     columns={[
                         {
                             label: "Room ID",
@@ -464,7 +476,7 @@ export default function RoomTypeBasePriceManagement() {
                                 ),
                         },
                     ] as ColumnDef[]}
-                    data={filteredRows}
+                    data={paginatedRows}
                     loading={roomTypesLoading || isInitializing}
                     emptyText="No room categories found"
                     minWidth="760px"
@@ -477,11 +489,11 @@ export default function RoomTypeBasePriceManagement() {
                                 <Button
                                     size="icon"
                                     variant="ghost"
-                                    className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                    className="h-7 w-7 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
                                     aria-label={`Edit price for ${r.room_category_name}`}
                                     onClick={() => handleOpenRowSheet(r, "edit")}
                                 >
-                                    <Pencil className="w-4 h-4 mx-auto" />
+                                    <Pencil className="w-3.5 h-3.5 mx-auto" />
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent>Edit Price</TooltipContent>
@@ -492,7 +504,7 @@ export default function RoomTypeBasePriceManagement() {
                         page,
                         totalPages,
                         setPage,
-                        totalRecords: roomTypesData?.pagination?.total ?? rows.length,
+                        totalRecords,
                         limit,
                         onLimitChange: handleLimitChange,
                         disabled: roomTypesLoading || roomTypesFetching,

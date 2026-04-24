@@ -116,7 +116,7 @@ export function OrderItemsModal({
                 {isLoading && (
                     <div className="space-y-4 w-full animate-pulse">
                         {/* Skeleton Order Summary */}
-                        <div className="grid grid-cols-2 gap-4 text-sm bg-muted p-3 rounded-[5px] w-full">
+                        <div className="grid grid-cols-2 gap-4 text-sm bg-background p-3 rounded-lg border border-border w-full">
                             <div className="space-y-1">
                                 <div className="h-3 w-16 bg-muted-foreground/20 rounded"></div>
                                 <div className="h-4 w-24 bg-muted-foreground/30 rounded"></div>
@@ -148,7 +148,7 @@ export function OrderItemsModal({
                         </div>
 
                         {/* Skeleton Table */}
-                        <div className="border border-border rounded-lg overflow-hidden space-y-2 p-4">
+                        <div className="border border-border rounded-lg overflow-hidden space-y-2 p-4 bg-background">
                             <div className="h-8 w-full bg-muted-foreground/20 rounded-[3px]"></div>
                             <div className="h-8 w-full bg-muted-foreground/10 rounded-[3px]"></div>
                             <div className="h-8 w-full bg-muted-foreground/10 rounded-[3px]"></div>
@@ -160,7 +160,7 @@ export function OrderItemsModal({
                     <div className="space-y-4">
 
                         {/* ================= ORDER SUMMARY ================= */}
-                        <div className="grid grid-cols-2 gap-4 text-sm bg-muted p-3 rounded-lg">
+                        <div className="grid grid-cols-2 gap-4 text-sm bg-background p-3 rounded-lg border border-border">
 
                             <Info label="Order ID" value={formatOrderDisplayId(data.id)} />
                             <Info label="Order Type" value={data.order_type || "—"} />
@@ -237,7 +237,7 @@ export function OrderItemsModal({
                         {/* ================= ITEMS TABLE ================= */}
                         <div className="border rounded-lg overflow-hidden">
                             <table className="w-full text-sm">
-                                <thead className="bg-muted">
+                                <thead className="bg-background border-b">
                                     <tr>
                                         <th className="p-2 text-left">Item</th>
                                         <th className="p-2 text-center">Qty</th>

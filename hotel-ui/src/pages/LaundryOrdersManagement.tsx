@@ -44,6 +44,7 @@ import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, Gri
 import { ValidationTooltip } from "@/components/ui/validation-tooltip";
 
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
+import { formatReadableLabel } from "@/utils/formatString";
 
 /* ---------------- Types ---------------- */
 export type LaundryStatus =
@@ -150,7 +151,7 @@ function formatDateTime(value?: string | null) {
 }
 
 function formatDisplayStatus(value?: string | null) {
-    return value ? value.replace(/_/g, " ") : "--";
+    return formatReadableLabel(value) || "--";
 }
 
 function getLaundryVendorStatus(order: LaundryOrder) {
@@ -303,7 +304,14 @@ export default function LaundryOrdersManagement() {
 
     const { myProperties, isMultiProperty, isInitializing } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
 
-    const { data, isLoading: ordersLoading, isFetching: ordersFetching, refetch: refetchOrders } = useGetPropertyLaundryOrdersQuery({ propertyId: selectedPropertyId, page: ordersPage, limit: ordersLimit }, {
+    const { data: laundryData, isLoading: laundryLoading, isFetching: laundryFetching, refetch: refetchLaundry } = useGetPropertyLaundryOrdersQuery({
+        propertyId: selectedPropertyId,
+        page: ordersPage,
+        limit: ordersLimit,
+        search: searchQuery,
+        status: laundryStatusFilter || undefined,
+        vendor_status: vendorStatusFilter || undefined
+    }, {
         skip: !isLoggedIn || !selectedPropertyId
     })
     const [getAllLaundryOrders, { isFetching: exportingLaundryOrders }] = useLazyExportPropertyLaundryOrdersQuery()
@@ -324,7 +332,7 @@ export default function LaundryOrdersManagement() {
         skip: !isLoggedIn || !form.bookingId
     })
 
-    const { data: logs, isFetching: logsFetching, refetch: refetchLogs } = useGetLogsByTableQuery({ tableName: "laundry_orders", propertyId: selectedPropertyId, page: auditPage, limit: auditLimit }, {
+    const { data: logs, isFetching: logsFetching, refetch: refetchLogs } = useGetLogsByTableQuery({ tableName: "laundry_orders", propertyId: selectedPropertyId, page: 1, limit: 1000 }, {
         skip: !isLoggedIn || !selectedPropertyId
     })
     const { data: singleLog } = useGetLogsQuery({ tableName: "laundry_orders", eventId: historyModal.order?.id }, {
@@ -565,40 +573,8 @@ export default function LaundryOrdersManagement() {
     const { permission } = usePermission(pathname)
 
     const filteredOrders = useMemo(() => {
-        if (!data?.data) return [];
-
-        const query = searchQuery.trim().toLowerCase();
-
-        return data.data.filter((order) => {
-            const displayOrder = getLaundryOrderDisplay(order, vendors);
-            const matchesLaundryStatus = !laundryStatusFilter || order.laundry_status === laundryStatusFilter;
-            const matchesVendorStatus = !vendorStatusFilter || displayOrder.vendorStatus === vendorStatusFilter;
-
-            if (!matchesLaundryStatus || !matchesVendorStatus) {
-                return false;
-            }
-
-            if (!query) {
-                return true;
-            }
-
-            const searchFields = [
-                order.id?.toString() || "",
-                displayOrder.itemLabel,
-                displayOrder.itemCountLabel,
-                displayOrder.pickupDateLabel,
-                displayOrder.deliveryDateLabel,
-                displayOrder.laundryStatusLabel,
-                displayOrder.vendorStatusLabel,
-                displayOrder.vendorName,
-                order.amount || "",
-            ];
-
-            return searchFields.some((field) =>
-                field.toLowerCase().includes(query)
-            );
-        });
-    }, [data?.data, laundryStatusFilter, searchQuery, vendorStatusFilter, vendors]);
+        return laundryData?.data ?? [];
+    }, [laundryData?.data]);
 
     const filteredAuditLogs = useMemo(() => {
         if (!logs?.data) return [];
@@ -628,6 +604,19 @@ export default function LaundryOrdersManagement() {
             return searchFields.some((field) => field.toLowerCase().includes(query));
         });
     }, [auditActionFilter, auditSearchQuery, logs?.data]);
+
+    const auditTotalRecords = filteredAuditLogs.length;
+    const auditTotalPages = Math.max(1, Math.ceil(auditTotalRecords / auditLimit));
+    const paginatedAuditLogs = useMemo(() => {
+        const start = (auditPage - 1) * auditLimit;
+        return filteredAuditLogs.slice(start, start + auditLimit);
+    }, [filteredAuditLogs, auditPage, auditLimit]);
+
+    useEffect(() => {
+        if (auditPage > auditTotalPages) {
+            setAuditPage(auditTotalPages);
+        }
+    }, [auditPage, auditTotalPages]);
 
     const laundryAuditColumns = useMemo<ColumnDef[]>(() => [
         {
@@ -776,11 +765,11 @@ export default function LaundryOrdersManagement() {
     };
 
     const refreshTable = async () => {
-        if (activeTab === "orders" && ordersFetching) return;
+        if (activeTab === "orders" && laundryFetching) return;
         if (activeTab === "audit" && logsFetching) return;
 
         if (activeTab === "orders") {
-            await refetchOrders();
+            await refetchLaundry();
             return;
         }
 
@@ -795,6 +784,9 @@ export default function LaundryOrdersManagement() {
         try {
             const res = await getAllLaundryOrders({
                 propertyId: selectedPropertyId,
+                status: laundryStatusFilter || undefined,
+                vendor_status: vendorStatusFilter || undefined,
+                search: searchQuery,
             }).unwrap();
 
             const rows = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
@@ -936,7 +928,7 @@ export default function LaundryOrdersManagement() {
                                         options={[
                                             { label: "All", value: "" },
                                             ...VENDOR_STATUSES.map((status) => ({
-                                                label: status.replace(/_/g, " "),
+                                                label: formatDisplayStatus(status),
                                                 value: status,
                                             })),
                                         ]}
@@ -952,7 +944,7 @@ export default function LaundryOrdersManagement() {
                                         options={[
                                             { label: "All", value: "" },
                                             ...LAUNDRY_STATUSES.map((status) => ({
-                                                label: status.replace(/_/g, " "),
+                                                label: formatDisplayStatus(status),
                                                 value: status,
                                             })),
                                         ]}
@@ -979,7 +971,7 @@ export default function LaundryOrdersManagement() {
                                                 label: "Refresh Data",
                                                 icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
                                                 onClick: refreshTable,
-                                                disabled: ordersFetching,
+                                                disabled: laundryFetching,
                                             },
                                         ]}
                                     />
@@ -991,7 +983,7 @@ export default function LaundryOrdersManagement() {
                             <AppDataGrid
                                 columns={laundryOrderColumns}
                                 data={filteredOrders}
-                                loading={ordersLoading || isInitializing}
+                                loading={laundryLoading || isInitializing}
                                 emptyText="No laundry orders found"
                                 minWidth="1080px"
                                 actionClassName="text-center w-[60px]"
@@ -1002,7 +994,7 @@ export default function LaundryOrdersManagement() {
                                             <Button
                                                 size="icon"
                                                 variant="ghost"
-                                                className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                                className="h-7 w-7 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
                                                 onClick={() => {
                                                     setEditOrder(order);
                                                     setViewItemsModal({
@@ -1012,18 +1004,18 @@ export default function LaundryOrdersManagement() {
                                                     });
                                                 }}
                                             >
-                                                <Pencil className="w-4 h-4 mx-auto" />
+                                                <Pencil className="w-3.5 h-3.5 mx-auto" />
                                             </Button>
                                         </TooltipTrigger>
                                         <TooltipContent>Edit Order</TooltipContent>
                                     </Tooltip>
                                 )}
-                                enablePagination={!!data?.pagination}
+                                enablePagination={!!laundryData?.pagination}
                                 paginationProps={{
                                     page: ordersPage,
-                                    totalPages: data?.pagination?.totalPages ?? 1,
+                                    totalPages: laundryData?.pagination?.totalPages ?? 1,
                                     setPage: setOrdersPage,
-                                    totalRecords: data?.pagination?.totalItems ?? data?.pagination?.total ?? data?.data?.length ?? 0,
+                                    totalRecords: laundryData?.pagination?.totalItems ?? laundryData?.pagination?.total ?? laundryData?.data?.length ?? 0,
                                     limit: ordersLimit,
                                     onLimitChange: (value) => {
                                         setOrdersLimit(value);
@@ -1099,17 +1091,17 @@ export default function LaundryOrdersManagement() {
                         <div className="px-2 pb-2">
                             <AppDataGrid
                                 columns={laundryAuditColumns}
-                                data={filteredAuditLogs}
+                                data={paginatedAuditLogs}
                                 loading={logsFetching}
                                 emptyText="No audit logs found"
                                 minWidth="1080px"
                                 className="mt-0"
-                                enablePagination={!!logs?.pagination}
+                                enablePagination
                                 paginationProps={{
                                     page: auditPage,
-                                    totalPages: logs?.pagination?.totalPages ?? 1,
+                                    totalPages: auditTotalPages,
                                     setPage: setAuditPage,
-                                    totalRecords: logs?.pagination?.totalItems ?? logs?.pagination?.total ?? logs?.data?.length ?? 0,
+                                    totalRecords: auditTotalRecords,
                                     limit: auditLimit,
                                     onLimitChange: (value) => {
                                         setAuditLimit(value);
@@ -1173,7 +1165,7 @@ export default function LaundryOrdersManagement() {
                                 >
                                     {(["NOT_ALLOTTED", "PICKED_UP", "RECEIVED"] as VendorStatus[]).map(s => (
                                         <option key={s} value={s}>
-                                            {s.replace(/_/g, " ")}
+                                            {formatDisplayStatus(s)}
                                         </option>
                                     ))}
                                 </NativeSelect>
@@ -1595,7 +1587,7 @@ export default function LaundryOrdersManagement() {
                             : `Are you sure you want to update ${statusModal.type} status to `}
 
                         {statusModal.status && (
-                            <strong> {statusModal.status.replace(/_/g, " ")}</strong>
+                            <strong> {formatDisplayStatus(statusModal.status)}</strong>
                         )}
 
                     </p>

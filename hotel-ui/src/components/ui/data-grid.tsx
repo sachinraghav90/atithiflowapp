@@ -135,6 +135,8 @@ export type AppDataGridProps<T = Record<string, unknown>> = {
     className?: string
     /** Extra className on the DataGrid (table) */
     tableClassName?: string
+    /** Visual density for shared read-only grids */
+    density?: "default" | "compact"
     /** Row click handler */
     onRowClick?: (row: T, index: number) => void
     /** Extra props to spread on each DataGridRow */
@@ -326,12 +328,18 @@ function AppDataGrid<T extends Record<string, unknown>>({
     minWidth = "800px",
     className,
     tableClassName,
+    density = "default",
     onRowClick,
     rowProps,
     showActions = true,
 }: AppDataGridProps<T>) {
     const hasActions = Boolean(actions && showActions)
     const totalCols = columns.length + (hasActions ? 1 : 0)
+    const isCompact = density === "compact"
+    const compactHeadClassName = isCompact ? "px-2 py-2 text-[13px] leading-snug" : undefined
+    const compactCellClassName = isCompact ? "px-1.5 py-2 leading-snug" : undefined
+    const compactEmptyClassName = isCompact ? "px-2 py-4" : "py-6"
+    const compactSkeletonClassName = isCompact ? "px-1.5 py-2.5" : "py-4"
 
     return (
         <div
@@ -341,27 +349,27 @@ function AppDataGrid<T extends Record<string, unknown>>({
             )}
         >
             {/* Scrollable area — matches OrderManagement pattern */}
-            <div className="overflow-x-auto overflow-y-auto scrollbar-hide w-full flex-1 min-h-0 bg-background">
+            <div className="grid-scroll-x overflow-y-auto w-full flex-1 min-h-0 bg-background">
                 <div className="w-full" style={{ minWidth }}>
                     <DataGrid className={tableClassName}>
                         {/* ---- HEAD ---- */}
                         <DataGridHeader>
                             <tr>
                                 {hasActions && prefixActions && (
-                                    <DataGridHead className={cn(actionClassName)}>
+                                    <DataGridHead className={cn(compactHeadClassName, actionClassName)}>
                                         {actionLabel}
                                     </DataGridHead>
                                 )}
                                 {columns.map((col, i) => (
                                     <DataGridHead
                                         key={col.key ?? `col-${i}`}
-                                        className={cn(col.className, col.headClassName)}
+                                        className={cn(compactHeadClassName, col.className, col.headClassName)}
                                     >
                                         {col.label}
                                     </DataGridHead>
                                 ))}
                                 {hasActions && !prefixActions && (
-                                    <DataGridHead className={cn(actionClassName)}>
+                                    <DataGridHead className={cn(compactHeadClassName, actionClassName)}>
                                         {actionLabel}
                                     </DataGridHead>
                                 )}
@@ -375,7 +383,7 @@ function AppDataGrid<T extends Record<string, unknown>>({
                                 Array.from({ length: 5 }).map((_, i) => (
                                     <DataGridRow key={`skeleton-${i}`} className="animate-pulse">
                                         {Array.from({ length: totalCols }).map((__, j) => (
-                                            <DataGridCell key={`sk-cell-${j}`} className="py-4">
+                                            <DataGridCell key={`sk-cell-${j}`} className={compactSkeletonClassName}>
                                                 <div className="h-4 bg-muted rounded w-3/4 mx-auto" />
                                             </DataGridCell>
                                         ))}
@@ -388,7 +396,7 @@ function AppDataGrid<T extends Record<string, unknown>>({
                                 <DataGridRow>
                                     <DataGridCell
                                         colSpan={totalCols}
-                                        className="text-center text-muted-foreground py-6"
+                                        className={cn("text-center text-muted-foreground", compactEmptyClassName)}
                                     >
                                         {emptyText}
                                     </DataGridCell>
@@ -418,7 +426,7 @@ function AppDataGrid<T extends Record<string, unknown>>({
                                             {...extraProps}
                                         >
                                             {hasActions && prefixActions && (
-                                                <DataGridCell className={cn(actionClassName)}>
+                                                <DataGridCell className={cn(compactCellClassName, actionClassName)}>
                                                     {actions(row, idx)}
                                                 </DataGridCell>
                                             )}
@@ -426,6 +434,7 @@ function AppDataGrid<T extends Record<string, unknown>>({
                                                 <DataGridCell
                                                     key={col.key ?? `cell-${ci}`}
                                                     className={cn(
+                                                        compactCellClassName,
                                                         col.className,
                                                         col.cellClassName
                                                     )}
@@ -439,7 +448,7 @@ function AppDataGrid<T extends Record<string, unknown>>({
                                             ))}
                                             {hasActions && !prefixActions && (
                                                 <DataGridCell
-                                                    className={cn(actionClassName)}
+                                                    className={cn(compactCellClassName, actionClassName)}
                                                 >
                                                     {actions(row, idx)}
                                                 </DataGridCell>

@@ -12,10 +12,21 @@ class InventoryService {
        GET inventory by property
     ===================================================== */
 
-    async getInventoryByPropertyId({ propertyId, inventoryTypeId, page = 1, limit = 10 }) {
+    async getInventoryByPropertyId({
+        propertyId,
+        inventoryTypeId,
+        page = 1,
+        limit = 10,
+        search = "",
+        type = "",
+        useType = "",
+        status = "",
+        exportRows = false
+    }) {
         const safePage = Math.max(Number(page) || 1, 1);
         const safeLimit = Math.min(Math.max(Number(limit) || 10, 1), 100);
         const offset = (safePage - 1) * safeLimit;
+        const normalizedSearch = search.trim();
 
         let where = `WHERE im.property_id = $1`;
         const values = [propertyId];
@@ -24,6 +35,47 @@ class InventoryService {
         if (inventoryTypeId) {
             where += ` AND im.inventory_type_id = $${i++}`;
             values.push(inventoryTypeId);
+        }
+
+        if (type) {
+            where += ` AND it.type = $${i++}`;
+            values.push(type);
+        }
+
+        if (useType) {
+            where += ` AND im.use_type = $${i++}`;
+            values.push(useType);
+        }
+
+        if (status === "active" || status === "true") {
+            where += ` AND im.is_active = $${i++}`;
+            values.push(true);
+        } else if (status === "inactive" || status === "false") {
+            where += ` AND im.is_active = $${i++}`;
+            values.push(false);
+        }
+
+        if (normalizedSearch) {
+            const formattedIdMatch = normalizedSearch.match(/^in0*(\d+)$/i);
+            const isNumericIdSearch = /^\d+$/.test(normalizedSearch);
+
+            if (formattedIdMatch || isNumericIdSearch) {
+                const rawId = formattedIdMatch ? formattedIdMatch[1] : normalizedSearch;
+                const inventoryId = Number(rawId);
+
+                where += ` AND (
+                    im.id = $${i++}
+                    OR im.name ILIKE $${i++}
+                )`;
+                values.push(inventoryId, `%${normalizedSearch}%`);
+            } else {
+                where += ` AND (
+                    im.name ILIKE $${i}
+                    OR TO_CHAR(im.created_on, 'DD/MM/YYYY') ILIKE $${i}
+                )`;
+                values.push(`%${normalizedSearch}%`);
+                i += 1;
+            }
         }
 
         const query = `
@@ -35,18 +87,20 @@ class InventoryService {
                 ON it.id = im.inventory_type_id
             ${where}
             ORDER BY im.created_on DESC
-            LIMIT $${i++} OFFSET $${i++}
+            ${exportRows ? "" : `LIMIT $${i++} OFFSET $${i++}`}
         `;
 
         const countQuery = `
             SELECT COUNT(*)::int AS total
             FROM public.inventory_master im
+            JOIN public.inventory_types it
+                ON it.id = im.inventory_type_id
             ${where}
         `;
 
         const [{ rows: countRows }, result] = await Promise.all([
             this.#DB.query(countQuery, values),
-            this.#DB.query(query, [...values, safeLimit, offset])
+            this.#DB.query(query, exportRows ? values : [...values, safeLimit, offset])
         ]);
 
         const total = countRows[0]?.total ?? 0;

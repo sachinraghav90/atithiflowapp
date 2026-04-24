@@ -15,6 +15,8 @@ import {
     useUpdateEnquiryMutation,
 } from "@/redux/services/hmsApi";
 import { useAppSelector } from "@/redux/hook";
+import { normalizeTextInput } from "@/utils/normalizeTextInput";
+import { formatReadableLabel } from "@/utils/formatString";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { toast } from "react-toastify";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -99,7 +101,7 @@ const ENQUIRY_STATUS_OPTIONS: Array<{ label: string; value: EnquiryStatus }> = [
 ];
 
 function formatEnquiryStatus(status?: string | null) {
-    return status ? status.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "—";
+    return formatReadableLabel(status) || "—";
 }
 
 function formatEnquiryDate(value?: string | null) {
@@ -151,22 +153,60 @@ export default function EnquiriesManagement() {
     };
     const { myProperties, isMultiProperty, isInitializing } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
 
-    const { data: enquiries, isLoading: enquiryLoading, refetch } = useGetPropertyEnquiriesQuery({ propertyId: selectedPropertyId, page, limit }, {
+    const cleanSearchQuery = useMemo(() => {
+        if (!searchQuery) return "";
+        const statusLabels = ENQUIRY_STATUS_OPTIONS.map(opt => opt.label.toLowerCase());
+        const filterKeywords = [...statusLabels];
+        return filterKeywords
+            .sort((left, right) => right.length - left.length)
+            .reduce((query, keyword) => {
+                const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                return query.replace(new RegExp(`\\b${escapedKeyword}\\b`, "gi"), " ");
+            }, searchQuery)
+            .replace(/\s+/g, " ")
+            .trim();
+    }, [searchQuery]);
+
+    const { data: enquiries, isLoading: enquiryLoading, refetch } = useGetPropertyEnquiriesQuery({
+        propertyId: selectedPropertyId,
+        page,
+        limit,
+        search: cleanSearchQuery,
+        status: statusFilter
+    }, {
         skip: !isLoggedIn || !selectedPropertyId
     })
 
     const [getAllEnquiries, { isFetching: exportingEnquiries }] = useLazyExportPropertyEnquiriesQuery()
     const [updateEnquiry] = useUpdateEnquiryMutation()
 
+    useEffect(() => {
+        setPage(1);
+    }, [selectedPropertyId, searchQuery, statusFilter]);
+
     const exportEnquiriesSheet = async () => {
         if (exportingEnquiries) return;
+
+        const totalRecords = enquiries?.pagination?.totalItems ?? enquiries?.pagination?.total ?? (enquiries?.data?.length || 0);
+        if (!totalRecords) {
+            toast.info("No enquiries to export");
+            return;
+        }
 
         const toastId = toast.loading("Preparing enquiries export...");
 
         try {
             const res = await getAllEnquiries({
                 propertyId: selectedPropertyId,
+                status: statusFilter,
+                search: cleanSearchQuery,
             }).unwrap();
+
+            if (!res?.data?.length) {
+                toast.dismiss(toastId);
+                toast.info("No enquiries to export");
+                return;
+            }
 
             const formatted = res.data.map((enquiry: Enquiry) => {
                 const displayEnquiry = getEnquiryDisplay(enquiry);
@@ -235,28 +275,42 @@ export default function EnquiriesManagement() {
     };
 
     const refreshTable = async () => {
-        await refetch();
+        if (enquiryLoading) return;
+        const toastId = toast.loading("Refreshing data...");
+        try {
+            await refetch();
+            toast.dismiss(toastId);
+            toast.success("Data refreshed");
+        } catch {
+            toast.dismiss(toastId);
+            toast.error("Failed to refresh");
+        }
     };
 
     const filteredEnquiries = useMemo(() => {
-        const baseRows = enquiries?.data ?? [];
-        const statusFiltered = statusFilter
-            ? baseRows.filter((enquiry) => enquiry.status === statusFilter)
-            : baseRows;
+        const rows = enquiries?.data ?? [];
+        const query = cleanSearchQuery.toLowerCase();
 
-        return filterGridRowsByQuery(statusFiltered, searchQuery, [
-            (enquiry) => enquiry.id,
-            (enquiry) => enquiry.email,
-            (enquiry) => getEnquiryDisplay(enquiry).primaryLabel,
-            (enquiry) => getEnquiryDisplay(enquiry).contactLabel,
-            (enquiry) => getEnquiryDisplay(enquiry).cityLabel,
-            (enquiry) => getEnquiryDisplay(enquiry).statusLabel,
-            (enquiry) => getEnquiryDisplay(enquiry).offerAmountLabel,
-            (enquiry) => getEnquiryDisplay(enquiry).checkInLabel,
-            (enquiry) => getEnquiryDisplay(enquiry).checkOutLabel,
-            (enquiry) => getEnquiryDisplay(enquiry).followUpLabel,
-        ]);
-    }, [enquiries?.data, searchQuery, statusFilter]);
+        if (!query) return rows;
+
+        return rows.filter((enquiry: Enquiry) => {
+            const displayId = formatModuleDisplayId("enquiry", enquiry.id).toLowerCase();
+            const searchableFields = [
+                displayId,
+                enquiry.guest_name,
+                enquiry.mobile,
+                enquiry.email,
+                enquiry.city,
+                enquiry.source,
+                enquiry.enquiry_type,
+                enquiry.agent_name,
+            ];
+
+            return searchableFields.some(field => 
+                String(field ?? "").toLowerCase().includes(query)
+            );
+        });
+    }, [enquiries?.data, cleanSearchQuery]);
 
     const enquiryColumns = useMemo<ColumnDef<Enquiry>[]>(() => [
         {
@@ -291,17 +345,20 @@ export default function EnquiriesManagement() {
         },
         {
             label: "Offer Amount",
-            cellClassName: "font-medium whitespace-nowrap",
+            headClassName: "text-center",
+            cellClassName: "text-center font-medium whitespace-nowrap",
             render: (enquiry) => getEnquiryDisplay(enquiry).offerAmountLabel,
         },
         {
             label: "Check In",
-            cellClassName: "text-xs text-muted-foreground whitespace-nowrap",
+            headClassName: "text-center",
+            cellClassName: "text-center text-xs text-muted-foreground whitespace-nowrap",
             render: (enquiry) => getEnquiryDisplay(enquiry).checkInLabel,
         },
         {
             label: "Check Out",
-            cellClassName: "text-xs text-muted-foreground whitespace-nowrap",
+            headClassName: "text-center",
+            cellClassName: "text-center text-xs text-muted-foreground whitespace-nowrap",
             render: (enquiry) => getEnquiryDisplay(enquiry).checkOutLabel,
         },
         {
@@ -316,7 +373,8 @@ export default function EnquiriesManagement() {
         },
         {
             label: "Follow Up",
-            cellClassName: "text-xs text-muted-foreground whitespace-nowrap",
+            headClassName: "text-center",
+            cellClassName: "text-center text-xs text-muted-foreground whitespace-nowrap",
             render: (enquiry) => getEnquiryDisplay(enquiry).followUpLabel,
         },
     ], []);
@@ -425,6 +483,7 @@ export default function EnquiriesManagement() {
 
                     <div className="px-2 pb-2">
                         <AppDataGrid
+                            density="compact"
                             columns={enquiryColumns}
                             data={filteredEnquiries}
                             loading={enquiryLoading || isInitializing}
@@ -439,11 +498,11 @@ export default function EnquiriesManagement() {
                                             <Button
                                                 size="icon"
                                                 variant="ghost"
-                                                className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                                className="h-7 w-7 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
                                                 onClick={() => openManage(enquiry, true)}
                                                 aria-label={`Manage enquiry ${enquiry.id}`}
                                             >
-                                                <Pencil className="w-4 h-4 mx-auto" />
+                                                <Pencil className="w-3.5 h-3.5 mx-auto" />
                                             </Button>
                                         </TooltipTrigger>
                                         <TooltipContent>Manage Enquiry</TooltipContent>

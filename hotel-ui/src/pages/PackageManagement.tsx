@@ -80,7 +80,7 @@ export default function PackageManagement() {
         isFetching: packagesFetching,
         isUninitialized: packageUninitialized,
         refetch: refetchPackages
-    } = useGetPackagesByPropertyQuery({ propertyId: String(selectedPropertyId), page, limit }, {
+    } = useGetPackagesByPropertyQuery({ propertyId: String(selectedPropertyId), page: 1, limit: 1000 }, {
         skip: !isLoggedIn || !selectedPropertyId
     })
 
@@ -169,7 +169,6 @@ export default function PackageManagement() {
     }, [selectedPackageData, packageLoading])
 
     const packageRows = useMemo(() => packages?.packages ?? [], [packages?.packages]);
-    const totalPages = packages?.pagination?.totalPages ?? 1;
 
     const pathname = useLocation().pathname
     const { permission } = usePermission(pathname)
@@ -232,6 +231,20 @@ export default function PackageManagement() {
             (pkg) => pkg.system_generated ? "System" : "Custom",
         ]);
     }, [packageRows, searchQuery, statusFilter, typeFilter]);
+
+    const totalRecords = filteredPackageRows.length;
+    const totalPages = Math.max(1, Math.ceil(totalRecords / limit));
+
+    const paginatedPackageRows = useMemo(() => {
+        const start = (page - 1) * limit;
+        return filteredPackageRows.slice(start, start + limit);
+    }, [filteredPackageRows, page, limit]);
+
+    useEffect(() => {
+        if (page > totalPages) {
+            setPage(totalPages);
+        }
+    }, [page, totalPages]);
 
     const packageColumns = useMemo<ColumnDef<PackageDetail>[]>(() => [
         {
@@ -421,8 +434,9 @@ export default function PackageManagement() {
 
                     <div className="px-2 pb-2">
                         <AppDataGrid
+                            density="compact"
                             columns={packageColumns}
-                            data={!packageUninitialized && !packagesLoading ? filteredPackageRows : []}
+                            data={!packageUninitialized && !packagesLoading ? paginatedPackageRows : []}
                             rowKey={(pkg) => pkg.id ?? pkg.package_name}
                             loading={packagesLoading || packagesFetching || isInitializing}
                             emptyText="No plans found"
@@ -436,11 +450,11 @@ export default function PackageManagement() {
                                                 <Button
                                                     size="icon"
                                                     variant="ghost"
-                                                    className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                                    className="h-7 w-7 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
                                                     aria-label={`Edit plan ${pkg.package_name}`}
                                                     onClick={() => handleOpenEdit({ id: String(pkg.id), package_name: pkg.package_name }, "edit")}
                                                 >
-                                                    <Pencil className="w-4 h-4 mx-auto" />
+                                                    <Pencil className="w-3.5 h-3.5 mx-auto" />
                                                 </Button>
                                             </TooltipTrigger>
                                             <TooltipContent>View / Edit Plan</TooltipContent>
@@ -448,16 +462,16 @@ export default function PackageManagement() {
                                     )}
                                 </>
                             )}
-                            enablePagination={Boolean(packages?.pagination)}
-                            paginationProps={packages?.pagination ? {
+                            enablePagination
+                            paginationProps={{
                                 page,
                                 totalPages,
                                 setPage,
                                 disabled: packagesFetching,
-                                totalRecords: packages.pagination.totalItems ?? packages.pagination.total ?? packageRows.length,
+                                totalRecords,
                                 limit,
                                 onLimitChange: handleLimitChange,
-                            } : undefined}
+                            }}
                         />
                     </div>
 

@@ -719,7 +719,7 @@ return (
                             description="Room preferences and quoted amount"
                         >
                             <div className="editable-grid-compact overflow-hidden rounded-[5px] border bg-background">
-                                <div className="overflow-x-auto w-full border-b border-border bg-background">
+                                <div className="grid-scroll-x w-full border-b border-border bg-background">
                                     <div className="w-full min-w-[640px]">
                                         <DataGrid>
                                             <DataGridHeader>

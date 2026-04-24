@@ -344,8 +344,8 @@ import { getDb } from "../utils/getDb.js";
         // Inventory Types (Extension + Table)
         // -----------------------------
 
-        const INVENTORY_TYPES = ["TABLE", "ROOM", "KITCHEN", "RESTAURANT", "STORE",
-            "HOUSE_KEEPING"
+        const INVENTORY_TYPES = ["Table", "Room", "Kitchen", "Restaurant", "Store",
+            "House Keeping"
         ];
 
         for (const type of INVENTORY_TYPES) {

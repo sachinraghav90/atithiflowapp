@@ -20,6 +20,7 @@ class EnquiryController {
                 pageSize = 10,
                 fromDate,
                 toDate,
+                search,
             } = req.query;
 
             if (!propertyId) {
@@ -35,6 +36,7 @@ class EnquiryController {
                 pageSize: Number(pageSize),
                 fromDate,
                 toDate,
+                search,
             });
 
             return res.status(200).json(result);

@@ -153,7 +153,7 @@ export default function MenuMaster() {
         isLoading: myPropertiesLoading 
     } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
 
-    const { data, isLoading, isFetching, refetch } = useGetPropertyMenuQuery({ page, limit, propertyId: selectedPropertyId }, {
+    const { data: menuData, isLoading, isFetching, refetch } = useGetPropertyMenuQuery({ page: 1, limit: 1000, propertyId: selectedPropertyId }, {
         skip: !isLoggedIn || !selectedPropertyId
     })
 
@@ -213,31 +213,62 @@ export default function MenuMaster() {
 
     const menuGroupOptions = useMemo(() => {
         const groups = Array.from(
-            new Set((data?.data ?? []).map((item: MenuItem) => item.menu_item_group).filter(Boolean))
+            new Set((menuData?.data ?? []).map((item: MenuItem) => item.menu_item_group).filter(Boolean))
         );
 
         return groups.sort((a, b) => String(a).localeCompare(String(b)));
-    }, [data?.data]);
+    }, [menuData?.data]);
+
+    const menuRows = useMemo(() => menuData?.data ?? [], [menuData?.data]);
+    
+    const cleanSearchQuery = useMemo(() => {
+        if (!searchQuery) return "";
+        const groupLabels = menuGroupOptions.map(g => String(g).toLowerCase());
+        const typeLabels = ["veg", "non-veg"];
+        const statusLabels = ["active", "inactive"];
+        const filterKeywords = [...groupLabels, ...typeLabels, ...statusLabels];
+
+        return filterKeywords
+            .sort((left, right) => right.length - left.length)
+            .reduce((query, keyword) => {
+                const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                return query.replace(new RegExp(`\\b${escapedKeyword}\\b`, "gi"), " ");
+            }, searchQuery)
+            .replace(/\s+/g, " ")
+            .trim();
+    }, [searchQuery, menuGroupOptions]);
 
     const filteredMenuItems = useMemo(() => {
-        const rows = data?.data ?? [];
-        const query = searchQuery.trim().toLowerCase();
+        const rows = menuRows;
+        const query = cleanSearchQuery.toLowerCase();
 
-        return rows.filter((item: MenuItem) =>
-            (!query ||
-                [
-                    item.item_name,
-                    item.menu_item_group,
-                    item.price,
-                    item.is_veg ? "veg" : "non-veg",
-                    item.is_active ? "active" : "inactive",
-                    item.prep_time ? `${item.prep_time}` : "",
-                ].some((field) => String(field ?? "").toLowerCase().includes(query))) &&
-            (!groupFilter || item.menu_item_group === groupFilter) &&
-            (!typeFilter || (typeFilter === "veg" ? item.is_veg : !item.is_veg)) &&
-            (!statusFilter || (statusFilter === "active" ? item.is_active : !item.is_active))
-        );
-    }, [data?.data, searchQuery, groupFilter, typeFilter, statusFilter]);
+        return rows.filter((item: MenuItem) => {
+            const matchesSearch = !query || [
+                item.item_name,
+                item.description || "",
+                formatModuleDisplayId("menu", item.id)
+            ].some(field => String(field).toLowerCase().includes(query));
+
+            const matchesGroup = !groupFilter || item.menu_item_group === groupFilter;
+            const matchesType = !typeFilter || (typeFilter === "veg" ? item.is_veg : !item.is_veg);
+            const matchesStatus = !statusFilter || (statusFilter === "active" ? item.is_active : !item.is_active);
+
+            return matchesSearch && matchesGroup && matchesType && matchesStatus;
+        });
+    }, [menuRows, cleanSearchQuery, groupFilter, typeFilter, statusFilter]);
+
+    const totalRecords = filteredMenuItems.length;
+    const totalPages = Math.max(1, Math.ceil(totalRecords / limit));
+    const paginatedMenuItems = useMemo(() => {
+        const start = (page - 1) * limit;
+        return filteredMenuItems.slice(start, start + limit);
+    }, [filteredMenuItems, page, limit]);
+
+    useEffect(() => {
+        if (page > totalPages) {
+            setPage(totalPages);
+        }
+    }, [page, totalPages]);
 
     const resetGridFilters = () => {
         setSearchInput("");
@@ -522,6 +553,7 @@ export default function MenuMaster() {
 
                     <div className="px-2 pb-2">
                         <AppDataGrid
+                            density="compact"
                             columns={[
                                 {
                                     label: "Menu ID",
@@ -581,16 +613,16 @@ export default function MenuMaster() {
                                     ),
                                 },
                             ] as ColumnDef[]}
-                            data={filteredMenuItems}
+                            data={paginatedMenuItems}
                             loading={isLoading || isFetching || isInitializing}
                             emptyText="No menu items found"
                             minWidth="980px"
-                            enablePagination={!!data?.pagination}
+                            enablePagination
                             paginationProps={{
                                 page,
-                                totalPages: data?.pagination?.totalPages ?? 1,
+                                totalPages,
                                 setPage,
-                                totalRecords: data?.pagination?.totalItems ?? data?.pagination?.total ?? data?.data?.length ?? 0,
+                                totalRecords,
                                 limit,
                                 onLimitChange: (value) => {
                                     setLimit(value);
@@ -609,11 +641,11 @@ export default function MenuMaster() {
                                                 <Button
                                                     size="icon"
                                                     variant="ghost"
-                                                    className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                                    className="h-7 w-7 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
                                                     onClick={() => openEdit(item)}
                                                     aria-label={`View and edit details for menu item ${item.item_name}`}
                                                 >
-                                                    <Pencil className="w-4 h-4 mx-auto" />
+                                                    <Pencil className="w-3.5 h-3.5 mx-auto" />
                                                 </Button>
                                             </TooltipTrigger>
                                             <TooltipContent>View / Edit Details</TooltipContent>
@@ -1100,4 +1132,5 @@ export default function MenuMaster() {
         </div >
     );
 }
+
 

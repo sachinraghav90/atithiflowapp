@@ -84,8 +84,8 @@ export function RestaurantTables() {
 
     const { data, isLoading, isFetching, refetch } = useGetRestaurantTableQuery({ 
         propertyId: selectedPropertyId, 
-        page, 
-        limit 
+        page: 1,
+        limit: 1000
     }, {
         skip: !isLoggedIn || !selectedPropertyId
     })
@@ -166,6 +166,19 @@ export function RestaurantTables() {
             t.status?.toLowerCase().includes(q)
         );
     }, [data, searchQuery]);
+
+    const totalRecords = tableRows.length;
+    const totalPages = Math.max(1, Math.ceil(totalRecords / limit));
+    const paginatedTableRows = useMemo(() => {
+        const start = (page - 1) * limit;
+        return tableRows.slice(start, start + limit);
+    }, [tableRows, page, limit]);
+
+    useEffect(() => {
+        if (page > totalPages) {
+            setPage(totalPages);
+        }
+    }, [page, totalPages]);
 
     const handleExport = () => {
         if (!tableRows.length) return toast.error("No data to export");
@@ -337,17 +350,18 @@ export function RestaurantTables() {
 
                     <div className="px-2 pb-2">
                         <AppDataGrid
+                            density="compact"
                             columns={columns}
-                            data={tableRows}
+                            data={paginatedTableRows}
                             loading={isLoading || isInitializing}
                             emptyText="No tables found"
                             minWidth="900px"
                             enablePagination
                             paginationProps={{
                                 page,
-                                totalPages: data?.pagination?.totalPages ?? 1,
+                                totalPages,
                                 setPage,
-                                totalRecords: data?.pagination?.totalItems ?? data?.pagination?.total ?? tableRows.length,
+                                totalRecords,
                                 limit,
                                 onLimitChange: (val) => { setLimit(val); setPage(1); },
                                 disabled: isLoading || isFetching,
@@ -360,10 +374,10 @@ export function RestaurantTables() {
                                         <Button
                                             size="icon"
                                             variant="ghost"
-                                            className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                            className="h-7 w-7 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
                                             onClick={() => openEdit(t)}
                                         >
-                                            <Pencil className="w-4 h-4 mx-auto" />
+                                            <Pencil className="w-3.5 h-3.5 mx-auto" />
                                         </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>Edit Table</TooltipContent>

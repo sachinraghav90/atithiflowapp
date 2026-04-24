@@ -88,6 +88,12 @@ function normalizeLaundryName(value?: string | null) {
     return value?.trim().toLowerCase() ?? "";
 }
 
+const STATUS_OPTIONS = [
+    { label: "All", value: "" },
+    { label: "Active", value: "true" },
+    { label: "Inactive", value: "false" },
+];
+
 /* ---------------- Component ---------------- */
 export default function LaundryPricingManagement() {
     /* ---------------- State ---------------- */
@@ -129,14 +135,10 @@ export default function LaundryPricingManagement() {
         isLoading: laundryLoading,
         isFetching: laundryFetching,
         refetch: refetchLaundryPricing
-    } = useGetPropertyLaundryPricingQuery({ propertyId: selectedPropertyId, page, limit }, {
+    } = useGetPropertyLaundryPricingQuery({ propertyId: selectedPropertyId, page: 1, limit: 1000 }, {
         skip: !isLoggedIn || !selectedPropertyId
     })
-
-    const { data: allLaundryData } = useGetPropertyLaundryPricingQuery({ propertyId: selectedPropertyId, page: 1, limit: 1000 }, {
-        skip: !isLoggedIn || !selectedPropertyId
-    })
-    const allLaundryItems = allLaundryData?.data?.data || [];
+    const allLaundryItems = data?.data?.data || [];
 
     const [createLaundryPrice] = useCreateLaundryPricingMutation()
     const [updateLaundryPricing] = useUpdateLaundryPricingMutation()
@@ -155,7 +157,6 @@ export default function LaundryPricingManagement() {
         setItems([]);
     }, [data]);
 
-    const totalPages = data?.data?.pagination?.totalPages ?? 1;
     const hasExistingLaundryName = (name: string, excludeId?: string) =>
         allLaundryItems.some(
             (existing) =>
@@ -342,13 +343,38 @@ export default function LaundryPricingManagement() {
         if (statusFilter) {
             filtered = filtered.filter((item) => String(item.is_active) === statusFilter);
         }
-        return filterGridRowsByQuery(filtered, searchQuery, [
+
+        // Dynamically get keywords from filter options to exclude from search
+        const filterKeywords = STATUS_OPTIONS
+            .filter(opt => opt.value !== "")
+            .map(opt => opt.label.toLowerCase());
+
+        const cleanSearchQuery = searchQuery
+            .split(/\s+/)
+            .filter(word => !filterKeywords.includes(word.toLowerCase()))
+            .join(" ")
+            .trim();
+
+        return filterGridRowsByQuery(filtered, cleanSearchQuery, [
+            (item) => formatModuleDisplayId("laundry_pricing", item.id),
             (item) => item.item_name,
             (item) => item.description,
             (item) => item.item_rate,
-            (item) => item.is_active ? "Active" : "Inactive",
         ]);
     }, [items, searchQuery, statusFilter]);
+
+    const totalRecords = filteredItems.length;
+    const totalPages = Math.max(1, Math.ceil(totalRecords / limit));
+    const paginatedItems = useMemo(() => {
+        const start = (page - 1) * limit;
+        return filteredItems.slice(start, start + limit);
+    }, [filteredItems, page, limit]);
+
+    useEffect(() => {
+        if (page > totalPages) {
+            setPage(totalPages);
+        }
+    }, [page, totalPages, setPage]);
 
     const laundryColumns = useMemo<ColumnDef<LaundryItem>[]>(() => [
         {
@@ -474,11 +500,7 @@ export default function LaundryPricingManagement() {
                                         setStatusFilter(value);
                                         resetPage();
                                     }}
-                                    options={[
-                                        { label: "All", value: "" },
-                                        { label: "Active", value: "true" },
-                                        { label: "Inactive", value: "false" },
-                                    ]}
+                                    options={STATUS_OPTIONS}
                                 />
 
                                 <GridToolbarSpacer />
@@ -513,8 +535,9 @@ export default function LaundryPricingManagement() {
 
                     <div className="px-2 pb-2">
                         <AppDataGrid
+                            density="compact"
                             columns={laundryColumns}
-                            data={filteredItems}
+                            data={paginatedItems}
                             rowKey={(item) => item.id}
                             loading={laundryLoading || laundryFetching || isInitializing}
                             emptyText="No laundry items found"
@@ -526,26 +549,26 @@ export default function LaundryPricingManagement() {
                                         <Button
                                             size="icon"
                                             variant="ghost"
-                                            className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                            className="h-7 w-7 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
                                             aria-label={`Edit laundry item ${item.item_name}`}
                                             onClick={() => openSheet(item, "edit")}
                                         >
-                                            <Pencil className="w-4 h-4 mx-auto" />
+                                            <Pencil className="w-3.5 h-3.5 mx-auto" />
                                         </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>Edit Item</TooltipContent>
                                 </Tooltip>
                             )}
-                            enablePagination={Boolean(data?.data?.pagination)}
-                            paginationProps={data?.data?.pagination ? {
+                            enablePagination
+                            paginationProps={{
                                 page,
                                 totalPages,
                                 setPage,
-                                totalRecords: data?.data?.pagination?.total ?? items.length,
+                                totalRecords,
                                 limit,
                                 onLimitChange: handleLimitChange,
                                 disabled: laundryLoading || laundryFetching,
-                            } : undefined}
+                            }}
                         />
                     </div>
                     </div>
@@ -658,7 +681,9 @@ export default function LaundryPricingManagement() {
 
 
                                 <div className="editable-grid-compact overflow-hidden rounded-[5px] border border-border bg-background/50">
-                                    <DataGrid>
+                                    <div className="grid-scroll-x w-full border-b border-border bg-background/50">
+                                        <div className="w-full min-w-[720px]">
+                                            <DataGrid>
                                          <DataGridHeader>
                                              <DataGridHead>Item Name *</DataGridHead>
                                              <DataGridHead>Description</DataGridHead>
@@ -752,7 +777,9 @@ export default function LaundryPricingManagement() {
                                                  );
                                              })}
                                          </tbody>
-                                    </DataGrid>
+                                            </DataGrid>
+                                        </div>
+                                    </div>
 
                                     <div className="editable-grid-footer p-3 bg-muted/10">
                                         <div className="flex flex-col gap-2">

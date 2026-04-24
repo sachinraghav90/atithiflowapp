@@ -18,7 +18,8 @@ import {
     useGetInventoryQuery,
     useGetInventoryTypesQuery,
     useUpdateInventoryMasterMutation,
-    useCheckDuplicateInventoryMutation
+    useCheckDuplicateInventoryMutation,
+    useLazyExportInventoryQuery,
 } from "@/redux/services/hmsApi";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { useAppSelector } from "@/redux/hook";
@@ -38,6 +39,7 @@ import { MenuItemSelect } from "@/components/MenuItemSelect";
 import { DataGrid, DataGridHeader, DataGridRow, DataGridHead, DataGridCell } from "@/components/ui/data-grid";
 import { ValidationTooltip } from "@/components/ui/validation-tooltip";
 import { GridBadge } from "@/components/ui/grid-badge";
+import { formatReadableLabel } from "@/utils/formatString";
 
 type InventoryItem = {
     id: string;
@@ -110,6 +112,7 @@ export default function InventoryMaster() {
     const [selectedPropertyId, setSelectedPropertyId] = useState("")
 
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
+    const [getAllInventory, { isFetching: exportingInventory }] = useLazyExportInventoryQuery();
     const {
         myProperties,
         isLoading: myPropertiesLoading,
@@ -126,7 +129,15 @@ export default function InventoryMaster() {
         isLoading: inventoryLoading,
         isFetching: inventoryFetching,
         refetch: refetchInventory
-    } = useGetInventoryQuery({ propertyId: selectedPropertyId, page, limit }, {
+    } = useGetInventoryQuery({
+        propertyId: selectedPropertyId,
+        page,
+        limit,
+        search: searchQuery,
+        type: inventoryTypeFilter,
+        use_type: useTypeFilter,
+        status: statusFilter,
+    }, {
         skip: !isLoggedIn || !selectedPropertyId
     })
 
@@ -374,34 +385,68 @@ export default function InventoryMaster() {
     const pathname = useLocation().pathname
     const { permission } = usePermission(pathname)
 
-    // CLIENT SIDE FILTERING (Since API doesn't support search/type yet, but we want UI to reflect intent)
-    const rawData = inventoryMaster?.data ?? [];
     const inventoryRows = useMemo(() => {
-        return rawData.filter(item => {
-            const matchesSearch = !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase());
-            const matchesType = !inventoryTypeFilter || item.inventory_type === inventoryTypeFilter;
-            const matchesUse = !useTypeFilter || item.use_type === useTypeFilter;
-            const matchesStatus = !statusFilter || (statusFilter === "active" ? item.is_active : !item.is_active);
-            return matchesSearch && matchesType && matchesUse && matchesStatus;
-        });
-    }, [rawData, searchQuery, inventoryTypeFilter, useTypeFilter, statusFilter]);
+        return inventoryMaster?.data ?? [];
+    }, [inventoryMaster?.data]);
 
-    const handleExport = () => {
-        if (!inventoryRows.length) return toast.error("No data to export");
-
-        const formatted = inventoryRows.map((item) => ({
-            "Inventory ID": formatModuleDisplayId("inventory", item.id),
-            "Name": item.name,
-            "Inventory Type": item.inventory_type || "—",
-            "Use Type": item.use_type.charAt(0).toUpperCase() + item.use_type.slice(1),
-            "Status": item.is_active ? "Active" : "Inactive",
-            "Created On": new Date(item.created_on).toLocaleDateString("en-GB")
-        }));
-
-        exportToExcel(formatted, "InventoryMaster.xlsx");
-    };
 
     const totalPages = inventoryMaster?.pagination?.totalPages ?? 1;
+    const totalRecords = inventoryMaster?.pagination?.totalItems ?? inventoryMaster?.pagination?.total ?? inventoryRows.length;
+
+    const handleRefresh = async () => {
+        if (inventoryFetching) return;
+        const toastId = toast.loading("Refreshing data...");
+        try {
+            await refetchInventory();
+            toast.dismiss(toastId);
+            toast.success("Data refreshed");
+        } catch {
+            toast.dismiss(toastId);
+            toast.error("Failed to refresh");
+        }
+    };
+
+    const handleExport = async () => {
+        if (exportingInventory) return;
+        if (!totalRecords) {
+            toast.info("No data to export");
+            return;
+        }
+
+        const toastId = toast.loading("Preparing inventory export...");
+        try {
+            const res = await getAllInventory({
+                propertyId: selectedPropertyId,
+                search: searchQuery,
+                inventory_type: inventoryTypeFilter,
+                use_type: useTypeFilter,
+                status: statusFilter,
+                limit: 1000
+            }).unwrap();
+
+            if (!res?.data?.length) {
+                toast.dismiss(toastId);
+                toast.info("No data to export");
+                return;
+            }
+
+            const formatted = res.data.map((item: InventoryItem) => ({
+                "Inventory ID": formatModuleDisplayId("inventory", item.id),
+                "Name": item.name,
+                "Inventory Type": item.inventory_type || "—",
+                "Use Type": item.use_type.charAt(0).toUpperCase() + item.use_type.slice(1),
+                "Status": item.is_active ? "Active" : "Inactive",
+                "Created On": new Date(item.created_on).toLocaleDateString("en-GB")
+            }));
+
+            exportToExcel(formatted, "InventoryMaster.xlsx");
+            toast.dismiss(toastId);
+            toast.success("Export completed");
+        } catch (error) {
+            toast.dismiss(toastId);
+            toast.error("Failed to export inventory");
+        }
+    };
 
     useEffect(() => {
         setPage(1);
@@ -543,7 +588,7 @@ export default function InventoryMaster() {
                                             key: "refresh",
                                             label: "Refresh Data",
                                             icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
-                                            onClick: () => refetchInventory(),
+                                            onClick: handleRefresh,
                                             disabled: inventoryFetching,
                                         },
                                     ]}
@@ -574,6 +619,7 @@ export default function InventoryMaster() {
 
                     <div className="px-2 pb-2">
                         <AppDataGrid
+                            density="compact"
                             columns={[
                                 {
                                     label: "Inventory ID",
@@ -597,13 +643,13 @@ export default function InventoryMaster() {
                                 },
                                 {
                                     label: "Inventory Type",
-                                    key: "inventory_type",
                                     cellClassName: "whitespace-nowrap text-muted-foreground",
+                                    render: (item: InventoryItem) => formatReadableLabel(item.inventory_type) || "—",
                                 },
                                 {
                                     label: "Use Type",
-                                    key: "use_type",
-                                    cellClassName: "capitalize font-medium text-foreground/80",
+                                    cellClassName: "font-medium text-foreground/80",
+                                    render: (item: InventoryItem) => formatReadableLabel(item.use_type) || "—",
                                 },
                                 {
                                     label: "Status",
@@ -630,7 +676,7 @@ export default function InventoryMaster() {
                                 page,
                                 totalPages,
                                 setPage,
-                                totalRecords: inventoryMaster?.pagination?.total ?? inventoryRows.length,
+                                totalRecords,
                                 limit,
                                 onLimitChange: (value) => {
                                     setLimit(value);
@@ -649,11 +695,11 @@ export default function InventoryMaster() {
                                                     <Button
                                                         size="icon"
                                                         variant="ghost"
-                                                        className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                                        className="h-7 w-7 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
                                                         aria-label={`Edit details for inventory ${item.name}`}
                                                         onClick={() => openEdit(item)}
                                                     >
-                                                        <Pencil className="w-4 h-4 mx-auto" />
+                                                        <Pencil className="w-3.5 h-3.5 mx-auto" />
                                                     </Button>
                                                 </TooltipTrigger>
                                                 <TooltipContent>Edit Details</TooltipContent>

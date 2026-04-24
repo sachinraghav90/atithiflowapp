@@ -35,8 +35,8 @@ const Header = () => {
 
   return (
     <header
-      className="sticky z-50 w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border transition-[top] duration-200 motion-reduce:transition-none"
-      style={{ top: isRibbonVisible && !isLoginPage ? "40px" : "0px", background: "white" }}
+      className="sticky z-50 w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-slate-900/60 transition-[top] duration-200 motion-reduce:transition-none"
+      style={{ boxShadow: "0 2px 4px 0 rgba(0, 0, 0, 0.1)", top: isRibbonVisible && !isLoginPage ? "40px" : "0px", background: "white" }}
     >
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">

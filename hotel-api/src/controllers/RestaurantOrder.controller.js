@@ -4,7 +4,7 @@ class RestaurantOrderController {
 
     async getByProperty(req, res) {
         try {
-            const { page, limit, status } = req.query;
+            const { page, limit, status, payment_status, search, export: exportParam } = req.query;
 
             const { propertyId } = req.params
 
@@ -17,6 +17,9 @@ class RestaurantOrderController {
                 page: Number(page) || 1,
                 limit: Number(limit) || 10,
                 status: status != "undefined" ? status : undefined,
+                paymentStatus: payment_status != "undefined" ? payment_status : undefined,
+                search: search != "undefined" ? String(search ?? "") : "",
+                exportRows: exportParam === "true",
             });
 
             res.json(result);

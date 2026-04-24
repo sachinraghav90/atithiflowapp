@@ -45,11 +45,11 @@ export default function AppHeader({ collapsed, setCollapsed }: Props) {
     return (
         <header className="
                     sticky top-0 z-50 h-14
-                    border-b border-border bg-background
+                    border-b border-gray-500 bg-background
                     px-4 lg:px-6
                     grid grid-cols-[auto_1fr_auto]
                     items-center
-                    ">
+                    " style={{boxShadow:"0 2px 4px 0 rgba(0, 0, 0, 0.1)"}}>     
             {/* ================= LEFT ================= */}
             <div className="flex items-center gap-3">
                 {/* Collapse button */}

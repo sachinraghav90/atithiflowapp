@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { normalizeTextInput } from "@/utils/normalizeTextInput";
+import { formatReadableLabel } from "@/utils/formatString";
 import { useId, type ReactNode } from "react";
 
 function formatToolbarDate(date: Date | null) {
@@ -152,28 +153,7 @@ export function GridToolbarSearch({
 
 /* ================= SELECT ================= */
 
-function formatFilterLabel(label: string) {
-  if (!label || label === "All") return label;
-  
-  // Only format if it looks like a raw identifier (underscores, all caps, or all lower)
-  const isLower = label === label.toLowerCase() && label !== label.toUpperCase();
-  const isUpper = label === label.toUpperCase() && label !== label.toLowerCase();
-  const hasUnderscore = label.includes("_");
 
-  // Keep short acronyms as-is (e.g., UPI, ID, GST)
-  if (isUpper && label.length <= 3) {
-    return label;
-  }
-  
-  if (isLower || isUpper || hasUnderscore) {
-    return label
-      .replace(/_/g, " ")
-      .toLowerCase()
-      .replace(/\b\w/g, (char) => char.toUpperCase());
-  }
-  
-  return label;
-}
 
 export function GridToolbarSelect({
   label,
@@ -211,7 +191,7 @@ export function GridToolbarSelect({
             disabled={option.disabled}
             className="bg-background"
           >
-            {formatFilterLabel(option.label)}
+            {formatReadableLabel(option.label)}
           </option>
         ))}
       </NativeSelect>

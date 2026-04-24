@@ -649,7 +649,7 @@ export function CreateOrder() {
                     <Label className="text-base font-semibold">Order Items</Label>
 
                     <div className="editable-grid-compact grid-header-inside-table border rounded-[5px] overflow-hidden flex flex-col">
-                        <div className="overflow-x-auto overflow-y-auto w-full flex-1 min-h-0 bg-background">
+                        <div className="grid-scroll-x overflow-y-auto w-full flex-1 min-h-0 bg-background">
                             <div className="w-full min-w-[800px]">
                                 <DataGrid>
                                     {/* HEADER */}

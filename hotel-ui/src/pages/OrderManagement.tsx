@@ -90,12 +90,30 @@ export function OrdersManagement() {
     /* ============================
        ORDERS QUERY (PAGINATED)
     ============================ */
+    const cleanSearchQuery = useMemo(() => {
+        if (!searchQuery) return "";
+        const statusLabels = ORDER_STATUSES.map(s => s.toLowerCase());
+        const paymentLabels = PAYMENT_STATUSES.map(s => s.toLowerCase());
+        const filterKeywords = [...statusLabels, ...paymentLabels];
+        return filterKeywords
+            .sort((left, right) => right.length - left.length)
+            .reduce((query, keyword) => {
+                const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                return query.replace(new RegExp(`\\b${escapedKeyword}\\b`, "gi"), " ");
+            }, searchQuery)
+            .replace(/\s+/g, " ")
+            .trim();
+    }, [searchQuery]);
+
+
     const { data, isLoading, isFetching: ordersFetching, refetch } = useGetPropertyOrdersQuery(
         {
             propertyId: selectedPropertyId,
             page,
             limit,
-            status: statusFilter || undefined
+            status: statusFilter || undefined,
+            payment_status: paymentFilter || undefined,
+            search: cleanSearchQuery
         },
         { skip: !isLoggedIn || !selectedPropertyId }
     );
@@ -105,43 +123,35 @@ export function OrdersManagement() {
        GLOBAL SEARCH FILTER
     ============================ */
     const filteredOrders = useMemo(() => {
-        if (!data?.data) return [];
-
-        const query = searchQuery.toLowerCase();
-        return data.data.filter((order) => {
-            const matchesPayment = !paymentFilter || order.payment_status === paymentFilter;
-
-            if (!matchesPayment) return false;
-
-            const searchFields = [
-                order.id.toString(),
-                formatOrderDisplayId(order.id),
-                order.guest_name || "",
-                order.guest_mobile || "",
-                order.room_no || "",
-                order.table_no || "",
-                order.order_status || "",
-                order.payment_status || "",
-                new Date(order.order_date).toLocaleString(),
-            ];
-
-            return searchFields.some(field =>
-                field.toLowerCase().includes(query)
-            );
-        });
-    }, [data?.data, paymentFilter, searchQuery]);
+        return data?.data ?? [];
+    }, [data?.data]);
 
     // ################# Export Orders to Sheet #################
     const exportOrdersSheet = async () => {
         if (exportingOrders) return;
+
+        const totalRecords = data?.pagination?.totalItems ?? data?.pagination?.total ?? (data?.data?.length || 0);
+        if (!totalRecords) {
+            toast.info("No orders to export");
+            return;
+        }
 
         const toastId = toast.loading("Preparing orders export...");
 
         try {
             const res = await getAllOrders({
                 propertyId: selectedPropertyId,
-                reset: reset,
+                status: statusFilter || undefined,
+                payment_status: paymentFilter || undefined,
+                search: cleanSearchQuery,
             }).unwrap();
+
+            if (!res?.data?.length) {
+                toast.dismiss(toastId);
+                toast.info("No orders to export");
+                return;
+            }
+
 
             const formatted = res.data.map(order => ({
                 "Order ID": formatOrderDisplayId(order.id),
@@ -162,13 +172,17 @@ export function OrdersManagement() {
         }
     };
 
+    useEffect(() => {
+        setPage(1);
+    }, [selectedPropertyId, statusFilter, paymentFilter, searchQuery]);
+
     // ############### Reset Filters & Search ###############
     const resetFiltersHandler = () => {
-        resetPage();
         setSearchInput("");
         setSearchQuery("");
         setStatusFilter("");
         setPaymentFilter("");
+        resetPage();
     };
 
     const refreshTable = async () => {
@@ -224,6 +238,8 @@ export function OrdersManagement() {
         },
         {
             label: "Status",
+            headClassName: "text-center",
+            cellClassName: "text-center",
             render: (order) => (
                 <GridBadge status={order.order_status} statusType="order">
                     {order.order_status}
@@ -232,6 +248,8 @@ export function OrdersManagement() {
         },
         {
             label: "Payment",
+            headClassName: "text-center",
+            cellClassName: "text-center",
             render: (order) => (
                 <GridBadge status={order.payment_status} statusType="payment">
                     {order.payment_status}
@@ -373,6 +391,7 @@ export function OrdersManagement() {
 
                     <div className="px-2 pb-2">
                         <AppDataGrid
+                            density="compact"
                             columns={orderColumns}
                             data={filteredOrders}
                             rowKey={(order) => order.id}
@@ -385,7 +404,7 @@ export function OrdersManagement() {
                                         <Button
                                             size="icon"
                                             variant="ghost"
-                                            className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                            className="h-7 w-7 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
                                             aria-label={`View and edit details for order ${formatOrderDisplayId(order.id)}`}
                                             onMouseEnter={() => prefetchOrder(order.id)}
                                             onFocus={() => prefetchOrder(order.id)}
@@ -395,7 +414,7 @@ export function OrdersManagement() {
                                                 setItemsOpen(true);
                                             }}
                                         >
-                                            <Pencil className="w-4 h-4 mx-auto" />
+                                            <Pencil className="w-3.5 h-3.5 mx-auto" />
                                         </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>View / Edit Details</TooltipContent>

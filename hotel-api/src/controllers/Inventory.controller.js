@@ -14,6 +14,11 @@ class InventoryController {
             const inventoryTypeId = req.query.inventoryTypeId;
             const page = Number(req.query.page ?? 1);
             const limit = Number(req.query.limit ?? 10);
+            const search = String(req.query.search ?? "");
+            const type = String(req.query.type ?? "");
+            const useType = String(req.query.use_type ?? "");
+            const status = String(req.query.status ?? "");
+            const exportRows = req.query.export === "true";
 
             if (!propertyId) {
                 return res.status(400).json({
@@ -25,7 +30,12 @@ class InventoryController {
                 propertyId,
                 inventoryTypeId,
                 page,
-                limit
+                limit,
+                search,
+                type,
+                useType,
+                status,
+                exportRows
             });
 
             return res.json(data);

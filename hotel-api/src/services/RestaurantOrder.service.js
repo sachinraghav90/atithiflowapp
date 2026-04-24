@@ -11,9 +11,18 @@ class RestaurantOrderService {
     /* ===========================
        GET ORDERS (PAGINATED)
     =========================== */
-    async getByProperty({ propertyId, page = 1, limit = 10, status }) {
+    async getByProperty({
+        propertyId,
+        page = 1,
+        limit = 10,
+        status,
+        paymentStatus,
+        search = "",
+        exportRows = false
+    }) {
 
         const offset = (page - 1) * limit;
+        const normalizedSearch = search.trim();
 
         const filters = [];
         const values = [propertyId];
@@ -22,6 +31,26 @@ class RestaurantOrderService {
         if (status) {
             filters.push(`ro.order_status = $${i++}`);
             values.push(status);
+        }
+
+        if (paymentStatus) {
+            filters.push(`ro.payment_status = $${i++}`);
+            values.push(paymentStatus);
+        }
+
+        if (normalizedSearch) {
+            filters.push(`(
+                ro.id::text ILIKE $${i}
+                OR CONCAT('OR', LPAD(ro.id::text, 3, '0')) ILIKE $${i}
+                OR COALESCE(ro.guest_name, '') ILIKE $${i}
+                OR COALESCE(r.room_no, '') ILIKE $${i}
+                OR COALESCE(ro.table_no, '') ILIKE $${i}
+                OR COALESCE(ro.order_status, '') ILIKE $${i}
+                OR COALESCE(ro.payment_status, '') ILIKE $${i}
+                OR TO_CHAR(ro.order_date, 'DD/MM/YYYY') ILIKE $${i}
+            )`);
+            values.push(`%${normalizedSearch}%`);
+            i += 1;
         }
 
         const whereClause = `
@@ -42,15 +71,17 @@ class RestaurantOrderService {
                 ON dp.id = ro.delivery_partner_id
             WHERE ${whereClause}
             ORDER BY ro.order_date DESC
-            LIMIT $${i} OFFSET $${i + 1}
+            ${exportRows ? "" : `LIMIT $${i} OFFSET $${i + 1}`}
             `,
-            [...values, limit, offset]
+            exportRows ? values : [...values, limit, offset]
         );
 
         const { rows: countRows } = await this.#DB.query(
             `
         SELECT COUNT(*)::int AS total
         FROM public.restaurant_orders ro
+        LEFT JOIN public.ref_rooms r
+            ON r.id = ro.room_id
         WHERE ${whereClause}
         `,
             values

@@ -93,6 +93,37 @@ All colors MUST be HSL.
   display: none;
   /* Chrome, Safari */
 }
+
+.grid-scroll-x {
+  overflow-x: auto;
+  scrollbar-width: auto;
+  scrollbar-color: hsl(var(--primary) / 0.55) hsl(var(--accent));
+}
+
+.grid-scroll-x::-webkit-scrollbar {
+  height: 12px;
+  width: 12px;
+}
+
+.grid-scroll-x::-webkit-scrollbar-track {
+  background: hsl(var(--accent));
+  border-radius: 9999px;
+}
+
+.grid-scroll-x::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.55);
+  border: 2px solid hsl(var(--accent));
+  border-radius: 9999px;
+}
+
+.grid-scroll-x::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.72);
+}
+
+.grid-scroll-x::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 .grid{
   border-color: #dce9e8; /* or #d8edeb */
 }

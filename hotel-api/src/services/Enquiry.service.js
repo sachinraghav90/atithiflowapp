@@ -56,6 +56,7 @@ class EnquiryService {
         toDate,
         page = 1,
         pageSize = 10,
+        search = "",
     }) {
         const limit = Math.min(Number(pageSize) || 10, 100); // safety cap
         const currentPage = Math.max(Number(page) || 1, 1);
@@ -84,6 +85,42 @@ class EnquiryService {
             values.push(toDate);
         }
 
+        if (search) {
+            const cleanQuery = search.trim();
+            const searchVal = `%${cleanQuery}%`;
+            const numericOnly = cleanQuery.replace(/\D/g, "");
+            
+            let searchParts = [
+                `guest_name ILIKE $${i}`,
+                `mobile ILIKE $${i}`,
+                `email ILIKE $${i}`,
+                `city ILIKE $${i}`,
+                `nationality ILIKE $${i}`,
+                `source ILIKE $${i}`,
+                `enquiry_type ILIKE $${i}`,
+                `agent_name ILIKE $${i}`,
+                `agent_type ILIKE $${i}`,
+                `contact_method ILIKE $${i}`,
+                `plan ILIKE $${i}`,
+                `comment ILIKE $${i}`
+            ];
+            values.push(searchVal);
+            i++;
+
+            if (numericOnly) {
+                const idVal = parseInt(numericOnly, 10).toString();
+                // Search numeric ID (ignoring leading zeros from 'EN007')
+                searchParts.push(`id::text LIKE $${i}`);
+                // Search numeric mobile (ignoring spaces/dashes in DB)
+                searchParts.push(`REPLACE(REPLACE(REPLACE(mobile, ' ', ''), '+', ''), '-', '') LIKE $${i+1}`);
+                
+                values.push(`%${idVal}%`, `%${numericOnly}%`);
+                i += 2;
+            }
+
+            whereClause += ` AND (${searchParts.join(" OR ")})`;
+        }
+    
         const dataQuery = `
           SELECT 
             e.*,

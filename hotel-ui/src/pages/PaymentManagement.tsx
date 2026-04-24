@@ -22,6 +22,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { filterGridRowsByQuery } from "@/utils/filterGridRows";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { GridBadge } from "@/components/ui/grid-badge";
+import { formatReadableLabel } from "@/utils/formatString";
 
 type PropertyOption = {
     id: number;
@@ -209,6 +210,7 @@ export default function PaymentsManagement() {
 
                     <div className="px-2 pb-2">
                         <AppDataGrid
+                            density="compact"
                             columns={[
                                 {
                                     label: "Payment ID",
@@ -244,7 +246,7 @@ export default function PaymentsManagement() {
                                 {
                                     label: "Method",
                                     cellClassName: "text-muted-foreground whitespace-nowrap",
-                                    render: (p: PaymentRow) => p.payment_method,
+                                    render: (p: PaymentRow) => formatReadableLabel(p.payment_method) || "—",
                                 },
                                 {
                                     label: "Status",
@@ -269,11 +271,11 @@ export default function PaymentsManagement() {
                                         <Button
                                             size="icon"
                                             variant="ghost"
-                                            className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                            className="h-7 w-7 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
                                             aria-label={`View details for payment ${formatModuleDisplayId("payment", p.id)}`}
                                             onClick={() => { setSelectedPayment(p); setDetailsOpen(true); }}
                                         >
-                                            <Eye className="w-4 h-4 mx-auto" />
+                                            <Eye className="w-3.5 h-3.5 mx-auto" />
                                         </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>View Details</TooltipContent>

@@ -17,6 +17,7 @@ import {
     useCreateVendorMutation,
     useGetMyPropertiesQuery,
     useGetPropertyVendorsQuery,
+    useLazyExportPropertyVendorsQuery,
     useUpdateVendorMutation,
 } from "@/redux/services/hmsApi";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
@@ -36,6 +37,7 @@ import { FilterX, Pencil, RefreshCcw, Download, Plus } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
+import { formatReadableLabel } from "@/utils/formatString";
 import { getStatusColor } from "@/constants/statusColors";
 import { GridBadge } from "@/components/ui/grid-badge";
 
@@ -63,6 +65,12 @@ type VendorForm = {
     vendor_type?: string;
     is_active?: boolean;
 };
+
+const VENDOR_STATUS_OPTIONS = [
+    { label: "All", value: "" },
+    { label: "Active", value: "active" },
+    { label: "Inactive", value: "inactive" },
+];
 
 /* ---------------- Component ---------------- */
 export default function VendorsManagement() {
@@ -96,9 +104,35 @@ export default function VendorsManagement() {
         isLoading: myPropertiesLoading
     } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
 
-    const { data: vendors, isLoading, isFetching, isUninitialized, refetch: refetchVendors } = useGetPropertyVendorsQuery({ propertyId: selectedPropertyId, page, limit, search: searchQuery }, {
+    const vendorTypeOptions = useMemo(() => {
+        const types = Array.from(new Set((vendors?.data || []).map((v: Vendor) => v.vendor_type).filter(Boolean)));
+        return types.map(t => ({ label: String(t), value: String(t) }));
+    }, [vendors?.data]);
+
+    const cleanSearchQuery = useMemo(() => {
+        if (!searchQuery) return "";
+        const typeLabels = vendorTypeOptions.map(opt => opt.label.toLowerCase());
+        const statusLabels = VENDOR_STATUS_OPTIONS.map(opt => opt.label.toLowerCase());
+        const filterKeywords = [...typeLabels, ...statusLabels];
+        return searchQuery
+            .split(/\s+/)
+            .filter(word => !filterKeywords.includes(word.toLowerCase()))
+            .join(" ")
+            .trim();
+    }, [searchQuery, vendorTypeOptions]);
+
+    const { data: vendors, isLoading, isFetching, isUninitialized, refetch: refetchVendors } = useGetPropertyVendorsQuery({ 
+        propertyId: selectedPropertyId, 
+        page, 
+        limit, 
+        search: cleanSearchQuery, 
+        type: typeFilter, 
+        status: statusFilter 
+    }, {
         skip: !isLoggedIn || !selectedPropertyId,
     });
+
+    const [getVendorsForExport, { isFetching: exportingVendors }] = useLazyExportPropertyVendorsQuery();
 
     const [createVendor] = useCreateVendorMutation()
     const [updateVendor] = useUpdateVendorMutation()
@@ -170,16 +204,8 @@ export default function VendorsManagement() {
     const { permission } = usePermission(pathname)
     
     const vendorRows = useMemo(() => {
-        let rows = vendors?.data ?? [];
-        if (typeFilter) {
-            rows = rows.filter((v: Vendor) => v.vendor_type === typeFilter);
-        }
-        if (statusFilter) {
-            const isActive = statusFilter === "true";
-            rows = rows.filter((v: Vendor) => v.is_active === isActive);
-        }
-        return rows;
-    }, [vendors?.data, typeFilter, statusFilter]);
+        return vendors?.data ?? [];
+    }, [vendors?.data]);
 
     const resetFiltersHandler = () => {
         setSearchInput("");
@@ -189,16 +215,40 @@ export default function VendorsManagement() {
         resetPage();
     };
 
-    const exportVendorsSheet = () => {
-        if (!vendorRows.length) return toast.error("No data to export");
-        const formatted = vendorRows.map((v: Vendor) => ({
-            "Vendor ID": formatModuleDisplayId("vendor", v.id),
-            "Name": v.name,
-            "Type": v.vendor_type || "—",
-            "Contact": v.contact_no || "—",
-            "Status": v.is_active ? "Active" : "Inactive"
-        }));
-        exportToExcel(formatted, "Vendors.xlsx");
+    const exportVendorsSheet = async () => {
+        if (exportingVendors) return;
+        const toastId = toast.loading("Preparing vendors export...");
+
+        try {
+            const res = await getVendorsForExport({
+                propertyId: selectedPropertyId,
+                search: cleanSearchQuery,
+                type: typeFilter,
+                status: statusFilter
+            }).unwrap();
+
+            const rows = res?.data ?? [];
+
+            if (!rows.length) {
+                toast.dismiss(toastId);
+                return toast.info("No data to export");
+            }
+
+            const formatted = rows.map((v: Vendor) => ({
+                "Vendor ID": formatModuleDisplayId("vendor", v.id),
+                "Name": v.name,
+                "Type": v.vendor_type || "—",
+                "Contact": v.contact_no || "—",
+                "Status": v.is_active ? "Active" : "Inactive"
+            }));
+
+            exportToExcel(formatted, "Vendors.xlsx");
+            toast.dismiss(toastId);
+            toast.success("Vendors exported successfully");
+        } catch (error) {
+            toast.dismiss(toastId);
+            toast.error("Failed to export vendors");
+        }
     };
 
     const refreshTable = async () => {
@@ -312,11 +362,11 @@ export default function VendorsManagement() {
                                     value={typeFilter}
                                     onChange={(val) => {
                                         setTypeFilter(val);
-                                        resetPage();
+                                        setPage(1);
                                     }}
                                     options={[
                                         { label: "All", value: "" },
-                                        ...Array.from(new Set((vendors?.data || []).map((v: Vendor) => v.vendor_type).filter(Boolean))).map(t => ({ label: String(t), value: String(t) }))
+                                        ...vendorTypeOptions
                                     ]}
                                 />
 
@@ -325,13 +375,9 @@ export default function VendorsManagement() {
                                     value={statusFilter}
                                     onChange={(val) => {
                                         setStatusFilter(val);
-                                        resetPage();
+                                        setPage(1);
                                     }}
-                                    options={[
-                                        { label: "All", value: "" },
-                                        { label: "Active", value: "true" },
-                                        { label: "Inactive", value: "false" }
-                                    ]}
+                                    options={VENDOR_STATUS_OPTIONS}
                                 />
 
                                 <GridToolbarActions
@@ -388,7 +434,7 @@ export default function VendorsManagement() {
                         {
                             label: "Type",
                             cellClassName: "text-muted-foreground",
-                            render: (v: Vendor) => v.vendor_type || "—",
+                            render: (v: Vendor) => formatReadableLabel(v.vendor_type) || "—",
                         },
                         {
                             label: "Contact",
@@ -421,11 +467,11 @@ export default function VendorsManagement() {
                                         <Button
                                             size="icon"
                                             variant="ghost"
-                                            className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                            className="h-7 w-7 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
                                             onClick={() => openView(v, "edit")}
                                             aria-label={`View and edit details for vendor ${v.name}`}
                                         >
-                                            <Pencil className="w-4 h-4 mx-auto" />
+                                            <Pencil className="w-3.5 h-3.5 mx-auto" />
                                         </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>View / Edit Details</TooltipContent>

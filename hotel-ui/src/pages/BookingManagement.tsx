@@ -38,6 +38,7 @@ import {
     useUpdateBookingMutation,
 } from "@/redux/services/hmsApi";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
+import { useGridPagination } from "@/hooks/useGridPagination";
 import { useAppSelector } from "@/redux/hook";
 import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
 import { normalizeNumberInput } from "@/utils/normalizeTextInput";
@@ -55,7 +56,6 @@ import { cn } from "@/lib/utils";
 import { getStatusColor } from "@/constants/statusColors";
 import { GridBadge } from "@/components/ui/grid-badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { filterGridRowsByQuery } from "@/utils/filterGridRows";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 
 const REQUIRED_SCOPE_BY_STATUS: Record<string, "upcoming" | "past" | "all"> = {
@@ -107,14 +107,18 @@ export default function BookingsManagement() {
         return d.toISOString().slice(0, 10);
     };
 
-    const [page, setPage] = useState(1);
-    const [limit, setLimit] = useState(5);
     const [propertyId, setPropertyId] = useState<number | undefined>();
     const [searchInput, setSearchInput] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
-
     const [fromDate, setFromDate] = useState<string>("");
     const [toDate, setToDate] = useState<string>("");
+    const [scope, setScope] = useState("");
+    const [status, setStatus] = useState("");
+
+    const { page, limit, setPage, handleLimitChange } = useGridPagination({
+        initialLimit: 5,
+        resetDeps: [propertyId, searchQuery, fromDate, toDate, scope, status],
+    });
 
     const [detailsOpen, setDetailsOpen] = useState(false);
     const [editMode, setEditMode] = useState(false);
@@ -125,9 +129,6 @@ export default function BookingsManagement() {
     const [bookingId, setBookingId] = useState("");
 
     const [updatedStatus, setUpdatedStatus] = useState<string>("");
-
-    const [scope, setScope] = useState("")
-    const [status, setStatus] = useState("")
 
     const memoizedFromDate = useMemo(() => parseDate(fromDate), [fromDate]);
     const memoizedToDate = useMemo(() => parseDate(toDate), [toDate]);
@@ -140,13 +141,29 @@ export default function BookingsManagement() {
 
     const { myProperties, isMultiProperty, isOwner, isSuperAdmin, isInitializing } = useAutoPropertySelect(propertyId, setPropertyId);
 
-    const { data: bookings, isLoading: bookingsLoading, isFetching: bookingsFetching, isUninitialized: bookingsUninitialized, refetch: refetchBookings } = useGetBookingsQuery({
+    const cleanSearchQuery = useMemo(() => {
+        if (!searchQuery) return "";
+        const statusLabels = BOOKING_STATUSES.map(s => s.toLowerCase());
+        const scopeLabels = ["upcoming", "past"];
+        const filterKeywords = [...statusLabels, ...scopeLabels];
+        return filterKeywords
+            .sort((left, right) => right.length - left.length)
+            .reduce((query, keyword) => {
+                const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                return query.replace(new RegExp(`\\b${escapedKeyword}\\b`, "gi"), " ");
+            }, searchQuery)
+            .replace(/\s+/g, " ")
+            .trim();
+    }, [searchQuery]);
+
+    const { data: bookingsData, isLoading: bookingsLoading, isFetching: bookingsFetching, isUninitialized: bookingsUninitialized, refetch: refetchBookings } = useGetBookingsQuery({
         propertyId,
         page,
         fromDate,
         toDate,
         scope,
-        status,
+        status: status || undefined,
+        search: cleanSearchQuery,
         limit
     }, {
         skip: !isLoggedIn || !propertyId || isNaN(Number(propertyId))
@@ -164,7 +181,7 @@ export default function BookingsManagement() {
     const [cancelBooking] = useCancelBookingMutation()
     const [updateBooking, { error }] = useUpdateBookingMutation()
     const [updateBookingStatus] = useUpdateBookingMutation()
-    const [getAllBookings, { data: exportedData, reset, isFetching: gettingAllBookings }] = useLazyExportBookingsQuery()
+    const [getAllBookings, { isFetching: exportingBookings }] = useLazyExportBookingsQuery()
 
     async function handleManage(id: string, isEdit: boolean = true) {
         setBookingId(id)
@@ -187,24 +204,52 @@ export default function BookingsManagement() {
         setDetailsOpen(false);
     }
 
-    function exportBookingsSheet() {
-        if (!filteredBookings || filteredBookings.length === 0) {
-            toast.info("No bookings found to export");
+    async function exportBookingsSheet() {
+        if (exportingBookings) return;
+
+        const totalRecords = bookingsData?.pagination?.totalItems ?? bookingsData?.pagination?.total ?? (bookingsData?.bookings?.length || 0);
+        if (!totalRecords) {
+            toast.info("No bookings to export");
             return;
         }
 
-        const formatted = filteredBookings.map(b => ({
-            "Booking": formatModuleDisplayId("booking", b.id),
-            "Status": b.booking_status?.replace("_", " "),
-            "Arrival": formatToDDMMYYYY(b.estimated_arrival),
-            "Departure": formatToDDMMYYYY(b.estimated_departure),
-            "Amount": `₹ ${b.final_amount}`,
-            "Room number(s)": Array.isArray(b.room_numbers) ? b.room_numbers.join(", ") : (b.room_numbers?.toString() || "-"),
-            "Pickup / Drop": `${b.pickup ? "Yes" : "No"} / ${b.drop ? "Yes" : "No"}`,
-        }));
+        const toastId = toast.loading("Preparing bookings export...");
 
-        exportToExcel(formatted, "bookings.xlsx");
-        toast.success("Bookings exported successfully");
+        try {
+            const res = await getAllBookings({
+                propertyId,
+                fromDate,
+                toDate,
+                scope: scope || undefined,
+                status: status || undefined,
+                search: cleanSearchQuery,
+            }).unwrap();
+
+            const rows = Array.isArray(res?.bookings) ? res.bookings : Array.isArray(res) ? res : [];
+
+            if (!rows.length) {
+                toast.dismiss(toastId);
+                toast.info("No bookings to export");
+                return;
+            }
+
+            const formatted = rows.map((b: any) => ({
+                "Booking": formatModuleDisplayId("booking", b.id),
+                "Status": b.booking_status?.replace("_", " "),
+                "Arrival": formatToDDMMYYYY(b.estimated_arrival),
+                "Departure": formatToDDMMYYYY(b.estimated_departure),
+                "Amount": `₹ ${b.final_amount}`,
+                "Room number(s)": Array.isArray(b.room_numbers) ? b.room_numbers.join(", ") : (b.room_numbers?.toString() || "-"),
+                "Pickup / Drop": `${b.pickup ? "Yes" : "No"} / ${b.drop ? "Yes" : "No"}`,
+            }));
+
+            exportToExcel(formatted, "bookings.xlsx");
+            toast.dismiss(toastId);
+            toast.success("Bookings exported successfully");
+        } catch (error) {
+            toast.dismiss(toastId);
+            toast.error("Failed to export bookings");
+        }
     }
 
     async function handleUpdateBooking() {
@@ -267,17 +312,11 @@ export default function BookingsManagement() {
         await refetchBookings();
     };
 
-    const filteredBookings = useMemo(() => {
-        const rows = (!bookingsLoading && !bookingsUninitialized && bookings?.bookings) ? bookings.bookings : [];
-        return filterGridRowsByQuery(rows, searchQuery, [
-            (booking: any) => booking.id?.toString?.() ?? "",
-            (booking: any) => booking.booking_status ?? "",
-            (booking: any) => booking.estimated_arrival ? formatToDDMMYYYY(booking.estimated_arrival) : "",
-            (booking: any) => booking.estimated_departure ? formatToDDMMYYYY(booking.estimated_departure) : "",
-            (booking: any) => Array.isArray(booking.room_numbers) ? booking.room_numbers.join(", ") : booking.room_numbers?.toString?.() ?? "",
-            (booking: any) => `${booking.pickup ? "Yes" : "No"} / ${booking.drop ? "Yes" : "No"}`,
-        ]);
-    }, [bookings?.bookings, bookingsLoading, bookingsUninitialized, searchQuery]);
+    const bookingRows = useMemo(() => {
+        return (!bookingsLoading && !bookingsUninitialized && bookingsData?.bookings)
+            ? bookingsData.bookings
+            : [];
+    }, [bookingsData?.bookings, bookingsLoading, bookingsUninitialized]);
 
 
     function BookingSummaryTab({ booking }: any) {
@@ -656,7 +695,7 @@ export default function BookingsManagement() {
                                     render: (b: any) => <span className="inline-flex min-w-[60px] justify-center rounded-[3px] bg-muted/40 px-2 py-1 text-xs font-semibold">₹ {b.final_amount}</span>
                                 }
                             ] as ColumnDef<any>[]}
-                            data={filteredBookings}
+                            data={bookingRows}
                             loading={bookingsLoading || isInitializing}
                             emptyText="No bookings found"
                             minWidth="800px"
@@ -668,27 +707,26 @@ export default function BookingsManagement() {
                                         <Button
                                             size="icon"
                                             variant="ghost"
-                                            className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                            className="h-7 w-7 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
                                             onClick={() => handleManage(b.id, true)}
                                             aria-label={`Manage booking ${b.id}`}
                                         >
-                                            <Pencil className="w-4 h-4 mx-auto" />
+                                            <Pencil className="w-3.5 h-3.5 mx-auto" />
                                         </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>Manage Booking</TooltipContent>
                                 </Tooltip>
                             )}
-                            enablePagination={!!bookings?.pagination}
+                            enablePagination={!!bookingsData?.pagination}
                             paginationProps={{
                                 page,
-                                totalPages: bookings?.pagination?.totalPages ?? 1,
-                                setPage: (p: any) => setPage(p),
+                                totalPages: bookingsData?.pagination?.totalPages ?? 1,
+                                setPage,
                                 disabled: bookingsLoading,
-                                totalRecords: bookings?.pagination?.totalItems ?? bookings?.pagination?.total ?? bookings?.bookings?.length ?? 0,
+                                totalRecords: bookingsData?.pagination?.totalItems ?? bookingsData?.pagination?.total ?? bookingsData?.bookings?.length ?? 0,
                                 limit,
                                 onLimitChange: (value) => {
-                                    setLimit(value);
-                                    setPage(1);
+                                    handleLimitChange(value);
                                 }
                             }}
                         />
@@ -866,7 +904,7 @@ function Info({ label, value }: { label: string; value: any }) {
     return (
         <div className="space-y-1">
             <p className="text-muted-foreground">{label}</p>
-            <p className="font-medium">{value ?? "—"}</p>
+            <p className="font-medium">{value ?? "\u2014"}</p>
         </div>
     );
 }
@@ -875,12 +913,12 @@ function Price({ label, value }: { label: string; value: any }) {
     return (
         <div className="flex justify-between">
             <span className="text-muted-foreground">{label}</span>
-            <span>₹ {value}</span>
+            <span>\u20b9 {value}</span>
         </div>
     );
 }
 
 function formatDateDisplay(date?: string) {
-    if (!date) return "—";
+    if (!date) return "\u2014";
     return new Date(date).toLocaleDateString();
 }

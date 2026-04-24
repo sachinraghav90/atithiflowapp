@@ -463,17 +463,20 @@ export const hmsApi = createApi({
         search = "",
         department = "",
         status = "",
-        property_id
+        property_id,
+        export: isExport = false
       }) => {
+        const params = new URLSearchParams();
+        if (!isExport) {
+          params.append("page", String(page));
+          params.append("limit", String(limit));
+        } else {
+          params.append("export", "true");
+        }
 
-        const params = new URLSearchParams({
-          page: String(page),
-          limit: String(limit),
-        })
-
-        if (search) params.append("search", search)
-        if (department) params.append("department", department)
-        if (status) params.append("status", status)
+        if (search) params.append("search", search);
+        if (department) params.append("department", department);
+        if (status) params.append("status", status);
 
         return {
           url: `/staff/by-property/${property_id}?${params.toString()}`,
@@ -662,13 +665,43 @@ export const hmsApi = createApi({
     }),
 
     getBookings: builder.query({
-      query: ({ page = 1, limit = 10, propertyId, fromDate, toDate, scope, status }) => {
+      query: ({ page = 1, limit = 10, propertyId, fromDate, toDate, scope, status, search = "" }) => {
+        const params = new URLSearchParams({
+          propertyId: String(propertyId),
+          page: String(page),
+          limit: String(limit)
+        });
+        if (fromDate) params.append("fromDate", fromDate);
+        if (toDate) params.append("toDate", toDate);
+        if (scope) params.append("scope", scope);
+        if (status) params.append("status", status);
+        if (search) params.append("search", search);
+
         return {
-          url: `/bookings?propertyId=${propertyId}&fromDate=${fromDate}&toDate=${toDate}&page=${page}&limit=${limit}&scope=${scope}&status=${status}`,
+          url: `/bookings?${params.toString()}`,
           method: "GET",
         }
       },
       providesTags: ["Bookings"]
+    }),
+
+    exportBookings: builder.query({
+      query: ({ propertyId, fromDate, toDate, scope, status }) => {
+        const params = new URLSearchParams({
+          propertyId: String(propertyId),
+          export: "true",
+          ts: String(Date.now())
+        });
+        if (fromDate) params.append("fromDate", fromDate);
+        if (toDate) params.append("toDate", toDate);
+        if (scope) params.append("scope", scope);
+        if (status) params.append("status", status);
+
+        return {
+          url: `/bookings?${params.toString()}`,
+          method: "GET",
+        }
+      },
     }),
 
     getBookingById: builder.query({
@@ -679,15 +712,6 @@ export const hmsApi = createApi({
         }
       },
       providesTags: ["Bookings"]
-    }),
-
-    exportBookings: builder.query({
-      query: ({ propertyId, fromDate, toDate }) => {
-        return {
-          url: `/bookings/export/?propertyId=${propertyId}&fromDate=${fromDate}&toDate=${toDate}`,
-          method: "GET",
-        }
-      }
     }),
 
     updateBooking: builder.mutation({
@@ -856,13 +880,37 @@ export const hmsApi = createApi({
     }),
 
     getPropertyVendors: builder.query({
-      query: ({ propertyId, page, search, limit = 10 }) => {
+      query: ({ propertyId, page = 1, limit = 10, search = "", type = "", status = "" }) => {
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: String(limit)
+        });
+        if (search) params.append("search", search);
+        if (type) params.append("type", type);
+        if (status) params.append("status", status);
+
         return {
-          url: `/vendors/property/${propertyId}?page=${page}&limit=${limit}&search=${search}`,
+          url: `/vendors/property/${propertyId}?${params.toString()}`,
           method: "GET",
         }
       },
       providesTags: ["Vendors"]
+    }),
+
+    exportPropertyVendors: builder.query({
+      query: ({ propertyId, type = "", status = "" }) => {
+        const params = new URLSearchParams({
+          export: "true",
+          ts: String(Date.now())
+        });
+        if (type) params.append("type", type);
+        if (status) params.append("status", status);
+
+        return {
+          url: `/vendors/property/${propertyId}?${params.toString()}`,
+          method: "GET",
+        }
+      },
     }),
 
     getAllPropertyVendors: builder.query({
@@ -930,9 +978,17 @@ export const hmsApi = createApi({
     }),
 
     getPropertyLaundryOrders: builder.query({
-      query: ({ propertyId, page, limit = 10 }) => {
+      query: ({ propertyId, page = 1, limit = 10, status = "", vendor_status = "", search = "" }) => {
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: String(limit)
+        });
+        if (status) params.append("status", status);
+        if (vendor_status) params.append("vendor_status", vendor_status);
+        if (search) params.append("search", search);
+
         return {
-          url: `/laundries/orders/property/${propertyId}?page=${page}&limit=${limit}`,
+          url: `/laundries/orders/property/${propertyId}?${params.toString()}`,
           method: "GET",
         }
       },
@@ -940,10 +996,19 @@ export const hmsApi = createApi({
     }),
 
     exportPropertyLaundryOrders: builder.query({
-      query: ({ propertyId }) => ({
-        url: `/laundries/orders/property/${propertyId}?export=true&ts=${Date.now()}`,
-        method: "GET",
-      }),
+      query: ({ propertyId, status = "", vendor_status = "" }) => {
+        const params = new URLSearchParams({
+          export: "true",
+          ts: String(Date.now())
+        });
+        if (status) params.append("status", status);
+        if (vendor_status) params.append("vendor_status", vendor_status);
+
+        return {
+          url: `/laundries/orders/property/${propertyId}?${params.toString()}`,
+          method: "GET",
+        }
+      },
     }),
 
     getBookingLaundryOrders: builder.query({
@@ -979,9 +1044,17 @@ export const hmsApi = createApi({
     }),
 
     getPropertyEnquiries: builder.query({
-      query: ({ propertyId, page, limit = 10 }) => {
+      query: ({ propertyId, page, limit = 10, search = "", status = "" }) => {
+        const params = new URLSearchParams({
+          propertyId: String(propertyId),
+          page: String(page),
+          pageSize: String(limit)
+        });
+        if (search) params.append("search", search);
+        if (status) params.append("status", status);
+
         return {
-          url: `/enquiries?propertyId=${propertyId}&page=${page}&pageSize=${limit}`,
+          url: `/enquiries?${params.toString()}`,
           method: "GET",
         }
       },
@@ -989,10 +1062,20 @@ export const hmsApi = createApi({
     }),
 
     exportPropertyEnquiries: builder.query({
-      query: ({ propertyId }) => ({
-        url: `/enquiries?propertyId=${propertyId}&export=true&ts=${Date.now()}`,
-        method: "GET",
-      }),
+      query: ({ propertyId, search = "", status = "" }) => {
+        const params = new URLSearchParams({
+          propertyId: String(propertyId),
+          export: "true",
+          ts: String(Date.now())
+        });
+        if (search) params.append("search", search);
+        if (status) params.append("status", status);
+
+        return {
+          url: `/enquiries?${params.toString()}`,
+          method: "GET",
+        }
+      },
     }),
 
     createEnquiry: builder.mutation({
@@ -1081,21 +1164,39 @@ export const hmsApi = createApi({
     }),
 
     getPropertyOrders: builder.query({
-      query: ({ propertyId, page, limit = 10, status }) => {
+      query: ({ propertyId, page, limit = 10, status = "", payment_status = "", search = "" }) => {
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: String(limit)
+        });
+        if (status) params.append("status", status);
+        if (payment_status) params.append("payment_status", payment_status);
+        if (search) params.append("search", search);
+
         return {
-          url: `/orders/property/${propertyId}?page=${page}&limit=${limit}&status=${status}`,
+          url: `/orders/property/${propertyId}?${params.toString()}`,
           method: "GET",
         }
       },
       providesTags: ["Orders"]
     }),
 
-exportPropertyOrders: builder.query({
-  query: ({ propertyId }) => ({
-    url: `/orders/property/${propertyId}?export=true&ts=${Date.now()}`,
-    method: "GET",
-  }),
-}),
+    exportPropertyOrders: builder.query({
+      query: ({ propertyId, status = "", payment_status = "", search = "" }) => {
+        const params = new URLSearchParams({
+          export: "true",
+          ts: String(Date.now())
+        });
+        if (status) params.append("status", status);
+        if (payment_status) params.append("payment_status", payment_status);
+        if (search) params.append("search", search);
+
+        return {
+          url: `/orders/property/${propertyId}?${params.toString()}`,
+          method: "GET",
+        }
+      },
+    }),
 
     getOrderById: builder.query({
       query: (id) => {
@@ -1193,9 +1294,20 @@ exportPropertyOrders: builder.query({
     }),
 
     getKitchenInventory: builder.query({
-      query: ({ propertyId, page, limit = 10 }) => {
+      query: ({ propertyId, page = 1, limit = 10, search = "", export: isExport = false }) => {
+        const params = new URLSearchParams({
+          propertyId: String(propertyId),
+        });
+        if (!isExport) {
+          params.append("page", String(page));
+          params.append("limit", String(limit));
+        } else {
+          params.append("export", "true");
+        }
+        if (search) params.append("search", search);
+
         return {
-          url: `/kitchen?propertyId=${propertyId}&page=${page}&limit=${limit}`,
+          url: `/kitchen?${params.toString()}`,
           method: "GET",
         }
       },
@@ -1297,13 +1409,42 @@ exportPropertyOrders: builder.query({
     }),
 
     getInventory: builder.query({
-      query: ({ propertyId, page = 1, limit = 10 }) => {
+      query: ({ propertyId, page = 1, limit = 10, search = "", type = "", use_type = "", status = "" }) => {
+        const params = new URLSearchParams({
+          propertyId: String(propertyId),
+          page: String(page),
+          limit: String(limit)
+        });
+        if (search) params.append("search", search);
+        if (type) params.append("type", type);
+        if (use_type) params.append("use_type", use_type);
+        if (status) params.append("status", status);
+
         return {
-          url: `/inventory?propertyId=${propertyId}&page=${page}&limit=${limit}`,
+          url: `/inventory?${params.toString()}`,
           method: "GET"
         }
       },
       providesTags: ["Inventory"]
+    }),
+
+    exportInventory: builder.query({
+      query: ({ propertyId, type = "", use_type = "", status = "", search = "" }) => {
+        const params = new URLSearchParams({
+          propertyId: String(propertyId),
+          export: "true",
+          ts: String(Date.now())
+        });
+        if (type) params.append("type", type);
+        if (use_type) params.append("use_type", use_type);
+        if (status) params.append("status", status);
+        if (search) params.append("search", search);
+
+        return {
+          url: `/inventory?${params.toString()}`,
+          method: "GET"
+        }
+      },
     }),
 
     createInventoryMaster: builder.mutation({
@@ -1429,6 +1570,9 @@ export const {
   useLazyExportPropertyEnquiriesQuery,
   useLazyExportPropertyLaundryOrdersQuery,
   useLazyExportPropertyOrdersQuery,
+  useLazyExportPropertyVendorsQuery,
+  useLazyExportInventoryQuery,
+  useLazyGetKitchenInventoryQuery,
   useLazyGetAllRolesQuery,
   useLazyGetSidebarLinksQuery,
   useLazyGetAllSidebarLinksQuery,

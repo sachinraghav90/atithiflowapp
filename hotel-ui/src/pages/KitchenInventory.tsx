@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAppSelector } from "@/redux/hook";
 import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
-import { useAdjustStockMutation, useCreateInventoryMutation, useGetInventoryMasterByTypesQuery, useGetKitchenInventoryQuery, useGetLogsByTableQuery, useGetLogsQuery, useUpdateInventoryMutation } from "@/redux/services/hmsApi";
+import { useAdjustStockMutation, useCreateInventoryMutation, useGetInventoryMasterByTypesQuery, useGetKitchenInventoryQuery, useLazyGetKitchenInventoryQuery, useGetLogsByTableQuery, useGetLogsQuery, useUpdateInventoryMutation } from "@/redux/services/hmsApi";
 import { toast } from "react-toastify";
 import { useLocation } from "react-router-dom";
 import { usePermission } from "@/rbac/usePermission";
@@ -128,17 +128,23 @@ export default function KitchenInventory() {
         isInitializing, 
         isLoading: myPropertiesLoading 
     } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
+ 
+    const [getExportInventory, { isFetching: exportingKitchen }] = useLazyGetKitchenInventoryQuery();
 
     const {
         data: kitchenInventory,
         isLoading: kitchenInventoryLoading,
         isFetching: kitchenInventoryFetching,
         refetch: refetchKitchenInventory
-    } = useGetKitchenInventoryQuery({ propertyId: selectedPropertyId, page: inventoryPage, limit: inventoryLimit }, {
+    } = useGetKitchenInventoryQuery({
+        propertyId: selectedPropertyId,
+        page: 1,
+        limit: 1000,
+    }, {
         skip: !isLoggedIn || !selectedPropertyId
     })
 
-    const { data: masterInventory } = useGetInventoryMasterByTypesQuery({ type: "KITCHEN", propertyId: selectedPropertyId }, {
+    const { data: masterInventory } = useGetInventoryMasterByTypesQuery({ type: "Kitchen", propertyId: selectedPropertyId }, {
         skip: !isLoggedIn || !selectedPropertyId
     })
 
@@ -147,7 +153,7 @@ export default function KitchenInventory() {
         isLoading: logsLoading,
         isFetching: logsFetching,
         refetch: refetchLogs
-    } = useGetLogsByTableQuery({ tableName: "kitchen_inventory", propertyId: selectedPropertyId, page: auditPage, limit: auditLimit }, {
+    } = useGetLogsByTableQuery({ tableName: "kitchen_inventory", propertyId: selectedPropertyId, page: 1, limit: 1000 }, {
         skip: !isLoggedIn || !selectedPropertyId
     })
 
@@ -175,7 +181,7 @@ export default function KitchenInventory() {
     useEffect(() => {
         setInventoryPage(1);
         setAuditPage(1);
-    }, [selectedPropertyId]);
+    }, [selectedPropertyId, searchQuery, stockFilter, unitFilter, historySearchQuery, historyActionFilter]);
 
     useEffect(() => {
         if (searchInput.trim() === "") {
@@ -391,28 +397,46 @@ export default function KitchenInventory() {
         return units.sort((a, b) => String(a).localeCompare(String(b)));
     }, [kitchenInventory?.data]);
 
+    const cleanSearchQuery = useMemo(() => {
+        if (!searchQuery) return "";
+        const unitLabels = availableUnits.map((unit) => unit.label.toLowerCase());
+        const stockLabels = ["low stock"];
+        const filterKeywords = [...unitLabels, ...stockLabels];
+
+        return filterKeywords
+            .sort((left, right) => right.length - left.length)
+            .reduce((query, keyword) => {
+                const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                return query.replace(new RegExp(`\\b${escapedKeyword}\\b`, "gi"), " ");
+            }, searchQuery)
+            .replace(/\s+/g, " ")
+            .trim();
+    }, [searchQuery]);
+
     const filteredKitchenInventory = useMemo(() => {
         const rows = kitchenInventory?.data ?? [];
-        const query = searchQuery.trim().toLowerCase();
+        const query = cleanSearchQuery.toLowerCase();
 
         return rows.filter((item: any) => {
-            const matchesQuery = !query || [
-                item.name,
-                item.inventory_type,
-                item.quantity,
-                item.unit,
-            ].some((field) => String(field ?? "").toLowerCase().includes(query));
-
+            const matchesStock = !stockFilter || (
+                stockFilter === "low_stock" &&
+                Number(item.quantity) <= Number(item.reorder_level || 0)
+            );
             const matchesUnit = !unitFilter || item.unit === unitFilter;
             
-            let matchesStock = true;
-            if (stockFilter === "low_stock") {
-                matchesStock = Number(item.quantity) <= (item.reorder_level || 0);
-            }
+            const searchableFields = [
+                item.name,
+                item.inventory_type,
+                formatModuleDisplayId("kitchen", item.id),
+                item.unit
+            ];
+            const matchesSearch = !query || searchableFields.some(f => 
+                String(f ?? "").toLowerCase().includes(query)
+            );
 
-            return matchesQuery && matchesUnit && matchesStock;
+            return matchesStock && matchesUnit && matchesSearch;
         });
-    }, [kitchenInventory?.data, searchQuery, unitFilter, stockFilter]);
+    }, [kitchenInventory?.data, stockFilter, unitFilter, cleanSearchQuery]);
 
     const filteredHistoryLogs = useMemo(() => {
         const rows = logs?.data ?? [];
@@ -435,6 +459,32 @@ export default function KitchenInventory() {
             return matchesQuery && matchesAction;
         });
     }, [logs?.data, historySearchQuery, historyActionFilter]);
+
+    const inventoryTotalRecords = filteredKitchenInventory.length;
+    const inventoryTotalPages = Math.max(1, Math.ceil(inventoryTotalRecords / inventoryLimit));
+    const paginatedKitchenInventory = useMemo(() => {
+        const start = (inventoryPage - 1) * inventoryLimit;
+        return filteredKitchenInventory.slice(start, start + inventoryLimit);
+    }, [filteredKitchenInventory, inventoryPage, inventoryLimit]);
+
+    const historyTotalRecords = filteredHistoryLogs.length;
+    const historyTotalPages = Math.max(1, Math.ceil(historyTotalRecords / auditLimit));
+    const paginatedHistoryLogs = useMemo(() => {
+        const start = (auditPage - 1) * auditLimit;
+        return filteredHistoryLogs.slice(start, start + auditLimit);
+    }, [filteredHistoryLogs, auditPage, auditLimit]);
+
+    useEffect(() => {
+        if (inventoryPage > inventoryTotalPages) {
+            setInventoryPage(inventoryTotalPages);
+        }
+    }, [inventoryPage, inventoryTotalPages]);
+
+    useEffect(() => {
+        if (auditPage > historyTotalPages) {
+            setAuditPage(historyTotalPages);
+        }
+    }, [auditPage, historyTotalPages]);
 
     const historyActionOptions = useMemo(() => {
         const actions = Array.from(
@@ -467,13 +517,15 @@ export default function KitchenInventory() {
         }
     };
 
-    const exportKitchenInventory = () => {
-        if (!filteredKitchenInventory.length) {
-            toast.info("No inventory items to export");
+    const exportKitchenSheet = () => {
+        const items = filteredKitchenInventory;
+
+        if (!items.length) {
+            toast.info("No inventory rows to export");
             return;
         }
 
-        const formatted = filteredKitchenInventory.map((item: KitchenItem) => ({
+        const formatted = items.map((item: KitchenItem) => ({
             "Item ID": formatModuleDisplayId("kitchen", item.id),
             "Item": item.name,
             "Category": item.inventory_type || "--",
@@ -508,12 +560,14 @@ export default function KitchenInventory() {
     };
 
     const exportHistoryLogs = () => {
-        if (!filteredHistoryLogs.length) {
+        const logsToExport = filteredHistoryLogs;
+
+        if (!logsToExport.length) {
             toast.info("No history rows to export");
             return;
         }
 
-        const formatted = filteredHistoryLogs.map((audit: any) => {
+        const formatted = logsToExport.map((audit: any) => {
             const details = parseAuditDetails(audit.details);
             const before = details?.before;
             const after = details?.after;
@@ -660,7 +714,7 @@ export default function KitchenInventory() {
                                                     key: "export",
                                                     label: "Export Inventory",
                                                     icon: <Download className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
-                                                    onClick: exportKitchenInventory,
+                                                    onClick: exportKitchenSheet,
                                                 },
                                                 {
                                                     key: "reset",
@@ -713,7 +767,7 @@ export default function KitchenInventory() {
                                                 const lowStock = Number(item.quantity) <= (item.reorder_level || 0);
                                                 return (
                                                     <span className={lowStock ? "text-red-600" : "text-foreground"}>
-                                                        {item.quantity} {item.unit}
+                                                        {item.quantity}
                                                     </span>
                                                 );
                                             },
@@ -724,7 +778,7 @@ export default function KitchenInventory() {
                                             render: (item: any) => item.unit || <span className="text-muted-foreground/40 italic">Not set</span>,
                                         },
                                     ] as ColumnDef[]}
-                                    data={filteredKitchenInventory}
+                                    data={paginatedKitchenInventory}
                                     loading={kitchenInventoryLoading || kitchenInventoryFetching || isInitializing}
                                     emptyText="No inventory items found"
                                     minWidth="760px"
@@ -736,29 +790,29 @@ export default function KitchenInventory() {
                                                 <Button
                                                     size="icon"
                                                     variant="ghost"
-                                                    className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                                    className="h-7 w-7 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
                                                     onClick={() => openManage(item, true)}
                                                     aria-label={`View and edit details for inventory item ${item.name}`}
                                                 >
-                                                    <Pencil className="w-4 h-4 mx-auto" />
+                                                    <Pencil className="w-3.5 h-3.5 mx-auto" />
                                                 </Button>
                                             </TooltipTrigger>
                                             <TooltipContent>View / Edit Details</TooltipContent>
                                         </Tooltip>
                                     )}
-                                    enablePagination={Boolean(kitchenInventory?.pagination)}
-                                    paginationProps={kitchenInventory?.pagination ? {
+                                    enablePagination
+                                    paginationProps={{
                                         page: inventoryPage,
-                                        totalPages: kitchenInventory.pagination.totalPages ?? 1,
+                                        totalPages: inventoryTotalPages,
                                         setPage: setInventoryPage,
-                                        totalRecords: kitchenInventory.pagination.totalItems ?? kitchenInventory.pagination.total ?? kitchenInventory.data?.length ?? 0,
+                                        totalRecords: inventoryTotalRecords,
                                         limit: inventoryLimit,
                                         onLimitChange: (value) => {
                                             setInventoryLimit(value);
                                             setInventoryPage(1);
                                         },
                                         disabled: kitchenInventoryLoading || kitchenInventoryFetching,
-                                    } : undefined}
+                                    }}
                                 />
                             </div>
                         </div>
@@ -870,23 +924,23 @@ export default function KitchenInventory() {
                                             render: (audit: any) => new Date(audit.created_on).toLocaleString(),
                                         },
                                     ] as ColumnDef[]}
-                                    data={filteredHistoryLogs}
+                                    data={paginatedHistoryLogs}
                                     loading={logsLoading || logsFetching || isInitializing}
                                     emptyText="No audit logs found"
                                     minWidth="860px"
-                                    enablePagination={Boolean(logs?.pagination)}
-                                    paginationProps={logs?.pagination ? {
+                                    enablePagination
+                                    paginationProps={{
                                         page: auditPage,
-                                        totalPages: logs.pagination.totalPages ?? 1,
+                                        totalPages: historyTotalPages,
                                         setPage: setAuditPage,
-                                        totalRecords: logs.pagination.totalItems ?? logs.pagination.total ?? logs.data?.length ?? 0,
+                                        totalRecords: historyTotalRecords,
                                         limit: auditLimit,
                                         onLimitChange: (value) => {
                                             setAuditLimit(value);
                                             setAuditPage(1);
                                         },
                                         disabled: logsLoading || logsFetching,
-                                    } : undefined}
+                                    }}
                                 />
                             </div>
                         </div>

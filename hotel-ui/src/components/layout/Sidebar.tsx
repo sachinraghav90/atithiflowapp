@@ -15,6 +15,7 @@ import {
 import { SIDEBAR_ICON_MAP } from "./sidebarIconMap";
 import { hmsApi } from '@/redux/services/hmsApi';
 import { useAutoPropertySelect } from '@/hooks/useAutoPropertySelect';
+import { px, rgba } from 'framer-motion';
 
 export default function Sidebar({
     collapsed,
@@ -43,12 +44,13 @@ export default function Sidebar({
             className={cn(
                 "relative hidden lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:flex-col",
                 "bg-gradient-to-b from-background via-background to-muted/40",
-                "border-r border-border shadow-lg z-40",
+                "border-r border-slate-900/60",
                 "transition-all duration-300 ease-in-out",
                 collapsed ? "w-16" : "w-56"
             )}
+            style={{ boxShadow: "0 2px 4px 0 rgba(0, 0, 0, 0.1)" }}
         >
-            <div className="h-14 flex items-center justify-center border-b border-border cursor-pointer">
+            <div className="h-14 flex items-center justify-center border-b border-slate-900/60 cursor-pointer">
             </div>
 
             <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto scrollbar-hide">

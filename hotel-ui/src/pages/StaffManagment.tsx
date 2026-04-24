@@ -15,7 +15,7 @@ import {
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect } from "@/components/ui/grid-toolbar";
 import { FilterX, Download, Image as ImageIcon, KeyRound, Pencil, Phone, RefreshCcw } from "lucide-react";
-import { useAddStaffMutation, useCreateUserMutation, useGetAllRolesQuery, useGetMyPropertiesQuery, useGetStaffByPropertyQuery, useLazyGetStaffByIdQuery, useUpdateStaffMutation, useUpdateStaffPasswordMutation, useGetPropertyAddressByUserQuery } from "@/redux/services/hmsApi";
+import { useAddStaffMutation, useCreateUserMutation, useGetAllRolesQuery, useGetMyPropertiesQuery, useGetStaffByPropertyQuery, useLazyGetStaffByPropertyQuery, useLazyGetStaffByIdQuery, useUpdateStaffMutation, useUpdateStaffPasswordMutation, useGetPropertyAddressByUserQuery } from "@/redux/services/hmsApi";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { toast } from "react-toastify";
 import { useAppSelector } from "@/redux/hook";
@@ -33,6 +33,7 @@ import IdentificationDocuments from "@/components/staff-form/sections/Identifica
 
 import { usePermission } from "@/rbac/usePermission";
 import EmergencyContacts from "@/components/staff-form/sections/EmergencyContacts";
+import { formatReadableLabel } from "@/utils/formatString";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiToast } from "@/utils/apiToastPromise";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -149,11 +150,25 @@ export default function StaffManagement() {
         isLoading: myPropertiesLoading
     } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
 
+    const cleanSearchQuery = useMemo(() => {
+        if (!searchQuery) return "";
+        const statusLabels = STAFF_STATUSES.map(s => s.toLowerCase());
+        const filterKeywords = [...statusLabels];
+        return filterKeywords
+            .sort((left, right) => right.length - left.length)
+            .reduce((query, keyword) => {
+                const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                return query.replace(new RegExp(`\\b${escapedKeyword}\\b`, "gi"), " ");
+            }, searchQuery)
+            .replace(/\s+/g, " ")
+            .trim();
+    }, [searchQuery]);
+
     const { data: staffData, isLoading, isFetching, refetch: refetchStaff } = useGetStaffByPropertyQuery({
         property_id: selectedPropertyId,
         page,
         limit,
-        search: searchQuery,
+        search: cleanSearchQuery,
         department: "",
         status: statusFilter,
     }, {
@@ -380,23 +395,47 @@ export default function StaffManagement() {
         }
     };
 
-    const exportStaffSheet = () => {
-        if (!staffRows.length) {
-            toast.info("No staff available to export");
+    const [getStaffForExport, { isFetching: exportingStaff }] = useLazyGetStaffByPropertyQuery();
+
+    const exportStaffSheet = async () => {
+        if (exportingStaff) return;
+        const totalRecords = staffData?.pagination?.totalItems ?? staffData?.pagination?.total ?? staffRows.length;
+        if (!totalRecords) {
+            toast.info("No staff items to export");
             return;
         }
+        const toastId = toast.loading("Preparing staff export...");
 
-        const formatted = staffRows.map((staffMember: any) => ({
-            "Staff ID": formatModuleDisplayId("staff", staffMember.id),
-            "Name": `${staffMember.first_name || ""} ${staffMember.last_name || ""}`.trim() || "-",
-            "Contact": staffMember.phone || staffMember.phone1 || "-",
-            "Property": staffMember.properties?.[0]?.brand_name || "-",
-            "Role": staffMember.roles?.[0]?.name || "-",
-            "Status": staffMember.status || "-",
-        }));
+        try {
+            const res = await getStaffForExport({
+                property_id: selectedPropertyId,
+                search: cleanSearchQuery,
+                status: statusFilter,
+                export: true
+            }).unwrap();
 
-        exportToExcel(formatted, "Staff.xlsx");
-        toast.success("Export completed");
+            if (!res?.data?.length) {
+                toast.dismiss(toastId);
+                toast.info("No staff items to export");
+                return;
+            }
+
+            const formatted = res.data.map((staffMember: any) => ({
+                "Staff ID": formatModuleDisplayId("staff", staffMember.id),
+                "Name": `${staffMember.first_name || ""} ${staffMember.last_name || ""}`.trim() || "-",
+                "Contact": staffMember.phone || staffMember.phone1 || "-",
+                "Property": staffMember.properties?.[0]?.brand_name || "-",
+                "Role": staffMember.roles?.[0]?.name || "-",
+                "Status": staffMember.status || "-",
+            }));
+
+            exportToExcel(formatted, "Staff.xlsx");
+            toast.dismiss(toastId);
+            toast.success("Export completed");
+        } catch (error) {
+            toast.dismiss(toastId);
+            toast.error("Failed to export staff");
+        }
     };
 
     const openStaffDetails = async (staffMember: Staff, forceMode: "view" | "edit" = "view") => {
@@ -474,8 +513,8 @@ export default function StaffManagement() {
         },
         {
             label: "Role",
-            cellClassName: "text-muted-foreground text-sm capitalize",
-            render: (s) => s.roles?.[0]?.name || "-",
+            cellClassName: "text-muted-foreground text-sm",
+            render: (s) => formatReadableLabel(s.roles?.[0]?.name) || "-",
         },
         {
             label: "Status",
@@ -606,6 +645,7 @@ export default function StaffManagement() {
 
                     <div className="px-2 pb-2">
                         <AppDataGrid
+                            density="compact"
                             columns={staffColumns}
                             data={staffRows}
                             loading={isLoading || isFetching || isInitializing}
@@ -624,11 +664,11 @@ export default function StaffManagement() {
                                                     <Button
                                                         size="icon"
                                                         variant="ghost"
-                                                        className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                                        className="h-7 w-7 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
                                                         aria-label={`View and edit details for ${s.first_name} ${s.last_name}`}
                                                         onClick={() => openStaffDetails(s, "edit")}
                                                     >
-                                                        <Pencil className="w-4 h-4 mx-auto" />
+                                                        <Pencil className="w-3.5 h-3.5 mx-auto" />
                                                     </Button>
                                                 </TooltipTrigger>
                                                 <TooltipContent>View / Edit Details</TooltipContent>
@@ -639,11 +679,11 @@ export default function StaffManagement() {
                                                     <Button
                                                         size="icon"
                                                         variant="outline"
-                                                        className="h-8 w-8 rounded-[3px] shadow-sm"
+                                                        className="h-7 w-7 rounded-[3px] shadow-sm"
                                                         onClick={() => openPasswordModal(s)}
                                                         aria-label={`Update password for ${s.first_name} ${s.last_name}`}
                                                     >
-                                                        <KeyRound className="h-4 w-4" />
+                                                        <KeyRound className="h-3.5 w-3.5" />
                                                     </Button>
                                                 </TooltipTrigger>
                                                 <TooltipContent>Update Password</TooltipContent>

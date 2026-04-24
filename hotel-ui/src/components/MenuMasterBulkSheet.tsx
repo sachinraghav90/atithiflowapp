@@ -156,7 +156,7 @@ export default function MenuMasterBulkSheet({
 
 
                         <div className="editable-grid-compact border rounded-[5px] overflow-hidden flex flex-col bg-background/50 border-border">
-                            <div className="overflow-x-auto w-full bg-background/50">
+                            <div className="grid-scroll-x w-full bg-background/50">
                                 <div className="w-full min-w-[800px]">
                                     <DataGrid>
                                         <DataGridHeader>

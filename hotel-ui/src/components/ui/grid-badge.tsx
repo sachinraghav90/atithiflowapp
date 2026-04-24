@@ -3,6 +3,7 @@ import * as React from "react";
 import { Badge } from "@/components/ui/badge";
 import { type StatusColorType, getStatusColor } from "@/constants/statusColors";
 import { cn } from "@/lib/utils";
+import { formatReadableLabel } from "@/utils/formatString";
 
 type GridBadgeTone = "neutral" | "info" | "success" | "warning" | "danger" | "accent";
 
@@ -28,10 +29,11 @@ function GridBadge({
   status,
   statusType,
   tone = "neutral",
-  uppercase = true,
+  uppercase = false,
   ...props
 }: GridBadgeProps) {
   const colorClass = status && statusType ? getStatusColor(status, statusType) : GRID_BADGE_TONES[tone];
+  const badgeContent = typeof children === "string" ? formatReadableLabel(children) : children;
 
   return (
     <Badge
@@ -44,7 +46,7 @@ function GridBadge({
       )}
       {...props}
     >
-      {children}
+      {badgeContent}
     </Badge>
   );
 }

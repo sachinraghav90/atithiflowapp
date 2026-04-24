@@ -851,6 +851,7 @@ export default function PropertyManagement() {
 
                     <div className="px-2 pb-2">
                         <AppDataGrid
+                            density="compact"
                             rowKey={(p: Property) => p.id}
                             columns={[
                         {
@@ -923,12 +924,12 @@ export default function PropertyManagement() {
                                         <Button
                                             size="icon"
                                             variant="ghost"
-                                            className="h-8 w-8 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                            className="h-7 w-7 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
                                             disabled={updatingPropertyIds.has(property.id)}
                                             aria-label={`View and edit details for property ${property.brand_name}`}
                                             onClick={() => openPropertyDetails(property, "edit")}
                                         >
-                                            <Pencil className="w-4 h-4 mx-auto" />
+                                            <Pencil className="w-3.5 h-3.5 mx-auto" />
                                         </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>View / Edit Details</TooltipContent>
