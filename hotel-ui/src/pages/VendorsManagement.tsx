@@ -104,22 +104,15 @@ export default function VendorsManagement() {
         isLoading: myPropertiesLoading
     } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
 
-    const vendorTypeOptions = useMemo(() => {
-        const types = Array.from(new Set((vendors?.data || []).map((v: Vendor) => v.vendor_type).filter(Boolean)));
-        return types.map(t => ({ label: String(t), value: String(t) }));
-    }, [vendors?.data]);
-
     const cleanSearchQuery = useMemo(() => {
         if (!searchQuery) return "";
-        const typeLabels = vendorTypeOptions.map(opt => opt.label.toLowerCase());
         const statusLabels = VENDOR_STATUS_OPTIONS.map(opt => opt.label.toLowerCase());
-        const filterKeywords = [...typeLabels, ...statusLabels];
         return searchQuery
             .split(/\s+/)
-            .filter(word => !filterKeywords.includes(word.toLowerCase()))
+            .filter(word => !statusLabels.includes(word.toLowerCase()))
             .join(" ")
             .trim();
-    }, [searchQuery, vendorTypeOptions]);
+    }, [searchQuery]);
 
     const { data: vendors, isLoading, isFetching, isUninitialized, refetch: refetchVendors } = useGetPropertyVendorsQuery({ 
         propertyId: selectedPropertyId, 
@@ -131,6 +124,11 @@ export default function VendorsManagement() {
     }, {
         skip: !isLoggedIn || !selectedPropertyId,
     });
+
+    const vendorTypeOptions = useMemo(() => {
+        const types = Array.from(new Set((vendors?.data || []).map((v: Vendor) => v.vendor_type).filter(Boolean)));
+        return types.map(t => ({ label: String(t), value: String(t) }));
+    }, [vendors?.data]);
 
     const [getVendorsForExport, { isFetching: exportingVendors }] = useLazyExportPropertyVendorsQuery();
 
