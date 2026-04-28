@@ -103,22 +103,18 @@ export default function PersonalDetails({
                 <div className="flex gap-2 items-end">
 
                     {/* SALUTATION */}
-                    <div className="space-y-2 w-[5.31rem]">
-
-                        <Label>First Name*</Label>
-
+                    <div className="space-y-2 w-16 shrink-0">
+                        <Label>{"\u00A0"}</Label>
                         <NativeSelect
                             disabled={viewMode}
                             className={`w-full h-10 rounded-[3px] border bg-background px-2 text-sm ${errors.salutation ? "border-red-500" : "border-border"
                                 }`}
-                            value={value.salutation || ""}
+                            value={value.salutation || "Mr"}
                             onChange={(e) => {
-
                                 setValue((prev: any) => ({
                                     ...prev,
                                     salutation: e.target.value,
                                 }));
-
                                 setErrors((prev: any) => {
                                     const next = { ...prev };
                                     delete next.salutation;
@@ -126,30 +122,24 @@ export default function PersonalDetails({
                                 });
                             }}
                         >
-                            <option value="">--</option>
                             <option value="Mr">Mr</option>
                             <option value="Ms">Ms</option>
                             <option value="Mrs">Mrs</option>
-                            {/* <option value="Dr">Dr</option> */}
                         </NativeSelect>
-
                     </div>
 
                     {/* FIRST NAME */}
                     <div className="flex-1">
-
                         <FormInput
-                            label=""
+                            label="First Name*"
                             field="first_name"
                             value={value}
                             setValue={setValue}
                             errors={errors}
                             setErrors={setErrors}
-                            // required
                             viewMode={viewMode}
                             maxLength={100}
                         />
-
                     </div>
 
                 </div>

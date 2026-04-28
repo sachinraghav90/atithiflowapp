@@ -47,12 +47,12 @@ import { useNavigate } from "react-router-dom";
 import GuestsEmbedded from "@/components/layout/GuestsEmbedded";
 import VehiclesEmbedded from "@/components/layout/VehiclesEmbedded";
 import PaymentsEmbedded from "@/components/layout/PaymentEmbedded";
-import { formatToDDMMYYYY } from "@/utils/formatToDDMMYYYY";
+import { formatToDDMMYY } from "@/utils/formatToDDMMYY";
 import LaundryEmbedded from "@/components/layout/LaundryEmbedded";
 import BookingLogsEmbedded from "@/components/layout/BookingLogsEmbedded";
 import RestaurantOrdersEmbedded from "@/components/layout/RestaurantOrdersEmbedded";
 import { exportToExcel } from "@/utils/exportToExcel";
-import { Download, Eye, FilterX, Pencil, Plus, RefreshCcw, X } from "lucide-react";
+import { Download, Eye, FilterX, Pencil, Plus, RefreshCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getStatusColor } from "@/constants/statusColors";
 import { GridBadge } from "@/components/ui/grid-badge";
@@ -111,14 +111,16 @@ export default function BookingsManagement() {
     const [propertyId, setPropertyId] = useState<number | undefined>();
     const [searchInput, setSearchInput] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
-    const [fromDate, setFromDate] = useState<string>("");
-    const [toDate, setToDate] = useState<string>("");
+    const [arrivalFrom, setArrivalFrom] = useState<string>("");
+    const [arrivalTo, setArrivalTo] = useState<string>("");
+    const [departureFrom, setDepartureFrom] = useState<string>("");
+    const [departureTo, setDepartureTo] = useState<string>("");
     const [scope, setScope] = useState("");
     const [status, setStatus] = useState("");
 
     const { page, limit, setPage, handleLimitChange } = useGridPagination({
         initialLimit: 10,
-        resetDeps: [propertyId, searchQuery, fromDate, toDate, scope, status],
+        resetDeps: [propertyId, searchQuery, arrivalFrom, arrivalTo, departureFrom, departureTo, scope, status],
     });
 
     const [detailsOpen, setDetailsOpen] = useState(false);
@@ -131,8 +133,12 @@ export default function BookingsManagement() {
 
     const [updatedStatus, setUpdatedStatus] = useState<string>("");
 
-    const memoizedFromDate = useMemo(() => parseDate(fromDate), [fromDate]);
-    const memoizedToDate = useMemo(() => parseDate(toDate), [toDate]);
+    const memoizedArrivalFrom = useMemo(() => (arrivalFrom ? new Date(arrivalFrom) : null), [arrivalFrom]);
+    const memoizedArrivalTo = useMemo(() => (arrivalTo ? new Date(arrivalTo) : null), [arrivalTo]);
+    const memoizedDepartureFrom = useMemo(() => (departureFrom ? new Date(departureFrom) : null), [departureFrom]);
+    const memoizedDepartureTo = useMemo(() => (departureTo ? new Date(departureTo) : null), [departureTo]);
+
+
 
     const [confirmStatusOpen, setConfirmStatusOpen] = useState(false)
 
@@ -160,8 +166,10 @@ export default function BookingsManagement() {
     const { data: bookingsData, isLoading: bookingsLoading, isFetching: bookingsFetching, isUninitialized: bookingsUninitialized, refetch: refetchBookings } = useGetBookingsQuery({
         propertyId,
         page,
-        fromDate,
-        toDate,
+        arrivalFrom,
+        arrivalTo,
+        departureFrom,
+        departureTo,
         scope,
         status: status || undefined,
         search: cleanSearchQuery,
@@ -219,8 +227,10 @@ export default function BookingsManagement() {
         try {
             const res = await getAllBookings({
                 propertyId,
-                fromDate,
-                toDate,
+                arrivalFrom,
+                arrivalTo,
+                departureFrom,
+                departureTo,
                 scope: scope || undefined,
                 status: status || undefined,
                 search: cleanSearchQuery,
@@ -237,8 +247,8 @@ export default function BookingsManagement() {
             const formatted = rows.map((b: any) => ({
                 "Booking": formatModuleDisplayId("booking", b.id),
                 "Status": b.booking_status?.replace("_", " "),
-                "Arrival": formatToDDMMYYYY(b.estimated_arrival),
-                "Departure": formatToDDMMYYYY(b.estimated_departure),
+                "Arrival": formatToDDMMYY(b.estimated_arrival),
+                "Departure": formatToDDMMYY(b.estimated_departure),
                 "Amount": `₹ ${b.final_amount}`,
                 "Room number(s)": Array.isArray(b.room_numbers) ? b.room_numbers.join(", ") : (b.room_numbers?.toString() || "-"),
                 "Pickup / Drop": `${b.pickup ? "Yes" : "No"} / ${b.drop ? "Yes" : "No"}`,
@@ -303,8 +313,10 @@ export default function BookingsManagement() {
         setSearchQuery("");
         setScope("");
         setStatus("");
-        setFromDate("");
-        setToDate("");
+        setArrivalFrom("");
+        setArrivalTo("");
+        setDepartureFrom("");
+        setDepartureTo("");
         setPage(1);
     };
 
@@ -347,8 +359,8 @@ export default function BookingsManagement() {
 
                     {/* Center */}
                     <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <InfoCard label="Estimated Arrival" value={formatToDDMMYYYY(booking?.estimated_arrival)} />
-                        <InfoCard label="Estimated Departure" value={formatToDDMMYYYY(booking?.estimated_departure)} />
+                        <InfoCard label="Estimated Arrival" value={formatToDDMMYY(booking?.estimated_arrival)} />
+                        <InfoCard label="Estimated Departure" value={formatToDDMMYY(booking?.estimated_departure)} />
                         <InfoCard label="Nights" value={booking?.booking_nights || 0} />
                         <InfoCard label="Booking Type" value={booking?.booking_type || "-"} />
                         <InfoCard label="Booking Status" value={booking?.booking_status || "-"} />
@@ -359,7 +371,7 @@ export default function BookingsManagement() {
                     <div className="space-y-4">
                         <SummaryCard label="Total Guests" value={(booking?.adult || 0) + (booking?.child || 0)} />
                         <SummaryCard label="Rooms Booked" value={booking?.rooms?.length || 0} />
-                        <SummaryCard label="Booking Date" value={formatToDDMMYYYY(booking?.booking_date)} />
+                        <SummaryCard label="Booking Date" value={formatToDDMMYY(booking?.booking_date)} />
                     </div>
                 </div>
                 <div className="mt-4">
@@ -499,8 +511,8 @@ export default function BookingsManagement() {
 
 
     return (
-        <div className="h-full flex flex-col overflow-hidden">
-            <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8">
+        <div className="flex flex-col">
+            <section className="p-6 lg:p-8">
                 {/* Header */}
                 <div className="mb-6 flex items-start justify-between gap-4">
                     {/* Left: Title */}
@@ -615,18 +627,36 @@ export default function BookingsManagement() {
 
                             {/* Row 2 */}
                             <GridToolbarRow className="gap-2">
-                                <GridToolbarRangePicker
-                                    className="md:col-span-2"
-                                    startDate={memoizedFromDate}
-                                    endDate={memoizedToDate}
-                                    startLabel="From"
-                                    endLabel="To"
-                                    onChange={([start, end]) => {
-                                        setPage(1);
-                                        setFromDate(start ? formatDate(start) : "");
-                                        setToDate(end ? formatDate(end) : "");
-                                    }}
-                                />
+                                    <GridToolbarRangePicker
+                                        startDate={memoizedArrivalFrom}
+                                        endDate={memoizedArrivalTo}
+                                        startLabel="Arrival"
+                                        endLabel="Arrival To"
+                                        displayFormat="dd/MM/yy"
+                                        startPlaceholder="DD/MM/YY"
+                                        endPlaceholder="DD/MM/YY"
+                                        onChange={([start, end]) => {
+                                            setPage(1);
+                                            setArrivalFrom(start ? formatDate(start) : "");
+                                            setArrivalTo(end ? formatDate(end) : "");
+                                        }}
+                                    />
+
+                                    <GridToolbarRangePicker
+                                        startDate={memoizedDepartureFrom}
+                                        endDate={memoizedDepartureTo}
+                                        startLabel="Departure"
+                                        endLabel="Departure To"
+                                        displayFormat="dd/MM/yy"
+                                        startPlaceholder="DD/MM/YY"
+                                        endPlaceholder="DD/MM/YY"
+                                        minDate={memoizedArrivalFrom || undefined}
+                                        onChange={([start, end]) => {
+                                            setPage(1);
+                                            setDepartureFrom(start ? formatDate(start) : "");
+                                            setDepartureTo(end ? formatDate(end) : "");
+                                        }}
+                                    />
 
                                 <GridToolbarSpacer className="hidden md:block" />
                                 <GridToolbarSpacer type="actions" className="hidden md:block" />
@@ -665,13 +695,13 @@ export default function BookingsManagement() {
                                     label: "Arrival",
                                     headClassName: "text-center",
                                     cellClassName: "text-center font-medium text-xs whitespace-nowrap",
-                                    render: (b: any) => formatToDDMMYYYY(b.estimated_arrival)
+                                    render: (b: any) => formatToDDMMYY(b.estimated_arrival)
                                 },
                                 {
                                     label: "Departure",
                                     headClassName: "text-center",
                                     cellClassName: "text-center font-medium text-xs whitespace-nowrap",
-                                    render: (b: any) => formatToDDMMYYYY(b.estimated_departure)
+                                    render: (b: any) => formatToDDMMYY(b.estimated_departure)
                                 },
                                 {
                                     label: "Room number(s)",
@@ -739,43 +769,25 @@ export default function BookingsManagement() {
             <Sheet open={detailsOpen} onOpenChange={setDetailsOpen}>
                 <SheetContent
                     side="right"
-                    className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background p-0"
+                    className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background"
                 >
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="space-y-1"
+                        className="space-y-6"
                     >
-                        <SheetHeader className="sr-only">
+                        <SheetHeader>
                             <SheetTitle>
                                 {editMode ? "Manage Booking" : "Booking Summary"} ({formatModuleDisplayId("booking", bookingId)})
                             </SheetTitle>
                         </SheetHeader>
 
-                    {/* Header */}
-                    <div className="h-14 border-b border-border flex items-center justify-between px-6">
-                        <div>
-                            <h2 className="text-lg font-semibold">
-                                {editMode ? "Manage Booking" : "Booking Summary"} ({formatModuleDisplayId("booking", bookingId)})
-                            </h2>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => setDetailsOpen(false)}
-                                className="h-9 w-9 rounded-full hover:bg-slate-100"
-                            >
-                                <X className="w-5 h-5 text-muted-foreground" />
-                            </Button>
-                        </div>
-
                         {/* Status Update */}
                         {editMode && (
-                            <div className="flex items-center gap-3 me-8">
+                            <div className="space-y-2 pt-4">
+                                <Label>Booking Status</Label>
                                 <NativeSelect
-                                    className="h-9 rounded-[3px] border border-border bg-background px-3 text-sm"
+                                    className="h-10 w-full rounded-[3px] border border-border bg-background px-3 text-sm"
                                     value={updatedStatus || selectedBooking?.booking.booking_status || ""}
                                     onChange={(e) => setUpdatedStatus(e.target.value)}
                                     disabled={selectedBooking?.booking.booking_status === "CANCELLED"}
@@ -787,21 +799,8 @@ export default function BookingsManagement() {
                                         </option>
                                     ))}
                                 </NativeSelect>
-
-                                <Button
-                                    size="sm"
-                                    variant="hero"
-                                    disabled={
-                                        !updatedStatus ||
-                                        updatedStatus === selectedBooking?.booking.booking_status
-                                    }
-                                    onClick={() => setConfirmStatusOpen(true)}
-                                >
-                                    Update
-                                </Button>
                             </div>
                         )}
-                    </div>
 
 
                     {/* Tabs */}
@@ -821,7 +820,7 @@ export default function BookingsManagement() {
                         </div>
 
                         {/* Scrollable Content */}
-                        <div className="h-[calc(100vh-8rem)] overflow-y-auto scrollbar-hide px-6 py-6">
+                        <div className="h-[calc(100vh-8rem)] overflow-y-auto px-6 py-6">
                             <TabsContent value="summary">
                                 <BookingSummaryTab booking={selectedBooking?.booking} />
                             </TabsContent>
@@ -863,6 +862,28 @@ export default function BookingsManagement() {
                             </TabsContent>
                         </div>
                     </Tabs>
+
+                    <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                        <Button
+                            variant="heroOutline"
+                            onClick={() => setDetailsOpen(false)}
+                        >
+                            {editMode ? "Cancel" : "Close"}
+                        </Button>
+
+                        {editMode && (
+                            <Button
+                                variant="hero"
+                                disabled={
+                                    !updatedStatus ||
+                                    updatedStatus === selectedBooking?.booking.booking_status
+                                }
+                                onClick={() => setConfirmStatusOpen(true)}
+                            >
+                                Update
+                            </Button>
+                        )}
+                    </div>
                     </motion.div>
                 </SheetContent>
             </Sheet>

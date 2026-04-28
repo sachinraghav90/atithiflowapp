@@ -17,6 +17,7 @@ interface ResponsiveDatePickerProps {
     minDate?: Date
     className?: string
     showTime?: boolean
+    displayFormat?: string
 }
 
 export function ResponsiveDatePicker({
@@ -27,7 +28,8 @@ export function ResponsiveDatePicker({
     disabled,
     minDate,
     className,
-    showTime
+    showTime,
+    displayFormat = "dd-MM-yyyy"
 }: ResponsiveDatePickerProps) {
     const [open, setOpen] = React.useState(false)
     const [isMobile, setIsMobile] = React.useState(false)
@@ -35,7 +37,7 @@ export function ResponsiveDatePicker({
     // Local state for manual typing
     const [typedValue, setTypedValue] = React.useState(
         value && !isNaN(value.getTime()) 
-            ? format(value, showTime ? "dd-MM-yyyy HH:mm" : "dd-MM-yyyy") 
+            ? format(value, showTime ? `${displayFormat} HH:mm` : displayFormat) 
             : ""
     )
 
@@ -50,14 +52,14 @@ export function ResponsiveDatePicker({
     React.useEffect(() => {
         setTypedValue(
             value && !isNaN(value.getTime()) 
-                ? format(value, showTime ? "dd-MM-yyyy HH:mm" : "dd-MM-yyyy") 
+                ? format(value, showTime ? `${displayFormat} HH:mm` : displayFormat) 
                 : ""
         )
-    }, [value, showTime])
+    }, [value, showTime, displayFormat])
 
     const handleInputChange = (val: string) => {
         setTypedValue(val)
-        const formatStr = showTime ? "dd-MM-yyyy HH:mm" : "dd-MM-yyyy"
+        const formatStr = showTime ? `${displayFormat} HH:mm` : displayFormat
         if (val.length === formatStr.length) {
             const parsed = parse(val, formatStr, new Date())
             if (isValid(parsed)) {
@@ -72,7 +74,7 @@ export function ResponsiveDatePicker({
         // Revert to current actual date if invalid text is left
         setTypedValue(
             value && !isNaN(value.getTime()) 
-                ? format(value, showTime ? "dd-MM-yyyy HH:mm" : "dd-MM-yyyy") 
+                ? format(value, showTime ? `${displayFormat} HH:mm` : displayFormat) 
                 : ""
         )
     }
@@ -84,7 +86,7 @@ export function ResponsiveDatePicker({
             className
         )}>
             <Input
-                className="border-0 focus-visible:ring-0 h-full text-sm placeholder:text-muted-foreground/60 shadow-none px-3"
+                className="border-0 focus-visible:ring-0 h-full text-sm font-medium placeholder:text-muted-foreground/60 shadow-none px-3"
                 value={typedValue}
                 placeholder={placeholder}
                 onChange={(e) => handleInputChange(e.target.value)}

@@ -9,10 +9,10 @@ export default function FormDatePicker({
     value,
     setValue,
     errors,
-    setErrors,
+    setErrors = () => { },
     required,
     selected,
-    onChange,
+    onChange = () => { },
 }: any) {
     const error = errors?.[field]
     const hoverError = error?.type === "required" ? error.message : ""

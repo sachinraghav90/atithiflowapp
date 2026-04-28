@@ -388,8 +388,8 @@ export function CreateOrder() {
        UI
     ============================ */
     return (
-        <div className="h-full min-h-0 flex flex-col overflow-hidden">
-            <section className="flex min-h-0 flex-col flex-1 overflow-y-auto p-6 lg:p-8 gap-6">
+        <div className="flex flex-col">
+            <section className="flex min-h-0 flex-col p-6 lg:p-8 gap-6">
 
                 <h1 className="text-2xl font-bold">Create Order</h1>
 

@@ -24,7 +24,7 @@ export default function AppLayout() {
             <main
                 className={cn(
                     "transition-all duration-300 ease-in-out",
-                    "h-[calc(100vh-3.5rem)]",
+                    "h-[calc(100vh-3.5rem)] overflow-y-auto app-scrollbar",
                     mainMargin
                 )}
             >

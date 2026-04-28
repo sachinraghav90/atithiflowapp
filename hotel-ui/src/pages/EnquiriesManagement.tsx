@@ -381,8 +381,8 @@ export default function EnquiriesManagement() {
     ], []);
 
     return (
-        <div className="h-full flex flex-col overflow-hidden">
-            <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8 space-y-6">
+        <div className="flex flex-col">
+            <section className="p-6 lg:p-8 space-y-6">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex flex-col">
                         <h1 className="text-2xl font-bold leading-tight">Enquiries</h1>
@@ -541,7 +541,7 @@ export default function EnquiriesManagement() {
                         </SheetHeader>
 
                     {selected && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                        <div className="grid grid-cols-1 gap-6 text-sm">
 
                             {/* LEFT — READ ONLY DETAILS */}
                             <div className="space-y-5">
@@ -614,7 +614,7 @@ export default function EnquiriesManagement() {
                             </div>
 
                             {/* RIGHT — EDITABLE / READ-ONLY */}
-                            <div className="space-y-4 border-l pl-6 border-border">
+                            <div className="space-y-4">
                                 <div>
                                     <Label className={editMode ? "text-primary font-bold" : "text-muted-foreground"}>
                                         {editMode ? "Update Lead Status" : "Lead Status"}
@@ -673,17 +673,8 @@ export default function EnquiriesManagement() {
                                     )}
                                 </div>
 
-                                {editMode && (
+                                {editMode && bookingPermission?.can_create && !selected.is_reserved && (
                                     <div className="space-y-2 pt-2">
-                                        <Button
-                                            variant="hero"
-                                            className="w-full h-11"
-                                            onClick={handleUpdate}
-                                        >
-                                            Update Enquiry
-                                        </Button>
-
-                                        {bookingPermission?.can_create && !selected.is_reserved && (
                                             <Button
                                                 variant="heroOutline"
                                                 className="w-full h-11"
@@ -691,12 +682,28 @@ export default function EnquiriesManagement() {
                                             >
                                                 Book Enquiry
                                             </Button>
-                                        )}
                                     </div>
                                 )}
                             </div>
                         </div>
                     )}
+                        <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                            <Button
+                                variant="heroOutline"
+                                onClick={() => setOpen(false)}
+                            >
+                                {editMode ? "Cancel" : "Close"}
+                            </Button>
+
+                            {editMode && (
+                                <Button
+                                    variant="hero"
+                                    onClick={handleUpdate}
+                                >
+                                    Update Enquiry
+                                </Button>
+                            )}
+                        </div>
                     </motion.div>
                 </SheetContent>
             </Sheet>

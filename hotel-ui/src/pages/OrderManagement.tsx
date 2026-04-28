@@ -264,8 +264,8 @@ export function OrdersManagement() {
     ], [prefetchOrder]);
 
     return (
-        <div className="h-full flex flex-col overflow-hidden">
-            <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8 space-y-6">
+        <div className="flex flex-col">
+            <section className="p-6 lg:p-8 space-y-6">
                 <div className="flex items-center justify-between w-full">
                     <div className="flex flex-col">
                         <h1 className="text-2xl font-bold leading-tight">Orders</h1>

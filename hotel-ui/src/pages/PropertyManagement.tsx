@@ -784,8 +784,8 @@ export default function PropertyManagement() {
     };
 
     return (
-        <div className="h-full flex flex-col overflow-hidden">
-            <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8 space-y-6">
+        <div className="flex flex-col">
+            <section className="p-6 lg:p-8 space-y-6">
                 <div className="flex items-center justify-between w-full">
                     <div className="flex flex-col">
                         <h1 className="text-2xl font-bold leading-tight">Properties</h1>
@@ -969,7 +969,7 @@ export default function PropertyManagement() {
                                     ? "Add Property"
                                     : mode === "edit"
                                         ? "Edit Property"
-                                        : "Property Details"}
+                                        : "Property summary"}
                             </SheetTitle>
                         </SheetHeader>
 
@@ -1154,14 +1154,14 @@ export default function PropertyManagement() {
                     </motion.div>
                     {/* ================= ACTION FOOTER ================= */}
 
-                    <div className="flex justify-end gap-3 pt-6 border-t border-border mt-6">
+                    <div className="flex justify-end gap-3 pt-4 border-t border-border mt-6">
 
                         {/* Cancel always available */}
                         <Button
                             variant="heroOutline"
                             onClick={() => setSheetOpen(false)}
                         >
-                            Cancel
+                            {viewMode ? "Close" : "Cancel"}
                         </Button>
 
                         {/* VIEW MODE BUTTON */}
@@ -1232,9 +1232,9 @@ function PropertyStatusCell({ property, toggleActive, isUpdating }) {
 function ViewField({ label, value }) {
 
     return (
-        <div>
-            <p className="text-xs text-muted-foreground">{label}</p>
-            <p className="font-medium text-foreground">
+        <div className="space-y-2">
+            <p className="text-sm font-medium text-foreground">{label}</p>
+            <p className="min-h-10 w-full rounded-[3px] bg-background px-3 py-2 flex items-center text-sm text-foreground cursor-default select-text">
                 {value || "-"}
             </p>
         </div>

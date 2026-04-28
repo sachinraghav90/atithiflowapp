@@ -372,8 +372,8 @@ export default function MenuMaster() {
     const { permission } = usePermission(pathname)
 
     return (
-        <div className="h-full flex flex-col overflow-hidden">
-            <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8 space-y-6">
+        <div className="flex flex-col">
+            <section className="p-6 lg:p-8 space-y-6">
 
                 {/* Header */}
                 <div className="flex items-center justify-between w-full">
@@ -677,25 +677,25 @@ export default function MenuMaster() {
                                 <div className="space-y-6">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
                                         <div className="space-y-3">
-                                            <div>
+                                            <div className="space-y-2">
                                                 <Label>Name</Label>
-                                                <p className="font-medium">{selected.item_name}</p>
+                                                <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">{selected.item_name}</p>
                                             </div>
-                                            <div>
+                                            <div className="space-y-2">
                                                 <Label>Group</Label>
-                                                <p>{selected.menu_item_group}</p>
+                                                <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">{selected.menu_item_group}</p>
                                             </div>
-                                            <div>
+                                            <div className="space-y-2">
                                                 <Label>Price</Label>
                                                 <p>₹{selected.price}</p>
                                             </div>
-                                            <div>
+                                            <div className="space-y-2">
                                                 <Label>Type</Label>
-                                                <p>{selected.is_veg ? "Veg" : "Non-Veg"}</p>
+                                                <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">{selected.is_veg ? "Veg" : "Non-Veg"}</p>
                                             </div>
-                                            <div>
+                                            <div className="space-y-2">
                                                 <Label>Preparation Time</Label>
-                                                <p>{selected.prep_time} minutes</p>
+                                                <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">{selected.prep_time} minutes</p>
                                             </div>
                                         </div>
                                         <div className="flex justify-center items-start">
@@ -709,8 +709,8 @@ export default function MenuMaster() {
                                             />
                                         </div>
                                     </div>
-                                    <div className="pt-6 border-t flex justify-end">
-                                        <Button variant="heroOutline" className="w-full" onClick={() => setMode(null)}>
+                                    <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                                        <Button variant="heroOutline" onClick={() => setMode(null)}>
                                             Close
                                         </Button>
                                     </div>
@@ -803,11 +803,11 @@ export default function MenuMaster() {
                                         </div>
                                     </div>
 
-                                    <div className="pt-6 border-t flex justify-end gap-3 mt-6">
-                                        <Button variant="heroOutline" className="flex-1" onClick={() => setMode(null)}>
+                                    <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                                        <Button variant="heroOutline" onClick={() => setMode(null)}>
                                             Cancel
                                         </Button>
-                                        <Button variant="hero" className="flex-1" onClick={handleForm}>
+                                        <Button variant="hero" onClick={handleForm}>
                                             {mode === "add" ? "Create Item" : "Save Changes"}
                                         </Button>
                                     </div>

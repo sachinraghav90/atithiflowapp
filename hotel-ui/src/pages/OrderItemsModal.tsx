@@ -1,6 +1,7 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
 import { Label } from "@/components/ui/label";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
     useGetOrderByIdQuery,
     useUpdateOrderPaymentMutation,
@@ -105,13 +106,12 @@ export function OrderItemsModal({
     };
 
     return (
-        <Dialog open={open} onOpenChange={onClose}>
-            <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                    <div className="flex justify-between items-center">
-                        <DialogTitle>Order Details</DialogTitle>
-                    </div>
-                </DialogHeader>
+        <Sheet open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+            <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
+                <div className="space-y-6">
+                    <SheetHeader>
+                        <SheetTitle>{editMode ? "Edit order" : "Order summary"}</SheetTitle>
+                    </SheetHeader>
 
                 {isLoading && (
                     <div className="space-y-4 w-full animate-pulse">
@@ -157,10 +157,10 @@ export function OrderItemsModal({
                 )}
 
                 {data && (
-                    <div className="space-y-4">
+                    <div className="space-y-6">
 
                         {/* ================= ORDER SUMMARY ================= */}
-                        <div className="grid grid-cols-2 gap-4 text-sm bg-background p-3 rounded-lg border border-border">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
                             <Info label="Order ID" value={formatOrderDisplayId(data.id)} />
                             <Info label="Order Type" value={data.order_type || "—"} />
@@ -198,14 +198,14 @@ export function OrderItemsModal({
                         </div>
 
                         {/* ================= STATUS CONTROLS ================= */}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
                             {editMode && (
-                                <div>
+                                <div className="space-y-2">
                                     <Label>Order Status</Label>
 
                                     <NativeSelect
-                                        className="w-full h-10 rounded-[3px] border border-border px-3"
+                                        className="w-full h-10 rounded-[3px] border border-border bg-background px-3"
                                         value={draftOrderStatus}
                                         onChange={(e) => setDraftOrderStatus(e.target.value)}
                                     >
@@ -217,11 +217,11 @@ export function OrderItemsModal({
                             )}
 
                             {editMode && (
-                                <div>
+                                <div className="space-y-2">
                                     <Label>Payment Status</Label>
 
                                     <NativeSelect
-                                        className="w-full h-10 rounded-[3px] border border-border px-3"
+                                        className="w-full h-10 rounded-[3px] border border-border bg-background px-3"
                                         value={draftPaymentStatus}
                                         onChange={(e) => setDraftPaymentStatus(e.target.value)}
                                     >
@@ -235,78 +235,88 @@ export function OrderItemsModal({
                         </div>
 
                         {/* ================= ITEMS TABLE ================= */}
-                        <div className="border rounded-lg overflow-hidden">
-                            <table className="w-full text-sm">
-                                <thead className="bg-background border-b">
-                                    <tr>
-                                        <th className="p-2 text-left">Item</th>
-                                        <th className="p-2 text-center">Qty</th>
-                                        <th className="p-2 text-right">Price</th>
-                                        <th className="p-2 text-right">Total</th>
-                                    </tr>
-                                </thead>
-
-                                <tbody>
-                                    {data.items.map((item: any) => (
-                                        <tr key={item.id} className="border-t">
-                                            <td className="p-2">
-                                                <p className="font-medium">
-                                                    {item.item_name}
+                        <AppDataGrid
+                            scrollable={false}
+                            density="compact"
+                            columns={[
+                                {
+                                    label: "Item",
+                                    cellClassName: "font-medium min-w-[220px]",
+                                    render: (item: any) => (
+                                        <>
+                                            <p>{item.item_name}</p>
+                                            {item.notes && (
+                                                <p className="text-xs font-normal text-muted-foreground">
+                                                    Note: {item.notes}
                                                 </p>
-                                                {item.notes && (
-                                                    <p className="text-xs text-muted-foreground">
-                                                        Note: {item.notes}
-                                                    </p>
-                                                )}
-                                            </td>
-
-                                            <td className="p-2 text-center">
-                                                {item.quantity}
-                                            </td>
-
-                                            <td className="p-2 text-right">
-                                                ₹{item.unit_price}
-                                            </td>
-
-                                            <td className="p-2 text-right font-medium">
-                                                ₹{item.item_total}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                            )}
+                                        </>
+                                    ),
+                                },
+                                {
+                                    label: "Qty",
+                                    headClassName: "text-center",
+                                    cellClassName: "text-center min-w-[80px]",
+                                    render: (item: any) => item.quantity,
+                                },
+                                {
+                                    label: "Price",
+                                    headClassName: "text-right",
+                                    cellClassName: "text-right min-w-[110px]",
+                                    render: (item: any) => `₹${item.unit_price}`,
+                                },
+                                {
+                                    label: "Total",
+                                    headClassName: "text-right",
+                                    cellClassName: "text-right font-medium min-w-[110px]",
+                                    render: (item: any) => `₹${item.item_total}`,
+                                },
+                            ] as ColumnDef[]}
+                            data={data.items ?? []}
+                            rowKey={(item: any, index) => item.id ?? index}
+                            minWidth="560px"
+                            className="mt-0"
+                        />
 
                         {/* ================= TOTAL ================= */}
                         <div className="flex justify-end text-lg font-semibold">
                             Total: ₹{data.total_amount}
                         </div>
 
-                        {editMode && (
-                            <div className="flex justify-end pt-2">
+                        <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                            <Button
+                                variant="heroOutline"
+                                onClick={onClose}
+                            >
+                                {editMode ? "Cancel" : "Close"}
+                            </Button>
+
+                            {editMode && (
                                 <Button
-                                    size="sm"
                                     variant="hero"
                                     onClick={handleSave}
                                 >
-                                    Save
+                                    Save Changes
                                 </Button>
-                            </div>
-                        )}
+                            )}
+                        </div>
 
                     </div>
                 )}
-            </DialogContent>
-        </Dialog>
+                </div>
+            </SheetContent>
+        </Sheet>
     );
 }
 
 /* small helper */
 function Info({ label, value }: { label: string; value: any }) {
     return (
-        <div>
+        <div className="space-y-2">
             <Label>{label}</Label>
-            <p>{value}</p>
+            <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">
+                {value}
+            </p>
         </div>
     );
 }

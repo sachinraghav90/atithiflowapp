@@ -3,7 +3,7 @@ import { Calendar } from "./calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "./popover"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./dialog"
 import { format, parse, isValid } from "date-fns"
-import { CalendarIcon } from "lucide-react"
+import { CalendarIcon, XCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Input } from "./input"
 
@@ -18,6 +18,7 @@ interface ResponsiveDateRangePickerProps {
     disabled?: boolean
     minDate?: Date
     className?: string
+    displayFormat?: string
 }
 
 export function ResponsiveDateRangePicker({
@@ -30,17 +31,18 @@ export function ResponsiveDateRangePicker({
     endLabel = "To",
     disabled,
     minDate,
-    className
+    className,
+    displayFormat = "dd-MM-yyyy"
 }: ResponsiveDateRangePickerProps) {
     const [open, setOpen] = React.useState(false)
     const [isMobile, setIsMobile] = React.useState(false)
 
     // Local state for manual typing
     const [typedStart, setTypedStart] = React.useState(
-        startDate && !isNaN(startDate.getTime()) ? format(startDate, "dd-MM-yyyy") : ""
+        startDate && !isNaN(startDate.getTime()) ? format(startDate, displayFormat) : ""
     )
     const [typedEnd, setTypedEnd] = React.useState(
-        endDate && !isNaN(endDate.getTime()) ? format(endDate, "dd-MM-yyyy") : ""
+        endDate && !isNaN(endDate.getTime()) ? format(endDate, displayFormat) : ""
     )
 
     React.useEffect(() => {
@@ -52,17 +54,17 @@ export function ResponsiveDateRangePicker({
 
     // Sync local state when external value changes
     React.useEffect(() => {
-        setTypedStart(startDate && !isNaN(startDate.getTime()) ? format(startDate, "dd-MM-yyyy") : "")
-    }, [startDate])
+        setTypedStart(startDate && !isNaN(startDate.getTime()) ? format(startDate, displayFormat) : "")
+    }, [startDate, displayFormat])
 
     React.useEffect(() => {
-        setTypedEnd(endDate && !isNaN(endDate.getTime()) ? format(endDate, "dd-MM-yyyy") : "")
-    }, [endDate])
+        setTypedEnd(endDate && !isNaN(endDate.getTime()) ? format(endDate, displayFormat) : "")
+    }, [endDate, displayFormat])
 
     const handleStartChange = (val: string) => {
         setTypedStart(val)
-        if (val.length === 10) {
-            const parsed = parse(val, "dd-MM-yyyy", new Date())
+        if (val.length === displayFormat.length) {
+            const parsed = parse(val, displayFormat, new Date())
             if (isValid(parsed)) {
                 // If end date exists and new start is after end, we don't update yet or handle validation
                 onChange([parsed, endDate || null])
@@ -74,8 +76,8 @@ export function ResponsiveDateRangePicker({
 
     const handleEndChange = (val: string) => {
         setTypedEnd(val)
-        if (val.length === 10) {
-            const parsed = parse(val, "dd-MM-yyyy", new Date())
+        if (val.length === displayFormat.length) {
+            const parsed = parse(val, displayFormat, new Date())
             if (isValid(parsed)) {
                 onChange([startDate || null, parsed])
             }
@@ -86,27 +88,39 @@ export function ResponsiveDateRangePicker({
 
     const handleBlur = () => {
         // Revert to current actual dates if invalid text is left
-        setTypedStart(startDate && !isNaN(startDate.getTime()) ? format(startDate, "dd-MM-yyyy") : "")
-        setTypedEnd(endDate && !isNaN(endDate.getTime()) ? format(endDate, "dd-MM-yyyy") : "")
+        setTypedStart(startDate && !isNaN(startDate.getTime()) ? format(startDate, displayFormat) : "")
+        setTypedEnd(endDate && !isNaN(endDate.getTime()) ? format(endDate, displayFormat) : "")
     }
+
+    React.useEffect(() => {
+        setTypedStart(startDate && !isNaN(startDate.getTime()) ? format(startDate, displayFormat) : "")
+        setTypedEnd(endDate && !isNaN(endDate.getTime()) ? format(endDate, displayFormat) : "")
+    }, [startDate, endDate, displayFormat])
+
+    const handleClear = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onChange([null, null]);
+    };
 
     const Trigger = (
         <div
             className={cn(
-                "grid grid-cols-1 gap-2 md:grid-cols-2",
+                "flex h-10 w-full items-center rounded-lg border border-input bg-background overflow-hidden focus-within:ring-1 focus-within:ring-ring transition-all group shadow-sm",
                 disabled && "opacity-50 cursor-not-allowed pointer-events-none",
                 className
             )}
         >
-            {/* Start Date Input */}
-            <div className="flex h-10 w-full items-center rounded-lg border border-input bg-background overflow-hidden focus-within:ring-1 focus-within:ring-ring transition-all group shadow-sm">
-                {startLabel && (
-                    <span className="px-3 bg-muted/40 text-muted-foreground text-[10px] font-bold uppercase tracking-wider whitespace-nowrap flex items-center border-r border-border h-full min-w-[60px] justify-center">
-                        {startLabel}
-                    </span>
-                )}
+            {/* Label Block */}
+            {startLabel && (
+                <div className="bg-muted/40 text-muted-foreground text-[10px] font-bold uppercase tracking-wider whitespace-nowrap flex items-center border-r border-border h-full w-[82px] justify-center select-none flex-shrink-0">
+                    {startLabel}
+                </div>
+            )}
+
+            {/* Date Inputs Area */}
+            <div className="flex flex-1 items-center px-2 gap-1 h-full overflow-hidden justify-center">
                 <Input
-                    className="border-0 focus-visible:ring-0 h-full text-xs font-medium placeholder:text-muted-foreground/60 shadow-none"
+                    className="border-0 focus-visible:ring-0 h-full text-[10px] font-semibold placeholder:text-xs placeholder:text-muted-foreground/40 shadow-none px-0 w-[68px] text-center bg-transparent"
                     value={typedStart}
                     placeholder={startPlaceholder}
                     onChange={(e) => handleStartChange(e.target.value)}
@@ -114,21 +128,13 @@ export function ResponsiveDateRangePicker({
                     onClick={() => setOpen(true)}
                     disabled={disabled}
                 />
-                <CalendarIcon 
-                    className="h-4 w-4 mr-3 text-muted-foreground/50 group-hover:text-primary transition-colors cursor-pointer" 
-                    onClick={() => setOpen(true)}
-                />
-            </div>
+                
+                <span className="text-muted-foreground/30 font-medium select-none mx-0.5 text-[10px]">
+                    —
+                </span>
 
-            {/* End Date Input */}
-            <div className="flex h-10 w-full items-center rounded-lg border border-input bg-background overflow-hidden focus-within:ring-1 focus-within:ring-ring transition-all group shadow-sm">
-                {endLabel && (
-                    <span className="px-3 bg-muted/40 text-muted-foreground text-[10px] font-bold uppercase tracking-wider whitespace-nowrap flex items-center border-r border-border h-full min-w-[60px] justify-center">
-                        {endLabel}
-                    </span>
-                )}
                 <Input
-                    className="border-0 focus-visible:ring-0 h-full text-xs font-medium placeholder:text-muted-foreground/60 shadow-none"
+                    className="border-0 focus-visible:ring-0 h-full text-[10px] font-semibold placeholder:text-xs placeholder:text-muted-foreground/40 shadow-none px-0 w-[68px] text-center bg-transparent"
                     value={typedEnd}
                     placeholder={endPlaceholder}
                     onChange={(e) => handleEndChange(e.target.value)}
@@ -136,10 +142,21 @@ export function ResponsiveDateRangePicker({
                     onClick={() => setOpen(true)}
                     disabled={disabled}
                 />
-                <CalendarIcon 
-                    className="h-4 w-4 mr-3 text-muted-foreground/50 group-hover:text-primary transition-colors cursor-pointer" 
-                    onClick={() => setOpen(true)}
-                />
+            </div>
+
+            {/* Icons Area */}
+            <div className="flex items-center pr-3 flex-shrink-0">
+                {(startDate || endDate) ? (
+                    <XCircle 
+                        className="h-3.5 w-3.5 text-muted-foreground/30 hover:text-destructive transition-colors cursor-pointer" 
+                        onClick={handleClear}
+                    />
+                ) : (
+                    <CalendarIcon 
+                        className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-primary transition-colors cursor-pointer" 
+                        onClick={() => setOpen(true)}
+                    />
+                )}
             </div>
         </div>
     )

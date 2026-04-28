@@ -604,8 +604,8 @@ export default function KitchenInventory() {
     /* ---------------- UI ---------------- */
 
     return (
-        <div className="h-full flex flex-col overflow-hidden">
-            <section className="flex flex-col flex-1 overflow-hidden p-6 lg:p-8 gap-6">
+        <div className="flex flex-col">
+            <section className="flex flex-col p-6 lg:p-8 gap-6">
 
                 {/* Header */}
                 <div className="flex justify-between items-center shrink-0">
@@ -676,7 +676,7 @@ export default function KitchenInventory() {
 
 
                 {activeTab === "inventory" && (
-                    <div className="flex-1 overflow-y-auto scrollbar-hide">
+                    <div className="flex-1">
                         <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
                             <div className="w-full">
                                 <GridToolbar className="border-b-0">
@@ -749,6 +749,7 @@ export default function KitchenInventory() {
 
                             <div className="px-2 pb-2">
                                 <AppDataGrid
+                                    scrollable={false}
                                     columns={[
                                         {
                                             label: "Item ID",
@@ -831,7 +832,7 @@ export default function KitchenInventory() {
                     </div>)}
 
                 {activeTab === "audit" && (
-                    <div className="flex-1 overflow-y-auto scrollbar-hide">
+                    <div className="flex-1">
                         <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
                             <div className="w-full">
                                 <GridToolbar className="border-b-0">
@@ -891,14 +892,15 @@ export default function KitchenInventory() {
 
                             <div className="px-2 pb-2">
                                 <AppDataGrid
+                                    scrollable={false}
                                     columns={[
                                         {
-                                            label: "History ID",
+                                            label: "Item ID",
                                             headClassName: "text-center",
                                             cellClassName: "text-center font-medium min-w-[100px]",
                                             render: (audit: any) => (
-                                                <span className="font-medium">
-                                                    {formatModuleDisplayId("history", audit.id)}
+                                                <span className="font-medium text-primary">
+                                                    {formatModuleDisplayId("kitchen", audit.event_id)}
                                                 </span>
                                             ),
                                         },

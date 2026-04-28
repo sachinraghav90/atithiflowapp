@@ -5,12 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
 import { NativeSelect } from "@/components/ui/native-select";
 import {
     useCreateInventoryMasterMutation,
@@ -464,8 +458,8 @@ export default function InventoryMaster() {
     }, [searchInput]);
 
     return (
-        <div className="h-full flex flex-col overflow-hidden">
-            <section className="flex-1 overflow-y-auto scrollbar-hide p-4 lg:p-6 space-y-4">
+        <div className="flex flex-col">
+            <section className="p-4 lg:p-6 space-y-4">
                 {/* HEADER */}
                 <div className="flex justify-between items-center mb-2">
                     <div>
@@ -871,57 +865,58 @@ export default function InventoryMaster() {
                     </SheetContent>
                 </Sheet>
 
-                {/* EDIT/VIEW DIALOG */}
-                <Dialog open={mode === "edit" || mode === "view"} onOpenChange={() => setMode(null)}>
-                    <DialogContent className="max-w-xl">
+                {/* EDIT/VIEW SHEET */}
+                <Sheet open={mode === "edit" || mode === "view"} onOpenChange={(open) => !open && setMode(null)}>
+                    <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
+                        <div className="space-y-6">
+                            <SheetHeader>
+                                <SheetTitle>
+                                    {mode === "view" ? "Inventory summary" : "Edit inventory"}
+                                </SheetTitle>
+                            </SheetHeader>
 
-                        <DialogHeader>
-                            <DialogTitle>
-                                {mode === "view" ? "View Inventory" : "Edit Inventory"}
-                            </DialogTitle>
-                        </DialogHeader>
+                            {mode === "view" && selected && (
+                                <div className="space-y-6">
+                                    <div className="space-y-2">
+                                        <Label>Name</Label>
+                                        <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">
+                                            {selected.name}
+                                        </p>
+                                    </div>
 
-                        {mode === "view" && selected && (
+                                    <div className="space-y-2">
+                                        <Label>Inventory Type</Label>
+                                        <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">
+                                            {selected.inventory_type}
+                                        </p>
+                                    </div>
 
-                            <div className="space-y-4 text-sm">
+                                    <div className="space-y-2">
+                                        <Label>Use Type</Label>
+                                        <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text capitalize">
+                                            {selected.use_type}
+                                        </p>
+                                    </div>
 
-                                <div>
-                                    <Label>Name</Label>
-                                    <p className="font-medium">{selected.name}</p>
+                                    <div className="space-y-2 pt-4 border-t border-border">
+                                        <Label>Created On</Label>
+                                        <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">
+                                            {new Date(selected.created_on).toLocaleDateString("en-GB")}
+                                        </p>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <Label>Status</Label>
+                                        <span className={cn("px-3 py-1 rounded-[3px] text-xs font-semibold", getStatusColor(selected.is_active ? "active" : "inactive", "toggle"))}>
+                                            {selected.is_active ? "Active" : "Inactive"}
+                                        </span>
+                                    </div>
                                 </div>
+                            )}
 
-                                <div>
-                                    <Label>Inventory Type</Label>
-                                    <p>{selected.inventory_type}</p>
-                                </div>
-
-                                <div>
-                                    <Label>Use Type</Label>
-                                    <p className="capitalize">{selected.use_type}</p>
-                                </div>
-
-                                <div>
-                                    <Label>Status</Label>
-                                    <p>{selected.is_active ? "Active" : "Inactive"}</p>
-                                </div>
-
-                                <div>
-                                    <Label>Created On</Label>
-                                    <p>{new Date(selected.created_on).toLocaleDateString("en-GB")}</p>
-                                </div>
-
-
-                            </div>
-                        )}
-
-                        {mode === "edit" && (
-
-                            <div className="space-y-4">
-
-                                <div className="grid grid-cols-2 gap-4">
-
-                                    {/* TYPE */}
-                                    <div>
+                            {mode === "edit" && (
+                                <div className="space-y-6">
+                                    <div className="space-y-2">
                                         <Label htmlFor="inventory-type">Inventory Type*</Label>
                                         <NativeSelect
                                             id="inventory-type"
@@ -942,8 +937,7 @@ export default function InventoryMaster() {
                                         </NativeSelect>
                                     </div>
 
-                                    {/* USE TYPE */}
-                                    <div>
+                                    <div className="space-y-2">
                                         <Label htmlFor="inventory-use-type">Use Type*</Label>
                                         <NativeSelect
                                             id="inventory-use-type"
@@ -960,8 +954,7 @@ export default function InventoryMaster() {
                                         </NativeSelect>
                                     </div>
 
-                                    {/* NAME */}
-                                    <div className="col-span-2">
+                                    <div className="space-y-2">
                                         <Label htmlFor="inventory-name">Name*</Label>
                                         <Input
                                             id="inventory-name"
@@ -974,6 +967,7 @@ export default function InventoryMaster() {
                                             }}
                                         />
                                     </div>
+
                                     <div className="flex items-center gap-2">
                                         <Switch
                                             checked={form?.is_active}
@@ -984,21 +978,28 @@ export default function InventoryMaster() {
                                         <Label>Active</Label>
                                     </div>
                                 </div>
+                            )}
 
+                            <div className="flex justify-end gap-3 pt-4 border-t border-border">
                                 <Button
-                                    variant="hero"
-                                    className="w-full"
-                                    onClick={handleForm}
+                                    variant="heroOutline"
+                                    onClick={() => setMode(null)}
                                 >
-                                    Save Changes
+                                    {mode === "view" ? "Close" : "Cancel"}
                                 </Button>
 
+                                {mode === "edit" && (
+                                    <Button
+                                        variant="hero"
+                                        onClick={handleForm}
+                                    >
+                                        Save Changes
+                                    </Button>
+                                )}
                             </div>
-
-                        )}
-
-                    </DialogContent>
-                </Dialog>
+                        </div>
+                    </SheetContent>
+                </Sheet>
             </section>
         </div>
     );

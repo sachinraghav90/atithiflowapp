@@ -8,12 +8,6 @@ import {
     SheetHeader,
     SheetTitle,
 } from "@/components/ui/sheet";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
 import { useCreateDeliveryPartnerMutation, useGetDeliveryPartnersQuery, useUpdateDeliveryPartnerMutation } from "@/redux/services/hmsApi";
 import { useAppSelector } from "@/redux/hook";
 import { apiToast } from "@/utils/apiToastPromise";
@@ -266,19 +260,19 @@ export default function DeliveryPartnerManager({
             </Sheet>
 
             {/* =======================
-               CREATE MODAL (CENTER)
+               CREATE SHEET
             ======================== */}
 
-            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-                <DialogContent className="max-w-sm">
+            <Sheet open={createOpen} onOpenChange={setCreateOpen}>
+                <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
 
-                    <DialogHeader>
-                        <DialogTitle>Create Delivery Partner</DialogTitle>
-                    </DialogHeader>
+                    <SheetHeader>
+                        <SheetTitle>Create delivery partner</SheetTitle>
+                    </SheetHeader>
 
-                    <div className="space-y-4">
+                    <div className="space-y-6 mt-6">
 
-                        <div>
+                        <div className="space-y-2">
                             <Label>Name *</Label>
                             <Input
                                 className={errors.createName ? "border-red-500" : ""}
@@ -304,7 +298,7 @@ export default function DeliveryPartnerManager({
                             )}
                         </div>
 
-                        <div className="flex justify-end gap-2 pt-2">
+                        <div className="flex justify-end gap-3 pt-4 border-t border-border">
                             <Button
                                 variant="heroOutline"
                                 onClick={() => setCreateOpen(false)}
@@ -322,8 +316,8 @@ export default function DeliveryPartnerManager({
 
                     </div>
 
-                </DialogContent>
-            </Dialog>
+                </SheetContent>
+            </Sheet>
 
         </>
     );

@@ -216,8 +216,8 @@ export default function BookingGuestsManagement() {
             <AppHeader collapsed={collapsed} setCollapsed={setCollapsed} />
             <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
 
-            <main className={`${collapsed ? "lg:ml-16" : "lg:ml-56"} flex flex-col h-[calc(100vh-3.5rem)] overflow-hidden`}>
-                <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8 space-y-6">
+            <main className={`${collapsed ? "lg:ml-16" : "lg:ml-56"} flex flex-col h-[calc(100vh-3.5rem)] overflow-y-auto app-scrollbar`}>
+                <section className="p-6 lg:p-8 space-y-6">
                     <div className="flex justify-between">
                         <div>
                             <h1 className="text-2xl font-bold">Guests</h1>

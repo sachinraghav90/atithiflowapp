@@ -118,8 +118,8 @@ export default function PaymentsManagement() {
     }, [payments?.data, searchQuery]);
 
     return (
-        <div className="h-full flex flex-col overflow-hidden">
-            <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8 space-y-6">
+        <div className="flex flex-col">
+            <section className="p-6 lg:p-8 space-y-6">
 
                 {/* Header */}
                 <div className="flex items-center justify-between w-full">
@@ -297,14 +297,14 @@ export default function PaymentsManagement() {
 
                 {/* Payment Details Sheet */}
                 <Sheet open={detailsOpen} onOpenChange={setDetailsOpen}>
-                    <SheetContent side="right" className="sm:max-w-lg">
-                        <SheetHeader className="mb-6">
-                            <SheetTitle>Payment Details</SheetTitle>
+                    <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
+                        <SheetHeader>
+                            <SheetTitle>Payment summary</SheetTitle>
                         </SheetHeader>
 
                         {selectedPayment && (
-                            <div className="space-y-6">
-                                <div className="bg-muted/30 p-4 rounded-lg space-y-4 text-sm">
+                            <div className="space-y-6 mt-6">
+                                <div className="space-y-6">
                                     <Detail label="Payment ID" value={formatModuleDisplayId("payment", selectedPayment.id)} />
                                     <Detail label="Booking ID" value={formatModuleDisplayId("booking", selectedPayment.booking_id)} />
                                     <Detail label="Property Name" value={selectedPaymentData?.property_name} />
@@ -313,6 +313,15 @@ export default function PaymentsManagement() {
                                     <Detail label="Method" value={selectedPayment.payment_method} />
                                     <Detail label="Transaction Type" value={selectedPaymentData?.payment_type} />
                                     <Detail label="Status" value={selectedPayment.payment_status} />
+                                </div>
+
+                                <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                                    <Button
+                                        variant="heroOutline"
+                                        onClick={() => setDetailsOpen(false)}
+                                    >
+                                        Close
+                                    </Button>
                                 </div>
                             </div>
                         )}
@@ -327,8 +336,8 @@ export default function PaymentsManagement() {
 /* ---------------- Small UI ---------------- */
 function Detail({ label, value }: { label: string; value: string | number | null | undefined }) {
     return (
-        <div className="flex justify-between items-center py-1 border-b border-border/50 last:border-0">
-            <span className="text-muted-foreground font-medium">{label}</span>
+        <div className="space-y-2">
+            <span className="text-sm font-medium text-foreground">{label}</span>
             <span className="font-semibold">{value ?? "—"}</span>
         </div>
     );

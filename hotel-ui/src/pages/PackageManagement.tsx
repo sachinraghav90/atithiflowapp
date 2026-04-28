@@ -312,8 +312,8 @@ export default function PackageManagement() {
     ], []);
 
     return (
-        <div className="h-full flex flex-col overflow-hidden">
-            <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8 space-y-6">
+        <div className="flex flex-col">
+            <section className="p-6 lg:p-8 space-y-6">
                 {/* Header */}
                 <div className="flex items-center justify-between w-full">
                     <div className="flex flex-col">
@@ -481,7 +481,7 @@ export default function PackageManagement() {
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
                 <SheetContent
                     side="right"
-                    className="w-full sm:max-w-xl overflow-y-auto scrollbar-hide"
+                    className="w-full sm:max-w-xl overflow-y-auto"
                 >
                         <motion.div
                             initial={{ opacity: 0, y: 10 }}

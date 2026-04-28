@@ -65,7 +65,7 @@ const STAFF_STATUSES = ["Active", "Inactive"];
 
 const STAFF_INITIAL_VALUE = {
     first_name: "",
-    salutation: "",
+    salutation: "Mr",
     middle_name: "",
     last_name: "",
     password: "",
@@ -529,8 +529,8 @@ export default function StaffManagement() {
     ], []);
 
     return (
-        <div className="h-full flex flex-col overflow-hidden">
-            <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8 space-y-6">
+        <div className="flex flex-col">
+            <section className="p-6 lg:p-8 space-y-6">
                 <div className="flex items-center justify-between w-full">
                     <div className="flex flex-col">
                         <h1 className="text-2xl font-bold leading-tight">Staff</h1>
@@ -719,7 +719,7 @@ export default function StaffManagement() {
                                     ? "Add Staff"
                                     : mode === "edit"
                                         ? "Edit Staff"
-                                        : "Staff Details"}
+                                        : "Staff summary"}
                             </SheetTitle>
                         </SheetHeader>
 
@@ -729,7 +729,7 @@ export default function StaffManagement() {
                                 {/* ================= PERSONAL DETAILS ================= */}
 
                                 <StaffViewSection title="Personal Details">
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 gap-4">
 
                                         <ViewField label="First Name" value={staff.first_name} />
                                         <ViewField label="Middle Name" value={staff.middle_name} />
@@ -746,7 +746,7 @@ export default function StaffManagement() {
                                 {/* ================= CONTACT ================= */}
 
                                 <StaffViewSection title="Contact & Login">
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 gap-4">
                                         <ViewField label="Email" value={staff.email} />
                                         <ViewField label="Phone" value={staff.phone1} />
                                         <ViewField label="Alternate Phone" value={staff.phone2} />
@@ -757,7 +757,7 @@ export default function StaffManagement() {
                                 {/* ================= ROLE ================= */}
 
                                 <StaffViewSection title="Property & Role">
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 gap-4">
                                         <ViewField label="Property" value={staff.property_id} />
                                         <ViewField label="Department" value={staff.department} />
                                         <ViewField label="Designation" value={staff.designation} />
@@ -770,7 +770,7 @@ export default function StaffManagement() {
                                 {/* ================= EMERGENCY ================= */}
 
                                 <StaffViewSection title="Emergency Contacts">
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 gap-4">
                                         <ViewField label="Primary Contact" value={staff.emergency_contact} />
                                         <ViewField label="Contact Name" value={staff.emergency_contact_name} />
                                         <ViewField label="Relation" value={staff.emergency_contact_relation} />
@@ -781,7 +781,7 @@ export default function StaffManagement() {
                                 {/* ================= IDENTIFICATION ================= */}
 
                                 <StaffViewSection title="Identification">
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 gap-4">
                                         <ViewField label="ID Proof Type" value={staff.id_proof_type} />
                                         <ViewField label="ID Number" value={staff.id_number} />
                                     </div>
@@ -866,7 +866,7 @@ export default function StaffManagement() {
                                 variant="heroOutline"
                                 onClick={() => setSheetOpen(false)}
                             >
-                                Close
+                                {viewMode ? "Close" : "Cancel"}
                             </Button>
 
 
@@ -951,9 +951,9 @@ export default function StaffManagement() {
 
 function ViewField({ label, value }) {
     return (
-        <div>
-            <p className="text-xs text-muted-foreground">{label}</p>
-            <p className="font-medium text-foreground">
+        <div className="space-y-2">
+            <p className="text-sm font-medium text-foreground">{label}</p>
+            <p className="min-h-10 w-full rounded-[3px] bg-background px-3 py-2 flex items-center text-sm text-foreground cursor-default select-text">
                 {value || "-"}
             </p>
         </div>
@@ -962,8 +962,8 @@ function ViewField({ label, value }) {
 
 function StaffViewSection({ title, children }) {
     return (
-        <div className="space-y-4 rounded-[5px] border border-border bg-transparent p-5">
-            <h3 className="text-base font-semibold text-foreground">
+        <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-foreground">
                 {title}
             </h3>
             {children}

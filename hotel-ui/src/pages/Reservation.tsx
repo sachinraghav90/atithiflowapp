@@ -120,7 +120,7 @@ export default function ReservationManagement() {
         email: "",
 
         gender: "",
-        salutation: "",
+        salutation: "Mr",
         age: "",
 
         nationality: "",
@@ -895,11 +895,11 @@ export default function ReservationManagement() {
 
     /* -------------------- UI -------------------- */
     return (
-        <div className="h-full flex flex-col overflow-hidden bg-background">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr] flex-1 overflow-hidden">
+        <div className="flex flex-col bg-background">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr] flex-1">
 
                 {/* =================== BOOKING FORM =================== */}
-                <section className="flex-1 overflow-y-auto scrollbar-hide p-4 lg:p-4 border-r border-border bg-background">
+                <section className="p-4 lg:p-4 border-r border-border bg-background">
                     <div className="mb-6 flex items-start justify-between">
                         <div>
                             <h1 className="text-2xl font-bold text-foreground">New Booking</h1>
@@ -1026,22 +1026,48 @@ export default function ReservationManagement() {
 
 
                                 {/* ARRIVAL DATE */}
+                                <FormDatePicker
+                                    label="Arrival Date"
+                                    field="arrivalDate"
+                                    selected={parseDate(arrivalDate)}
+                                    onChange={(date: Date | null) => {
+                                        if (!date) return;
+                                        const val = date.toISOString().split("T")[0];
+                                        setArrivalDate(val);
+                                        
+                                        // Auto-bump departure if needed
+                                        const d = new Date(val);
+                                        d.setDate(d.getDate() + 1);
+                                        const nextDay = d.toISOString().split("T")[0];
+                                        if (new Date(departureDate) <= new Date(val)) {
+                                            setDepartureDate(nextDay);
+                                        }
+                                    }}
+                                    errors={reservationErrors}
+                                    setErrors={setReservationErrors}
+                                    required
+                                    minDate={new Date()}
+                                />
 
-                                <div className="col-span-2">
-                                    <FormDateRangePicker
-                                        startLabel="Arrival Date"
-                                        endLabel="Departure Date"
-                                        startField="arrivalDate"
-                                        endField="departureDate"
-                                        startDate={parseDate(arrivalDate)}
-                                        endDate={parseDate(departureDate)}
-                                        onChange={handleBookingRangeChange}
-                                        errors={reservationErrors}
-                                        setErrors={setReservationErrors}
-                                        required
-                                        minDate={new Date()}
-                                    />
-                                </div>
+                                {/* DEPARTURE DATE */}
+                                <FormDatePicker
+                                    label="Departure Date"
+                                    field="departureDate"
+                                    selected={parseDate(departureDate)}
+                                    onChange={(date: Date | null) => {
+                                        if (!date) return;
+                                        const val = date.toISOString().split("T")[0];
+                                        setDepartureDate(val);
+                                    }}
+                                    errors={reservationErrors}
+                                    setErrors={setReservationErrors}
+                                    required
+                                    minDate={(() => {
+                                        const d = new Date(arrivalDate);
+                                        d.setDate(d.getDate() + 1);
+                                        return d;
+                                    })()}
+                                />
 
                                 {/* BOOKING TYPE */}
 
@@ -1128,17 +1154,16 @@ export default function ReservationManagement() {
                                 <div className="flex gap-2">
 
                                     {/* SALUTATION — minimal width */}
-                                    <div className="w-20 shrink-0">
+                                    <div className="w-16 shrink-0">
 
                                         <FormSelect
-                                            label="Salutation"
+                                            label={"\u00A0"}
                                             field="salutation"
                                             value={guest}
                                             setValue={setGuest}
                                             errors={reservationErrors}
                                             setErrors={setReservationErrors}
                                         >
-                                            <option value="" disabled>--</option>
                                             <option value="Mr">Mr</option>
                                             <option value="Mrs">Mrs</option>
                                             <option value="Ms">Ms</option>
@@ -1847,7 +1872,7 @@ export default function ReservationManagement() {
                                 </SheetTitle>
                             </SheetHeader>
 
-                        <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-3 bg-muted/20">
+                        <section className="flex-1 overflow-y-auto p-6 lg:p-3 bg-muted/20">
 
                             <h2 className="text-lg font-semibold text-foreground mb-4">
                                 Available Rooms

@@ -94,33 +94,32 @@ All colors MUST be HSL.
   /* Chrome, Safari */
 }
 
-.grid-scroll-x {
-  overflow-x: auto;
+.app-scrollbar {
   scrollbar-width: auto;
   scrollbar-color: hsl(var(--primary) / 0.55) hsl(var(--accent));
 }
 
-.grid-scroll-x::-webkit-scrollbar {
+.app-scrollbar::-webkit-scrollbar {
   height: 12px;
   width: 12px;
 }
 
-.grid-scroll-x::-webkit-scrollbar-track {
+.app-scrollbar::-webkit-scrollbar-track {
   background: hsl(var(--accent));
   border-radius: 9999px;
 }
 
-.grid-scroll-x::-webkit-scrollbar-thumb {
+.app-scrollbar::-webkit-scrollbar-thumb {
   background: hsl(var(--primary) / 0.55);
   border: 2px solid hsl(var(--accent));
   border-radius: 9999px;
 }
 
-.grid-scroll-x::-webkit-scrollbar-thumb:hover {
+.app-scrollbar::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--primary) / 0.72);
 }
 
-.grid-scroll-x::-webkit-scrollbar-corner {
+.app-scrollbar::-webkit-scrollbar-corner {
   background: transparent;
 }
 

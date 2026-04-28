@@ -243,6 +243,7 @@ type GridToolbarDatePickerProps = {
   placeholder?: string;
   minDate?: Date;
   disabled?: boolean;
+  displayFormat?: string;
 };
 
 export function GridToolbarDatePicker({
@@ -252,7 +253,8 @@ export function GridToolbarDatePicker({
   className,
   placeholder = "dd-mm-yyyy",
   minDate,
-  disabled
+  disabled,
+  displayFormat
 }: GridToolbarDatePickerProps) {
   return (
     <div className={cn("flex items-center h-10 border border-border bg-background rounded-lg text-sm overflow-hidden shadow-sm w-full", className)}>
@@ -266,6 +268,7 @@ export function GridToolbarDatePicker({
         label={label}
         minDate={minDate}
         disabled={disabled}
+        displayFormat={displayFormat}
         className="h-10 border-0 rounded-none shadow-none focus-within:ring-0"
       />
     </div>
@@ -284,6 +287,8 @@ type GridToolbarRangePickerProps = {
   startPlaceholder?: string;
   endPlaceholder?: string;
   disabled?: boolean;
+  displayFormat?: string;
+  minDate?: Date;
 };
 
 export function GridToolbarRangePicker({
@@ -295,7 +300,9 @@ export function GridToolbarRangePicker({
   endLabel = "To",
   startPlaceholder = "dd-mm-yyyy",
   endPlaceholder = "dd-mm-yyyy",
-  disabled
+  disabled,
+  displayFormat,
+  minDate
 }: GridToolbarRangePickerProps) {
   return (
      <ResponsiveDateRangePicker
@@ -307,7 +314,9 @@ export function GridToolbarRangePicker({
         startLabel={startLabel}
         endLabel={endLabel}
         disabled={disabled}
+        displayFormat={displayFormat}
         className={className}
+        minDate={minDate}
      />
   );
 }

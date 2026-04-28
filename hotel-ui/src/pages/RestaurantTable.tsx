@@ -243,8 +243,8 @@ export function RestaurantTables() {
     ];
 
     return (
-        <div className="h-full flex flex-col overflow-hidden">
-            <section className="flex-1 overflow-y-auto scrollbar-hide p-4 lg:p-6 space-y-4">
+        <div className="flex flex-col">
+            <section className="p-4 lg:p-6 space-y-4">
                 {/* Header */}
                 <div className="flex justify-between items-center mb-2">
                     <div>
@@ -398,15 +398,15 @@ export function RestaurantTables() {
                     </SheetHeader>
 
                     {mode === "view" && selectedTable && (
-                        <div className="mt-8 space-y-6 text-sm">
+                        <div className="mt-8 space-y-6">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1">
-                                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">Table ID</Label>
-                                    <p className="font-semibold text-primary">{formatModuleDisplayId("table", selectedTable.id)}</p>
+                                    <Label>Table ID</Label>
+                                    <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">{formatModuleDisplayId("table", selectedTable.id)}</p>
                                 </div>
                                 <div className="space-y-1">
-                                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">Status</Label>
-                                    <div>
+                                    <Label>Status</Label>
+                                    <div className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">
                                         <span className={cn(
                                             "px-3 py-1 rounded-[3px] text-xs font-semibold",
                                             getStatusColor(selectedTable.status.toLowerCase().replace(/ /g, "_"), "laundry")
@@ -418,30 +418,29 @@ export function RestaurantTables() {
                             </div>
 
                             <div className="space-y-1">
-                                <Label className="text-xs text-muted-foreground uppercase tracking-wider">Table Number</Label>
-                                <p className="text-lg font-bold">{selectedTable.table_no}</p>
+                                <Label>Table Number</Label>
+                                <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">{selectedTable.table_no}</p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1">
-                                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">Capacity</Label>
-                                    <p className="font-medium text-base">{selectedTable.capacity} Persons</p>
+                                    <Label>Capacity</Label>
+                                    <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">{selectedTable.capacity} Persons</p>
                                 </div>
                                 <div className="space-y-1">
-                                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">Min Order Amount</Label>
+                                    <Label>Min Order Amount</Label>
                                     <p className="font-medium text-base">₹{selectedTable.min_order_amount || 0}</p>
                                 </div>
                             </div>
 
                             <div className="space-y-1">
-                                <Label className="text-xs text-muted-foreground uppercase tracking-wider">Location</Label>
-                                <p className="text-foreground/80">{selectedTable.location || "No location specified"}</p>
+                                <Label>Location</Label>
+                                <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">{selectedTable.location || "No location specified"}</p>
                             </div>
 
-                            <div className="pt-6 border-t">
+                            <div className="flex justify-end gap-3 pt-4 border-t border-border">
                                 <Button
                                     variant="heroOutline"
-                                    className="w-full"
                                     onClick={() => setMode(null)}
                                 >
                                     Close
@@ -500,20 +499,18 @@ export function RestaurantTables() {
                                 />
                             </div>
 
-                            <div className="pt-6 border-t flex flex-col gap-2">
-                                <Button 
-                                    variant="hero" 
-                                    className="w-full"
-                                    onClick={handleForm}
-                                >
-                                    {mode === "add" ? "Create Table" : "Save Changes"}
-                                </Button>
+                            <div className="flex justify-end gap-3 pt-4 border-t border-border">
                                 <Button 
                                     variant="heroOutline" 
-                                    className="w-full"
                                     onClick={() => setMode(null)}
                                 >
                                     Cancel
+                                </Button>
+                                <Button 
+                                    variant="hero" 
+                                    onClick={handleForm}
+                                >
+                                    {mode === "add" ? "Create Table" : "Save Changes"}
                                 </Button>
                             </div>
                         </div>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -429,8 +430,8 @@ export default function LaundryPricingManagement() {
 
     /* ---------------- UI ---------------- */
     return (
-        <div className="h-full flex flex-col overflow-hidden bg-background">
-            <section className="flex flex-col flex-1 overflow-hidden p-6 lg:p-8 gap-6">
+        <div className="flex flex-col bg-background">
+            <section className="flex flex-col p-6 lg:p-8 gap-6">
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold leading-tight">Laundry Pricing</h1>
@@ -473,8 +474,7 @@ export default function LaundryPricingManagement() {
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto scrollbar-hide">
-                    <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
+                <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
                     <div className="w-full">
                         <GridToolbar className="border-b-0">
                             <GridToolbarRow className="gap-2">
@@ -535,6 +535,7 @@ export default function LaundryPricingManagement() {
 
                     <div className="px-2 pb-2">
                         <AppDataGrid
+                            scrollable={false}
                             density="compact"
                             columns={laundryColumns}
                             data={paginatedItems}
@@ -571,7 +572,6 @@ export default function LaundryPricingManagement() {
                             }}
                         />
                     </div>
-                    </div>
                 </div>
             </section>
 
@@ -581,48 +581,61 @@ export default function LaundryPricingManagement() {
                     side="right"
                     onOpenAutoFocus={(event) => event.preventDefault()}
                     className={cn(
-                        "w-full p-0 flex flex-col bg-background",
+                        "w-full overflow-y-auto bg-background",
                         mode === "bulk_add" ? "sm:max-w-4xl" : "sm:max-w-xl"
                     )}
                 >
-                    <SheetHeader className="px-6 py-4 border-b bg-background">
-                        <SheetTitle>
-                            {mode === "edit" ? "Edit Laundry Item" :
-                             mode === "bulk_add" ? "Add Laundry Items With There Pricing" :
-                             "Laundry Item Summary"}
-                        </SheetTitle>
-                    </SheetHeader>
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-6"
+                    >
+                        <SheetHeader>
+                            <SheetTitle>
+                                {mode === "view" ? "Item summary" : mode === "edit" ? "Edit laundry item" : "Add laundry items"}
+                            </SheetTitle>
+                        </SheetHeader>
 
-                    <div className="flex-1 overflow-y-auto px-6 pb-6 pt-3 space-y-4 bg-background">
                         {mode === "view" && selectedItem && (
                             <div className="space-y-6">
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1 rounded-[5px] border p-4 bg-background border-border">
-                                        <Label className="text-xs text-muted-foreground uppercase tracking-wider">Item ID</Label>
-                                        <p className="font-semibold text-primary">{formatModuleDisplayId("laundry", selectedItem.id)}</p>
+                                    <div className="space-y-2">
+                                        <Label>Item ID</Label>
+                                        <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">
+                                            {formatModuleDisplayId("laundry", selectedItem.id)}
+                                        </p>
                                     </div>
-                                    <div className="space-y-1 rounded-[5px] border p-4 bg-background border-border">
-                                        <Label className="text-xs text-muted-foreground uppercase tracking-wider">Status</Label>
-                                        <div>
+                                    <div className="space-y-2">
+                                        <Label>Status</Label>
+                                        <div className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">
                                             <span className={cn("px-3 py-1 text-xs font-semibold rounded-[3px]", getStatusColor(selectedItem.is_active ? "active" : "inactive", "toggle"))}>
                                                 {selectedItem.is_active ? "Active" : "Inactive"}
                                             </span>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="space-y-1 rounded-[5px] border p-4 bg-background border-border">
-                                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">Item Name</Label>
-                                    <p className="text-lg font-bold">{selectedItem.item_name}</p>
+
+                                <div className="space-y-2">
+                                    <Label>Item Name</Label>
+                                    <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text font-semibold">
+                                        {selectedItem.item_name}
+                                    </p>
                                 </div>
+
                                 {!!selectedItem.description && (
-                                    <div className="space-y-1 rounded-[5px] border p-4 bg-background border-border">
-                                        <Label className="text-xs text-muted-foreground uppercase tracking-wider">Description</Label>
-                                        <p className="text-sm text-foreground/80">{selectedItem.description}</p>
+                                    <div className="space-y-2">
+                                        <Label>Description</Label>
+                                        <p className="w-full rounded-[3px] bg-background px-3 py-2 text-sm text-foreground cursor-default select-text whitespace-pre-wrap flex">
+                                            {selectedItem.description}
+                                        </p>
                                     </div>
                                 )}
-                                <div className="space-y-1 rounded-[5px] border p-4 bg-background border-border">
-                                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">Rate</Label>
-                                    <p className="text-2xl font-bold text-foreground">Rs {selectedItem.item_rate}</p>
+
+                                <div className="space-y-2 pt-4 border-t border-border">
+                                    <Label>Rate</Label>
+                                    <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text text-lg font-bold">
+                                        ₹ {selectedItem.item_rate}
+                                    </p>
                                 </div>
                             </div>
                         )}
@@ -633,7 +646,7 @@ export default function LaundryPricingManagement() {
                                     <Label htmlFor="item-name">Item Name *</Label>
                                     <Input
                                         id="item-name"
-                                        className={cn("mt-1 h-9 bg-background border-border", submitted && formErrors.item_name && "border-red-500")}
+                                        className={cn("mt-1 h-10 bg-background border-border", submitted && formErrors.item_name && "border-red-500")}
                                         value={form.item_name}
                                         onChange={(e) => {
                                             setForm(p => ({ ...p, item_name: normalizeTextInput(e.target.value) }));
@@ -647,136 +660,136 @@ export default function LaundryPricingManagement() {
                                     <Label htmlFor="description">Description</Label>
                                     <Input
                                         id="description"
-                                        className={cn("mt-1 h-9 bg-background border-border")}
+                                        className={cn("mt-1 h-10 bg-background border-border")}
                                         value={form.description}
                                         onChange={(e) => setForm(p => ({ ...p, description: normalizeTextInput(e.target.value) }))}
                                     />
                                 </div>
-                                <div>
-                                    <Label htmlFor="rate">Rate (₹) *</Label>
-                                    <Input
-                                        id="rate"
-                                        className={cn("mt-1 h-9 bg-background border-border", submitted && formErrors.item_rate && "border-red-500")}
-                                        value={form.item_rate}
-                                        onChange={(e) => {
-                                            setForm(p => ({ ...p, item_rate: normalizeNumberInput(e.target.value) }));
-                                            setFormErrors(p => ({ ...p, item_rate: "" }));
-                                        }}
-                                    />
-                                    {submitted && formErrors.item_rate && <p className="text-xs text-red-500 mt-1">{formErrors.item_rate}</p>}
-                                </div>
-                                <div className="flex items-center gap-2 rounded-[5px] border px-4 py-3 h-9 bg-background border-border">
-                                    <Switch
-                                        id="item-active"
-                                        checked={form.is_active}
-                                        onCheckedChange={(val) => setForm(p => ({ ...p, is_active: val }))}
-                                    />
-                                    <Label htmlFor="item-active">Active</Label>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <Label htmlFor="rate">Rate (₹) *</Label>
+                                        <Input
+                                            id="rate"
+                                            className={cn("mt-1 h-10 bg-background border-border", submitted && formErrors.item_rate && "border-red-500")}
+                                            value={form.item_rate}
+                                            onChange={(e) => {
+                                                setForm(p => ({ ...p, item_rate: normalizeNumberInput(e.target.value) }));
+                                                setFormErrors(p => ({ ...p, item_rate: "" }));
+                                            }}
+                                        />
+                                        {submitted && formErrors.item_rate && <p className="text-xs text-red-500 mt-1">{formErrors.item_rate}</p>}
+                                    </div>
+                                    <div className="flex items-center gap-2 pt-6">
+                                        <Switch
+                                            id="item-active"
+                                            checked={form.is_active}
+                                            onCheckedChange={(val) => setForm(p => ({ ...p, is_active: val }))}
+                                        />
+                                        <Label htmlFor="item-active">Active</Label>
+                                    </div>
                                 </div>
                             </div>
                         )}
 
                         {mode === "bulk_add" && (
                             <div className="space-y-4">
-
-
                                 <div className="editable-grid-compact overflow-hidden rounded-[5px] border border-border bg-background/50">
                                     <div className="grid-scroll-x w-full border-b border-border bg-background/50">
                                         <div className="w-full min-w-[720px]">
                                             <DataGrid>
-                                         <DataGridHeader>
-                                             <DataGridHead>Item Name *</DataGridHead>
-                                             <DataGridHead>Description</DataGridHead>
-                                             <DataGridHead className="w-32 text-center">Rate (₹) *</DataGridHead>
-                                             {createRows.length > 1 && (
-                                                 <DataGridHead className="w-16 text-center">Action</DataGridHead>
-                                             )}
-                                         </DataGridHeader>
+                                                <DataGridHeader>
+                                                    <DataGridHead>Item Name *</DataGridHead>
+                                                    <DataGridHead>Description</DataGridHead>
+                                                    <DataGridHead className="w-32 text-center">Rate (₹) *</DataGridHead>
+                                                    {createRows.length > 1 && (
+                                                        <DataGridHead className="w-16 text-center">Action</DataGridHead>
+                                                    )}
+                                                </DataGridHeader>
 
-                                         <tbody>
-                                             {createRows.map((row, index) => {
-                                                 const errors = getCreateRowErrors(row, index);
-                                                 const isItemNameInvalid =
-                                                     (showCreateErrors && errors.itemName) ||
-                                                     (!!row.touched?.itemName && (errors.duplicateInForm || errors.duplicateExisting));
-                                                 const isItemRateInvalid = showCreateErrors && errors.itemRate;
+                                                <tbody>
+                                                    {createRows.map((row, index) => {
+                                                        const errors = getCreateRowErrors(row, index);
+                                                        const isItemNameInvalid =
+                                                            (showCreateErrors && errors.itemName) ||
+                                                            (!!row.touched?.itemName && (errors.duplicateInForm || errors.duplicateExisting));
+                                                        const isItemRateInvalid = showCreateErrors && errors.itemRate;
 
-                                                 return (
-                                                     <DataGridRow key={index}>
-                                                         {/* NAME */}
-                                                         <DataGridCell>
-                                                             <ValidationTooltip
-                                                                 isValid={!isItemNameInvalid}
-                                                                 message={errors.itemNameMessage}
-                                                             >
-                                                                 <Input
-                                                                     className={cn(
-                                                                         "h-9 w-full rounded-[3px] border border-input bg-background px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary",
-                                                                         isItemNameInvalid && "border-red-500"
-                                                                     )}
-                                                                     value={row.itemName}
-                                                                     placeholder="Enter item name"
-                                                                     onChange={(e) => updateCreateRow(index, { itemName: normalizeTextInput(e.target.value) })}
-                                                                     onBlur={() => updateCreateRow(index, { touched: { ...row.touched, itemName: true } })}
-                                                                     onKeyDown={(e) => {
-                                                                         if (e.key === "Enter") addCreateRow();
-                                                                     }}
-                                                                 />
-                                                             </ValidationTooltip>
-                                                         </DataGridCell>
+                                                        return (
+                                                            <DataGridRow key={index}>
+                                                                {/* NAME */}
+                                                                <DataGridCell>
+                                                                    <ValidationTooltip
+                                                                        isValid={!isItemNameInvalid}
+                                                                        message={errors.itemNameMessage}
+                                                                    >
+                                                                        <Input
+                                                                            className={cn(
+                                                                                "h-9 w-full rounded-[3px] border border-input bg-background px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary",
+                                                                                isItemNameInvalid && "border-red-500"
+                                                                            )}
+                                                                            value={row.itemName}
+                                                                            placeholder="Enter item name"
+                                                                            onChange={(e) => updateCreateRow(index, { itemName: normalizeTextInput(e.target.value) })}
+                                                                            onBlur={() => updateCreateRow(index, { touched: { ...row.touched, itemName: true } })}
+                                                                            onKeyDown={(e) => {
+                                                                                if (e.key === "Enter") addCreateRow();
+                                                                            }}
+                                                                        />
+                                                                    </ValidationTooltip>
+                                                                </DataGridCell>
 
-                                                         {/* DESCRIPTION */}
-                                                         <DataGridCell>
-                                                             <Input
-                                                                 className="h-9 w-full rounded-[3px] border border-input bg-background px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary"
-                                                                 value={row.description}
-                                                                 placeholder="Short description (optional)"
-                                                                 onChange={(e) => updateCreateRow(index, { description: normalizeTextInput(e.target.value) })}
-                                                                 onKeyDown={(e) => {
-                                                                     if (e.key === "Enter") addCreateRow();
-                                                                 }}
-                                                             />
-                                                         </DataGridCell>
+                                                                {/* DESCRIPTION */}
+                                                                <DataGridCell>
+                                                                    <Input
+                                                                        className="h-9 w-full rounded-[3px] border border-input bg-background px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary"
+                                                                        value={row.description}
+                                                                        placeholder="Short description"
+                                                                        onChange={(e) => updateCreateRow(index, { description: normalizeTextInput(e.target.value) })}
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === "Enter") addCreateRow();
+                                                                        }}
+                                                                    />
+                                                                </DataGridCell>
 
-                                                         {/* RATE */}
-                                                         <DataGridCell className="text-center">
-                                                             <ValidationTooltip
-                                                                 isValid={!isItemRateInvalid}
-                                                                 message="Required field"
-                                                             >
-                                                                 <Input
-                                                                     className={cn(
-                                                                         "h-9 w-full rounded-[3px] border border-input bg-background text-center text-sm font-bold shadow-none focus-visible:ring-1 focus-visible:ring-primary",
-                                                                         isItemRateInvalid && "border-red-500"
-                                                                     )}
-                                                                     value={row.itemRate}
-                                                                     placeholder="0.00"
-                                                                     onChange={(e) => updateCreateRow(index, { itemRate: normalizeNumberInput(e.target.value) })}
-                                                                     onBlur={() => updateCreateRow(index, { touched: { ...row.touched, itemRate: true } })}
-                                                                     onKeyDown={(e) => {
-                                                                         if (e.key === "Enter") addCreateRow();
-                                                                     }}
-                                                                 />
-                                                             </ValidationTooltip>
-                                                         </DataGridCell>
+                                                                {/* RATE */}
+                                                                <DataGridCell className="text-center">
+                                                                    <ValidationTooltip
+                                                                        isValid={!isItemRateInvalid}
+                                                                        message="Required field"
+                                                                    >
+                                                                        <Input
+                                                                            className={cn(
+                                                                                "h-9 w-full rounded-[3px] border border-input bg-background text-center text-sm font-bold shadow-none focus-visible:ring-1 focus-visible:ring-primary",
+                                                                                isItemRateInvalid && "border-red-500"
+                                                                            )}
+                                                                            value={row.itemRate}
+                                                                            placeholder="0.00"
+                                                                            onChange={(e) => updateCreateRow(index, { itemRate: normalizeNumberInput(e.target.value) })}
+                                                                            onBlur={() => updateCreateRow(index, { touched: { ...row.touched, itemRate: true } })}
+                                                                            onKeyDown={(e) => {
+                                                                                if (e.key === "Enter") addCreateRow();
+                                                                            }}
+                                                                        />
+                                                                    </ValidationTooltip>
+                                                                </DataGridCell>
 
-                                                         {/* ACTION */}
-                                                         {createRows.length > 1 && (
-                                                             <DataGridCell className="text-center">
-                                                                 <Button
-                                                                     size="icon"
-                                                                     variant="ghost"
-                                                                     className="editable-grid-remove-btn h-10 w-10 text-destructive hover:text-destructive/80 transition-colors"
-                                                                     onClick={() => removeCreateRow(index)}
-                                                                 >
-                                                                     <Trash2 className="w-5 h-5" />
-                                                                 </Button>
-                                                             </DataGridCell>
-                                                         )}
-                                                     </DataGridRow>
-                                                 );
-                                             })}
-                                         </tbody>
+                                                                {/* ACTION */}
+                                                                {createRows.length > 1 && (
+                                                                    <DataGridCell className="text-center">
+                                                                        <Button
+                                                                            size="icon"
+                                                                            variant="ghost"
+                                                                            className="editable-grid-remove-btn h-10 w-10 text-destructive hover:text-destructive/80 transition-colors"
+                                                                            onClick={() => removeCreateRow(index)}
+                                                                        >
+                                                                            <Trash2 className="w-5 h-5" />
+                                                                        </Button>
+                                                                    </DataGridCell>
+                                                                )}
+                                                            </DataGridRow>
+                                                        );
+                                                    })}
+                                                </tbody>
                                             </DataGrid>
                                         </div>
                                     </div>
@@ -806,19 +819,25 @@ export default function LaundryPricingManagement() {
                             </div>
                         )}
 
-                        <div className="p-6 border-t bg-muted/20 flex justify-end gap-3 shrink-0">
-                            <Button variant="outline" onClick={() => setSheetOpen(false)}>
+                        <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                            <Button
+                                variant="heroOutline"
+                                onClick={() => setSheetOpen(false)}
+                            >
                                 {mode === "view" ? "Close" : "Cancel"}
                             </Button>
                             {mode !== "view" && (
-                                <Button variant="hero" className="min-w-[140px]" onClick={handleSave}>
+                                <Button
+                                    variant="hero"
+                                    onClick={handleSave}
+                                >
                                     {mode === "edit" ? "Save Changes" : "Create Items"}
                                 </Button>
                             )}
                         </div>
-                    </div>
+                    </motion.div>
                 </SheetContent>
             </Sheet>
-        </div >
+        </div>
     );
 }

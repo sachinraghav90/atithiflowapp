@@ -51,6 +51,7 @@ function fileToBase64(file: File): Promise<string> {
 function createEmptyGuest(type: "ADULT" | "CHILD"): Guest {
     return {
         guest_type: type,
+        salutation: "Mr",
         first_name: "",
         last_name: "",
     };
@@ -210,8 +211,8 @@ export default function GuestsCreationManagement() {
             <AppHeader collapsed={collapsed} setCollapsed={setCollapsed} />
             <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
 
-            <main className={`${collapsed ? "lg:ml-16" : "lg:ml-56"} flex flex-col h-[calc(100vh-3.5rem)] overflow-hidden`}>
-                <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8">
+            <main className={`${collapsed ? "lg:ml-16" : "lg:ml-56"} flex flex-col h-[calc(100vh-3.5rem)] overflow-y-auto app-scrollbar`}>
+                <section className="p-6 lg:p-8">
                     {/* Header */}
                     <div>
                         <h1 className="text-2xl font-bold">Guests</h1>
@@ -270,18 +271,17 @@ export default function GuestsCreationManagement() {
 
                             {/* Names */}
                             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                                <div className="space-y-1">
-                                    <Label>Salutation</Label>
+                                <div className="space-y-1 w-16 shrink-0">
+                                    <Label>{"\u00A0"}</Label>
                                     <NativeSelect
                                         className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
-                                        value={guest.salutation ?? ""}
+                                        value={guest.salutation ?? "Mr"}
                                         onChange={(e) =>
                                             updateGuest(index, {
                                                 salutation: e.target.value as any,
                                             })
                                         }
                                     >
-                                        <option value="">Select</option>
                                         <option value="Mr">Mr</option>
                                         <option value="Mrs">Mrs</option>
                                         <option value="Ms">Ms</option>

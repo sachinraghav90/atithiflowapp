@@ -141,6 +141,8 @@ export type AppDataGridProps<T = Record<string, unknown>> = {
     onRowClick?: (row: T, index: number) => void
     /** Extra props to spread on each DataGridRow */
     rowProps?: (row: T, index: number) => React.HTMLAttributes<HTMLTableRowElement>
+    /** Whether the grid should be scrollable internally. Set to false for full-page scrolling. */
+    scrollable?: boolean
 }
 
 /* ------------------------------------------------------------------ */
@@ -332,6 +334,7 @@ function AppDataGrid<T extends Record<string, unknown>>({
     onRowClick,
     rowProps,
     showActions = true,
+    scrollable = true,
 }: AppDataGridProps<T>) {
     const hasActions = Boolean(actions && showActions)
     const totalCols = columns.length + (hasActions ? 1 : 0)
@@ -344,12 +347,18 @@ function AppDataGrid<T extends Record<string, unknown>>({
     return (
         <div
             className={cn(
-                "grid-header-inside-table border rounded-[5px] overflow-hidden mt-0 flex flex-col flex-1 min-h-0 bg-background",
+                "grid-header-inside-table border rounded-[5px] mt-0 bg-background",
+                scrollable ? "flex flex-col flex-1 min-h-0 overflow-hidden" : "block h-fit",
                 className
             )}
         >
             {/* Scrollable area — matches OrderManagement pattern */}
-            <div className="grid-scroll-x overflow-y-auto w-full flex-1 min-h-0 bg-background">
+            <div 
+                className={cn(
+                    "app-scrollbar w-full bg-background",
+                    scrollable ? "overflow-y-auto flex-1 min-h-0" : "overflow-x-auto overflow-y-hidden h-fit"
+                )}
+            >
                 <div className="w-full" style={{ minWidth }}>
                     <DataGrid className={tableClassName}>
                         {/* ---- HEAD ---- */}

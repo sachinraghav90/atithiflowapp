@@ -231,8 +231,8 @@ export default function RoomsByFloor() {
     const { permission } = usePermission(pathname)
 
     return (
-        <div className="h-full flex flex-col overflow-hidden">
-            <div className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8">
+        <div className="flex flex-col">
+            <div className="p-6 lg:p-8">
 
                 {/* Header Pattern: Title/Sub + Actions (Property Select + Call to Action) */}
                 <div className="flex items-center justify-between w-full mb-6 relative z-20">

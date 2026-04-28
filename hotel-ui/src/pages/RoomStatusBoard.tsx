@@ -161,8 +161,8 @@ export default function RoomStatusBoard() {
     const { permission: bookingPermission } = usePermission("/bookings", { autoRedirect: false })
 
     return (
-        <div className="h-full flex flex-col overflow-hidden">
-            <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8 space-y-6">
+        <div className="flex flex-col">
+            <section className="p-6 lg:p-8 space-y-6">
                 {/* ---------- Header ---------- */}
                 <div className="space-y-3">
 

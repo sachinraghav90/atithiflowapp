@@ -665,14 +665,16 @@ export const hmsApi = createApi({
     }),
 
     getBookings: builder.query({
-      query: ({ page = 1, limit = 10, propertyId, fromDate, toDate, scope, status, search = "" }) => {
+      query: ({ page = 1, limit = 10, propertyId, arrivalFrom, arrivalTo, departureFrom, departureTo, scope, status, search = "" }) => {
         const params = new URLSearchParams({
           propertyId: String(propertyId),
           page: String(page),
           limit: String(limit)
         });
-        if (fromDate) params.append("fromDate", fromDate);
-        if (toDate) params.append("toDate", toDate);
+        if (arrivalFrom) params.append("arrivalFrom", arrivalFrom);
+        if (arrivalTo) params.append("arrivalTo", arrivalTo);
+        if (departureFrom) params.append("departureFrom", departureFrom);
+        if (departureTo) params.append("departureTo", departureTo);
         if (scope) params.append("scope", scope);
         if (status) params.append("status", status);
         if (search) params.append("search", search);
@@ -686,14 +688,16 @@ export const hmsApi = createApi({
     }),
 
     exportBookings: builder.query({
-      query: ({ propertyId, fromDate, toDate, scope, status }) => {
+      query: ({ propertyId, arrivalFrom, arrivalTo, departureFrom, departureTo, scope, status }) => {
         const params = new URLSearchParams({
           propertyId: String(propertyId),
           export: "true",
           ts: String(Date.now())
         });
-        if (fromDate) params.append("fromDate", fromDate);
-        if (toDate) params.append("toDate", toDate);
+        if (arrivalFrom) params.append("arrivalFrom", arrivalFrom);
+        if (arrivalTo) params.append("arrivalTo", arrivalTo);
+        if (departureFrom) params.append("departureFrom", departureFrom);
+        if (departureTo) params.append("departureTo", departureTo);
         if (scope) params.append("scope", scope);
         if (status) params.append("status", status);
 

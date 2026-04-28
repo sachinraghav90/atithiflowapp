@@ -293,8 +293,8 @@ export default function VendorsManagement() {
 
     /* ---------------- UI ---------------- */
     return (
-        <div className="h-full flex flex-col overflow-hidden bg-background">
-            <section className="flex flex-col flex-1 overflow-hidden p-6 lg:p-8 gap-6">
+        <div className="flex flex-col bg-background">
+            <section className="flex flex-col p-6 lg:p-8 gap-6">
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold leading-tight">Vendors</h1>
@@ -336,8 +336,7 @@ export default function VendorsManagement() {
                 </div>
 
 
-                <div className="flex-1 overflow-y-auto scrollbar-hide">
-                    <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
+                <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
                     <div className="w-full">
                         <GridToolbar className="border-b-0">
                             <GridToolbarRow className="gap-2">
@@ -409,6 +408,7 @@ export default function VendorsManagement() {
 
                     <div className="px-2 pb-2">
                     <AppDataGrid
+                    scrollable={false}
                     columns={[
                         {
                             label: "Vendor ID",
@@ -491,7 +491,6 @@ export default function VendorsManagement() {
                 />
                     </div>
                     </div>
-                </div>
             </section>
 
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
@@ -507,13 +506,13 @@ export default function VendorsManagement() {
                                     ? "Add Vendor"
                                     : mode === "edit"
                                         ? "Edit Vendor"
-                                        : "Vendor Details"}
+                                        : "Vendor summary"}
                             </SheetTitle>
                         </SheetHeader>
 
                         {mode === "view" ? (
                             <div className="space-y-6 mt-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 gap-6">
                                     <VendorViewSection title="Basic Information">
                                         <div className="space-y-4">
                                             <DetailRow label="Name" value={form.name} />
@@ -683,7 +682,7 @@ export default function VendorsManagement() {
                             </div>
                         )}
 
-                        <div className="pt-6 border-t flex justify-end gap-3 mt-6">
+                        <div className="flex justify-end gap-3 pt-4 border-t border-border mt-6">
                             {mode === "view" ? (
                                 <Button
                                     variant="heroOutline"
@@ -695,13 +694,7 @@ export default function VendorsManagement() {
                                 <>
                                     <Button
                                         variant="heroOutline"
-                                        onClick={() => {
-                                            if (mode === "add") {
-                                                setSheetOpen(false);
-                                            } else {
-                                                setMode("view");
-                                            }
-                                        }}
+                                        onClick={() => setSheetOpen(false)}
                                     >
                                         Cancel
                                     </Button>
@@ -726,8 +719,8 @@ export default function VendorsManagement() {
 /* ---------------- Helpers ---------------- */
 function VendorViewSection({ title, children }: { title: string; children: React.ReactNode }) {
     return (
-        <div className="bg-muted/5 border rounded-lg p-5 space-y-4">
-            <h3 className="text-sm font-bold text-primary uppercase tracking-wider">{title}</h3>
+        <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-foreground">{title}</h3>
             {children}
         </div>
     );
@@ -735,9 +728,9 @@ function VendorViewSection({ title, children }: { title: string; children: React
 
 function DetailRow({ label, value }: { label: string; value: string | number | null | undefined }) {
     return (
-        <div className="grid grid-cols-3 gap-4 py-2 border-b last:border-0">
-            <div className="text-muted-foreground">{label}</div>
-            <div className="col-span-2 font-medium">
+        <div className="space-y-2">
+            <div className="text-sm font-medium text-foreground">{label}</div>
+            <div className="min-h-10 w-full rounded-[3px] bg-background px-3 py-2 flex items-center text-sm text-foreground cursor-default select-text">
                 {value || "—"}
             </div>
         </div>

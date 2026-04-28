@@ -389,7 +389,7 @@ return (
         <div className="h-full flex flex-col overflow-hidden">
             <div className="h-full grid grid-cols-1">
                 {/* ================= LEFT ================= */}
-                <section className="overflow-y-auto scrollbar-hide p-6 lg:p-4">
+                <section className="overflow-y-auto p-6 lg:p-4">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         {/* Left: Title */}
                         <div className="shrink-0">

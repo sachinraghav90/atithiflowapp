@@ -326,8 +326,8 @@ export default function RoleManagement() {
     const { permission } = usePermission(pathname)
 
     return (
-        <section className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] flex-1 overflow-hidden">
-            <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8 border-b lg:border-b-0 lg:border-r border-border">
+        <section className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] flex-1">
+            <section className="p-6 lg:p-8 border-b lg:border-b-0 lg:border-r border-border">
                 <div className="flex items-center justify-between mb-6">
                     <div>
                         <h1 className="text-2xl font-bold text-foreground">Roles</h1>
@@ -451,7 +451,7 @@ export default function RoleManagement() {
                     </Table>
                 </div>
             </section>
-            <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-8 bg-muted/20">
+            <section className="p-6 lg:p-8 bg-muted/20">
                 {selectedRoleId ? (
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
@@ -526,7 +526,7 @@ export default function RoleManagement() {
                             </div>
                         </div>
 
-                        <div className="space-y-4 max-h-[calc(100vh-14rem)] overflow-y-auto pr-1 scrollbar-hide">
+                        <div className="space-y-4 max-h-[calc(100vh-14rem)] overflow-y-auto pr-1">
                             {!allSidebarLinksLoading &&
                                 !allSidebarLinksError &&
                                 allSidebarLinksData.roles.map((module) => (

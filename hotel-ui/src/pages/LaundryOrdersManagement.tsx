@@ -30,6 +30,10 @@ import {
 import { format } from "date-fns";
 import { Download, FilterX, Pencil, RefreshCcw, Trash2, Plus, PlusCircle } from "lucide-react";
 import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import { motion } from "framer-motion";
+
 import { toast } from "react-toastify";
 import { normalizeNumberInput } from "@/utils/normalizeTextInput";
 import { useLocation } from "react-router-dom";
@@ -233,7 +237,7 @@ function getLaundryAuditChangeText(audit: any) {
 
 function getLaundryAuditDisplay(audit: any) {
     return {
-        orderLabel: `#${audit.event_id}`,
+        orderLabel: formatModuleDisplayId("laundry_order", audit.event_id),
         actionLabel: formatDisplayStatus(audit.event_type),
         actionClassName: "border-slate-300/80 bg-slate-100/90 text-slate-700",
         changeText: getLaundryAuditChangeText(audit) || "--",
@@ -871,8 +875,8 @@ export default function LaundryOrdersManagement() {
 
     /* ---------------- UI ---------------- */
     return (
-        <div className="h-full flex flex-col overflow-hidden bg-background">
-            <section className="flex flex-col flex-1 overflow-hidden p-6 lg:p-8 gap-6">
+        <div className="flex flex-col bg-background">
+            <section className="flex flex-col p-6 lg:p-8 gap-6">
                     <div className="flex items-center justify-between w-full">
                         <div className="flex flex-col">
                             <h1 className="text-2xl font-bold leading-tight">Laundry Orders</h1>
@@ -942,7 +946,7 @@ export default function LaundryOrdersManagement() {
                     </div>
 
                 {activeTab === "orders" && (
-                    <div className="flex-1 overflow-y-auto scrollbar-hide">
+                    <div>
                         <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
                         <div className="w-full">
                             <GridToolbar className="border-b-0">
@@ -1019,6 +1023,7 @@ export default function LaundryOrdersManagement() {
 
                         <div className="px-2 pb-2">
                             <AppDataGrid
+                                scrollable={false}
                                 columns={laundryOrderColumns}
                                 data={filteredOrders}
                                 loading={laundryLoading || isInitializing}
@@ -1067,7 +1072,7 @@ export default function LaundryOrdersManagement() {
             )}
 
                 {activeTab === "audit" && (
-                    <div className="flex-1 overflow-y-auto scrollbar-hide">
+                    <div>
                         <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
                         <div className="w-full">
                             <GridToolbar className="border-b-0">
@@ -1128,6 +1133,7 @@ export default function LaundryOrdersManagement() {
 
                         <div className="px-2 pb-2">
                             <AppDataGrid
+                                scrollable={false}
                                 columns={laundryAuditColumns}
                                 data={paginatedAuditLogs}
                                 loading={logsFetching}
@@ -1423,9 +1429,9 @@ export default function LaundryOrdersManagement() {
                             </div>
                         </div>
 
-                        <div className="p-6 border-t bg-muted/20 flex justify-end gap-3">
+                        <div className="flex justify-end gap-3 pt-4 border-t border-border">
                             <Button
-                                variant="outline"
+                                variant="heroOutline"
                                 onClick={() => setSheetOpen(false)}
                             >
                                 Cancel
@@ -1456,16 +1462,16 @@ export default function LaundryOrdersManagement() {
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="space-y-1"
+                        className="space-y-6"
                     >
                         <SheetHeader>
-                            <SheetTitle>Laundry Order Details</SheetTitle>
+                            <SheetTitle>{viewItemsModal.editMode ? "Edit laundry order" : "Laundry order summary"}</SheetTitle>
                         </SheetHeader>
 
                         {viewItemsModal.order && (
-                            <div className="space-y-6 mt-6">
+                            <div className="space-y-6">
                                 {/* ===== HEADER DETAILS ===== */}
-                                <div className="grid grid-cols-2 gap-6 text-sm">
+                                <div className="grid grid-cols-1 gap-6 text-sm">
                                     <div className="bg-muted/5 border rounded-lg p-5 space-y-4">
                                         <h3 className="text-sm font-bold text-primary uppercase tracking-wider">Order Assignment</h3>
                                         <div className="space-y-4">
@@ -1603,7 +1609,7 @@ export default function LaundryOrdersManagement() {
                                     ))}
                                 </div>
 
-                                <div className="flex justify-end gap-3 pt-6 border-t">
+                                <div className="flex justify-end gap-3 pt-4 border-t border-border">
                                     {!viewItemsModal.editMode ? (
                                         <Button
                                             variant="heroOutline"
