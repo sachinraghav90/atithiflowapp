@@ -56,12 +56,12 @@ type Staff = {
     phone2?: string;
     designation: string;
     department: string;
-    status: "active" | "inactive";
+    status: "Active" | "Inactive";
     image?: File | null;
     id_proof?: File | null;
 };
 
-const STAFF_STATUSES = ["active", "inactive"];
+const STAFF_STATUSES = ["Active", "Inactive"];
 
 const STAFF_INITIAL_VALUE = {
     first_name: "",
@@ -137,7 +137,7 @@ export default function StaffManagement() {
     const viewMode = mode === "view";
 
     const { page, limit, setPage, resetPage, handleLimitChange } = useGridPagination({
-        initialLimit: 5,
+        initialLimit: 10,
         resetDeps: [selectedPropertyId, statusFilter, searchQuery],
     });
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)

@@ -996,13 +996,14 @@ export const hmsApi = createApi({
     }),
 
     exportPropertyLaundryOrders: builder.query({
-      query: ({ propertyId, status = "", vendor_status = "" }) => {
+      query: ({ propertyId, status = "", vendor_status = "", search = "" }) => {
         const params = new URLSearchParams({
           export: "true",
           ts: String(Date.now())
         });
         if (status) params.append("status", status);
         if (vendor_status) params.append("vendor_status", vendor_status);
+        if (search) params.append("search", search);
 
         return {
           url: `/laundries/orders/property/${propertyId}?${params.toString()}`,

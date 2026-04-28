@@ -8,12 +8,11 @@ import { useGetRoomsQuery, useAddRoomMutation, useGetRoomTypesQuery, useBulkUpda
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAppSelector } from "@/redux/hook";
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
-} from "@/components/ui/dialog";
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
 import { usePermission } from "@/rbac/usePermission";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
@@ -470,11 +469,16 @@ export default function RoomsByFloor() {
             </div>
 
 
-            <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Add Room</DialogTitle>
-                    </DialogHeader>
+            <Sheet open={open} onOpenChange={setOpen}>
+                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-1"
+                    >
+                        <SheetHeader>
+                            <SheetTitle>Add Room</SheetTitle>
+                        </SheetHeader>
 
                     <div className="space-y-4">
                         <p className="text-sm text-muted-foreground">
@@ -540,7 +544,7 @@ export default function RoomsByFloor() {
 
                     </div>
 
-                    <DialogFooter>
+                        <div className="pt-6 border-t flex justify-end gap-3 mt-6">
                         <Button
                             variant="outline"
                             onClick={() => setOpen(false)}
@@ -592,9 +596,10 @@ export default function RoomsByFloor() {
                             {adding ? "Adding..." : "Add Room"}
                         </Button>
 
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                        </div>
+                    </motion.div>
+                </SheetContent>
+            </Sheet>
 
         </div >
     );

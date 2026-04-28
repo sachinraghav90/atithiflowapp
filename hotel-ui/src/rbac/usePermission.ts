@@ -42,7 +42,7 @@ export function usePermission(
                 state: { endpoint }
             });
         }
-    }, [permission, isUninitialized, isFetching, autoRedirect, redirectTo, endpoint]);
+    }, [permission, isUninitialized, isFetching, autoRedirect, redirectTo, endpoint, navigate]);
 
     return {
         permission: permission ?? {

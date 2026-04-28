@@ -3,11 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet";
+import { motion } from "framer-motion";
 import { NativeSelect } from "@/components/ui/native-select";
 import {
     useGetPropertyEnquiriesQuery,
@@ -128,7 +129,7 @@ function getEnquiryDisplay(enquiry: Enquiry) {
 export default function EnquiriesManagement() {
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
     const [page, setPage] = useState(1);
-    const [limit, setLimit] = useState(5);
+    const [limit, setLimit] = useState(10);
     const [open, setOpen] = useState(false);
     const [editMode, setEditMode] = useState(false);
     const [selected, setSelected] = useState<Enquiry | null>(null);
@@ -527,12 +528,17 @@ export default function EnquiriesManagement() {
                 </div>
             </section>
 
-            {/* Manage Dialog */}
-            <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="max-w-3xl [&>button.absolute]:right-3 [&>button.absolute]:top-3 [&>button.absolute]:h-7 [&>button.absolute]:w-7 [&>button.absolute]:rounded-md [&>button.absolute]:border [&>button.absolute]:border-border/70 [&>button.absolute]:bg-background/95 [&>button.absolute]:p-0 [&>button.absolute]:opacity-100 [&>button.absolute]:shadow-sm [&>button.absolute]:ring-offset-0 [&>button.absolute]:hover:bg-accent [&>button.absolute]:hover:text-foreground [&>button.absolute]:data-[state=open]:bg-background/95 [&>button.absolute]:data-[state=open]:text-muted-foreground [&>button.absolute>svg]:h-3.5 [&>button.absolute>svg]:w-3.5">
-                    <DialogHeader>
-                        <DialogTitle>{editMode ? "Manage Enquiry" : "Enquiry Summary"}</DialogTitle>
-                    </DialogHeader>
+            {/* Manage Sheet */}
+            <Sheet open={open} onOpenChange={setOpen}>
+                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-1"
+                    >
+                        <SheetHeader>
+                            <SheetTitle>{editMode ? "Manage Enquiry" : "Enquiry Summary"}</SheetTitle>
+                        </SheetHeader>
 
                     {selected && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
@@ -691,8 +697,9 @@ export default function EnquiriesManagement() {
                             </div>
                         </div>
                     )}
-                </DialogContent>
-            </Dialog>
+                    </motion.div>
+                </SheetContent>
+            </Sheet>
         </div>
     );
 }

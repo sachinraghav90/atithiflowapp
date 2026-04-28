@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import Sidebar from "@/components/layout/Sidebar";
 import AppHeader from "@/components/layout/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -116,7 +117,7 @@ export default function BookingsManagement() {
     const [status, setStatus] = useState("");
 
     const { page, limit, setPage, handleLimitChange } = useGridPagination({
-        initialLimit: 5,
+        initialLimit: 10,
         resetDeps: [propertyId, searchQuery, fromDate, toDate, scope, status],
     });
 
@@ -738,13 +739,18 @@ export default function BookingsManagement() {
             <Sheet open={detailsOpen} onOpenChange={setDetailsOpen}>
                 <SheetContent
                     side="right"
-                    className="w-full sm:max-w-5xl p-0 overflow-hidden"
+                    className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background p-0"
                 >
-                    <SheetHeader className="sr-only">
-                        <SheetTitle>
-                            {editMode ? "Manage Booking" : "Booking Summary"} ({formatModuleDisplayId("booking", bookingId)})
-                        </SheetTitle>
-                    </SheetHeader>
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-1"
+                    >
+                        <SheetHeader className="sr-only">
+                            <SheetTitle>
+                                {editMode ? "Manage Booking" : "Booking Summary"} ({formatModuleDisplayId("booking", bookingId)})
+                            </SheetTitle>
+                        </SheetHeader>
 
                     {/* Header */}
                     <div className="h-14 border-b border-border flex items-center justify-between px-6">
@@ -857,6 +863,7 @@ export default function BookingsManagement() {
                             </TabsContent>
                         </div>
                     </Tabs>
+                    </motion.div>
                 </SheetContent>
             </Sheet>
 

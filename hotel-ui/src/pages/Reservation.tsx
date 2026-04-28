@@ -28,11 +28,12 @@ import {
 import { BookType, Check, ChevronDown, X } from "lucide-react";
 import COUNTRY_CODES from '../utils/countryCode.json'
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet";
+import { motion } from "framer-motion";
 import FormInput from "@/components/forms/FormInput";
 import FormDatePicker from "@/components/forms/FormDatePicker";
 import FormDateRangePicker from "@/components/forms/FormDateRangePicker";
@@ -1830,24 +1831,21 @@ export default function ReservationManagement() {
                 </section>
 
 
-                <Dialog open={roomsModalOpen} onOpenChange={setRoomsModalOpen}>
-                    <DialogContent
-                        className="
-                                z-[9999]
-                                w-[95vw]
-                                max-w-4xl
-                                h-[90vh]
-                                p-0
-                                flex
-                                flex-col
-                                "
+                <Sheet open={roomsModalOpen} onOpenChange={setRoomsModalOpen}>
+                    <SheetContent
+                        side="right"
+                        className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background p-0 flex flex-col"
                     >
-                        {/* Header */}
-                        <DialogHeader className="px-6 py-4 border-b">
-                            <DialogTitle className="text-lg font-semibold">
-                                Available Rooms
-                            </DialogTitle>
-                        </DialogHeader>
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="flex-1 flex flex-col"
+                        >
+                            <SheetHeader className="px-6 py-4 border-b">
+                                <SheetTitle className="text-lg font-semibold">
+                                    Available Rooms
+                                </SheetTitle>
+                            </SheetHeader>
 
                         <section className="flex-1 overflow-y-auto scrollbar-hide p-6 lg:p-3 bg-muted/20">
 
@@ -1974,8 +1972,9 @@ export default function ReservationManagement() {
                                 Close
                             </Button>
                         </div> */}
-                    </DialogContent>
-                </Dialog>
+                        </motion.div>
+                    </SheetContent>
+                </Sheet>
 
 
             </div >

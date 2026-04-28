@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import { NativeSelect } from "@/components/ui/native-select";
 import Sidebar from "@/components/layout/Sidebar";
 import AppHeader from "@/components/layout/AppHeader";
@@ -90,7 +91,7 @@ export default function VendorsManagement() {
     const [typeFilter, setTypeFilter] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
     const { page, limit, setPage, resetPage, handleLimitChange } = useGridPagination({
-        initialLimit: 5,
+        initialLimit: 10,
         resetDeps: [selectedPropertyId, searchQuery, typeFilter, statusFilter],
     });
 
@@ -494,42 +495,51 @@ export default function VendorsManagement() {
             </section>
 
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetContent side="right" className="w-full sm:max-w-xl bg-background">
-                    <SheetHeader>
-                        <SheetTitle>
-                            {mode === "add"
-                                ? "Add Vendor"
-                                : mode === "edit"
-                                    ? "Edit Vendor"
-                                    : "Vendor Summary"}
-
-                        </SheetTitle>
-                    </SheetHeader>
-
-                    <div className="space-y-4 mt-6">
+                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-1"
+                    >
+                        <SheetHeader>
+                            <SheetTitle>
+                                {mode === "add"
+                                    ? "Add Vendor"
+                                    : mode === "edit"
+                                        ? "Edit Vendor"
+                                        : "Vendor Details"}
+                            </SheetTitle>
+                        </SheetHeader>
 
                         {mode === "view" ? (
+                            <div className="space-y-6 mt-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <VendorViewSection title="Basic Information">
+                                        <div className="space-y-4">
+                                            <DetailRow label="Name" value={form.name} />
+                                            <DetailRow label="Vendor Type" value={form.vendor_type} />
+                                            <DetailRow label="Status" value={form.is_active ? "Active" : "Inactive"} />
+                                        </div>
+                                    </VendorViewSection>
 
-                            <div className="space-y-4 text-sm">
+                                    <VendorViewSection title="Contact Details">
+                                        <div className="space-y-4">
+                                            <DetailRow label="Contact No" value={form.contact_no} />
+                                            <DetailRow label="Email" value={form.email_id} />
+                                            <DetailRow label="Address" value={form.address} />
+                                        </div>
+                                    </VendorViewSection>
 
-                                <DetailRow label="Name" value={form.name} />
-
-                                <DetailRow label="PAN" value={form.pan_no} />
-
-                                <DetailRow label="GST" value={form.gst_no} />
-
-                                <DetailRow label="Address" value={form.address} />
-
-                                <DetailRow label="Contact No" value={form.contact_no} />
-
-                                <DetailRow label="Email" value={form.email_id} />
-
-                                <DetailRow label="Vendor Type" value={form.vendor_type} />
-
+                                    <VendorViewSection title="Tax & Identity">
+                                        <div className="space-y-4">
+                                            <DetailRow label="PAN" value={form.pan_no} />
+                                            <DetailRow label="GST" value={form.gst_no} />
+                                        </div>
+                                    </VendorViewSection>
+                                </div>
                             </div>
-
                         ) : (
-                            <>
+                            <div className="space-y-4 mt-6">
                                 <div>
                                     <Label htmlFor="vendor-name">Name*</Label>
                                     <Input
@@ -607,13 +617,11 @@ export default function VendorsManagement() {
                                             className={submitted && formErrors.contact_no ? "border-red-500" : ""}
                                             value={form.contact_no ?? ""}
                                             onChange={(e) => {
-                                                // if (e.target.value.trim().length <= 15) {
                                                 setForm({
                                                     ...form,
                                                     contact_no: normalizeTextInput(e.target.value.trim()),
                                                 });
                                                 setFormErrors((p) => ({ ...p, contact_no: "" }));
-                                                // }
                                             }}
                                         />
                                     </div>
@@ -672,27 +680,28 @@ export default function VendorsManagement() {
                                         </span>
                                     </div>
                                 )}
-
-                            </>
+                            </div>
                         )}
-                        <div className="pt-4 border-t flex justify-end gap-3">
 
+                        <div className="pt-6 border-t flex justify-end gap-3 mt-6">
                             {mode === "view" ? (
-                                <>
-
-                                    <Button
-                                        variant="heroOutline"
-                                        onClick={() => setSheetOpen(false)}
-                                    >
-                                        Close
-                                    </Button>
-                                </>
+                                <Button
+                                    variant="heroOutline"
+                                    onClick={() => setSheetOpen(false)}
+                                >
+                                    Close
+                                </Button>
                             ) : (
-
                                 <>
                                     <Button
                                         variant="heroOutline"
-                                        onClick={() => setMode("view")}
+                                        onClick={() => {
+                                            if (mode === "add") {
+                                                setSheetOpen(false);
+                                            } else {
+                                                setMode("view");
+                                            }
+                                        }}
                                     >
                                         Cancel
                                     </Button>
@@ -704,38 +713,24 @@ export default function VendorsManagement() {
                                                 : "Save Changes"}
                                         </Button>
                                     )}
-
                                 </>
-
                             )}
-
                         </div>
-                    </div>
+                    </motion.div>
                 </SheetContent>
             </Sheet>
-        </div >
+        </div>
     );
 }
 
 /* ---------------- Helpers ---------------- */
-function buildVendorPayload(
-    form: VendorForm,
-    propertyId?: number
-) {
-    const payload: VendorForm & { property_id?: number } = {
-        name: form.name,
-        pan_no: form.pan_no,
-        gst_no: form.gst_no,
-        address: form.address,
-        contact_no: form.contact_no,
-        email_id: form.email_id,
-        vendor_type: form.vendor_type,
-        is_active: form.is_active
-    };
-
-    if (propertyId) payload.property_id = propertyId;
-
-    return payload;
+function VendorViewSection({ title, children }: { title: string; children: React.ReactNode }) {
+    return (
+        <div className="bg-muted/5 border rounded-lg p-5 space-y-4">
+            <h3 className="text-sm font-bold text-primary uppercase tracking-wider">{title}</h3>
+            {children}
+        </div>
+    );
 }
 
 function DetailRow({ label, value }: { label: string; value: string | number | null | undefined }) {

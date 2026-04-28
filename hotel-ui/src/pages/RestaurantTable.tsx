@@ -53,7 +53,7 @@ type RestaurantTable = {
 
 export function RestaurantTables() {
     const [page, setPage] = useState(1);
-    const [limit, setLimit] = useState(5);
+    const [limit, setLimit] = useState(10);
     const [searchInput, setSearchInput] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
     

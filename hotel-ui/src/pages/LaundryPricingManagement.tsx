@@ -120,7 +120,7 @@ export default function LaundryPricingManagement() {
     const [submitted, setSubmitted] = useState(false);
 
     const { page, limit, setPage, resetPage, handleLimitChange } = useGridPagination({
-        initialLimit: 5,
+        initialLimit: 10,
         resetDeps: [selectedPropertyId, statusFilter, searchQuery],
     });
 

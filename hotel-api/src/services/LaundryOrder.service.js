@@ -180,49 +180,111 @@ class LaundryOrderService {
        GET BY PROPERTY
     ========================================================= */
 
-    async getByPropertyId({ propertyId, page = 1, limit = 10 }) {
+    async getByPropertyId({
+        propertyId,
+        page = 1,
+        limit = 10,
+        status,
+        vendorStatus,
+        search = "",
+        exportRows = false
+    }) {
 
         const safePage = Math.max(parseInt(page) || 1, 1);
         const safeLimit = Math.min(Math.max(parseInt(limit) || 10, 1), 100);
         const offset = (safePage - 1) * safeLimit;
+        const normalizedSearch = search.trim();
+
+        const filters = [`lo.property_id = $1`];
+        const values = [propertyId];
+        let paramIndex = 2;
+
+        if (status) {
+            filters.push(`lo.laundry_status = $${paramIndex++}`);
+            values.push(status);
+        }
+
+        if (vendorStatus) {
+            filters.push(`COALESCE(lo.vendor_status, 'NOT_ALLOTTED') = $${paramIndex++}`);
+            values.push(vendorStatus);
+        }
+
+        if (normalizedSearch) {
+            filters.push(`(
+                lo.id::text ILIKE $${paramIndex}
+                OR CONCAT('LO', LPAD(lo.id::text, 3, '0')) ILIKE $${paramIndex}
+                OR COALESCE(lo.booking_id::text, '') ILIKE $${paramIndex}
+                OR COALESCE(lo.laundry_type, '') ILIKE $${paramIndex}
+                OR COALESCE(lo.laundry_status, '') ILIKE $${paramIndex}
+                OR COALESCE(lo.vendor_status, 'NOT_ALLOTTED') ILIKE $${paramIndex}
+                OR COALESCE(rv.name, '') ILIKE $${paramIndex}
+                OR TO_CHAR(lo.pickup_date, 'DD/MM/YYYY') ILIKE $${paramIndex}
+                OR TO_CHAR(lo.delivery_date, 'DD/MM/YYYY') ILIKE $${paramIndex}
+                OR EXISTS (
+                    SELECT 1
+                    FROM public.laundry_order_items loi_search
+                    LEFT JOIN public.laundry l_search
+                        ON l_search.id = loi_search.laundry_id
+                    WHERE loi_search.order_id = lo.id
+                      AND (
+                          COALESCE(l_search.item_name, '') ILIKE $${paramIndex}
+                          OR COALESCE(loi_search.room_no, '') ILIKE $${paramIndex}
+                          OR loi_search.item_count::text ILIKE $${paramIndex}
+                      )
+                )
+            )`);
+            values.push(`%${normalizedSearch}%`);
+            paramIndex += 1;
+        }
+
+        const whereClause = filters.join(" AND ");
+        const dataParams = exportRows ? values : [...values, safeLimit, offset];
 
         const dataQuery = `
+            WITH filtered_orders AS (
+                SELECT lo.*
+                FROM public.laundry_orders lo
+                LEFT JOIN public.ref_vendors rv
+                    ON rv.id = lo.vendor_id
+                WHERE ${whereClause}
+                ORDER BY lo.created_on DESC
+                ${exportRows ? "" : `LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`}
+            )
             SELECT
-                lo.*,
-                COALESCE(
-                    json_agg(
-                        json_build_object(
-                            'laundry_id', loi.laundry_id,
-                            'item_name', l.item_name,
-                            'item_count', loi.item_count,
-                            'item_rate', loi.item_rate,
-                            'amount', loi.amount,
-                            'room_no', loi.room_no
-                        )
-                        ORDER BY loi.id
-                    ) FILTER (WHERE loi.id IS NOT NULL),
-                    '[]'
+                fo.*,
+                COALESCE(items.items, '[]') AS items
+            FROM filtered_orders fo
+            LEFT JOIN LATERAL (
+                SELECT json_agg(
+                    json_build_object(
+                        'laundry_id', loi.laundry_id,
+                        'item_name', l.item_name,
+                        'item_count', loi.item_count,
+                        'item_rate', loi.item_rate,
+                        'amount', loi.amount,
+                        'room_no', loi.room_no
+                    )
+                    ORDER BY loi.id
                 ) AS items
-            FROM public.laundry_orders lo
-            LEFT JOIN public.laundry_order_items loi
-                ON loi.order_id = lo.id
-            LEFT JOIN public.laundry l
-                ON l.id = loi.laundry_id
-            WHERE lo.property_id = $1
-            GROUP BY lo.id
-            ORDER BY lo.created_on DESC
-            LIMIT $2 OFFSET $3;
+                FROM public.laundry_order_items loi
+                LEFT JOIN public.laundry l
+                    ON l.id = loi.laundry_id
+                WHERE loi.order_id = fo.id
+            ) items ON true
+            ORDER BY fo.created_on DESC;
         `;
 
         const countQuery = `
             SELECT COUNT(*)::int AS total
-            FROM public.laundry_orders
-            WHERE property_id = $1;
+            FROM public.laundry_orders lo
+            LEFT JOIN public.ref_vendors rv
+                ON rv.id = lo.vendor_id
+            WHERE ${whereClause};
         `;
 
         const [dataRes, countRes] = await Promise.all([
-            this.#DB.query(dataQuery, [propertyId, safeLimit, offset]),
-            this.#DB.query(countQuery, [propertyId])
+            this.#DB.query(dataQuery, dataParams),
+            this.#DB.query(countQuery, values)
         ]);
 
         const total = countRes.rows[0].total;

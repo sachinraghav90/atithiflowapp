@@ -31,6 +31,7 @@ import { exportToExcel } from "@/utils/exportToExcel";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { GridBadge } from "@/components/ui/grid-badge";
+import { motion } from "framer-motion";
 
 type KitchenItem = {
     id: string;
@@ -75,8 +76,7 @@ export default function KitchenInventory() {
     const [unitFilter, setUnitFilter] = useState("");
 
     const [sheetOpen, setSheetOpen] = useState(false);
-    const [createOpen, setCreateOpen] = useState(false);
-    const [isEditing, setIsEditing] = useState(false);
+    const [mode, setMode] = useState<"add" | "edit" | "view">("view");
 
     const [selectedItem, setSelectedItem] = useState<KitchenItem | null>(null);
 
@@ -103,8 +103,8 @@ export default function KitchenInventory() {
     });
     const [itemAuditPage, setItemAuditPage] = useState(1);
     const [itemAuditLimit, setItemAuditLimit] = useState(20);
-    const [inventoryLimit, setInventoryLimit] = useState(5);
-    const [auditLimit, setAuditLimit] = useState(5);
+    const [inventoryLimit, setInventoryLimit] = useState(10);
+    const [auditLimit, setAuditLimit] = useState(10);
     const [bulkOpen, setBulkOpen] = useState(false);
 
     const availableUnits = [
@@ -198,7 +198,7 @@ export default function KitchenInventory() {
     }, [historySearchInput]);
     /* ---------------- Handlers ---------------- */
 
-    const openManage = (item: KitchenItem, edit: boolean = false) => {
+    const openManage = (item: KitchenItem, m: "view" | "edit" = "view") => {
         setSelectedItem(item);
         setEditForm({
             quantity: Number(item.quantity),
@@ -206,7 +206,19 @@ export default function KitchenInventory() {
             id: +item.id,
             comments: ""
         });
-        setIsEditing(edit);
+        setMode(m);
+        setSheetOpen(true);
+    };
+
+    const openAdd = () => {
+        setMode("add");
+        setCreateForm({
+            inventory_master_id: null,
+            quantity: 0,
+            unit: ""
+        });
+        setCreateSubmitted(false);
+        setCreateErrors({});
         setSheetOpen(true);
     };
 
@@ -746,7 +758,7 @@ export default function KitchenInventory() {
                                                 <button
                                                     type="button"
                                                     className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
-                                                    onClick={() => openManage(item, false)}
+                                                    onClick={() => openManage(item, "view")}
                                                     aria-label={`Open summary view for kitchen item ${formatModuleDisplayId("kitchen", item.id)}`}
                                                 >
                                                     {formatModuleDisplayId("kitchen", item.id)}
@@ -791,7 +803,7 @@ export default function KitchenInventory() {
                                                     size="icon"
                                                     variant="ghost"
                                                     className="h-7 w-7 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
-                                                    onClick={() => openManage(item, true)}
+                                                    onClick={() => openManage(item, "edit")}
                                                     aria-label={`View and edit details for inventory item ${item.name}`}
                                                 >
                                                     <Pencil className="w-3.5 h-3.5 mx-auto" />
@@ -956,289 +968,200 @@ export default function KitchenInventory() {
 
             </section>
 
-            {/* ================= MANAGE SHEET ================= */}
+            {/* ================= SIDE SHEET (ADD / EDIT / VIEW) ================= */}
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetContent side="right" className="w-full sm:max-w-4xl lg:max-w-5xl overflow-y-auto">
-                    <SheetHeader>
-
-                        <div className="flex items-center justify-between w-full">
-
-                            <SheetTitle>
-                                Inventory Item
-                            </SheetTitle>
-
-                            {permission?.can_create && (
-                                <div className="flex gap-2 mr-6">
-                                    {!isEditing && <Button
-                                        variant="heroOutline"
-                                        onClick={() => {
-                                            setIsEditing(true);
-                                        }}
-                                    >
-                                        Update Stock
-                                    </Button>}
-                                    <Button
-                                        variant="heroOutline"
-                                        onClick={() => {
-                                            setAdjustOpen(true);
-                                            setSheetOpen(false);
-                                        }}
-                                    >
-                                        Add New Stock
-                                    </Button>
-                                </div>
-                            )}
-
-                        </div>
-
-                    </SheetHeader>
-
-
-                    {selectedItem && (
-                        <div className="space-y-6 mt-6">
-
-                            {!isEditing ? (
-                                <>
-                                    {/* View Mode */}
-                                    <div className="space-y-3">
-                                        <Info label="Name" value={selectedItem.name} />
-                                        <Info label="Category" value={selectedItem.inventory_type} />
-                                        <Info label="Stock" value={`${selectedItem.quantity}${selectedItem.unit ? ` ${selectedItem.unit}` : ""}`} />
+                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-1"
+                    >
+                        <SheetHeader>
+                            <div className="flex items-center justify-between w-full">
+                                <SheetTitle>
+                                    {mode === "add" ? "Add Inventory Item" : mode === "edit" ? "Edit Inventory Item" : "Inventory Item Details"}
+                                </SheetTitle>
+                                {permission?.can_create && mode === "view" && (
+                                    <div className="flex gap-2 mr-6">
+                                        <Button
+                                            variant="heroOutline"
+                                            onClick={() => setMode("edit")}
+                                        >
+                                            Update Stock
+                                        </Button>
+                                        <Button
+                                            variant="heroOutline"
+                                            onClick={() => {
+                                                setAdjustOpen(true);
+                                                setSheetOpen(false);
+                                            }}
+                                        >
+                                            Add New Stock
+                                        </Button>
                                     </div>
-                                </>
-                            ) : (
-                                <>
-                                    {/* Edit Mode */}
-                                    <div className="space-y-4">
-                                        <div>
-                                            <Label>Update {selectedItem.name} Quantity</Label>
-                                            <Input
-                                                type="text"
-                                                className="bg-background"
-                                                value={editForm.quantity}
-                                                onChange={(e) =>
-                                                    setEditForm(f => ({ ...f, quantity: +normalizeNumberInput(e.target.value) }))
-                                                }
-                                            />
-                                            <div className="space-y-1">
-                                                <Label>Unit</Label>
-                                                <NativeSelect
-                                                    className="w-full h-10 rounded px-3 border border-border bg-background"
-                                                    value={editForm.unit}
-                                                    onChange={(e) => setEditForm(f => ({ ...f, unit: e.target.value }))}
-                                                >
-                                                    <option value="">-- No Unit --</option>
-                                                    {availableUnits.map(u => (
-                                                        <option key={u.id} value={u.id}>{u.label}</option>
-                                                    ))}
-                                                </NativeSelect>
-                                            </div>
+                                )}
+                            </div>
+                        </SheetHeader>
 
-                                            <div className="space-y-1">
-                                                <Label>Comments</Label>
-                                                <textarea
-                                                    className="w-full min-h-[50px] rounded-[3px] border px-3 py-2 text-sm bg-background"
-                                                    value={editForm.comments}
-                                                    onChange={(e) =>
-                                                        setEditForm(f => ({ ...f, comments: e.target.value }))
-                                                    }
+
+                        {mode === "view" && selectedItem && (
+                            <div className="space-y-6 mt-6">
+                                <div className="space-y-3">
+                                    <Info label="Name" value={selectedItem.name} />
+                                    <Info label="Category" value={selectedItem.inventory_type} />
+                                    <Info label="Stock" value={`${selectedItem.quantity}${selectedItem.unit ? ` ${selectedItem.unit}` : ""}`} />
+                                </div>
+
+                                {/* AUDIT HISTORY */}
+                                <div className="pt-6">
+                                    <h3 className="text-sm font-semibold mb-3">Audit History</h3>
+                                    {!auditLogs?.data?.length ? (
+                                        <p className="text-sm text-muted-foreground">No audit history found.</p>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            <div className="border rounded-[3px] overflow-hidden">
+                                                <AppDataGrid
+                                                    columns={[
+                                                        { label: "Action", headClassName: "text-center", cellClassName: "text-center font-medium", render: (log: any) => getAuditActionLabel(log) },
+                                                        { label: "Change", render: (log: any) => getAuditChangeText(parseAuditDetails(log.details)) },
+                                                        { label: "User", cellClassName: "text-muted-foreground", render: (log: any) => `${log.user_first_name} ${log.user_last_name}` },
+                                                        { label: "Date", cellClassName: "text-xs text-muted-foreground", render: (log: any) => new Date(log.created_on).toLocaleString() }
+                                                    ] as ColumnDef[]}
+                                                    data={auditLogs.data}
+                                                    rowKey={(log: any) => log.id}
+                                                    minWidth="400px"
+                                                    className="mt-0"
                                                 />
                                             </div>
+                                            <DataGridPagination
+                                                page={itemAuditPage}
+                                                totalPages={auditLogs?.pagination?.totalPages ?? 1}
+                                                setPage={setItemAuditPage}
+                                                totalRecords={auditLogs?.pagination?.totalItems ?? auditLogs?.pagination?.total ?? auditLogs?.data?.length ?? 0}
+                                                limit={itemAuditLimit}
+                                                onLimitChange={(v) => { setItemAuditLimit(v); setItemAuditPage(1); }}
+                                                disabled={!auditLogs}
+                                            />
                                         </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
-                                        <div className="flex gap-2 pt-4">
-                                            <Button variant="heroOutline" onClick={() => setIsEditing(false)}>
-                                                Cancel
-                                            </Button>
-                                            <Button variant="hero" onClick={saveEdit}>
-                                                Save Changes
-                                            </Button>
+                        {mode === "edit" && selectedItem && (
+                            <div className="space-y-6 mt-6">
+                                <div className="space-y-4">
+                                    <div>
+                                        <Label>Update {selectedItem.name} Quantity</Label>
+                                        <Input
+                                            type="text"
+                                            className="bg-background"
+                                            value={editForm.quantity}
+                                            onChange={(e) => setEditForm(f => ({ ...f, quantity: +normalizeNumberInput(e.target.value) }))}
+                                        />
+                                        <div className="space-y-1 mt-4">
+                                            <Label>Unit</Label>
+                                            <NativeSelect
+                                                className="w-full h-10 rounded px-3 border border-border bg-background"
+                                                value={editForm.unit}
+                                                onChange={(e) => setEditForm(f => ({ ...f, unit: e.target.value }))}
+                                            >
+                                                <option value="">-- No Unit --</option>
+                                                {availableUnits.map(u => (
+                                                    <option key={u.id} value={u.id}>{u.label}</option>
+                                                ))}
+                                            </NativeSelect>
+                                        </div>
+                                        <div className="space-y-1 mt-4">
+                                            <Label>Comments</Label>
+                                            <textarea
+                                                className="w-full min-h-[50px] rounded-[3px] border px-3 py-2 text-sm bg-background"
+                                                value={editForm.comments}
+                                                onChange={(e) => setEditForm(f => ({ ...f, comments: e.target.value }))}
+                                            />
                                         </div>
                                     </div>
-                                </>
-                            )}
+                                </div>
+                            </div>
+                        )}
 
-                        </div>
-                    )}
-
-                    {/* ================= AUDIT HISTORY ================= */}
-
-                    <div className="pt-6">
-
-                        <h3 className="text-sm font-semibold mb-3">
-                            Audit History
-                        </h3>
-
-                        {!auditLogs?.data?.length ?
-                            <p className="text-sm text-muted-foreground">
-                                No audit history found.
-                            </p>
-                        :
-
-                            <div className="space-y-3">
-
-                                {/* Table */}
-                                <div className="border rounded-[3px] overflow-hidden">
-                                    <AppDataGrid
-                                        columns={[
-                                            {
-                                                label: "Action",
-                                                headClassName: "text-center",
-                                                cellClassName: "text-center font-medium",
-                                                render: (log: any) => getAuditActionLabel(log)
-                                            },
-                                            {
-                                                label: "Change",
-                                                render: (log: any) => getAuditChangeText(parseAuditDetails(log.details))
-                                            },
-                                            {
-                                                label: "User",
-                                                cellClassName: "text-muted-foreground",
-                                                render: (log: any) => `${log.user_first_name} ${log.user_last_name}`
-                                            },
-                                            {
-                                                label: "Date",
-                                                cellClassName: "text-xs text-muted-foreground",
-                                                render: (log: any) => new Date(log.created_on).toLocaleString()
-                                            }
-                                        ] as ColumnDef[]}
-                                        data={auditLogs.data}
-                                        rowKey={(log: any) => log.id}
-                                        minWidth="400px"
-                                        className="mt-0"
-                                    />
+                        {mode === "add" && (
+                            <div className="space-y-4 mt-6">
+                                <div>
+                                    <Label>Inventory Item *</Label>
+                                    <NativeSelect
+                                        className={`w-full h-10 rounded px-3 border bg-background ${createErrors.inventory_master_id ? "border-red-500" : "border-border"}`}
+                                        value={createForm.inventory_master_id ?? ""}
+                                        onChange={(e) => setCreateForm(f => ({ ...f, inventory_master_id: Number(e.target.value) }))}
+                                    >
+                                        <option value="" disabled>-- Please Select --</option>
+                                        {masterInventory?.filter(item => item.is_active).map(item => (
+                                            <option key={item.id} value={item.id}>{item.name}</option>
+                                        ))}
+                                    </NativeSelect>
+                                    {createErrors.inventory_master_id && <p className="text-xs text-red-500 mt-1">{createErrors.inventory_master_id}</p>}
                                 </div>
 
-                                <DataGridPagination
-                                    page={itemAuditPage}
-                                    totalPages={auditLogs?.pagination?.totalPages ?? 1}
-                                    setPage={setItemAuditPage}
-                                    totalRecords={auditLogs?.pagination?.totalItems ?? auditLogs?.pagination?.total ?? auditLogs?.data?.length ?? 0}
-                                    limit={itemAuditLimit}
-                                    onLimitChange={(value) => {
-                                        setItemAuditLimit(value);
-                                        setItemAuditPage(1);
-                                    }}
-                                    disabled={!auditLogs}
-                                />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <Label>Quantity*</Label>
+                                        <Input
+                                            className={`bg-background ${createErrors.quantity ? "border-red-500" : ""}`}
+                                            value={createForm.quantity}
+                                            onChange={(e) => setCreateForm(f => ({ ...f, quantity: +normalizeNumberInput(e.target.value) }))}
+                                        />
+                                        {createErrors.quantity && <p className="text-xs text-red-500 mt-1">{createErrors.quantity}</p>}
+                                    </div>
+                                    {isItemUsable && (
+                                        <div>
+                                            <Label>Unit*</Label>
+                                            <NativeSelect
+                                                className={`w-full h-10 rounded px-3 border bg-background ${createErrors.unit ? "border-red-500" : "border-border"}`}
+                                                value={createForm.unit ?? ""}
+                                                onChange={(e) => setCreateForm(f => ({ ...f, unit: e.target.value }))}
+                                            >
+                                                <option value="" disabled>Select item</option>
+                                                {["Nos", "Piece", "Kilo Gram", "Gram", "Litre", "Milliliter", "Packet", "Box"].map(u => (
+                                                    <option key={u} value={u}>{u}</option>
+                                                ))}
+                                            </NativeSelect>
+                                            {createErrors.unit && <p className="text-xs text-red-500 mt-1">{createErrors.unit}</p>}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        }
+                        )}
 
-                    </div>
-
-
+                        <div className="flex justify-end gap-3 pt-6 border-t mt-6">
+                            <Button variant="heroOutline" onClick={() => setSheetOpen(false)}>
+                                {mode === "view" ? "Close" : "Cancel"}
+                            </Button>
+                            {mode === "edit" && (
+                                <Button variant="hero" onClick={saveEdit}>
+                                    Save Changes
+                                </Button>
+                            )}
+                            {mode === "add" && (
+                                <Button variant="hero" onClick={createItem}>
+                                    Create Item
+                                </Button>
+                            )}
+                        </div>
+                    </motion.div>
                 </SheetContent>
             </Sheet>
 
-            {/* ================= CREATE MODAL ================= */}
-            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-                <DialogContent className="max-w-lg">
-                    <DialogHeader>
-                        <DialogTitle>Add Inventory Item</DialogTitle>
-                    </DialogHeader>
-
-                    <div className="space-y-4">
-                        <div>
-                            <Label>Inventory Item *</Label>
-
-                            <NativeSelect
-                                className={`
-                                        w-full h-10 rounded px-3 border bg-background
-                                        ${createErrors.inventory_master_id
-                                        ? "border-red-500"
-                                        : "border-border"}
-                                        `}
-                                value={createForm.inventory_master_id ?? ""}
-                                onChange={(e) => setCreateForm(f => ({ ...f, inventory_master_id: Number(e.target.value) }))}
-                            >
-
-                                <option value="" disabled>-- Please Select --</option>
-
-                                {masterInventory && masterInventory?.filter(item => item.is_active).map(item => (
-                                    <option key={item.id} value={item.id}>
-                                        {item.name}
-                                    </option>
-                                ))}
-                            </NativeSelect>
-                            {createErrors.inventory_master_id && (
-                                <p className="text-xs text-red-500 mt-1">
-                                    {createErrors.inventory_master_id}
-                                </p>
-                            )}
-
-                        </div>
-
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <Label>Quantity*</Label>
-                                <Input
-                                    className={`bg-background ${createErrors.quantity
-                                        ? "border-red-500"
-                                        : ""
-                                        }`}
-                                    value={createForm.quantity}
-                                    onChange={(e) => setCreateForm(f => ({ ...f, quantity: +normalizeNumberInput(e.target.value) }))}
-                                />
-                                {createErrors.quantity && (
-                                    <p className="text-xs text-red-500 mt-1">
-                                        {createErrors.quantity}
-                                    </p>
-                                )}
-                            </div>
-
-                            {isItemUsable && <div>
-                                <Label>Unit*</Label>
-                                <NativeSelect
-                                    className={`
-                                            w-full h-10 rounded px-3 border bg-background
-                                            ${createErrors.unit
-                                            ? "border-red-500"
-                                            : "border-border"}
-                                            `}
-                                    value={createForm.unit ?? ""}
-                                    onChange={(e) => setCreateForm(f => ({ ...f, unit: e.target.value }))}
-                                >
-
-                                    <option value="" disabled>Select item</option>
-                                    <option value="Nos">Nos</option>
-                                    <option value="Piece">Piece</option>
-                                    <option value="Kilo Gram">Kilo Gram</option>
-                                    <option value="Gram">Gram</option>
-                                    <option value="Litre">Litre</option>
-                                    <option value="Milliliter">Milliliter</option>
-                                    <option value="Packet">Packet</option>
-                                    <option value="Box">Box</option>
-                                </NativeSelect>
-                                {createErrors.unit && (
-                                    <p className="text-xs text-red-500 mt-1">
-                                        {createErrors.unit}
-                                    </p>
-                                )}
-
-                            </div>}
-                        </div>
-
-                        <div className="flex justify-end gap-2 pt-4">
-                            <Button variant="heroOutline" onClick={() => setCreateOpen(false)}>
-                                Cancel
-                            </Button>
-                            <Button variant="hero" onClick={createItem}>
-                                Create Item
-                            </Button>
-                        </div>
-                    </div>
-                </DialogContent>
-            </Dialog>
-
             {/* ================= ADJUST STOCK SHEET ================= */}
-
             <Sheet open={adjustOpen} onOpenChange={setAdjustOpen}>
-                <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-
-                    <SheetHeader>
-                        <SheetTitle>Adjust Stock</SheetTitle>
-                    </SheetHeader>
+                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-1"
+                    >
+                        <SheetHeader>
+                            <SheetTitle>Adjust Stock</SheetTitle>
+                        </SheetHeader>
 
                     {selectedItem && (
                         <div className="space-y-4 mt-6">
@@ -1268,25 +1191,25 @@ export default function KitchenInventory() {
                                 </p>
                             </div>
 
-                            <div className="flex gap-2 pt-4">
-                                <Button
-                                    variant="heroOutline"
-                                    onClick={() => setAdjustOpen(false)}
-                                >
-                                    Cancel
-                                </Button>
-
-                                <Button
-                                    variant="hero"
-                                    onClick={handleAdjustStock}
-                                >
-                                    Adjust Stock
-                                </Button>
                             </div>
+                        )}
 
+                        <div className="flex justify-end gap-3 pt-6 border-t mt-6">
+                            <Button
+                                variant="heroOutline"
+                                onClick={() => setAdjustOpen(false)}
+                            >
+                                Cancel
+                            </Button>
+
+                            <Button
+                                variant="hero"
+                                onClick={handleAdjustStock}
+                            >
+                                Adjust Stock
+                            </Button>
                         </div>
-                    )}
-
+                    </motion.div>
                 </SheetContent>
             </Sheet>
 

@@ -110,7 +110,7 @@ class EnquiryService {
             if (numericOnly) {
                 const idVal = parseInt(numericOnly, 10).toString();
                 // Search numeric ID (ignoring leading zeros from 'EN007')
-                searchParts.push(`id::text LIKE $${i}`);
+                searchParts.push(`e.id::text LIKE $${i}`);
                 // Search numeric mobile (ignoring spaces/dashes in DB)
                 searchParts.push(`REPLACE(REPLACE(REPLACE(mobile, ' ', ''), '+', ''), '-', '') LIKE $${i+1}`);
                 
@@ -145,7 +145,7 @@ class EnquiryService {
 
         const countQuery = `
       SELECT COUNT(*)::int AS total
-      FROM public.enquiries
+      FROM public.enquiries e
       ${whereClause};
     `;
 

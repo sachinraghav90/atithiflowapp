@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -288,8 +289,8 @@ export default function LaundryOrdersManagement() {
 
     const [ordersPage, setOrdersPage] = useState(1);
     const [auditPage, setAuditPage] = useState(1);
-    const [ordersLimit, setOrdersLimit] = useState(5);
-    const [auditLimit, setAuditLimit] = useState(5);
+    const [ordersLimit, setOrdersLimit] = useState(10);
+    const [auditLimit, setAuditLimit] = useState(10);
 
     const [editOrder, setEditOrder] = useState<any>(null);
     const [historyModal, setHistoryModal] = useState({
@@ -347,6 +348,13 @@ export default function LaundryOrdersManagement() {
             setAuditPage(1);
         }
     }, [selectedPropertyId]);
+
+    useEffect(() => {
+        if (searchInput.trim() === "" && searchQuery !== "") {
+            setSearchQuery("");
+            setOrdersPage(1);
+        }
+    }, [searchInput, searchQuery]);
 
     useEffect(() => {
         if (prefillApplied) return;
@@ -768,16 +776,35 @@ export default function LaundryOrdersManagement() {
         if (activeTab === "orders" && laundryFetching) return;
         if (activeTab === "audit" && logsFetching) return;
 
-        if (activeTab === "orders") {
-            await refetchLaundry();
-            return;
-        }
+        const toastId = toast.loading("Refreshing data...");
 
-        await refetchLogs();
+        try {
+            if (activeTab === "orders") {
+                await refetchLaundry();
+            } else {
+                await refetchLogs();
+            }
+
+            toast.dismiss(toastId);
+            toast.success("Data refreshed");
+        } catch {
+            toast.dismiss(toastId);
+            toast.error("Failed to refresh");
+        }
     };
 
     const exportLaundryOrdersSheet = async () => {
         if (!selectedPropertyId || exportingLaundryOrders) return;
+
+        const totalRecords =
+            laundryData?.pagination?.totalItems ??
+            laundryData?.pagination?.total ??
+            (laundryData?.data?.length || 0);
+
+        if (!totalRecords) {
+            toast.info("No laundry orders to export");
+            return;
+        }
 
         const toastId = toast.loading("Preparing laundry orders export...");
 
@@ -790,6 +817,12 @@ export default function LaundryOrdersManagement() {
             }).unwrap();
 
             const rows = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+
+            if (!rows.length) {
+                toast.dismiss(toastId);
+                toast.info("No laundry orders to export");
+                return;
+            }
 
             const formatted = rows.map((order: LaundryOrder) => {
                 const displayOrder = getLaundryOrderDisplay(order, vendors);
@@ -816,6 +849,11 @@ export default function LaundryOrdersManagement() {
     };
 
     const exportAuditLogsSheet = () => {
+        if (!filteredAuditLogs.length) {
+            toast.info("No audit logs to export");
+            return;
+        }
+
         const formatted = filteredAuditLogs.map((audit) => {
             const displayAudit = getLaundryAuditDisplay(audit);
 
@@ -1121,13 +1159,17 @@ export default function LaundryOrdersManagement() {
 
             {/* Create Order Sheet */}
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetContent side="right" className="w-full sm:max-w-4xl h-full overflow-y-auto bg-background">
+                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-1"
+                    >
+                        <SheetHeader>
+                            <SheetTitle>Add Laundry Order Items</SheetTitle>
+                        </SheetHeader>
 
-                    <SheetHeader>
-                        <SheetTitle>Add Laundry Order Items</SheetTitle>
-                    </SheetHeader>
-
-                    <div className="space-y-4 mt-3">
+                        <div className="space-y-4 mt-3">
 
                         {/* ================= HEADER SECTION ================= */}
 
@@ -1398,176 +1440,196 @@ export default function LaundryOrdersManagement() {
                         </div>
 
                     </div>
-
-                </SheetContent>
-            </Sheet>
+                </motion.div>
+            </SheetContent>
+        </Sheet>
 
             {/* View / Edit Items Modal */}
-            <Dialog
+            {/* View / Edit Items Sheet */}
+            <Sheet
                 open={viewItemsModal.open}
                 onOpenChange={() =>
                     setViewItemsModal({ open: false, editMode: false, order: null })
                 }
             >
-                <DialogContent className="max-w-2xl">
-                    <DialogHeader>
-                        <DialogTitle>Laundry Order Details</DialogTitle>
-                    </DialogHeader>
+                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-1"
+                    >
+                        <SheetHeader>
+                            <SheetTitle>Laundry Order Details</SheetTitle>
+                        </SheetHeader>
 
-                    {viewItemsModal.order && (
-                        <div className="space-y-6 mt-4">
-                            {/* ===== HEADER DETAILS ===== */}
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div>
-                                    <Label>Vendor</Label>
-                                    {viewItemsModal.editMode ? (
-                                        <NativeSelect
-                                            className="w-full h-9 border rounded px-2"
-                                            value={editOrder?.vendor_id || ""}
-                                            onChange={(e) =>
-                                                setEditOrder(prev => ({
-                                                    ...prev,
-                                                    vendor_id: e.target.value ? Number(e.target.value) : null
-                                                }))
-                                            }
-                                        >
-                                            <option value="">Select Vendor</option>
-                                            {vendors?.map(v => (
-                                                <option key={v.id} value={v.id}>{v.name}</option>
-                                            ))}
-                                        </NativeSelect>
-                                    ) : (
-                                        <p className="mt-1 font-medium">
-                                            {getLaundryVendorName(viewItemsModal.order, vendors)}
-                                        </p>
-                                    )}
-                                </div>
+                        {viewItemsModal.order && (
+                            <div className="space-y-6 mt-6">
+                                {/* ===== HEADER DETAILS ===== */}
+                                <div className="grid grid-cols-2 gap-6 text-sm">
+                                    <div className="bg-muted/5 border rounded-lg p-5 space-y-4">
+                                        <h3 className="text-sm font-bold text-primary uppercase tracking-wider">Order Assignment</h3>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <Label className="text-muted-foreground">Vendor</Label>
+                                                {viewItemsModal.editMode ? (
+                                                    <NativeSelect
+                                                        className="w-full h-9 border rounded px-2 mt-1"
+                                                        value={editOrder?.vendor_id || ""}
+                                                        onChange={(e) =>
+                                                            setEditOrder(prev => ({
+                                                                ...prev,
+                                                                vendor_id: e.target.value ? Number(e.target.value) : null
+                                                            }))
+                                                        }
+                                                    >
+                                                        <option value="">Select Vendor</option>
+                                                        {vendors?.map(v => (
+                                                            <option key={v.id} value={v.id}>{v.name}</option>
+                                                        ))}
+                                                    </NativeSelect>
+                                                ) : (
+                                                    <p className="mt-1 font-medium">
+                                                        {getLaundryVendorName(viewItemsModal.order, vendors)}
+                                                    </p>
+                                                )}
+                                            </div>
 
-                                <div>
-                                    <Label>Laundry Status</Label>
-                                    {viewItemsModal.editMode ? (
-                                        <NativeSelect
-                                            className="w-full h-9 border rounded px-2"
-                                            value={editOrder?.laundry_status}
-                                            onChange={(e) =>
-                                                setEditOrder(prev => ({
-                                                    ...prev,
-                                                    laundry_status: e.target.value
-                                                }))
-                                            }
-                                        >
-                                            {(["PENDING", "PICKED_UP", "IN_PROCESS", "DELIVERED", "CANCELLED"] as LaundryStatus[]).map(s => (
-                                                <option key={s} value={s}>{formatDisplayStatus(s)}</option>
-                                            ))}
-                                        </NativeSelect>
-                                    ) : (
-                                        <p className="mt-1 font-medium">
-                                            {formatDisplayStatus(viewItemsModal.order.laundry_status)}
-                                        </p>
-                                    )}
-                                </div>
-
-                                <div>
-                                    <Label>Vendor Status</Label>
-                                    {viewItemsModal.editMode ? (
-                                        <NativeSelect
-                                            className="w-full h-9 border rounded px-2"
-                                            value={editOrder?.vendor_status || editOrder?.vendorStatus}
-                                            onChange={(e) =>
-                                                setEditOrder(prev => ({
-                                                    ...prev,
-                                                    vendor_status: e.target.value
-                                                }))
-                                            }
-                                        >
-                                            {(["NOT_ALLOTTED", "PICKED_UP", "RECEIVED"] as VendorStatus[]).map(s => (
-                                                <option key={s} value={s}>{formatDisplayStatus(s)}</option>
-                                            ))}
-                                        </NativeSelect>
-                                    ) : (
-                                        <p className="mt-1 font-medium">
-                                            {formatDisplayStatus(viewItemsModal.order.vendor_status || viewItemsModal.order.vendorStatus)}
-                                        </p>
-                                    )}
-                                </div>
-
-                                <div>
-                                    <Label>Delivery Date</Label>
-                                    {viewItemsModal.editMode ? (
-                                        <DatePicker
-                                            selected={parseDate(editOrder?.delivery_date || viewItemsModal.order.delivery_date)}
-                                            onChange={(date) =>
-                                                setEditOrder(prev => ({
-                                                    ...prev,
-                                                    delivery_date: formatDate(date)
-                                                }))
-                                            }
-                                            showTimeSelect
-                                            timeIntervals={15}
-                                            minDate={now}
-                                            minTime={
-                                                parseDate(form.pickupDate)?.toDateString() === now.toDateString()
-                                                    ? now
-                                                    : new Date(new Date().setHours(0, 0, 0, 0))
-                                            }
-                                            maxTime={new Date(new Date().setHours(23, 59, 59, 999))}
-                                            dateFormat="dd/MM/yyyy HH:mm"
-                                            className="w-full h-9 border rounded px-2"
-                                        />
-                                    ) : (
-                                        <p className="mt-1 font-medium">
-                                            {formatDateTime(viewItemsModal.order.delivery_date)}
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="border rounded overflow-hidden">
-                                <div className="grid grid-cols-[2fr_1fr_1fr_1fr] text-xs font-medium bg-muted/30 border-b">
-                                    <div className="px-3 py-2 border-r">Item</div>
-                                    <div className="px-3 py-2 border-r">Room</div>
-                                    <div className="px-3 py-2 border-r">Qty</div>
-                                    <div className="px-3 py-2">Amount</div>
-                                </div>
-                                {viewItemsModal.order.items?.map((i, index) => (
-                                    <div
-                                        key={index}
-                                        className="grid grid-cols-[2fr_1fr_1fr_1fr] text-sm border-b last:border-b-0"
-                                    >
-                                        <div className="px-3 py-2 border-r">{i.item_name}</div>
-                                        <div className="px-3 py-2 border-r">{i.room_no || "--"}</div>
-                                        <div className="px-3 py-2 border-r">{i.item_count}</div>
-                                        <div className="px-3 py-2">₹{i.amount}</div>
+                                            <div>
+                                                <Label className="text-muted-foreground">Vendor Status</Label>
+                                                {viewItemsModal.editMode ? (
+                                                    <NativeSelect
+                                                        className="w-full h-9 border rounded px-2 mt-1"
+                                                        value={editOrder?.vendor_status || editOrder?.vendorStatus}
+                                                        onChange={(e) =>
+                                                            setEditOrder(prev => ({
+                                                                ...prev,
+                                                                vendor_status: e.target.value
+                                                            }))
+                                                        }
+                                                    >
+                                                        {(["NOT_ALLOTTED", "PICKED_UP", "RECEIVED"] as VendorStatus[]).map(s => (
+                                                            <option key={s} value={s}>{formatDisplayStatus(s)}</option>
+                                                        ))}
+                                                    </NativeSelect>
+                                                ) : (
+                                                    <p className="mt-1 font-medium">
+                                                        {formatDisplayStatus(viewItemsModal.order.vendor_status || viewItemsModal.order.vendorStatus)}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
-                                ))}
-                            </div>
 
-                            <div className="flex justify-end gap-2">
-                                {!viewItemsModal.editMode ? (
-                                    <Button
-                                        variant="heroOutline"
-                                        onClick={() => setViewItemsModal({ open: false, editMode: false, order: null })}
-                                    >
-                                        Close
-                                    </Button>
-                                ) : (
-                                    <>
+                                    <div className="bg-muted/5 border rounded-lg p-5 space-y-4">
+                                        <h3 className="text-sm font-bold text-primary uppercase tracking-wider">Status & Delivery</h3>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <Label className="text-muted-foreground">Laundry Status</Label>
+                                                {viewItemsModal.editMode ? (
+                                                    <NativeSelect
+                                                        className="w-full h-9 border rounded px-2 mt-1"
+                                                        value={editOrder?.laundry_status}
+                                                        onChange={(e) =>
+                                                            setEditOrder(prev => ({
+                                                                ...prev,
+                                                                laundry_status: e.target.value
+                                                            }))
+                                                        }
+                                                    >
+                                                        {(["PENDING", "PICKED_UP", "IN_PROCESS", "DELIVERED", "CANCELLED"] as LaundryStatus[]).map(s => (
+                                                            <option key={s} value={s}>{formatDisplayStatus(s)}</option>
+                                                        ))}
+                                                    </NativeSelect>
+                                                ) : (
+                                                    <p className="mt-1 font-medium">
+                                                        {formatDisplayStatus(viewItemsModal.order.laundry_status)}
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            <div>
+                                                <Label className="text-muted-foreground">Delivery Date</Label>
+                                                {viewItemsModal.editMode ? (
+                                                    <DatePicker
+                                                        selected={parseDate(editOrder?.delivery_date || viewItemsModal.order.delivery_date)}
+                                                        onChange={(date) =>
+                                                            setEditOrder(prev => ({
+                                                                ...prev,
+                                                                delivery_date: formatDate(date)
+                                                            }))
+                                                        }
+                                                        showTimeSelect
+                                                        timeIntervals={15}
+                                                        minDate={now}
+                                                        minTime={
+                                                            parseDate(form.pickupDate)?.toDateString() === now.toDateString()
+                                                                ? now
+                                                                : new Date(new Date().setHours(0, 0, 0, 0))
+                                                        }
+                                                        maxTime={new Date(new Date().setHours(23, 59, 59, 999))}
+                                                        dateFormat="dd/MM/yyyy HH:mm"
+                                                        className="w-full h-9 border rounded px-2 mt-1"
+                                                    />
+                                                ) : (
+                                                    <p className="mt-1 font-medium">
+                                                        {formatDateTime(viewItemsModal.order.delivery_date)}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-muted/5 border rounded-lg overflow-hidden">
+                                    <div className="px-5 py-3 border-b bg-muted/20">
+                                        <h3 className="text-sm font-bold text-primary uppercase tracking-wider">Order Items</h3>
+                                    </div>
+                                    <div className="grid grid-cols-[2fr_1fr_1fr_1fr] text-xs font-medium bg-muted/10 border-b">
+                                        <div className="px-3 py-2 border-r">Item</div>
+                                        <div className="px-3 py-2 border-r">Room</div>
+                                        <div className="px-3 py-2 border-r">Qty</div>
+                                        <div className="px-3 py-2">Amount</div>
+                                    </div>
+                                    {viewItemsModal.order.items?.map((i, index) => (
+                                        <div
+                                            key={index}
+                                            className="grid grid-cols-[2fr_1fr_1fr_1fr] text-sm border-b last:border-b-0"
+                                        >
+                                            <div className="px-3 py-2 border-r">{i.item_name}</div>
+                                            <div className="px-3 py-2 border-r">{i.room_no || "--"}</div>
+                                            <div className="px-3 py-2 border-r">{i.item_count}</div>
+                                            <div className="px-3 py-2">₹{i.amount}</div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="flex justify-end gap-3 pt-6 border-t">
+                                    {!viewItemsModal.editMode ? (
                                         <Button
                                             variant="heroOutline"
                                             onClick={() => setViewItemsModal({ open: false, editMode: false, order: null })}
                                         >
-                                            Cancel
+                                            Close
                                         </Button>
-                                        <Button variant="hero" onClick={updateOrder}>
-                                            Save Changes
-                                        </Button>
-                                    </>
-                                )}
+                                    ) : (
+                                        <>
+                                            <Button
+                                                variant="heroOutline"
+                                                onClick={() => setViewItemsModal({ open: false, editMode: false, order: null })}
+                                            >
+                                                Cancel
+                                            </Button>
+                                            <Button variant="hero" onClick={updateOrder}>
+                                                Save Changes
+                                            </Button>
+                                        </>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    )}
-                </DialogContent>
-            </Dialog>
+                        )}
+                    </motion.div>
+                </SheetContent>
+            </Sheet>
 
 
             {/* Status Confirm Modal */}
@@ -1608,66 +1670,68 @@ export default function LaundryOrdersManagement() {
             </Dialog>
 
 
-            <Dialog
+            <Sheet
                 open={historyModal.open}
                 onOpenChange={() => setHistoryModal({ open: false, order: null })}
             >
-                <DialogContent className="max-w-3xl">
+                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-1"
+                    >
+                        <SheetHeader>
+                            <SheetTitle>Laundry Order History</SheetTitle>
+                        </SheetHeader>
 
-                    <DialogHeader>
-                        <DialogTitle>Laundry Order History</DialogTitle>
-                    </DialogHeader>
+                        {/* ================= CONTENT ================= */}
 
-                    {/* ================= CONTENT ================= */}
+                        <div className="mt-6 space-y-4">
 
-                    <div className="mt-4 max-h-[60vh] overflow-y-auto space-y-4">
+                            {singleLog?.data?.length === 0 && (
+                                <p className="text-sm text-muted-foreground text-center py-10 bg-muted/5 border rounded-lg italic">
+                                    No history found for this order.
+                                </p>
+                            )}
 
-                        {singleLog?.data?.length === 0 && (
-                            <p className="text-sm text-muted-foreground">
-                                No history found.
-                            </p>
-                        )}
+                            {singleLog?.data?.map(log => {
+                                const changes = getLaundryAuditChanges(log);
 
-                        {singleLog?.data?.map(log => {
+                                return (
+                                    <div key={log.id} className="border rounded-lg p-5 space-y-4 bg-muted/5">
+                                        <div className="flex justify-between items-start">
+                                            <div className="space-y-1">
+                                                <div className="font-bold text-primary uppercase text-xs tracking-wider">
+                                                    {formatDisplayStatus(log.task_name || log.event_type)}
+                                                </div>
+                                                <div className="text-sm font-medium">
+                                                    {log.user_first_name} {log.user_last_name}
+                                                </div>
+                                            </div>
 
-                            const changes = getLaundryAuditChanges(log);
-
-                            return (
-
-                                <div key={log.id} className="border rounded-md p-4 space-y-2">
-
-                                    <div className="flex justify-between text-sm">
-
-                                        <div className="font-medium">
-                                            {formatDisplayStatus(log.task_name || log.event_type)}
+                                            <div className="text-muted-foreground text-xs font-medium bg-background border px-2 py-1 rounded">
+                                                {formatDateTime(log.created_on)}
+                                            </div>
                                         </div>
 
-                                        <div className="text-muted-foreground text-xs">
-                                            {formatDateTime(log.created_on)}
+                                        <div className="space-y-2 pt-2 border-t border-border/50">
+                                            {changes.map((c, i) => (
+                                                <div key={i} className="text-sm flex items-center gap-2">
+                                                    <span className="h-1.5 w-1.5 rounded-full bg-primary/40 shrink-0" />
+                                                    {c}
+                                                </div>
+                                            ))}
+                                            {changes.length === 0 && (
+                                                <div className="text-sm text-muted-foreground italic">No data changes recorded.</div>
+                                            )}
                                         </div>
-
                                     </div>
-
-                                    <div className="text-xs text-muted-foreground">
-                                        {log.user_first_name} {log.user_last_name}
-                                    </div>
-
-                                    <div className="space-y-1 text-sm">
-                                        {changes.map((c, i) => (
-                                            <div key={i}>{c}</div>
-                                        ))}
-                                    </div>
-
-                                </div>
-
-                            );
-                        })}
-
-                    </div>
-
-
-                </DialogContent>
-            </Dialog>
+                                );
+                            })}
+                        </div>
+                    </motion.div>
+                </SheetContent>
+            </Sheet>
 
         </div>
     );

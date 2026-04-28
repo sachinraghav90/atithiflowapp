@@ -2,13 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { motion } from "framer-motion";
 import { Switch } from "@/components/ui/switch";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
 import { NativeSelect } from "@/components/ui/native-select";
 import { useCreateMenuItemBulkMutation, useCreateMenuItemGroupMutation, useCreateMenuItemMutation, useGetMenuItemGroupsLightQuery, useGetMenuItemGroupsQuery, useGetPropertyMenuLightQuery, useGetPropertyMenuQuery, useUpdateMenuItemGroupMutation, useUpdateMenuItemMutation } from "@/redux/services/hmsApi";
 import { useAppSelector } from "@/redux/hook";
@@ -110,7 +105,7 @@ function buildUpdateMenuPayload(
 
 export default function MenuMaster() {
     const [page, setPage] = useState(1);
-    const [limit, setLimit] = useState(5);
+    const [limit, setLimit] = useState(10);
     const [searchInput, setSearchInput] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
     const [groupFilter, setGroupFilter] = useState("");
@@ -451,7 +446,7 @@ export default function MenuMaster() {
                                     setBulkOpen(true)
                                 }}
                             >
-                                 <Plus className="h-4 w-4 mr-none"/>Add Menu Item
+                                 <Plus className="h-4 w-4 mr-none" /> Add Menu Item
                             </Button>
                         )}
 
@@ -658,309 +653,246 @@ export default function MenuMaster() {
                 </div>
             </section>
 
-            {/* VIEW / EDIT / ADD */}
-            <Dialog open={!!mode} onOpenChange={() => setMode(null)}>
-                <DialogContent className="max-w-xl">
-                    <DialogHeader>
-                        <DialogTitle>
-                            {mode === "view"
-                                ? "View Menu Item"
-                                : mode === "edit"
-                                    ? "Edit Menu Item"
-                                    : "Add Menu Item"}
-                        </DialogTitle>
-                    </DialogHeader>
+            {/* VIEW / EDIT / ADD SHEET */}
+            <Sheet open={!!mode} onOpenChange={() => setMode(null)}>
+                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-1"
+                    >
+                        <SheetHeader>
+                            <SheetTitle>
+                                {mode === "view"
+                                    ? "View Menu Item"
+                                    : mode === "edit"
+                                        ? "Edit Menu Item"
+                                        : "Add Menu Item"}
+                            </SheetTitle>
+                        </SheetHeader>
 
-                    {/* VIEW MODE */}
-                    {mode === "view" && selected && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-
-                            {/* LEFT: DETAILS */}
-                            <div className="space-y-3">
-                                <div>
-                                    <Label>Name</Label>
-                                    <p className="font-medium">{selected.item_name}</p>
+                        {/* CONTENT BLOCKS */}
+                        <div className="mt-6">
+                            {mode === "view" && selected && (
+                                <div className="space-y-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                                        <div className="space-y-3">
+                                            <div>
+                                                <Label>Name</Label>
+                                                <p className="font-medium">{selected.item_name}</p>
+                                            </div>
+                                            <div>
+                                                <Label>Group</Label>
+                                                <p>{selected.menu_item_group}</p>
+                                            </div>
+                                            <div>
+                                                <Label>Price</Label>
+                                                <p>₹{selected.price}</p>
+                                            </div>
+                                            <div>
+                                                <Label>Type</Label>
+                                                <p>{selected.is_veg ? "Veg" : "Non-Veg"}</p>
+                                            </div>
+                                            <div>
+                                                <Label>Preparation Time</Label>
+                                                <p>{selected.prep_time} minutes</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex justify-center items-start">
+                                            <img
+                                                src={`${import.meta.env.VITE_API_URL}/menu/${selected.id}/image`}
+                                                alt={selected.item_name}
+                                                className="h-48 w-48 rounded-[3px] object-cover border"
+                                                onError={(e) => {
+                                                    e.currentTarget.src = "https://placehold.co/200x200?text=No+Image";
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="pt-6 border-t flex justify-end">
+                                        <Button variant="heroOutline" className="w-full" onClick={() => setMode(null)}>
+                                            Close
+                                        </Button>
+                                    </div>
                                 </div>
+                            )}
 
-                                <div>
-                                    <Label>Group</Label>
-                                    <p>{selected.menu_item_group}</p>
+                            {(mode === "edit" || mode === "add") && (
+                                <div className="space-y-6">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label>Name</Label>
+                                            <Input
+                                                className={submitted && formErrors.item_name ? "border-red-500" : ""}
+                                                value={form.item_name}
+                                                onChange={(e) => {
+                                                    setForm({ ...form, item_name: e.target.value });
+                                                    setFormErrors(p => ({ ...p, item_name: "" }));
+                                                }}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Group</Label>
+                                            <NativeSelect
+                                                className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
+                                                value={form.menuItemGroupId}
+                                                onChange={(e) => setForm({ ...form, menuItemGroupId: e.target.value })}
+                                            >
+                                                <option value="" disabled>-- Please Select --</option>
+                                                {menuGroupsLight?.map((group) => (
+                                                    <option key={group.id} value={group.id}>{group.name}</option>
+                                                ))}
+                                            </NativeSelect>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Price*</Label>
+                                            <Input
+                                                type="text"
+                                                value={form.price}
+                                                className={submitted && formErrors.price ? "border-red-500" : ""}
+                                                onChange={(e) => {
+                                                    setForm({ ...form, price: normalizeNumberInput(e.target.value).toString() });
+                                                    setFormErrors(p => ({ ...p, price: "" }));
+                                                }}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Prep Time (min)</Label>
+                                            <Input
+                                                type="text"
+                                                value={form.prep_time}
+                                                className={submitted && formErrors.prep_time ? "border-red-500" : ""}
+                                                onChange={(e) => {
+                                                    setForm({ ...form, prep_time: normalizeNumberInput(e.target.value) });
+                                                    setFormErrors(p => ({ ...p, prep_time: "" }));
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-6">
+                                        {mode === "edit" && (
+                                            <div className="flex items-center gap-2">
+                                                <Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
+                                                <Label>Active</Label>
+                                            </div>
+                                        )}
+                                        <div className="flex items-center gap-2">
+                                            <Switch checked={form.is_veg} onCheckedChange={(v) => setForm({ ...form, is_veg: v })} />
+                                            <Label>Veg</Label>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                                        <div className="space-y-2">
+                                            <Label>Image</Label>
+                                            <Input type="file" accept="image/*" onChange={(e) => setForm({ ...form, image: e.target.files?.[0] ?? null })} />
+                                        </div>
+                                        <div className="flex justify-center">
+                                            {mode === "edit" && selected && !form.image && (
+                                                <img
+                                                    src={`${import.meta.env.VITE_API_URL}/menu/${selected.id}/image`}
+                                                    alt="Current"
+                                                    className="h-40 w-40 rounded-[3px] object-cover border"
+                                                    onError={(e) => { e.currentTarget.src = "https://placehold.co/160x160?text=No+Image"; }}
+                                                />
+                                            )}
+                                            {form.image && (
+                                                <img src={URL.createObjectURL(form.image)} alt="Preview" className="h-40 w-40 rounded-[3px] object-cover border" />
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-6 border-t flex justify-end gap-3 mt-6">
+                                        <Button variant="heroOutline" className="flex-1" onClick={() => setMode(null)}>
+                                            Cancel
+                                        </Button>
+                                        <Button variant="hero" className="flex-1" onClick={handleForm}>
+                                            {mode === "add" ? "Create Item" : "Save Changes"}
+                                        </Button>
+                                    </div>
                                 </div>
+                            )}
+                        </div>
+                    </motion.div>
+                </SheetContent>
+            </Sheet>
 
-                                <div>
-                                    <Label>Price</Label>
-                                    <p>₹{selected.price}</p>
-                                </div>
+            {/* CREATE GROUP SHEET */}
+            <Sheet open={createGroupOpen} onOpenChange={setCreateGroupOpen}>
+                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-1"
+                    >
+                        <SheetHeader>
+                            <SheetTitle>Create Menu Item Group</SheetTitle>
+                        </SheetHeader>
 
-                                <div>
-                                    <Label>Type</Label>
-                                    <p>{selected.is_veg ? "Veg" : "Non-Veg"}</p>
-                                </div>
-
-                                <div>
-                                    <Label>Preparation Time</Label>
-                                    <p>{selected.prep_time} minutes</p>
-                                </div>
-                            </div>
-
-                            {/* RIGHT: IMAGE */}
-                            <div className="flex justify-center items-start">
-                                <img
-                                    src={`${import.meta.env.VITE_API_URL}/menu/${selected.id}/image`}
-                                    alt={selected.item_name}
-                                    className="h-48 w-48 rounded-[3px] object-cover border"
-                                    onError={(e) => {
-                                        e.currentTarget.src =
-                                            "https://placehold.co/200x200?text=No+Image";
+                        <div className="space-y-4 mt-6">
+                            <div>
+                                <Label>Group Name*</Label>
+                                <Input
+                                    className={groupErrors.groupName ? "border-red-500" : ""}
+                                    value={groupName}
+                                    onChange={(e) => {
+                                        setGroupName(e.target.value);
+                                        if (e.target.value.trim()) {
+                                            setGroupErrors(prev => {
+                                                const copy = { ...prev };
+                                                delete copy.groupName;
+                                                return copy;
+                                            });
+                                        }
                                     }}
                                 />
-                            </div>
-                        </div>
-                    )}
-
-                    {/* EDIT / ADD MODE */}
-                    {(mode === "edit" || mode === "add") && (
-                        <div className="space-y-4">
-
-                            {/* FORM GRID */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <Label>Name</Label>
-                                    <Input
-                                        className={submitted && formErrors.item_name ? "border-red-500" : ""}
-                                        value={form.item_name}
-                                        onChange={(e) => {
-                                            setForm({ ...form, item_name: e.target.value });
-                                            setFormErrors(p => ({ ...p, item_name: "" }));
-                                        }}
-                                    />
-                                </div>
-
-                                <div>
-                                    <Label>Group</Label>
-                                    <NativeSelect
-                                        className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
-                                        value={form.menuItemGroupId}
-                                        onChange={(e) =>
-                                            setForm({ ...form, menuItemGroupId: e.target.value })
-                                        }
-                                    >
-                                        <option value="" disabled>-- Please Select --</option>
-                                        {menuGroupsLight &&
-                                            menuGroupsLight?.map((group) => (
-                                                <option key={group.id} value={group.id}>
-                                                    {group.name}
-                                                </option>
-                                            ))}
-                                    </NativeSelect>
-                                </div>
-
-                                <div>
-                                    <Label>Price*</Label>
-                                    <Input
-                                        type="text"
-                                        className={submitted && formErrors.price ? "border-red-500" : ""}
-                                        value={form.price}
-                                        onChange={(e) => {
-                                            setForm({
-                                                ...form,
-                                                price: normalizeNumberInput(e.target.value).toString(),
-                                            });
-                                            setFormErrors(p => ({ ...p, price: "" }));
-                                        }}
-                                    />
-
-                                </div>
-
-                                <div>
-                                    <Label>Prep Time (min)</Label>
-                                    <Input
-                                        type="text"
-                                        className={submitted && formErrors.prep_time ? "border-red-500" : ""}
-                                        value={form.prep_time}
-                                        onChange={(e) => {
-                                            setForm({
-                                                ...form,
-                                                prep_time: normalizeNumberInput(e.target.value),
-                                            });
-                                            setFormErrors(p => ({ ...p, prep_time: "" }));
-                                        }}
-                                    />
-
-                                </div>
+                                {groupErrors.groupName && (
+                                    <p className="text-xs text-red-500 mt-1">
+                                        {groupErrors.groupName}
+                                    </p>
+                                )}
                             </div>
 
-                            {/* SWITCHES */}
-                            <div className="flex gap-6">
-                                {mode === "edit" && <div className="flex items-center gap-2">
-                                    <Switch
-                                        checked={form.is_active}
-                                        onCheckedChange={(v) =>
-                                            setForm({ ...form, is_active: v })
-                                        }
-                                    />
-                                    <Label>Active</Label>
-                                </div>}
-
-                                <div className="flex items-center gap-2">
-                                    <Switch
-                                        checked={form.is_veg}
-                                        onCheckedChange={(v) =>
-                                            setForm({ ...form, is_veg: v })
-                                        }
-                                    />
-                                    <Label>Veg</Label>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-
-                                {/* LEFT: IMAGE INPUT */}
-                                <div className="space-y-2">
-                                    <Label>Image</Label>
-
-                                    <Input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={(e) =>
-                                            setForm({
-                                                ...form,
-                                                image: e.target.files?.[0] ?? null,
-                                            })
-                                        }
-                                    />
-                                </div>
-
-                                {/* RIGHT: IMAGE PREVIEW */}
-                                <div className="flex justify-center">
-                                    {/* Existing image (edit mode, no new image selected) */}
-                                    {mode === "edit" && selected && !form.image && (
-                                        <img
-                                            src={`${import.meta.env.VITE_API_URL}/menu/${selected.id}/image`}
-                                            alt="Current"
-                                            className="h-40 w-40 rounded-[3px] object-cover border"
-                                            onError={(e) => {
-                                                e.currentTarget.src =
-                                                    "https://placehold.co/160x160?text=No+Image";
-                                            }}
-                                        />
-                                    )}
-
-                                    {/* New image preview */}
-                                    {form.image && (
-                                        <img
-                                            src={URL.createObjectURL(form.image)}
-                                            alt="Preview"
-                                            className="h-40 w-40 rounded-[3px] object-cover border"
-                                        />
-                                    )}
-                                </div>
-                            </div>
-
-                            {mode === "view" ? (
-                                <Button
-                                    variant="heroOutline"
-                                    className="w-full"
-                                    onClick={() => setMode(null)}
-                                >
-                                    Close
-                                </Button>
-                            ) : (
-                                <Button
-                                    variant="hero"
-                                    className="w-full"
-                                    onClick={handleForm}
-                                >
-                                    {mode === "add" ? "Create Item" : "Save Changes"}
-                                </Button>
-                            )}
-                        </div>
-
-                    )}
-                </DialogContent>
-            </Dialog>
-
-            <Dialog open={createGroupOpen} onOpenChange={setCreateGroupOpen}>
-                <DialogContent className="sm:max-w-md">
-
-                    <DialogHeader>
-                        <DialogTitle>Create Menu Group</DialogTitle>
-                    </DialogHeader>
-
-                    <div className="space-y-4">
-
-                        <div>
-                            <Label>Group Name*</Label>
-
-                            <Input
-                                className={groupErrors.groupName ? "border-red-500" : ""}
-                                value={groupName}
-                                onChange={(e) => {
-                                    setGroupName(e.target.value);
-
-                                    if (e.target.value.trim()) {
-                                        setGroupErrors(prev => {
-                                            const copy = { ...prev };
-                                            delete copy.groupName;
-                                            return copy;
-                                        });
+                            <Button
+                                variant="hero"
+                                className="w-full"
+                                onClick={async () => {
+                                    if (!selectedPropertyId) return;
+                                    if (!groupName.trim()) {
+                                        setGroupErrors({ groupName: "Group name is required" });
+                                        return;
+                                    }
+                                    try {
+                                        const payload = buildCreateGroupPayload(groupName, selectedPropertyId);
+                                        await apiToast(
+                                            createMenuItemGroup(payload).unwrap(),
+                                            "Menu group created successfully"
+                                        );
+                                        setGroupName("");
+                                        setCreateGroupOpen(false);
+                                    } catch (err) {
+                                        console.error("Group creation failed", err);
                                     }
                                 }}
-                            />
-
-                            {groupErrors.groupName && (
-                                <p className="text-xs text-red-500 mt-1">
-                                    {groupErrors.groupName}
-                                </p>
-                            )}
+                            >
+                                Create Group
+                            </Button>
                         </div>
-
-                        <Button
-                            variant="hero"
-                            className="w-full"
-                            onClick={() => {
-
-                                const errors: Record<string, string> = {};
-
-                                if (!groupName.trim()) {
-                                    errors.groupName = "Group name is required";
-                                }
-
-                                if (Object.keys(errors).length > 0) {
-                                    setGroupErrors(errors);
-                                    return;
-                                }
-
-                                setGroupErrors({});
-
-                                const payload = buildCreateGroupPayload(
-                                    groupName,
-                                    selectedPropertyId
-                                );
-
-                                apiToast(
-                                    createMenuItemGroup(payload).unwrap(),
-                                    "Menu item group created successfully"
-                                );
-
-                                setGroupName("");
-                                setCreateGroupOpen(false);
-                            }}
-                        >
-                            Create Group
-                        </Button>
-
-                    </div>
-
-                </DialogContent>
-            </Dialog>
+                    </motion.div>
+                </SheetContent>
+            </Sheet>
 
             <Sheet open={viewGroupOpen} onOpenChange={setViewGroupOpen}>
-                <SheetContent side="right" className="w-full sm:max-w-lg">
-
-                    <SheetHeader>
-                        <SheetTitle>Menu Item Groups</SheetTitle>
-                    </SheetHeader>
+                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-1"
+                    >
+                        <SheetHeader>
+                            <SheetTitle>Menu Item Groups</SheetTitle>
+                        </SheetHeader>
 
                     <div className="mt-6 space-y-2">
 
@@ -1109,7 +1041,7 @@ export default function MenuMaster() {
                         })}
 
                     </div>
-
+                    </motion.div>
                 </SheetContent>
             </Sheet>
 
@@ -1129,7 +1061,7 @@ export default function MenuMaster() {
             />
 
 
-        </div >
+        </div>
     );
 }
 

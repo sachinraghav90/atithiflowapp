@@ -13,12 +13,12 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
     DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@/components/ui/sheet";
 import { Pencil, Plus } from "lucide-react";
 import { useCreateRoleMutation, useGetSidebarPermissionQuery, useLazyGetAllRolesQuery, useLazyGetAllSidebarLinksQuery, usePostRoleSidebarLinkMutation, useUpdateRoleNameMutation } from "@/redux/services/hmsApi";
 import { useAppSelector } from "@/redux/hook";
@@ -336,73 +336,87 @@ export default function RoleManagement() {
                         </p>
                     </div>
 
-                    <Dialog open={isCreateRoleOpen} onOpenChange={setIsCreateRoleOpen}>
-                        {permission?.can_create && <DialogTrigger asChild>
-                            <Button variant="hero">
+                    <Sheet open={isCreateRoleOpen} onOpenChange={setIsCreateRoleOpen}>
+                        {permission?.can_create && (
+                            <Button variant="hero" onClick={() => setIsCreateRoleOpen(true)}>
                                 <Plus className="h-4 w-4 mr-2" /> Add Role
                             </Button>
-                        </DialogTrigger>}
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Create New Role</DialogTitle>
-                            </DialogHeader>
-                            <div className="space-y-4 mt-4">
-                                <div className="space-y-2">
-                                    <Label>Role Name</Label>
-                                    <Input
-                                        value={newRoleName}
-                                        onChange={(e) => setNewRoleName(normalizeTextInput(e.target.value))}
-                                        placeholder="e.g. Front Desk"
-                                    />
-                                </div>
-                                <div className="space-y-3">
-                                    <Label className="text-sm">Permissions</Label>
+                        )}
+                        <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="space-y-1"
+                            >
+                                <SheetHeader>
+                                    <SheetTitle>Create New Role</SheetTitle>
+                                </SheetHeader>
+                                <div className="space-y-4 mt-4">
+                                    <div className="space-y-2">
+                                        <Label>Role Name</Label>
+                                        <Input
+                                            value={newRoleName}
+                                            onChange={(e) => setNewRoleName(normalizeTextInput(e.target.value))}
+                                            placeholder="e.g. Front Desk"
+                                        />
+                                    </div>
+                                    <div className="space-y-3">
+                                        <Label className="text-sm">Permissions</Label>
 
-                                    <div className="space-y-2 max-h-60 overflow-y-auto border rounded-[3px] p-3">
-                                        {allSidebarLinksData?.roles.map((module) => (
-                                            <div
-                                                key={module.id}
-                                                className="flex items-center justify-between"
-                                            >
-                                                <span className="text-sm font-medium">
-                                                    {module.link_name}
-                                                </span>
+                                        <div className="space-y-2 max-h-60 overflow-y-auto border rounded-[3px] p-3">
+                                            {allSidebarLinksData?.roles.map((module) => (
+                                                <div
+                                                    key={module.id}
+                                                    className="flex items-center justify-between"
+                                                >
+                                                    <span className="text-sm font-medium">
+                                                        {module.link_name}
+                                                    </span>
 
-                                                <div className="flex gap-4">
-                                                    {PERMISSION_ACTIONS.map((action) => (
-                                                        <div
-                                                            key={action.key}
-                                                            className="flex items-center gap-1"
-                                                        >
-                                                            <Checkbox
-                                                                checked={
-                                                                    newRolePermissions[module.id]?.[action.field]
-                                                                }
-                                                                onCheckedChange={(checked) =>
-                                                                    onNewRolePermissionChange(
-                                                                        module.id,
-                                                                        action.field,
-                                                                        Boolean(checked)
-                                                                    )
-                                                                }
-                                                            />
-                                                            <Label className="text-xs">
-                                                                {action.label}
-                                                            </Label>
-                                                        </div>
-                                                    ))}
+                                                    <div className="flex gap-4">
+                                                        {PERMISSION_ACTIONS.map((action) => (
+                                                            <div
+                                                                key={action.key}
+                                                                className="flex items-center gap-1"
+                                                            >
+                                                                <Checkbox
+                                                                    checked={
+                                                                        newRolePermissions[module.id]?.[action.field]
+                                                                    }
+                                                                    onCheckedChange={(checked) =>
+                                                                        onNewRolePermissionChange(
+                                                                            module.id,
+                                                                            action.field,
+                                                                            Boolean(checked)
+                                                                        )
+                                                                    }
+                                                                />
+                                                                <Label className="text-xs">
+                                                                    {action.label}
+                                                                </Label>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-6 border-t flex justify-end gap-3 mt-6">
+                                        <Button
+                                            variant="heroOutline"
+                                            onClick={() => setIsCreateRoleOpen(false)}
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button onClick={addRole} variant="hero">
+                                            Create Role
+                                        </Button>
                                     </div>
                                 </div>
-
-                                <Button onClick={addRole} className="w-full" variant="hero">
-                                    Create Role
-                                </Button>
-                            </div>
-                        </DialogContent>
-                    </Dialog>
+                            </motion.div>
+                        </SheetContent>
+                    </Sheet>
                 </div>
 
                 <div className="bg-card rounded-[5px] border border-border shadow-sm overflow-hidden">
@@ -414,8 +428,8 @@ export default function RoleManagement() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {!allRolesLoading && !allRolesUninitialized && !allRolesError && allRolesData.roles.map((role) => {
-                                return <TableRow key={role.id}>
+                            {!allRolesLoading && !allRolesUninitialized && !allRolesError && allRolesData?.roles.map((role: any) => (
+                                <TableRow key={role.id}>
                                     <TableCell className="font-medium">{role.name}</TableCell>
                                     <TableCell className="text-right">
                                         <Button
@@ -432,7 +446,7 @@ export default function RoleManagement() {
                                         </Button>
                                     </TableCell>
                                 </TableRow>
-                            })}
+                            ))}
                         </TableBody>
                     </Table>
                 </div>
