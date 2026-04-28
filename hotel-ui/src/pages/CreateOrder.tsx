@@ -28,7 +28,14 @@ import { Trash2, PlusCircle } from "lucide-react";
 import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
 import { toast } from "react-toastify";
 import { MenuItemSelect } from "@/components/MenuItemSelect";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import {
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet";
+import { motion } from "framer-motion";
 
 type OrderItemForm = {
     menu_item_id: number;
@@ -73,6 +80,7 @@ export function CreateOrder() {
     const [itemErrors, setItemErrors] = useState<Record<number, any>>({});
     const [orderSubmitted, setOrderSubmitted] = useState(false);
     const location = useLocation();
+    const navigate = useNavigate();
     const prefillApplied = useRef(false);
     const prefilledBookingId = location.state?.bookingId;
     const prefilledPropertyId = location.state?.propertyId;
@@ -388,10 +396,18 @@ export function CreateOrder() {
        UI
     ============================ */
     return (
-        <div className="flex flex-col">
-            <section className="flex min-h-0 flex-col p-6 lg:p-8 gap-6">
+        <Sheet open onOpenChange={(nextOpen) => !nextOpen && navigate("/orders")}>
+            <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="space-y-1"
+                >
+                    <SheetHeader>
+                        <SheetTitle>Create Order</SheetTitle>
+                    </SheetHeader>
 
-                <h1 className="text-2xl font-bold">Create Order</h1>
+            <section className="flex min-h-0 flex-col gap-6">
 
                 {/* Property */}
                 {(isSuperAdmin || isOwner) && (
@@ -866,14 +882,21 @@ export function CreateOrder() {
                     </div>
                 </div>
 
-                {/* Submit */}
-                <div className="pt-4 border-t flex justify-end">
+                <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                    <Button
+                        variant="heroOutline"
+                        onClick={() => navigate("/orders")}
+                    >
+                        Cancel
+                    </Button>
                     <Button variant="hero" disabled={!items.length} onClick={handleCreateOrder}>
                         Create Order
                     </Button>
                 </div>
 
             </section>
-        </div>
+                </motion.div>
+            </SheetContent>
+        </Sheet>
     );
 }

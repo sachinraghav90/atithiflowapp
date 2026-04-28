@@ -25,7 +25,7 @@ import {
     CommandInput,
     CommandItem,
 } from "@/components/ui/command";
-import { BookType, Check, ChevronDown, X } from "lucide-react";
+import { BookType, Check, ChevronDown } from "lucide-react";
 import COUNTRY_CODES from '../utils/countryCode.json'
 import {
     Sheet,
@@ -895,28 +895,18 @@ export default function ReservationManagement() {
 
     /* -------------------- UI -------------------- */
     return (
-        <div className="flex flex-col bg-background">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr] flex-1">
+        <Sheet open onOpenChange={(nextOpen) => !nextOpen && navigate("/bookings")}>
+            <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="space-y-1"
+                >
+                    <SheetHeader>
+                        <SheetTitle>New Booking</SheetTitle>
+                    </SheetHeader>
 
-                {/* =================== BOOKING FORM =================== */}
-                <section className="p-4 lg:p-4 border-r border-border bg-background">
-                    <div className="mb-6 flex items-start justify-between">
-                        <div>
-                            <h1 className="text-2xl font-bold text-foreground">New Booking</h1>
-                            <p className="text-sm text-muted-foreground mt-1">
-                                Create a direct booking.
-                            </p>
-                        </div>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-foreground transition-colors"
-                            onClick={() => navigate("/bookings")}
-                            aria-label="Close booking form"
-                        >
-                            <X className="h-5 w-5" />
-                        </Button>
-                    </div>
+                    {/* =================== BOOKING FORM =================== */}
                     {fromEnquiry && (
                         <div className="mb-4 rounded-[3px] bg-blue-50 border border-blue-200 p-3 text-sm text-blue-700">
                             Creating booking from enquiry
@@ -1843,8 +1833,13 @@ export default function ReservationManagement() {
                             </div>
                         </CardSection>
 
-                        {/* Submit */}
-                        <div className="pt-4 border-t border-border flex justify-end">
+                        <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                            <Button
+                                variant="heroOutline"
+                                onClick={() => navigate("/bookings")}
+                            >
+                                Cancel
+                            </Button>
                             <Button variant="hero" disabled={
                                 isBooking ||
                                 !selectedPropertyId
@@ -1853,7 +1848,6 @@ export default function ReservationManagement() {
                             </Button>
                         </div>
                     </div>
-                </section>
 
 
                 <Sheet open={roomsModalOpen} onOpenChange={setRoomsModalOpen}>
@@ -2002,8 +1996,9 @@ export default function ReservationManagement() {
                 </Sheet>
 
 
-            </div >
-        </div >
+                </motion.div>
+            </SheetContent>
+        </Sheet>
     );
 }
 

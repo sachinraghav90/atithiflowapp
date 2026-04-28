@@ -19,6 +19,12 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover";
 import { NativeSelect } from "@/components/ui/native-select";
+import {
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet";
 import { DataGrid, DataGridCell, DataGridHead, DataGridHeader, DataGridRow } from "@/components/ui/data-grid";
 import { ValidationTooltip } from "@/components/ui/validation-tooltip";
 import {
@@ -28,9 +34,10 @@ import {
     CommandInput,
     CommandItem,
 } from "@/components/ui/command";
-import { Check, ChevronDown, Delete, Trash, Trash2, X, PlusCircle } from "lucide-react";
+import { Check, ChevronDown, Delete, Trash, Trash2, PlusCircle } from "lucide-react";
 import { MenuItemSelect } from "@/components/MenuItemSelect";
 import COUNTRY_CODES from '../utils/countryCode.json'
+import { motion } from "framer-motion";
 
 type AvailableRoom = {
     id: string;
@@ -386,21 +393,18 @@ export default function EnquiryCreate() {
     }, []);
 
 return (
-        <div className="h-full flex flex-col overflow-hidden">
-            <div className="h-full grid grid-cols-1">
-                {/* ================= LEFT ================= */}
-                <section className="overflow-y-auto p-6 lg:p-4">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        {/* Left: Title */}
-                        <div className="shrink-0">
-                            <h1 className="text-2xl font-bold">New Enquiry</h1>
-                            <p className="text-sm text-muted-foreground">
-                                Capture guest enquiry
-                            </p>
-                        </div>
+        <Sheet open onOpenChange={(nextOpen) => !nextOpen && navigate("/enquiries")}>
+            <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="space-y-1"
+                >
+                    <SheetHeader>
+                        <SheetTitle>New Enquiry</SheetTitle>
+                    </SheetHeader>
 
-                        <div className="flex w-full items-start gap-2 sm:w-auto sm:items-start">
-                            {/* Right: Property Dropdown */}
+                    <div className="flex justify-end">
                             {(isSuperAdmin || isOwner) && (
                                 <div className="w-full sm:w-64 space-y-1">
                                     <Label className="text-xs">Property</Label>
@@ -422,18 +426,6 @@ return (
                                     </NativeSelect>
                                 </div>
                             )}
-
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 shrink-0 self-start rounded-sm p-0 text-slate-500 shadow-none hover:bg-transparent hover:text-slate-700"
-                                aria-label="Close enquiry form"
-                                onClick={() => navigate("/enquiries")}
-                            >
-                                <X className="h-5 w-5 stroke-[1.75]" />
-                            </Button>
-                        </div>
                     </div>
 
                     <div className="space-y-3 mt-4">
@@ -895,7 +887,7 @@ return (
                             </div>
                         </FormSection>
 
-                        <div className="pt-4 flex justify-end gap-3">
+                        <div className="flex justify-end gap-3 pt-4 border-t border-border">
                             <Button
                                 type="button"
                                 variant="heroOutline"
@@ -914,11 +906,9 @@ return (
 
                         </div>
                     </div>
-                </section>
-
-            
-            </div>
-        </div>
+                </motion.div>
+            </SheetContent>
+        </Sheet>
     );
 }
 
