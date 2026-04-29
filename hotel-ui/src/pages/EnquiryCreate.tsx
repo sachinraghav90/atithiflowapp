@@ -38,6 +38,7 @@ import { Check, ChevronDown, Delete, Trash, Trash2, PlusCircle } from "lucide-re
 import { MenuItemSelect } from "@/components/MenuItemSelect";
 import COUNTRY_CODES from '../utils/countryCode.json'
 import { motion } from "framer-motion";
+import { APP_DATE_INPUT_PLACEHOLDER, parseAppDate, toISODateOnly } from "@/utils/dateFormat";
 
 type AvailableRoom = {
     id: string;
@@ -97,14 +98,10 @@ type EnquiryForm = {
 };
 
 /* ---------------- Helpers ---------------- */
-const parseDate = (v?: string) => (v ? new Date(v) : null);
+const parseDate = (v?: string) => parseAppDate(v);
 
 const formatDate = (date: Date | null) => {
-    if (!date) return "";
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, "0");
-    const d = String(date.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;   // local timezone safe
+    return toISODateOnly(date);
 };
 
 
@@ -193,13 +190,13 @@ export default function EnquiryCreate() {
         }
     }, [myProperties]);
 
-    const todayISO = () => new Date().toISOString().split("T")[0];
+    const todayISO = () => toISODateOnly(new Date());
 
     const nextDay = (date: string) => {
         if (!date) return todayISO();
         const d = new Date(date);
         d.setDate(d.getDate() + 1);
-        return d.toISOString().split("T")[0];
+        return toISODateOnly(d);
     };
 
     const addRoomType = () => {
@@ -686,7 +683,7 @@ return (
                                                 setForm({ ...form, check_in: formatDate(d) });
                                                 setFormErrors(p => ({ ...p, check_in: "" }));
                                             }}
-                                            placeholder="DD/MM/YYYY"
+                                            placeholder={APP_DATE_INPUT_PLACEHOLDER}
                                             className={cn(submitted && formErrors.check_in && "border-red-500")}
                                         />
                                     </div>
@@ -698,7 +695,7 @@ return (
                                                 setForm({ ...form, check_out: formatDate(d) });
                                                 setFormErrors(p => ({ ...p, check_out: "" }));
                                             }}
-                                            placeholder="DD/MM/YYYY"
+                                            placeholder={APP_DATE_INPUT_PLACEHOLDER}
                                             className={cn(submitted && formErrors.check_out && "border-red-500")}
                                         />
                                     </div>
@@ -869,7 +866,7 @@ return (
                                             setForm({ ...form, follow_up_date: formatDate(d) });
                                             setFormErrors(p => ({ ...p, follow_up_date: "" }));
                                         }}
-                                        placeholder="DD/MM/YYYY"
+                                        placeholder={APP_DATE_INPUT_PLACEHOLDER}
                                         className={cn(submitted && formErrors.follow_up_date && "border-red-500")}
                                     />
                                 </div>

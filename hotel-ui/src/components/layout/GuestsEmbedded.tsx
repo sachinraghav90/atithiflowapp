@@ -33,6 +33,7 @@ import COUNTRY_CODES from '../../utils/countryCode.json'
 import { cn } from "@/lib/utils";
 import countries from '../../utils/countries.json'
 import SearchSelectPopover from "./SearchSelectPopover";
+import { formatAppDate, parseAppDate, toISODateOnly } from "@/utils/dateFormat";
 
 /* ---------------- Types ---------------- */
 export type GuestForm = {
@@ -78,14 +79,10 @@ type Props = {
 };
 
 const parseDate = (value?: string) =>
-    value ? new Date(value) : null;
+    parseAppDate(value);
 
 const formatDate = (date: Date | null) => {
-    if (!date) return "";
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, "0");
-    const d = String(date.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;   // local timezone safe
+    return toISODateOnly(date);
 };
 
 
@@ -257,12 +254,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
     };
 
     const formatReadableDate = (iso: string) => {
-        const date = new Date(iso);
-        return date.toLocaleDateString("en-GB", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-        });
+        return formatAppDate(iso);
     };
 
     const downloadImage = async (url: string) => {
@@ -759,7 +751,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                         <Label>Issue Date *</Label>
                                         <ResponsiveDatePicker
                                             value={parseDate(g.visa_issue_date)}
-                                            placeholder="dd-MM-yyyy"
+                                            placeholder="DD/MM/YY"
                                             onChange={(date) =>
                                                 updateGuest(index, {
                                                     visa_issue_date: formatDate(date),
@@ -775,7 +767,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                         <Label>Expiry Date *</Label>
                                         <ResponsiveDatePicker
                                             value={parseDate(g.visa_expiry_date)}
-                                            placeholder="dd-MM-yyyy"
+                                            placeholder="DD/MM/YY"
                                             onChange={(date) =>
                                                 updateGuest(index, {
                                                     visa_expiry_date: formatDate(date),

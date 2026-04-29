@@ -35,9 +35,10 @@ const LoginFormCard = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
+  const meLoaded = useAppSelector(state => state.isLoggedIn.meLoaded)
 
   const { data: sidebarLinks } = useGetSidebarLinksQuery(undefined, {
-    skip: !isLoggedIn
+    skip: !isLoggedIn || !meLoaded
   })
 
   const validateEmail = (email: string): boolean => {
@@ -78,10 +79,10 @@ const LoginFormCard = () => {
   };
 
   useEffect(() => {
-    if (!isLoggedIn || !sidebarLinks || !Array.isArray(sidebarLinks.sidebarLinks)) return
+    if (!isLoggedIn || !meLoaded || !sidebarLinks || !Array.isArray(sidebarLinks.sidebarLinks)) return
     const redirectPath = sidebarLinks?.sidebarLinks?.[0]?.endpoint
     navigate(redirectPath)
-  }, [isLoggedIn, sidebarLinks])
+  }, [isLoggedIn, meLoaded, navigate, sidebarLinks])
 
   async function login() {
     return await supabase.auth.signInWithPassword({ email, password });

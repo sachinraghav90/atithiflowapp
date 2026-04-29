@@ -4,6 +4,7 @@ import { Button } from "../ui/button";
 import { useNavigate } from "react-router-dom";
 import { getStatusColor } from "@/constants/statusColors";
 import { toast } from "react-toastify";
+import { formatAppDateTime } from "@/utils/dateFormat";
 
 /* ---------------- Types ---------------- */
 type RestaurantOrder = {
@@ -32,14 +33,7 @@ type Props = {
 /* ---------------- Helpers ---------------- */
 const formatDateTime = (value?: string | null) => {
     if (!value) return "—";
-    const d = new Date(value);
-    return d.toLocaleString("en-IN", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-    });
+    return formatAppDateTime(value);
 };
 
 /* ---------------- Component ---------------- */

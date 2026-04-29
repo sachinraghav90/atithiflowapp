@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { normalizeTextInput } from "@/utils/normalizeTextInput";
 import { formatReadableLabel } from "@/utils/formatString";
 import { useId, type ReactNode } from "react";
+import { APP_DATE_INPUT_PLACEHOLDER } from "@/utils/dateFormat";
 
 function formatToolbarDate(date: Date | null) {
   if (!date) return "";
@@ -251,7 +252,7 @@ export function GridToolbarDatePicker({
   value,
   onChange,
   className,
-  placeholder = "dd-mm-yyyy",
+  placeholder = APP_DATE_INPUT_PLACEHOLDER,
   minDate,
   disabled,
   displayFormat
@@ -298,8 +299,8 @@ export function GridToolbarRangePicker({
   className,
   startLabel = "From",
   endLabel = "To",
-  startPlaceholder = "dd-mm-yyyy",
-  endPlaceholder = "dd-mm-yyyy",
+  startPlaceholder = APP_DATE_INPUT_PLACEHOLDER,
+  endPlaceholder = APP_DATE_INPUT_PLACEHOLDER,
   disabled,
   displayFormat,
   minDate

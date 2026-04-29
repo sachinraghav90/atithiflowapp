@@ -22,7 +22,9 @@ type Props = {
 
 export default function AppHeader({ collapsed, setCollapsed }: Props) {
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value);
-    const { data, isLoading: meLoading } = useGetMeQuery()
+    const { data, isLoading: meLoading } = useGetMeQuery(undefined, {
+        skip: !isLoggedIn
+    })
     const isSuperAdmin = useAppSelector(selectIsSuperAdmin)
     const isOwner = useAppSelector(selectIsOwner)
 

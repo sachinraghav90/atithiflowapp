@@ -23,6 +23,7 @@ import { filterGridRowsByQuery } from "@/utils/filterGridRows";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { GridBadge } from "@/components/ui/grid-badge";
 import { formatReadableLabel } from "@/utils/formatString";
+import { formatAppDate } from "@/utils/dateFormat";
 
 type PropertyOption = {
     id: number;
@@ -45,13 +46,7 @@ type PaymentDetails = {
 
 /* ---------------- Helpers ---------------- */
 const formatDate = (date: string | number | Date | null | undefined) => {
-    if (!date) return "";
-    const d = new Date(date);
-    if (isNaN(d.getTime())) return "";
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
+    return formatAppDate(date, "");
 };
 
 /* ---------------- Component ---------------- */

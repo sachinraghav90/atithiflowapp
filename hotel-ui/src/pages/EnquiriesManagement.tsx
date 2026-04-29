@@ -30,6 +30,8 @@ import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { filterGridRowsByQuery } from "@/utils/filterGridRows";
 import { GridBadge } from "@/components/ui/grid-badge";
+import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
+import { formatAppDate, formatAppDateTime, parseAppDate, toDatetimeLocalValue } from "@/utils/dateFormat";
 
 type EnquiryStatus =
     | "open"
@@ -106,7 +108,7 @@ function formatEnquiryStatus(status?: string | null) {
 }
 
 function formatEnquiryDate(value?: string | null) {
-    return value ? new Date(value).toLocaleDateString() : "—";
+    return formatAppDate(value);
 }
 
 function formatEnquiryCurrency(value?: string | null) {
@@ -560,11 +562,11 @@ export default function EnquiriesManagement() {
                                     <Label>Stay Details</Label>
                                     <p className="font-medium">
                                         {selected.check_in
-                                            ? new Date(selected.check_in).toLocaleDateString()
+                                            ? formatAppDate(selected.check_in)
                                             : "—"}
                                         {" → "}
                                         {selected.check_out
-                                            ? new Date(selected.check_out).toLocaleDateString()
+                                            ? formatAppDate(selected.check_out)
                                             : "—"}
                                     </p>
                                     <p className="text-muted-foreground">
@@ -644,14 +646,14 @@ export default function EnquiriesManagement() {
                                         <Label className="text-muted-foreground">Follow-up Date</Label>
                                         {!editMode ? (
                                             <p className="font-medium mt-1 text-sm">
-                                                {followUpDate ? new Date(followUpDate).toLocaleString() : "—"}
+                                                {formatAppDateTime(followUpDate)}
                                             </p>
                                         ) : (
-                                            <Input
-                                                type="datetime-local"
+                                            <ResponsiveDatePicker
+                                                value={parseAppDate(followUpDate)}
+                                                onChange={(date) => setFollowUpDate(toDatetimeLocalValue(date))}
+                                                showTime
                                                 className="mt-1 h-10 rounded-[3px]"
-                                                value={followUpDate}
-                                                onChange={(e) => setFollowUpDate(e.target.value)}
                                             />
                                         )}
                                     </div>

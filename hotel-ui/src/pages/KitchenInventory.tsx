@@ -32,6 +32,7 @@ import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { GridBadge } from "@/components/ui/grid-badge";
 import { motion } from "framer-motion";
+import { formatAppDateTime } from "@/utils/dateFormat";
 
 type KitchenItem = {
     id: string;
@@ -463,7 +464,7 @@ export default function KitchenInventory() {
                 itemName,
                 audit.event_type,
                 userName,
-                new Date(audit.created_on).toLocaleString(),
+                formatAppDateTime(audit.created_on),
             ].some((field) => String(field ?? "").toLowerCase().includes(query));
 
             const matchesAction = !historyActionFilter || audit.event_type === historyActionFilter;
@@ -594,7 +595,7 @@ export default function KitchenInventory() {
                 ACTION: audit.event_type,
                 CHANGE: change,
                 USER: `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim(),
-                DATE: new Date(audit.created_on).toLocaleString(),
+                DATE: formatAppDateTime(audit.created_on),
             };
         });
 
@@ -935,7 +936,7 @@ export default function KitchenInventory() {
                                             label: "Date",
                                             headClassName: "w-[180px]",
                                             cellClassName: "text-xs text-muted-foreground min-w-[180px]",
-                                            render: (audit: any) => new Date(audit.created_on).toLocaleString(),
+                                            render: (audit: any) => formatAppDateTime(audit.created_on),
                                         },
                                     ] as ColumnDef[]}
                                     data={paginatedHistoryLogs}
@@ -1027,7 +1028,7 @@ export default function KitchenInventory() {
                                                         { label: "Action", headClassName: "text-center", cellClassName: "text-center font-medium", render: (log: any) => getAuditActionLabel(log) },
                                                         { label: "Change", render: (log: any) => getAuditChangeText(parseAuditDetails(log.details)) },
                                                         { label: "User", cellClassName: "text-muted-foreground", render: (log: any) => `${log.user_first_name} ${log.user_last_name}` },
-                                                        { label: "Date", cellClassName: "text-xs text-muted-foreground", render: (log: any) => new Date(log.created_on).toLocaleString() }
+                                                        { label: "Date", cellClassName: "text-xs text-muted-foreground", render: (log: any) => formatAppDateTime(log.created_on) }
                                                     ] as ColumnDef[]}
                                                     data={auditLogs.data}
                                                     rowKey={(log: any) => log.id}

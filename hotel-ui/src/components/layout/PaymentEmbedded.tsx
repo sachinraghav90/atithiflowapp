@@ -18,6 +18,7 @@ import {
 import { useAppSelector } from "@/redux/hook";
 import { toast } from "react-toastify";
 import { normalizeTextInput } from "@/utils/normalizeTextInput";
+import { formatAppDateTime, toDatetimeLocalValue } from "@/utils/dateFormat";
 
 type Payment = {
     id: string;
@@ -55,13 +56,11 @@ type Props = {
 
 function formatDate(date?: string) {
     if (!date) return "—";
-    return new Date(date).toLocaleString();
+    return formatAppDateTime(date);
 }
 
 const getNowForDatetimeLocal = () => {
-    const now = new Date();
-    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    return now.toISOString().slice(0, 16);
+    return toDatetimeLocalValue(new Date());
 };
 
 export default function PaymentsEmbedded({
@@ -207,10 +206,8 @@ export default function PaymentsEmbedded({
                                 <Label>Payment Date</Label>
                                 <Input
                                     readOnly
-                                    type="datetime-local"
                                     className="bg-background"
-                                    value={paymentDate}
-                                    onChange={(e) => setPaymentDate(e.target.value)}
+                                    value={formatAppDateTime(paymentDate)}
                                 />
                             </div>
                             <div className="space-y-1">

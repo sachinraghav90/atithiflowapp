@@ -11,6 +11,8 @@ import { useAddGuestsByBookingMutation } from "@/redux/services/hmsApi";
 import { useLocation, useNavigate } from "react-router-dom";
 import { normalizeNumberInput, normalizeTextInput } from "@/utils/normalizeTextInput";
 import { NativeSelect } from "@/components/ui/native-select";
+import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
+import { parseAppDate, toISODateOnly } from "@/utils/dateFormat";
 
 /* -------------------- Types -------------------- */
 type Guest = {
@@ -374,12 +376,11 @@ export default function GuestsCreationManagement() {
 
                                 <div className="space-y-1">
                                     <Label>Date of Birth</Label>
-                                    <Input
-                                        type="date"
-                                        value={guest.dob ?? ""}
-                                        onChange={(e) =>
+                                    <ResponsiveDatePicker
+                                        value={parseAppDate(guest.dob)}
+                                        onChange={(date) =>
                                             updateGuest(index, {
-                                                dob: e.target.value,
+                                                dob: toISODateOnly(date),
                                             })
                                         }
                                     />

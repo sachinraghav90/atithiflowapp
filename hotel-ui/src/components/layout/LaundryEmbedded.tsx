@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "react-toastify";
 import { useGetBookingLaundryOrdersQuery } from "@/redux/services/hmsApi";
 import { useNavigate } from "react-router-dom";
+import { formatAppDateTime } from "@/utils/dateFormat";
 
 /* ---------------- Types ---------------- */
 type LaundryForm = {
@@ -134,7 +135,7 @@ export default function LaundryEmbedded({
                                 label="Pickup"
                                 value={
                                     order.pickup_date
-                                        ? new Date(order.pickup_date).toLocaleString()
+                                        ? formatAppDateTime(order.pickup_date)
                                         : "—"
                                 }
                             />

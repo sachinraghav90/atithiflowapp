@@ -11,6 +11,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { toast } from "react-toastify";
 import { useEffect, useState } from "react";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
+import { formatAppDateTime } from "@/utils/dateFormat";
 
 const ORDER_STATUSES = ["New", "Preparing", "Ready", "Delivered", "Cancelled"];
 const PAYMENT_STATUSES = ["Pending", "Paid", "Failed", "Refunded"];
@@ -180,7 +181,7 @@ export function OrderItemsModal({
                                 label="Expected Delivery"
                                 value={
                                     data.expected_delivery_time
-                                        ? new Date(data.expected_delivery_time).toLocaleString()
+                                        ? formatAppDateTime(data.expected_delivery_time)
                                         : "—"
                                 }
                             />

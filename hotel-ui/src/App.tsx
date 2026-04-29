@@ -55,13 +55,14 @@ const App = () => {
   useAuthBootstrap()
   useAutoLogout()
   const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
+  const meLoaded = useAppSelector(state => state.isLoggedIn.meLoaded)
   const apiLoaded = useAppSelector(state => state.isLoggedIn.apiLoaded)
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
   const pathname = useLocation().pathname
 
   const { data: sidebarLinks } = useGetSidebarLinksQuery(undefined, {
-    skip: !isLoggedIn
+    skip: !isLoggedIn || !meLoaded
   })
 
   const unsafePaths = ["/", "/platform", "/contact", "/privacy-policy", "/terms-of-service", "/guests", "/unauthorized-access"]

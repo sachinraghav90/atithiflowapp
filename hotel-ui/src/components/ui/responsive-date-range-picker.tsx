@@ -6,6 +6,10 @@ import { format, parse, isValid } from "date-fns"
 import { CalendarIcon, XCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Input } from "./input"
+import {
+    APP_DATE_DISPLAY_FORMAT,
+    APP_DATE_INPUT_PLACEHOLDER,
+} from "@/utils/dateFormat"
 
 interface ResponsiveDateRangePickerProps {
     startDate: Date | null | undefined
@@ -25,14 +29,14 @@ export function ResponsiveDateRangePicker({
     startDate,
     endDate,
     onChange,
-    startPlaceholder = "dd-mm-yyyy",
-    endPlaceholder = "dd-mm-yyyy",
+    startPlaceholder = APP_DATE_INPUT_PLACEHOLDER,
+    endPlaceholder = APP_DATE_INPUT_PLACEHOLDER,
     startLabel = "From",
     endLabel = "To",
     disabled,
     minDate,
     className,
-    displayFormat = "dd-MM-yyyy"
+    displayFormat = APP_DATE_DISPLAY_FORMAT
 }: ResponsiveDateRangePickerProps) {
     const [open, setOpen] = React.useState(false)
     const [isMobile, setIsMobile] = React.useState(false)
@@ -118,7 +122,7 @@ export function ResponsiveDateRangePicker({
             )}
 
             {/* Date Inputs Area */}
-            <div className="flex flex-1 items-center px-2 gap-1 h-full overflow-hidden justify-center">
+            <div className="flex flex-1 items-center px-0 gap-0.5 h-full overflow-hidden justify-center">
                 <Input
                     className="border-0 focus-visible:ring-0 h-full text-[10px] font-semibold placeholder:text-xs placeholder:text-muted-foreground/40 shadow-none px-0 w-[68px] text-center bg-transparent"
                     value={typedStart}
@@ -129,7 +133,7 @@ export function ResponsiveDateRangePicker({
                     disabled={disabled}
                 />
                 
-                <span className="text-muted-foreground/30 font-medium select-none mx-0.5 text-[10px]">
+                <span className="text-muted-foreground/30 font-medium select-none mx-0 text-[10px]">
                     —
                 </span>
 

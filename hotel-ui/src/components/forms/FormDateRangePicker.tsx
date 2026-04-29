@@ -1,6 +1,7 @@
 import * as React from "react"
 import { ResponsiveDateRangePicker } from "../ui/responsive-date-range-picker"
 import { Label } from "../ui/label"
+import { APP_DATE_INPUT_PLACEHOLDER } from "@/utils/dateFormat"
 import { cn } from "@/lib/utils"
 
 type FieldError = {
@@ -74,8 +75,8 @@ export default function FormDateRangePicker({
                     })
                 }}
                 minDate={minDate}
-                startPlaceholder="DD/MM/YYYY"
-                endPlaceholder="DD/MM/YYYY"
+                startPlaceholder={APP_DATE_INPUT_PLACEHOLDER}
+                endPlaceholder={APP_DATE_INPUT_PLACEHOLDER}
                 className={cn((startError || endError) && "border-red-500")}
             />
         </div>

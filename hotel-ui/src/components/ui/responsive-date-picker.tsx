@@ -7,6 +7,11 @@ import { CalendarIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "./button"
 import { Input } from "./input"
+import {
+    APP_DATE_DISPLAY_FORMAT,
+    APP_DATE_INPUT_PLACEHOLDER,
+    APP_DATE_TIME_INPUT_PLACEHOLDER,
+} from "@/utils/dateFormat"
 
 interface ResponsiveDatePickerProps {
     value: Date | null | undefined
@@ -23,16 +28,17 @@ interface ResponsiveDatePickerProps {
 export function ResponsiveDatePicker({
     value,
     onChange,
-    placeholder = "dd-mm-yyyy",
+    placeholder,
     label = "Date",
     disabled,
     minDate,
     className,
     showTime,
-    displayFormat = "dd-MM-yyyy"
+    displayFormat = APP_DATE_DISPLAY_FORMAT
 }: ResponsiveDatePickerProps) {
     const [open, setOpen] = React.useState(false)
     const [isMobile, setIsMobile] = React.useState(false)
+    const inputPlaceholder = placeholder ?? (showTime ? APP_DATE_TIME_INPUT_PLACEHOLDER : APP_DATE_INPUT_PLACEHOLDER)
 
     // Local state for manual typing
     const [typedValue, setTypedValue] = React.useState(
@@ -88,7 +94,7 @@ export function ResponsiveDatePicker({
             <Input
                 className="border-0 focus-visible:ring-0 h-full text-sm font-medium placeholder:text-muted-foreground/60 shadow-none px-3"
                 value={typedValue}
-                placeholder={placeholder}
+                placeholder={inputPlaceholder}
                 onChange={(e) => handleInputChange(e.target.value)}
                 onBlur={handleBlur}
                 onClick={() => setOpen(true)}

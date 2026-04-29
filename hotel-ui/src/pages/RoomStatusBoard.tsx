@@ -3,7 +3,6 @@ import Sidebar from "@/components/layout/Sidebar";
 import AppHeader from "@/components/layout/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useGetMyPropertiesQuery, useGetSidebarLinksQuery, useRoomsStatusQuery } from "@/redux/services/hmsApi";
 import { useAppSelector } from "@/redux/hook";
@@ -12,6 +11,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { usePermission } from "@/rbac/usePermission";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Plus } from "lucide-react";
+import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
+import { parseAppDate, toISODateOnly } from "@/utils/dateFormat";
 
 /* ---------------- Types ---------------- */
 type Room = {
@@ -95,7 +96,7 @@ function roomCardColor(status: "OCCUPIED" | "FREE" | "DIRTY" | "BOOKED" | "MAINT
 /* ---------------- Component ---------------- */
 export default function RoomStatusBoard() {
     const [selectedDate, setSelectedDate] = useState(
-        new Date().toISOString().slice(0, 10)
+        toISODateOnly(new Date())
     );
 
     const [propertyId, setPropertyId] = useState("")
@@ -238,11 +239,10 @@ export default function RoomStatusBoard() {
 
                             <div className="w-full sm:w-40">
                                 <Label>Date</Label>
-                                <Input
-                                    type="date"
+                                <ResponsiveDatePicker
                                     className="bg-background h-10"
-                                    value={selectedDate}
-                                    onChange={(e) => setSelectedDate(e.target.value)}
+                                    value={parseAppDate(selectedDate)}
+                                    onChange={(date) => setSelectedDate(toISODateOnly(date))}
                                 />
                             </div>
 

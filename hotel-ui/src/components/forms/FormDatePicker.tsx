@@ -2,6 +2,7 @@ import * as React from "react"
 import { ResponsiveDatePicker } from "../ui/responsive-date-picker"
 import { Label } from "../ui/label"
 import { cn } from "@/lib/utils"
+import { APP_DATE_INPUT_PLACEHOLDER } from "@/utils/dateFormat"
 
 export default function FormDatePicker({
     label,
@@ -32,7 +33,7 @@ export default function FormDatePicker({
                         return next
                     })
                 }}
-                placeholder="DD/MM/YYYY"
+                placeholder={APP_DATE_INPUT_PLACEHOLDER}
                 label={label}
                 className={cn(error && "border-red-500 focus:ring-red-500")}
             />

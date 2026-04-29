@@ -67,6 +67,9 @@ All colors MUST be HSL.
     --shadow: 0 1px 3px 0 hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
     --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.1), 0 2px 4px -2px hsl(0 0% 0% / 0.1);
     --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.1), 0 4px 6px -4px hsl(0 0% 0% / 0.1);
+
+    --scrollbar-track: var(--accent);
+    --scrollbar-thumb: var(--primary);
   }
 
 }
@@ -94,31 +97,43 @@ All colors MUST be HSL.
   /* Chrome, Safari */
 }
 
+html,
+body,
 .app-scrollbar {
   scrollbar-width: auto;
-  scrollbar-color: hsl(var(--primary) / 0.55) hsl(var(--accent));
+  scrollbar-color: hsl(var(--scrollbar-thumb) / 0.55) hsl(var(--scrollbar-track));
 }
 
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
 .app-scrollbar::-webkit-scrollbar {
   height: 12px;
   width: 12px;
 }
 
+html::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track,
 .app-scrollbar::-webkit-scrollbar-track {
-  background: hsl(var(--accent));
+  background: hsl(var(--scrollbar-track));
   border-radius: 9999px;
 }
 
+html::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb,
 .app-scrollbar::-webkit-scrollbar-thumb {
-  background: hsl(var(--primary) / 0.55);
-  border: 2px solid hsl(var(--accent));
+  background: hsl(var(--scrollbar-thumb) / 0.55);
+  border: 2px solid hsl(var(--scrollbar-track));
   border-radius: 9999px;
 }
 
+html::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover,
 .app-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary) / 0.72);
+  background: hsl(var(--scrollbar-thumb) / 0.72);
 }
 
+html::-webkit-scrollbar-corner,
+body::-webkit-scrollbar-corner,
 .app-scrollbar::-webkit-scrollbar-corner {
   background: transparent;
 }

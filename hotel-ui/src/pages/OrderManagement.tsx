@@ -24,6 +24,7 @@ import { useGridPagination } from "@/hooks/useGridPagination";
 import { NativeSelect } from "@/components/ui/native-select";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { GridBadge } from "@/components/ui/grid-badge";
+import { formatAppDateTime } from "@/utils/dateFormat";
 
 const ORDER_STATUSES = ["New", "Preparing", "Ready", "Delivered", "Cancelled"];
 const PAYMENT_STATUSES = ["Pending", "Paid", "Failed", "Refunded"];
@@ -35,7 +36,7 @@ const getOrderRoomTableDisplayValue = (order: Order) =>
     order.room_no || order.table_no || "—";
 
 const formatOrderDateTime = (value: string | null | undefined) =>
-    value ? new Date(value).toLocaleString() : "—";
+    formatAppDateTime(value);
 
 type Order = {
     id: string;

@@ -38,6 +38,7 @@ import FormInput from "@/components/forms/FormInput";
 import FormDatePicker from "@/components/forms/FormDatePicker";
 import FormDateRangePicker from "@/components/forms/FormDateRangePicker";
 import FormSelect from "@/components/forms/FormSelect";
+import { parseAppDate, toISODateOnly } from "@/utils/dateFormat";
 
 /* -------------------- Types -------------------- */
 type AvailableRoom = {
@@ -82,11 +83,11 @@ type FieldError = {
 /* -------------------- Component -------------------- */
 export default function ReservationManagement() {
 
-    const todayISO = () => new Date().toISOString().split("T")[0];
+    const todayISO = () => toISODateOnly(new Date());
     const tomorrowISO = () => {
         const d = new Date();
         d.setDate(d.getDate() + 1);
-        return d.toISOString().split("T")[0];
+        return toISODateOnly(d);
     };
 
     /* -------- Booking Form State -------- */
@@ -444,7 +445,7 @@ export default function ReservationManagement() {
             package_id: packageId,
             booking_type: bookingType,
             booking_status: "CONFIRMED",
-            booking_date: new Date().toISOString().slice(0, 10),
+            booking_date: toISODateOnly(new Date()),
             estimated_arrival: arrivalDate,
             estimated_departure: departureDate,
             adult,
@@ -593,7 +594,7 @@ export default function ReservationManagement() {
         if (!date) return todayISO();
         const d = new Date(date);
         d.setDate(d.getDate() + 1);
-        return d.toISOString().split("T")[0];
+        return toISODateOnly(d);
     };
 
     const getNights = (arrival: string, departure: string) => {
@@ -605,14 +606,10 @@ export default function ReservationManagement() {
     };
 
     const parseDate = (value?: string) =>
-        value ? new Date(value) : null;
+        parseAppDate(value);
 
     const formatDate = (date: Date | null) => {
-        if (!date) return "";
-        const y = date.getFullYear();
-        const m = String(date.getMonth() + 1).padStart(2, "0");
-        const d = String(date.getDate()).padStart(2, "0");
-        return `${y}-${m}-${d}`;
+        return toISODateOnly(date);
     };
 
     const selectedRoomNumbers = useMemo(() => {
@@ -1022,13 +1019,13 @@ export default function ReservationManagement() {
                                     selected={parseDate(arrivalDate)}
                                     onChange={(date: Date | null) => {
                                         if (!date) return;
-                                        const val = date.toISOString().split("T")[0];
+                                        const val = toISODateOnly(date);
                                         setArrivalDate(val);
                                         
                                         // Auto-bump departure if needed
                                         const d = new Date(val);
                                         d.setDate(d.getDate() + 1);
-                                        const nextDay = d.toISOString().split("T")[0];
+                                        const nextDay = toISODateOnly(d);
                                         if (new Date(departureDate) <= new Date(val)) {
                                             setDepartureDate(nextDay);
                                         }
@@ -1046,7 +1043,7 @@ export default function ReservationManagement() {
                                     selected={parseDate(departureDate)}
                                     onChange={(date: Date | null) => {
                                         if (!date) return;
-                                        const val = date.toISOString().split("T")[0];
+                                        const val = toISODateOnly(date);
                                         setDepartureDate(val);
                                     }}
                                     errors={reservationErrors}

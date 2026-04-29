@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useLazyGetMeQuery } from "@/redux/services/hmsApi";
-import { logout, setApiLoaded, setMeLoaded } from "@/redux/slices/isLoggedInSlice";
+import { logout, setApiLoaded, setLoggedInFromStorage, setMeLoaded } from "@/redux/slices/isLoggedInSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hook";
 
 export function useAuthBootstrap() {
@@ -12,6 +12,16 @@ export function useAuthBootstrap() {
     const [getMe] = useLazyGetMeQuery();
 
     useEffect(() => {
+        const token = window.localStorage.getItem("access_token");
+
+        if (!token) {
+            if (isLoggedIn) {
+                dispatch(setLoggedInFromStorage(false));
+            }
+            dispatch(setApiLoaded(true));
+            return;
+        }
+
         if (!isLoggedIn || meLoaded) {
             dispatch(setApiLoaded(true));
             return;
@@ -27,5 +37,5 @@ export function useAuthBootstrap() {
                 dispatch(setApiLoaded(true));
             }
         })();
-    }, [isLoggedIn, meLoaded]);
+    }, [dispatch, getMe, isLoggedIn, meLoaded]);
 }

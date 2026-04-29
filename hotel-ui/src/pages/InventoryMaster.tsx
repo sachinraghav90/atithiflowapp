@@ -34,6 +34,7 @@ import { DataGrid, DataGridHeader, DataGridRow, DataGridHead, DataGridCell } fro
 import { ValidationTooltip } from "@/components/ui/validation-tooltip";
 import { GridBadge } from "@/components/ui/grid-badge";
 import { formatReadableLabel } from "@/utils/formatString";
+import { formatAppDate } from "@/utils/dateFormat";
 
 type InventoryItem = {
     id: string;
@@ -430,7 +431,7 @@ export default function InventoryMaster() {
                 "Inventory Type": item.inventory_type || "—",
                 "Use Type": item.use_type.charAt(0).toUpperCase() + item.use_type.slice(1),
                 "Status": item.is_active ? "Active" : "Inactive",
-                "Created On": new Date(item.created_on).toLocaleDateString("en-GB")
+                "Created On": formatAppDate(item.created_on)
             }));
 
             exportToExcel(formatted, "InventoryMaster.xlsx");
@@ -658,7 +659,7 @@ export default function InventoryMaster() {
                                 {
                                     label: "Created",
                                     cellClassName: "text-muted-foreground text-xs font-medium whitespace-nowrap",
-                                    render: (item: InventoryItem) => new Date(item.created_on).toLocaleDateString("en-GB")
+                                    render: (item: InventoryItem) => formatAppDate(item.created_on)
                                 },
                             ] satisfies ColumnDef[]}
                             data={inventoryRows}
@@ -901,7 +902,7 @@ export default function InventoryMaster() {
                                     <div className="space-y-2 pt-4 border-t border-border">
                                         <Label>Created On</Label>
                                         <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">
-                                            {new Date(selected.created_on).toLocaleDateString("en-GB")}
+                                            {formatAppDate(selected.created_on)}
                                         </p>
                                     </div>
 

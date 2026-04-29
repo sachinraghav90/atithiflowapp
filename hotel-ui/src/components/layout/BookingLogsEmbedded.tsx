@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import { useGetLogsQuery } from "@/redux/services/hmsApi";
+import { formatAppDateTime } from "@/utils/dateFormat";
 
 /* ---------------- Types ---------------- */
 type LogItem = {
@@ -88,7 +89,7 @@ export default function BookingLogsEmbedded({ bookingId }: Props) {
                                     <div className="flex flex-col items-end gap-1">
                                         <Badge variant="outline">{log.event_type}</Badge>
                                         <p className="text-xs text-muted-foreground">
-                                            {new Date(log.created_on).toLocaleString()}
+                                            {formatAppDateTime(log.created_on)}
                                         </p>
                                     </div>
                                 </div>

@@ -28,15 +28,16 @@ export default function Sidebar({
     const [propertyId, setPropertyId] = useState<number | undefined>();
 
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
+    const meLoaded = useAppSelector(state => state.isLoggedIn.meLoaded)
     const { pathname } = useLocation()
 
     // Get the current selected property to provide to prefetch hooks
     useAutoPropertySelect(propertyId, setPropertyId);
 
     useEffect(() => {
-        if (!isLoggedIn) return
+        if (!isLoggedIn || !meLoaded) return
         sidebar(undefined)
-    }, [isLoggedIn])
+    }, [isLoggedIn, meLoaded, sidebar])
 
 
     return (

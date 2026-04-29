@@ -4,6 +4,7 @@ import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
 import FormInput from "@/components/forms/FormInput";
 import { useEffect } from "react";
 import { NativeSelect } from "@/components/ui/native-select";
+import { APP_DATE_INPUT_PLACEHOLDER, parseAppDate, toISODateOnly } from "@/utils/dateFormat";
 
 type Props = {
     value: any;
@@ -38,14 +39,10 @@ export default function PropertyRole({
 }: Props) {
 
     const parseDate = (value?: string) =>
-        value ? new Date(value) : null;
+        parseAppDate(value);
 
     const formatDate = (date: Date | null) => {
-        if (!date) return "";
-        const y = date.getFullYear();
-        const m = String(date.getMonth() + 1).padStart(2, "0");
-        const d = String(date.getDate()).padStart(2, "0");
-        return `${y}-${m}-${d}`;
+        return toISODateOnly(date);
     };
 
     const clearError = (field: string) => {
@@ -204,7 +201,7 @@ export default function PropertyRole({
 
                             clearError("hire_date");
                         }}
-                        placeholder="DD-MM-YYYY"
+                        placeholder={APP_DATE_INPUT_PLACEHOLDER}
                         label="Joining Date"
                         disabled={viewMode}
                         className={errors.hire_date ? "border-red-500" : ""}

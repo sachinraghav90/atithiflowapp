@@ -27,12 +27,10 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
-import { format } from "date-fns";
 import { Download, FilterX, Pencil, RefreshCcw, Trash2, Plus, PlusCircle } from "lucide-react";
 import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { motion } from "framer-motion";
 
 import { toast } from "react-toastify";
 import { normalizeNumberInput } from "@/utils/normalizeTextInput";
@@ -50,6 +48,7 @@ import { ValidationTooltip } from "@/components/ui/validation-tooltip";
 
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { formatReadableLabel } from "@/utils/formatString";
+import { formatAppDateTime } from "@/utils/dateFormat";
 
 /* ---------------- Types ---------------- */
 export type LaundryStatus =
@@ -152,7 +151,7 @@ function formatDate(date?: Date | null) {
 }
 
 function formatDateTime(value?: string | null) {
-    return value ? new Date(value).toLocaleString() : "--";
+    return formatAppDateTime(value, "--");
 }
 
 function formatDisplayStatus(value?: string | null) {
@@ -1573,7 +1572,7 @@ export default function LaundryOrdersManagement() {
                                                                 : new Date(new Date().setHours(0, 0, 0, 0))
                                                         }
                                                         maxTime={new Date(new Date().setHours(23, 59, 59, 999))}
-                                                        dateFormat="dd/MM/yyyy HH:mm"
+                                                        dateFormat="dd/MM/yy HH:mm"
                                                         className="w-full h-9 border rounded px-2 mt-1"
                                                     />
                                                 ) : (

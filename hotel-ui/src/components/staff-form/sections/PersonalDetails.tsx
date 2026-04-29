@@ -4,6 +4,7 @@ import { User } from "lucide-react";
 import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
 import FormInput from "@/components/forms/FormInput";
 import { NativeSelect } from "@/components/ui/native-select";
+import { APP_DATE_INPUT_PLACEHOLDER, parseAppDate, toISODateOnly } from "@/utils/dateFormat";
 
 type Props = {
     value: any;
@@ -29,14 +30,10 @@ export default function PersonalDetails({
 }: Props) {
 
     const parseDate = (value?: string) =>
-        value ? new Date(value) : null;
+        parseAppDate(value);
 
     const formatDate = (date: Date | null) => {
-        if (!date) return "";
-        const y = date.getFullYear();
-        const m = String(date.getMonth() + 1).padStart(2, "0");
-        const d = String(date.getDate()).padStart(2, "0");
-        return `${y}-${m}-${d}`;
+        return toISODateOnly(date);
     };
 
     return (
@@ -236,7 +233,7 @@ export default function PersonalDetails({
                             }))
                         }
                         minDate={new Date(1900, 0, 1)}
-                        placeholder="DD-MM-YYYY"
+                        placeholder={APP_DATE_INPUT_PLACEHOLDER}
                         label="Date of Birth"
                         disabled={viewMode}
                         className={errors.dob ? "border-red-500" : ""}

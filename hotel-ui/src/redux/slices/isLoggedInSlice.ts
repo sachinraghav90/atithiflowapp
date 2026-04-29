@@ -6,8 +6,12 @@ export interface AuthState {
     apiLoaded: boolean
 }
 
+const hasStoredAccessToken = () =>
+    typeof window !== "undefined" &&
+    Boolean(window.localStorage.getItem("access_token"));
+
 const initialState: AuthState = {
-    value: true, // Default to true so useAuthBootstrap can check token on mount
+    value: hasStoredAccessToken(),
     meLoaded: false,
     apiLoaded: false
 };

@@ -31,6 +31,7 @@ import {
     SheetTitle,
 } from "@/components/ui/sheet";
 import { motion } from "framer-motion";
+import { formatAppDate } from "@/utils/dateFormat";
 
 /* ---------------- Types ---------------- */
 type RateRow = {
@@ -248,7 +249,7 @@ export default function RoomTypeBasePriceManagement() {
         Bed: r.bed_type_name,
         AC: r.ac_type_name,
         Price: r.base_price,
-        CreatedAt: new Date(r.created_at).toLocaleDateString(),
+        CreatedAt: formatAppDate(r.created_at),
         // UpdatedAt: r.updated_at,
     }));
 

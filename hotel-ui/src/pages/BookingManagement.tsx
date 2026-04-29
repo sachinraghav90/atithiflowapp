@@ -58,6 +58,7 @@ import { getStatusColor } from "@/constants/statusColors";
 import { GridBadge } from "@/components/ui/grid-badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
+import { formatAppDate, parseAppDate, toISODateOnly } from "@/utils/dateFormat";
 
 const REQUIRED_SCOPE_BY_STATUS: Record<string, "upcoming" | "past" | "all"> = {
     CONFIRMED: "upcoming",
@@ -83,14 +84,10 @@ const BOOKING_STATUSES = [
 
 
 const parseDate = (value?: string) =>
-    value ? new Date(value) : null;
+    parseAppDate(value);
 
 const formatDate = (date: Date | null) => {
-    if (!date) return "";
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, "0");
-    const d = String(date.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;   // local timezone safe
+    return toISODateOnly(date);
 };
 
 export default function BookingsManagement() {
@@ -98,14 +95,14 @@ export default function BookingsManagement() {
     const todayISO = () => {
         const d = new Date();
         d.setHours(0, 0, 0, 0);
-        return d.toISOString().slice(0, 10);
+        return toISODateOnly(d);
     };
 
     const tomorrowISO = () => {
         const d = new Date();
         d.setDate(d.getDate() + 1);
         d.setHours(0, 0, 0, 0);
-        return d.toISOString().slice(0, 10);
+        return toISODateOnly(d);
     };
 
     const [propertyId, setPropertyId] = useState<number | undefined>();
@@ -948,5 +945,5 @@ function Price({ label, value }: { label: string; value: any }) {
 
 function formatDateDisplay(date?: string) {
     if (!date) return "\u2014";
-    return new Date(date).toLocaleDateString();
+    return formatAppDate(date);
 }
