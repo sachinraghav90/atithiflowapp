@@ -63,13 +63,13 @@ export default function PropertyTax({
             : null;
 
     return (
-        <div className="space-y-4 border border-border rounded-[5px] p-4 bg-card">
+        <div className="space-y-4 rounded-[5px] border border-border/40 bg-background p-4 shadow-sm">
 
-            <h3 className="font-semibold text-sm text-primary uppercase tracking-wider">
+            <h3 className="text-xs font-semibold text-primary/90 uppercase tracking-[0.16em]">
                 Legal & Tax Information
             </h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
 
                 {/* GSTIN */}
 
@@ -118,7 +118,7 @@ export default function PropertyTax({
                         title={errors.gst?.message || ""}
                         className={`w-full h-9 rounded-[3px] border px-3 text-sm ${errors.gst
                             ? "border-red-500 bg-background"
-                            : "border-border bg-background"
+                            : "border-border/70 bg-background"
                             }`}
                         onChange={(e) =>
                             setValue((prev: any) => ({

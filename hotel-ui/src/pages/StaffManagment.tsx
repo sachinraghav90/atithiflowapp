@@ -43,6 +43,8 @@ import { GridBadge } from "@/components/ui/grid-badge";
 import { useGridPagination } from "@/hooks/useGridPagination";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
+import PropertyViewSection from "@/components/PropertyViewSection";
+import ViewField from "@/components/ViewField";
 
 /* -------------------- Types -------------------- */
 type Staff = {
@@ -116,6 +118,7 @@ type FormError = {
 export default function StaffManagement() {
     const [sheetOpen, setSheetOpen] = useState(false);
     const [mode, setMode] = useState<"add" | "edit" | "view">("add");
+    const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
 
     const [searchInput, setSearchInput] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
@@ -441,6 +444,7 @@ export default function StaffManagement() {
     const openStaffDetails = async (staffMember: Staff, forceMode: "view" | "edit" = "view") => {
         try {
             setMode(forceMode);
+            setSheetTab("summary");
             setSheetOpen(true);
 
             const data = await getStaffById(staffMember.id!).unwrap();
@@ -569,6 +573,7 @@ export default function StaffManagement() {
                                 className="h-10"
                                 onClick={() => {
                                     setMode("add");
+                                    setSheetTab("summary");
                                     setStaff(STAFF_INITIAL_VALUE);
                                     setFormErrors({});
                                     setSheetOpen(true);
@@ -707,29 +712,54 @@ export default function StaffManagement() {
                 </div>
             </section>
     <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
+                <SheetContent side="right" className="w-full lg:max-w-3xl sm:max-w-2xl overflow-y-auto bg-background">
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="space-y-1"
                     >
-                        <SheetHeader>
+                        <SheetHeader className="mb-6">
                             <div className="space-y-1">
-                                <SheetTitle>
-                                    {mode === "add" ? "Register New Staff" : mode === "edit" ? `Edit Staff Member [${staff?.id ? formatModuleDisplayId("staff", staff.id) : "..."}]` : `Staff Summary [${staff?.id ? formatModuleDisplayId("staff", staff.id) : "..."}]`}
+                                <SheetTitle className="text-xl font-bold text-foreground">
+                                    {mode === "add" ? "Register New Staff" : mode === "edit" ? `Update Staff Member [${staff?.id ? `#${formatModuleDisplayId("staff", staff.id)}` : "..."}]` : `Staff Summary [${staff?.id ? `#${formatModuleDisplayId("staff", staff.id)}` : "..."}]`}
                                 </SheetTitle>
-                                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
-                                    {mode === "add" ? "Create a new profile for hotel personnel" : mode === "edit" ? "Modify existing staff member information" : "Detailed profile information of staff member"}
+                                <p className="text-xs text-muted-foreground font-medium tracking-wide">
+                                    {mode === "add" ? "Create New Profile for Hotel Personnel" : mode === "edit" ? "Modify Existing Staff Member Information" : "Detailed Profile Information of Staff Member"}
                                 </p>
                             </div>
                         </SheetHeader>
 
                         {viewMode ? (
 
-                            <div className="space-y-8 mt-6">
-                                {/* ================= PERSONAL DETAILS ================= */}
-                                <StaffViewSection title="Personal Details">
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                            <div className="space-y-4">
+                                <div className="border-b border-border flex">
+                                    <button
+                                        onClick={() => setSheetTab("summary")}
+                                        className={cn(
+                                            "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                            sheetTab === "summary"
+                                                ? "border-primary text-primary"
+                                                : "border-transparent text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        Summary
+                                    </button>
+                                    <button
+                                        onClick={() => setSheetTab("history")}
+                                        className={cn(
+                                            "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                            sheetTab === "history"
+                                                ? "border-primary text-primary"
+                                                : "border-transparent text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        History
+                                    </button>
+                                </div>
+
+                                {sheetTab === "summary" && (
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                <PropertyViewSection title="Personal Details" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                         <ViewField label="First Name" value={staff.first_name} />
                                         <ViewField label="Middle Name" value={staff.middle_name} />
                                         <ViewField label="Last Name" value={staff.last_name} />
@@ -738,52 +768,47 @@ export default function StaffManagement() {
                                         <ViewField label="DOB" value={staff.dob} />
                                         <ViewField label="Nationality" value={staff.nationality} />
                                         <ViewField label="Blood Group" value={staff.blood_group} />
-                                    </div>
-                                </StaffViewSection>
+                                </PropertyViewSection>
 
 
-                                {/* ================= CONTACT ================= */}
-                                <StaffViewSection title="Contact & Login">
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                <PropertyViewSection title="Contact & Login" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                         <ViewField label="Email" value={staff.email} />
                                         <ViewField label="Phone" value={staff.phone1} />
                                         <ViewField label="Alternate Phone" value={staff.phone2} />
                                         <ViewField label="Address" value={staff.address} />
-                                    </div>
-                                </StaffViewSection>
+                                </PropertyViewSection>
 
 
-                                {/* ================= ROLE ================= */}
-                                <StaffViewSection title="Property & Role">
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                <PropertyViewSection title="Property & Role" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                         <ViewField label="Property" value={staff.property_id} />
                                         <ViewField label="Department" value={staff.department} />
                                         <ViewField label="Designation" value={staff.designation} />
                                         <ViewField label="Role" value={staff.role_ids?.[0]} />
                                         <ViewField label="Employment Type" value={staff.employment_type} />
                                         <ViewField label="Joining Date" value={staff.hire_date} />
-                                    </div>
-                                </StaffViewSection>
+                                </PropertyViewSection>
 
 
-                                {/* ================= EMERGENCY ================= */}
-                                <StaffViewSection title="Emergency Contacts">
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                <PropertyViewSection title="Emergency Contacts" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                         <ViewField label="Primary Contact" value={staff.emergency_contact} />
                                         <ViewField label="Contact Name" value={staff.emergency_contact_name} />
                                         <ViewField label="Relation" value={staff.emergency_contact_relation} />
                                         <ViewField label="Secondary Contact" value={staff.emergency_contact_2} />
-                                    </div>
-                                </StaffViewSection>
+                                </PropertyViewSection>
 
 
-                                {/* ================= IDENTIFICATION ================= */}
-                                <StaffViewSection title="Identification">
-                                    <div className="grid grid-cols-2 gap-6">
+                                <PropertyViewSection title="Identification" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                         <ViewField label="ID Proof Type" value={staff.id_proof_type} />
                                         <ViewField label="ID Number" value={staff.id_number} />
+                                </PropertyViewSection>
                                     </div>
-                                </StaffViewSection>
+                                )}
+
+                                {sheetTab === "history" && (
+                                    <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
+                                        <p className="text-sm text-muted-foreground">No history logs available yet.</p>
+                                    </div>
+                                )}
                             </div>
 
                         ) : (
@@ -886,7 +911,7 @@ export default function StaffManagement() {
                                     disabled={creating || updating}
                                     onClick={handleSubmit}
                                 >
-                                    Save Changes
+                                    Update
                                 </Button>
                             )}
 
@@ -945,28 +970,6 @@ export default function StaffManagement() {
                 </DialogContent>
             </Dialog>
 
-        </div>
-    );
-}
-
-function ViewField({ label, value }: { label: string, value?: string | number }) {
-    return (
-        <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</Label>
-            <p className="text-sm font-semibold text-foreground px-0.5">
-                {value || "—"}
-            </p>
-        </div>
-    );
-}
-
-function StaffViewSection({ title, children }: { title: string, children: React.ReactNode }) {
-    return (
-        <div className="space-y-4 pt-4 border-t border-border first:pt-0 first:border-0">
-            <h3 className="text-xs font-bold text-primary uppercase tracking-wider">
-                {title}
-            </h3>
-            {children}
         </div>
     );
 }

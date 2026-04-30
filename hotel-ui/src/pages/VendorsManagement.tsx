@@ -41,6 +41,8 @@ import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { formatReadableLabel } from "@/utils/formatString";
 import { getStatusColor } from "@/constants/statusColors";
 import { GridBadge } from "@/components/ui/grid-badge";
+import PropertyViewSection from "@/components/PropertyViewSection";
+import ViewField from "@/components/ViewField";
 
 /* ---------------- Types ---------------- */
 type Vendor = {
@@ -73,6 +75,21 @@ const VENDOR_STATUS_OPTIONS = [
     { label: "Inactive", value: "inactive" },
 ];
 
+const buildVendorPayload = (form: VendorForm, propertyId?: number) => {
+    const payload: any = {
+        name: form.name,
+        pan_no: form.pan_no,
+        gst_no: form.gst_no,
+        address: form.address,
+        contact_no: form.contact_no,
+        email_id: form.email_id,
+        vendor_type: form.vendor_type,
+        is_active: form.is_active,
+    };
+    if (propertyId) payload.property_id = propertyId;
+    return payload;
+};
+
 /* ---------------- Component ---------------- */
 export default function VendorsManagement() {
     const [selectedPropertyId, setSelectedPropertyId] = useState<string>("");
@@ -80,6 +97,7 @@ export default function VendorsManagement() {
     const [sheetOpen, setSheetOpen] = useState(false);
     const [mode, setMode] = useState<"add" | "edit" | "view">("add");
     const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
+    const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
 
     const [form, setForm] = useState<VendorForm>({
         name: "",
@@ -137,15 +155,12 @@ export default function VendorsManagement() {
     const [updateVendor] = useUpdateVendorMutation()
 
 
-    /* ---------------- Effects ---------------- */
-    // Hook handles all initialization logic now
-
-
     /* ---------------- Handlers ---------------- */
     const openAdd = () => {
         setMode("add");
         setEditingVendor(null);
-        setForm({ name: "" });
+        setSheetTab("summary");
+        setForm({ name: "", is_active: true });
         setSheetOpen(true);
     };
 
@@ -171,7 +186,6 @@ export default function VendorsManagement() {
 
         if (Object.keys(errors).length > 0) {
             setFormErrors(errors);
-            // toast.error(Object.values(errors)[0]); // optional
             return;
         }
 
@@ -273,6 +287,7 @@ export default function VendorsManagement() {
 
     const openView = (vendor: Vendor, forceMode: "view" | "edit" | "add" = "view") => {
         setMode(forceMode);
+        setSheetTab("summary");
 
         setEditingVendor(vendor);
 
@@ -494,208 +509,224 @@ export default function VendorsManagement() {
             </section>
 
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
+                <SheetContent side="right" className="w-full lg:max-w-3xl sm:max-w-2xl overflow-y-auto bg-background">
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="space-y-1"
                     >
-                        <SheetHeader>
+                        <SheetHeader className="mb-6">
                             <div className="space-y-1">
-                                <SheetTitle>
+                                <SheetTitle className="text-xl font-bold text-foreground">
                                     {mode === "add" || mode === "edit"
-                                        ? `Vendor [${mode === "add" ? "#NEW" : editingVendor?.id ? formatModuleDisplayId("vendor", editingVendor.id) : "#NEW"}]`
-                                        : `Vendor Summary [${editingVendor?.id ? formatModuleDisplayId("vendor", editingVendor.id) : "..."}]`
+                                        ? `Vendor [${mode === "add" ? "#NEW" : editingVendor?.id ? `#${formatModuleDisplayId("vendor", editingVendor.id)}` : "#NEW"}]`
+                                        : `Vendor Summary [${editingVendor?.id ? `#${formatModuleDisplayId("vendor", editingVendor.id)}` : "..."}]`
                                     }
                                 </SheetTitle>
-                                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                                <p className="text-xs text-muted-foreground font-medium tracking-wide">
                                     {mode === "add"
-                                        ? "Onboard new supplier or service provider"
+                                        ? "Onboard New Supplier or Service Provider"
                                         : mode === "edit"
-                                            ? "Modify existing vendor contact or tax information"
-                                            : "Comprehensive overview of vendor relationship"}
+                                            ? "Modify Existing Vendor Contact or Tax Information"
+                                            : "Comprehensive Overview of Vendor Relationship"}
                                 </p>
                             </div>
                         </SheetHeader>
 
                         {mode === "view" ? (
-                            <div className="space-y-6 mt-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                                    <VendorViewSection title="Basic Information">
-                                        <div className="space-y-4">
-                                            <DetailRow label="Vendor Name" value={form.name} />
-                                            <DetailRow label="Primary Category" value={formatReadableLabel(form.vendor_type)} />
-                                            <div className="space-y-1.5">
-                                                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Relationship Status</div>
-                                                <GridBadge status={form.is_active ? "active" : "inactive"} statusType="toggle" className="mt-0.5">
-                                                    {form.is_active ? "Active" : "Inactive"}
-                                                </GridBadge>
-                                            </div>
-                                        </div>
-                                    </VendorViewSection>
-
-                                    <VendorViewSection title="Contact Channels">
-                                        <div className="space-y-4">
-                                            <DetailRow label="Direct Contact" value={form.contact_no} />
-                                            <DetailRow label="Official Email" value={form.email_id} />
-                                            <DetailRow label="Physical Address" value={form.address} />
-                                        </div>
-                                    </VendorViewSection>
-
-                                    <VendorViewSection title="Compliance & Tax">
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <DetailRow label="PAN Number" value={form.pan_no} />
-                                            <DetailRow label="GST Identification" value={form.gst_no} />
-                                        </div>
-                                    </VendorViewSection>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="space-y-4 mt-6">
-                                <div>
-                                    <Label htmlFor="vendor-name">Name*</Label>
-                                    <Input
-                                        id="vendor-name"
-                                        name="vendor_name"
-                                        className={submitted && formErrors.name ? "border-red-500" : ""}
-                                        value={form.name}
-                                        onChange={(e) => {
-                                            setForm({
-                                                ...form,
-                                                name: normalizeTextInput(e.target.value),
-                                            });
-                                            setFormErrors((p) => ({ ...p, name: "" }));
-                                        }}
-                                    />
+                            <div className="space-y-4">
+                                <div className="border-b border-border flex">
+                                    <button
+                                        onClick={() => setSheetTab("summary")}
+                                        className={cn(
+                                            "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                            sheetTab === "summary"
+                                                ? "border-primary text-primary"
+                                                : "border-transparent text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        Summary
+                                    </button>
+                                    <button
+                                        onClick={() => setSheetTab("history")}
+                                        className={cn(
+                                            "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                            sheetTab === "history"
+                                                ? "border-primary text-primary"
+                                                : "border-transparent text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        History
+                                    </button>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <Label htmlFor="vendor-pan">PAN</Label>
-                                        <Input
-                                            id="vendor-pan"
-                                            name="vendor_pan"
-                                            value={form.pan_no ?? ""}
-                                            onChange={(e) =>
-                                                e.target.value.length < 20 &&
-                                                setForm({
-                                                    ...form,
-                                                    pan_no: normalizeTextInput(e.target.value),
-                                                })
-                                            }
-                                        />
+                                {sheetTab === "summary" && (
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                        <PropertyViewSection title="Basic Information" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                            <ViewField label="Vendor Name" value={form.name} />
+                                            <ViewField label="Primary Category" value={formatReadableLabel(form.vendor_type)} />
+                                            <ViewField label="Relationship Status" value={form.is_active ? "Active" : "Inactive"} />
+                                        </PropertyViewSection>
+
+                                        <PropertyViewSection title="Contact Channels" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                            <ViewField label="Direct Contact" value={form.contact_no} />
+                                            <ViewField label="Official Email" value={form.email_id} />
+                                            <ViewField label="Physical Address" value={form.address} />
+                                        </PropertyViewSection>
+
+                                        <PropertyViewSection title="Compliance & Tax" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                            <ViewField label="PAN Number" value={form.pan_no} />
+                                            <ViewField label="GST Identification" value={form.gst_no} />
+                                        </PropertyViewSection>
                                     </div>
+                                )}
 
-                                    <div>
-                                        <Label htmlFor="vendor-gst">GST</Label>
-                                        <Input
-                                            id="vendor-gst"
-                                            name="vendor_gst"
-                                            value={form.gst_no ?? ""}
-                                            onChange={(e) =>
-                                                e.target.value.length < 20 &&
-                                                setForm({
-                                                    ...form,
-                                                    gst_no: normalizeTextInput(e.target.value),
-                                                })
-                                            }
-                                        />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <Label htmlFor="vendor-address">Address*</Label>
-                                    <Input
-                                        id="vendor-address"
-                                        name="vendor_address"
-                                        className={submitted && formErrors.address ? "border-red-500" : ""}
-                                        value={form.address ?? ""}
-                                        onChange={(e) => {
-                                            setForm({
-                                                ...form,
-                                                address: normalizeTextInput(e.target.value),
-                                            });
-                                            setFormErrors((p) => ({ ...p, address: "" }));
-                                        }}
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <Label htmlFor="vendor-contact-no">Contact No*</Label>
-                                        <Input
-                                            id="vendor-contact-no"
-                                            name="vendor_contact_no"
-                                            className={submitted && formErrors.contact_no ? "border-red-500" : ""}
-                                            value={form.contact_no ?? ""}
-                                            onChange={(e) => {
-                                                setForm({
-                                                    ...form,
-                                                    contact_no: normalizeTextInput(e.target.value.trim()),
-                                                });
-                                                setFormErrors((p) => ({ ...p, contact_no: "" }));
-                                            }}
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="vendor-email">Email</Label>
-                                        <Input
-                                            id="vendor-email"
-                                            name="vendor_email"
-                                            value={form.email_id ?? ""}
-                                            onChange={(e) =>
-                                                e.target.value.length < 150 &&
-                                                setForm({
-                                                    ...form,
-                                                    email_id: normalizeTextInput(e.target.value),
-                                                })
-                                            }
-                                        />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <Label htmlFor="vendor-type">Vendor Type</Label>
-                                    <Input
-                                        id="vendor-type"
-                                        name="vendor_type"
-                                        value={form.vendor_type ?? ""}
-                                        onChange={(e) =>
-                                            e.target.value.length < 50 &&
-                                            setForm({
-                                                ...form,
-                                                vendor_type: normalizeTextInput(e.target.value),
-                                            })
-                                        }
-                                    />
-                                </div>
-
-                                {mode === "edit" && (
-                                    <div className="flex items-center gap-3 rounded-[5px] border p-4 bg-background/50">
-                                        <Switch
-                                            className="scale-90"
-                                            checked={!!form.is_active}
-                                            onCheckedChange={(checked) =>
-                                                setForm({
-                                                    ...form,
-                                                    is_active: checked
-                                                })
-                                            }
-                                        />
-
-                                        <span className={cn(
-                                            "px-3 py-1 rounded-[3px] text-xs font-semibold",
-                                            getStatusColor(form.is_active ? "active" : "inactive", "toggle")
-                                        )}>
-                                            {form.is_active ? "Active" : "Inactive"}
-                                        </span>
+                                {sheetTab === "history" && (
+                                    <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
+                                        <p className="text-sm text-muted-foreground">No history logs available yet.</p>
                                     </div>
                                 )}
                             </div>
+                        ) : (
+                            <div className="space-y-5 mt-6">
+                                <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-5">
+                                    <h3 className="text-[11px] font-semibold text-primary/90 uppercase tracking-[0.16em] border-b border-primary/50 pb-2">
+                                        Vendor Details
+                                    </h3>
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Name*</Label>
+                                            <Input
+                                                className={submitted && formErrors.name ? "border-red-500 h-10" : "h-10"}
+                                                value={form.name}
+                                                onChange={(e) => {
+                                                    setForm({
+                                                        ...form,
+                                                        name: normalizeTextInput(e.target.value),
+                                                    });
+                                                    setFormErrors((p) => ({ ...p, name: "" }));
+                                                }}
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Vendor Type</Label>
+                                            <Input
+                                                className="h-10"
+                                                value={form.vendor_type ?? ""}
+                                                onChange={(e) =>
+                                                    e.target.value.length < 50 &&
+                                                    setForm({
+                                                        ...form,
+                                                        vendor_type: normalizeTextInput(e.target.value),
+                                                    })
+                                                }
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">PAN</Label>
+                                            <Input
+                                                className="h-10"
+                                                value={form.pan_no ?? ""}
+                                                onChange={(e) =>
+                                                    e.target.value.length < 20 &&
+                                                    setForm({
+                                                        ...form,
+                                                        pan_no: normalizeTextInput(e.target.value),
+                                                    })
+                                                }
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">GST</Label>
+                                            <Input
+                                                className="h-10"
+                                                value={form.gst_no ?? ""}
+                                                onChange={(e) =>
+                                                    e.target.value.length < 20 &&
+                                                    setForm({
+                                                        ...form,
+                                                        gst_no: normalizeTextInput(e.target.value),
+                                                    })
+                                                }
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Contact No*</Label>
+                                            <Input
+                                                className={submitted && formErrors.contact_no ? "border-red-500 h-10" : "h-10"}
+                                                value={form.contact_no ?? ""}
+                                                onChange={(e) => {
+                                                    setForm({
+                                                        ...form,
+                                                        contact_no: normalizeTextInput(e.target.value.trim()),
+                                                    });
+                                                    setFormErrors((p) => ({ ...p, contact_no: "" }));
+                                                }}
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Email</Label>
+                                            <Input
+                                                className="h-10"
+                                                value={form.email_id ?? ""}
+                                                onChange={(e) =>
+                                                    e.target.value.length < 150 &&
+                                                    setForm({
+                                                        ...form,
+                                                        email_id: normalizeTextInput(e.target.value),
+                                                    })
+                                                }
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2 md:col-span-2">
+                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Address*</Label>
+                                            <Input
+                                                className={submitted && formErrors.address ? "border-red-500 h-10" : "h-10"}
+                                                value={form.address ?? ""}
+                                                onChange={(e) => {
+                                                    setForm({
+                                                        ...form,
+                                                        address: normalizeTextInput(e.target.value),
+                                                    });
+                                                    setFormErrors((p) => ({ ...p, address: "" }));
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {mode === "edit" && (
+                                        <div className="flex items-center gap-3 rounded-[5px] border border-primary/50 p-4 bg-accent/20">
+                                            <Switch
+                                                className="scale-90"
+                                                checked={!!form.is_active}
+                                                onCheckedChange={(checked) =>
+                                                    setForm({
+                                                        ...form,
+                                                        is_active: checked
+                                                    })
+                                                }
+                                            />
+
+                                            <span className={cn(
+                                                "px-3 py-1 rounded-[3px] text-xs font-bold uppercase tracking-wider",
+                                                getStatusColor(form.is_active ? "active" : "inactive", "toggle")
+                                            )}>
+                                                {form.is_active ? "Active" : "Inactive"}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         )}
 
-                        <div className="flex justify-end gap-3 pt-3 border-t border-border mt-4">
+                        <div className="flex justify-end gap-3 pt-6 border-t border-border mt-6">
                             {mode === "view" ? (
                                 <Button
                                     variant="heroOutline"
@@ -716,7 +747,7 @@ export default function VendorsManagement() {
                                         <Button variant="hero" onClick={handleSave}>
                                             {mode === "add"
                                                 ? "Create Vendor"
-                                                : "Save Changes"}
+                                                : "Update"}
                                         </Button>
                                     )}
                                 </>
@@ -725,27 +756,6 @@ export default function VendorsManagement() {
                     </motion.div>
                 </SheetContent>
             </Sheet>
-        </div>
-    );
-}
-
-/* ---------------- Helpers ---------------- */
-function VendorViewSection({ title, children }: { title: string; children: React.ReactNode }) {
-    return (
-        <div className="space-y-4">
-            <h3 className="text-xs font-bold text-primary uppercase tracking-wider border-b border-primary/20 pb-1">{title}</h3>
-            {children}
-        </div>
-    );
-}
-
-function DetailRow({ label, value }: { label: string; value: string | number | null | undefined }) {
-    return (
-        <div className="space-y-1">
-            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</div>
-            <div className="text-sm font-semibold text-foreground px-0.5">
-                {value || "—"}
-            </div>
         </div>
     );
 }

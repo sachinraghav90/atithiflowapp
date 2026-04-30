@@ -536,7 +536,7 @@ export default function RoomTypeBasePriceManagement() {
 
                         <div className="space-y-5 mt-6">
                             <div className="space-y-1.5">
-                                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Room Category Name</Label>
+                                <Label className="text-xs font-medium text-muted-foreground">Room Category Name</Label>
                                 {mode === "view" || (mode === "edit" && selectedRow?.system_generated) ? (
                                     <p className="text-sm font-semibold text-foreground py-1 px-0.5">
                                         {selectedRow?.room_category_name || "—"}
@@ -553,7 +553,7 @@ export default function RoomTypeBasePriceManagement() {
  
                             <div className="grid grid-cols-2 gap-6">
                                 <div className="space-y-1.5">
-                                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">Bed Type</Label>
+                                    <Label className="text-xs font-medium text-muted-foreground block">Bed Type</Label>
                                     {mode === "view" || (mode === "edit" && selectedRow?.system_generated) ? (
                                         <p className="text-sm font-semibold text-foreground py-1 px-0.5">
                                             {selectedRow?.bed_type_name || "—"}
@@ -572,7 +572,7 @@ export default function RoomTypeBasePriceManagement() {
                                     )}
                                 </div>
                                 <div className="space-y-1.5">
-                                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">AC Type</Label>
+                                    <Label className="text-xs font-medium text-muted-foreground block">AC Type</Label>
                                     {mode === "view" || (mode === "edit" && selectedRow?.system_generated) ? (
                                         <p className="text-sm font-semibold text-foreground py-1 px-0.5">
                                             {selectedRow?.ac_type_name || "—"}
@@ -594,7 +594,7 @@ export default function RoomTypeBasePriceManagement() {
 
  
                             <div className="space-y-2 pt-4 border-t border-border">
-                                <Label className="text-xs uppercase tracking-wider">Base Price</Label>
+                                <Label className="text-xs">Base Price</Label>
                                 {mode === "view" ? (
                                     <p className="text-sm font-semibold text-foreground py-1 px-0.5">
                                         ₹ {selectedRow?.base_price || "0.00"}

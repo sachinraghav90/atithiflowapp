@@ -1,7 +1,11 @@
+import { Button } from "@/components/ui/button";
+import { DataGrid, DataGridCell, DataGridHead, DataGridHeader, DataGridRow } from "@/components/ui/data-grid";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Button } from "@/components/ui/button";
+import { ValidationTooltip } from "@/components/ui/validation-tooltip";
+import { cn } from "@/lib/utils";
+import { PlusCircle, Trash2 } from "lucide-react";
 
 type BankAccount = {
     id?: number;
@@ -108,9 +112,9 @@ export default function PropertyBank({
     };
 
     return (
-        <div className="space-y-4 border border-border rounded-[5px] p-4 bg-card">
+        <div className="space-y-4 rounded-[5px] border border-border/40 bg-background p-4 shadow-sm">
 
-            <h3 className="font-semibold text-sm text-primary uppercase tracking-wider">
+            <h3 className="text-xs font-semibold text-primary/90 uppercase tracking-[0.16em]">
                 Bank Details (Optional)
             </h3>
 
@@ -124,97 +128,117 @@ export default function PropertyBank({
 
                 <Label className="text-xs font-medium text-muted-foreground">Add Bank Details</Label>
 
-                {!viewMode && hasBankDetails && (
-                    <Button
-                        size="sm"
-                        variant="heroOutline"
-                        className="h-8 text-xs"
-                        onClick={addBankAccount}
-                    >
-                        + Add Account
-                    </Button>
-                )}
-
             </div>
             {hasBankDetails && (
-                <div className="border border-border rounded-[3px] overflow-hidden">
+                <div className="editable-grid-compact overflow-hidden rounded-[5px] border border-border bg-background/50">
+                    <div className="grid-scroll-x w-full overflow-x-auto border-b border-border bg-background/50">
+                        <div className="w-full min-w-[860px]">
+                            <DataGrid>
+                                <DataGridHeader>
+                                    <DataGridHead>Bank Name *</DataGridHead>
+                                    <DataGridHead>Account Holder *</DataGridHead>
+                                    <DataGridHead>Account Number *</DataGridHead>
+                                    <DataGridHead>IFSC Code *</DataGridHead>
+                                    {!viewMode && bankAccounts.length > 1 && (
+                                        <DataGridHead className="w-16 text-center">Action</DataGridHead>
+                                    )}
+                                </DataGridHeader>
 
-                    {/* ===== TABLE HEADER ===== */}
-                    <div className="grid grid-cols-[1fr_1fr_1fr_1fr_.2fr] bg-muted/50 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b">
+                                <tbody>
+                                    {bankAccounts.map((bank, index) => (
+                                        <DataGridRow key={bank.id ?? index}>
+                                            <DataGridCell>
+                                                <TableInput
+                                                    value={bank.bank_name}
+                                                    error={errors[`bank_${index}_bank_name`]}
+                                                    viewMode={viewMode}
+                                                    onChange={(v) =>
+                                                        updateBankField(index, "bank_name", v)
+                                                    }
+                                                    maxLength={150}
+                                                />
+                                            </DataGridCell>
 
-                        <div className="p-3 text-left">Bank Name *</div>
-                        <div className="p-3 text-left">Account Holder *</div>
-                        <div className="p-3 text-left">Account Number *</div>
-                        <div className="p-3 text-left">IFSC Code *</div>
-                        <div className="p-3 text-right"></div>
+                                            <DataGridCell>
+                                                <TableInput
+                                                    value={bank.account_holder_name}
+                                                    error={errors[`bank_${index}_account_holder_name`]}
+                                                    viewMode={viewMode}
+                                                    onChange={(v) =>
+                                                        updateBankField(index, "account_holder_name", v)
+                                                    }
+                                                    maxLength={150}
+                                                />
+                                            </DataGridCell>
 
+                                            <DataGridCell>
+                                                <TableInput
+                                                    value={bank.account_number}
+                                                    error={errors[`bank_${index}_account_number`]}
+                                                    viewMode={viewMode}
+                                                    onChange={(v) =>
+                                                        updateBankField(index, "account_number", v)
+                                                    }
+                                                    maxLength={50}
+                                                />
+                                            </DataGridCell>
+
+                                            <DataGridCell>
+                                                <TableInput
+                                                    value={bank.ifsc_code}
+                                                    error={errors[`bank_${index}_ifsc_code`]}
+                                                    viewMode={viewMode}
+                                                    transform={(v) => v.toUpperCase()}
+                                                    onChange={(v) =>
+                                                        updateBankField(index, "ifsc_code", v)
+                                                    }
+                                                    maxLength={20}
+                                                />
+                                            </DataGridCell>
+
+                                            {!viewMode && bankAccounts.length > 1 && (
+                                                <DataGridCell className="text-center">
+                                                    <Button
+                                                        type="button"
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="editable-grid-remove-btn h-10 w-10 text-destructive hover:text-destructive/80 transition-colors mx-auto"
+                                                        aria-label="Remove bank account row"
+                                                        onClick={() => removeBankAccount(index)}
+                                                    >
+                                                        <Trash2 className="w-5 h-5" />
+                                                    </Button>
+                                                </DataGridCell>
+                                            )}
+                                        </DataGridRow>
+                                    ))}
+
+                                    {!bankAccounts.length && (
+                                        <DataGridRow>
+                                            <DataGridCell
+                                                colSpan={!viewMode && bankAccounts.length > 1 ? 5 : 4}
+                                                className="text-center text-muted-foreground"
+                                            >
+                                                No bank accounts added
+                                            </DataGridCell>
+                                        </DataGridRow>
+                                    )}
+                                </tbody>
+                            </DataGrid>
+                        </div>
                     </div>
 
-                    {/* ===== TABLE BODY ===== */}
-                    {bankAccounts.map((bank, index) => (
-
-                        <div
-                            key={index}
-                            className="grid grid-cols-[1fr_1fr_1fr_1fr_.2fr] border-b last:border-b-0 items-center"
-                        >
-
-                            <TableInput
-                                value={bank.bank_name}
-                                error={errors[`bank_${index}_bank_name`]}
-                                viewMode={viewMode}
-                                onChange={(v) =>
-                                    updateBankField(index, "bank_name", v)
-                                }
-                                maxLength={150}
-                            />
-
-                            <TableInput
-                                value={bank.account_holder_name}
-                                error={errors[`bank_${index}_account_holder_name`]}
-                                viewMode={viewMode}
-                                onChange={(v) =>
-                                    updateBankField(index, "account_holder_name", v)
-                                }
-                                maxLength={150}
-                            />
-
-                            <TableInput
-                                value={bank.account_number}
-                                error={errors[`bank_${index}_account_number`]}
-                                viewMode={viewMode}
-                                onChange={(v) =>
-                                    updateBankField(index, "account_number", v)
-                                }
-                                maxLength={50}
-                            />
-
-                            <TableInput
-                                value={bank.ifsc_code}
-                                error={errors[`bank_${index}_ifsc_code`]}
-                                viewMode={viewMode}
-                                transform={(v) => v.toUpperCase()}
-                                onChange={(v) =>
-                                    updateBankField(index, "ifsc_code", v)
-                                }
-                                maxLength={20}
-                            />
-
-                            <div className="flex items-center justify-end pr-3">
-                                {!viewMode && bankAccounts.length > 1 && (
-                                    <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                        onClick={() => removeBankAccount(index)}
-                                    >
-                                        ✕
-                                    </Button>
-                                )}
-                            </div>
-
+                    {!viewMode && (
+                        <div className="editable-grid-footer p-3 bg-muted/10">
+                            <button
+                                type="button"
+                                className="flex items-center gap-1.5 text-primary hover:underline text-sm font-semibold transition-colors"
+                                onClick={addBankAccount}
+                            >
+                                <PlusCircle className="w-4 h-4" /> Add Account
+                            </button>
                         </div>
-                    ))}
-
+                    )}
                 </div>
             )}
 
@@ -235,26 +259,17 @@ function TableInput({
 
     return (
 
-        /* OUTER CELL (same as laundry grid) */
-        <div className="border-r p-1">
-
-            <input
+        <ValidationTooltip
+            isValid={!error}
+            message={error?.message || "Required field"}
+        >
+            <Input
                 disabled={viewMode}
                 value={value}
-                className={`
-                    w-full
-                    h-8
-                    px-2
-                    text-sm
-                    rounded
-                    border
-                    border-input
-                    bg-background
-                    outline-none
-                    focus:ring-1
-                    focus:ring-primary
-                    ${error ? "border-red-500" : ""}
-                `}
+                className={cn(
+                    "h-9 w-full rounded-[3px] border border-input bg-background px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary",
+                    error && "border-red-500"
+                )}
                 onChange={(e) => {
 
                     let val = e.target.value;
@@ -266,8 +281,7 @@ function TableInput({
                 }}
                 maxLength={maxLength}
             />
-
-        </div>
+        </ValidationTooltip>
 
     );
 }

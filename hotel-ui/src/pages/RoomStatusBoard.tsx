@@ -185,7 +185,7 @@ export default function RoomStatusBoard() {
                                         opacity-0 pointer-events-none
                                         group-hover:opacity-100 group-hover:pointer-events-auto
                                         transition
-                                        "
+                                      "
                         >
                             <p className="text-xs font-medium mb-2 text-muted-foreground">
                                 Room Status

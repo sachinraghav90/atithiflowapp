@@ -35,6 +35,9 @@ import { ValidationTooltip } from "@/components/ui/validation-tooltip";
 import { GridBadge } from "@/components/ui/grid-badge";
 import { formatReadableLabel } from "@/utils/formatString";
 import { formatAppDate } from "@/utils/dateFormat";
+import PropertyViewSection from "@/components/PropertyViewSection";
+import ViewField from "@/components/ViewField";
+import { motion } from "framer-motion";
 
 type InventoryItem = {
     id: string;
@@ -103,6 +106,7 @@ export default function InventoryMaster() {
     const [statusFilter, setStatusFilter] = useState("");
 
     const [mode, setMode] = useState<"view" | "edit" | "add" | null>(null);
+    const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
     const [selected, setSelected] = useState<InventoryItem | null>(null);
 
     const [form, setForm] = useState<InventoryForm>({
@@ -381,11 +385,13 @@ export default function InventoryMaster() {
             name: item.name,
             is_active: item.is_active,
         });
+        setSheetTab("summary");
         setMode("edit");
     };
 
     const openView = (item: InventoryItem) => {
         setSelected(item);
+        setSheetTab("summary");
         setMode("view");
     };
 
@@ -485,7 +491,7 @@ export default function InventoryMaster() {
                     <div className="flex items-center gap-3">
                         {myProperties?.properties && myProperties.properties.length > 0 && (
                             <div className="flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
-                                <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border uppercase">
+                                <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border tracking-wide">
                                     Property
                                 </span>
                                 <NativeSelect
@@ -880,176 +886,147 @@ export default function InventoryMaster() {
 
                 {/* EDIT/VIEW SHEET */}
                 <Sheet open={mode === "edit" || mode === "view"} onOpenChange={(open) => !open && setMode(null)}>
-                    <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto bg-background border-l border-border/50">
-                        <div className="flex flex-col h-full">
-                            <SheetHeader className="border-b border-border/50 pb-5 mb-6">
-                                <div className="flex items-center gap-4">
-                                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary shadow-sm">
-                                        {mode === "view" ? <Package className="w-5 h-5" /> : <Pencil className="w-5 h-5" />}
-                                    </div>
-                                    <div className="space-y-0.5">
-                                        <SheetTitle className="text-xl font-bold text-foreground">
-                                            {mode === "view" ? "Master Inventory Summary" : "Update Master Inventory Item"}
-                                            {selected?.id && <span className="ml-2 text-primary font-semibold">[#{formatModuleDisplayId("inventory", selected.id)}]</span>}
-                                        </SheetTitle>
-                                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
-                                            {mode === "view" 
-                                                ? `Inventory configuration details for #${selected?.id ? formatModuleDisplayId("inventory", selected.id) : "..."}` 
-                                                : "Update existing inventory item details."}
-                                        </p>
-                                    </div>
+                    <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto bg-background">
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="space-y-1"
+                        >
+                            <SheetHeader className="mb-6">
+                                <div className="space-y-1">
+                                    <SheetTitle className="text-xl font-bold">
+                                        {mode === "view" ? `Master Inventory [${selected?.id ? `#${formatModuleDisplayId("inventory", selected.id)}` : "..."}]` : mode === "edit" ? `Update Item [${selected?.id ? `#${formatModuleDisplayId("inventory", selected.id)}` : "..."}]` : "Add Item"}
+                                    </SheetTitle>
+                                    <p className="text-xs text-muted-foreground font-medium tracking-wider">
+                                        {mode === "view" ? "Inventory configuration details" : "Modify existing inventory item details."}
+                                    </p>
                                 </div>
                             </SheetHeader>
 
-                            <div className="flex-1 overflow-y-auto pr-2 -mr-2">
-                                {mode === "view" && selected && (
-                                    <div className="space-y-6">
-                                        {/* Highlight Card */}
-                                        <div className="flex items-center gap-4 p-5 rounded-xl border border-primary/10 bg-accent shadow-sm">
-                                            <div className="h-24 w-24 rounded-2xl bg-primary/5 flex items-center justify-center text-primary border border-primary/10 shadow-inner">
-                                                <Package className="w-12 h-12" />
-                                            </div>
-                                            <div className="flex-1">
-                                                <h3 className="text-lg font-bold text-foreground leading-tight">{selected.name}</h3>
-                                                <p className="text-sm text-muted-foreground font-medium">Inventory #{formatModuleDisplayId("inventory", selected.id)}</p>
-                                            </div>
-                                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-50 text-green-700 border border-green-100">
-                                                <div className="w-2 h-2 rounded-full bg-green-500" />
-                                                <span className="text-[10px] font-bold uppercase tracking-widest">{selected.is_active ? "Active" : "Inactive"}</span>
-                                            </div>
-                                        </div>
-
-                                        {/* Details Grid */}
-                                        <div className="grid grid-cols-2 gap-px bg-primary/10 border border-primary/10 rounded-xl overflow-hidden bg-accent">
-                                            <div className="p-4 flex items-start gap-3 bg-accent">
-                                                <div className="mt-0.5 h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-500 border border-slate-100">
-                                                    <Building2 className="w-4 h-4" />
-                                                </div>
-                                                <div className="space-y-0.5">
-                                                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Inventory Type</Label>
-                                                    <p className="text-sm font-semibold text-foreground">
-                                                        {formatReadableLabel(selected.inventory_type) || "—"}
-                                                    </p>
-                                                </div>
-                                            </div>
-
-                                            <div className="p-4 flex items-start gap-3 bg-accent">
-                                                <div className="mt-0.5 h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-500 border border-slate-100">
-                                                    <Wrench className="w-4 h-4" />
-                                                </div>
-                                                <div className="space-y-0.5">
-                                                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Use Type</Label>
-                                                    <p className="text-sm font-semibold text-foreground capitalize">
-                                                        {selected.use_type}
-                                                    </p>
-                                                </div>
-                                            </div>
-
-                                            <div className="p-4 flex items-start gap-3 bg-accent border-t border-primary/10">
-                                                <div className="mt-0.5 h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-500 border border-slate-100">
-                                                    <Calendar className="w-4 h-4" />
-                                                </div>
-                                                <div className="space-y-0.5">
-                                                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Created On</Label>
-                                                    <p className="text-sm font-semibold text-foreground">
-                                                        {formatAppDate(selected.created_on)}
-                                                    </p>
-                                                </div>
-                                            </div>
-
-                                            <div className="p-4 flex items-start gap-3 bg-accent border-t border-primary/10">
-                                                <div className="mt-0.5 h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-500 border border-slate-100">
-                                                    <ShieldCheck className="w-4 h-4" />
-                                                </div>
-                                                <div className="space-y-0.5">
-                                                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Status</Label>
-                                                    <div className="pt-0.5">
-                                                        <GridBadge status={selected.is_active ? "active" : "inactive"} statusType="toggle">
-                                                            {selected.is_active ? "Active" : "Inactive"}
-                                                        </GridBadge>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
+                            {mode === "view" && selected && (
+                                <div className="space-y-6">
+                                    {/* Sheet Tabs */}
+                                    <div className="border-b border-border flex">
+                                        <button
+                                            onClick={() => setSheetTab("summary")}
+                                            className={cn(
+                                                "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
+                                                sheetTab === "summary"
+                                                    ? "border-primary text-primary"
+                                                    : "border-transparent text-muted-foreground hover:text-foreground"
+                                            )}
+                                        >
+                                            Summary
+                                        </button>
+                                        <button
+                                            onClick={() => setSheetTab("history")}
+                                            className={cn(
+                                                "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                                sheetTab === "history"
+                                                    ? "border-primary text-primary"
+                                                    : "border-transparent text-muted-foreground hover:text-foreground"
+                                            )}
+                                        >
+                                            History
+                                        </button>
                                     </div>
-                                )}
 
-                                {mode === "edit" && (
-                                    <div className="space-y-6 bg-accent p-6 rounded-xl border border-primary/10 shadow-sm">
+                                    {sheetTab === "summary" && (
+                                        <PropertyViewSection title="Inventory Details" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                            <ViewField label="Name" value={selected.name} className="sm:col-span-2" />
+                                            <ViewField label="Inventory Type" value={formatReadableLabel(selected.inventory_type)} />
+                                            <ViewField label="Use Type" value={selected.use_type} className="capitalize" />
+                                            <ViewField label="Status" value={selected.is_active ? "Active" : "Inactive"} />
+                                            <ViewField label="Created On" value={formatAppDate(selected.created_on)} />
+                                        </PropertyViewSection>
+                                    )}
+
+                                    {sheetTab === "history" && (
+                                        <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
+                                            <p className="text-sm text-muted-foreground text-center">No history logs available yet.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {mode === "edit" && (
+                                <div className="space-y-6 rounded-[5px] border border-border/40 bg-background p-4 shadow-sm">
+                                    <h3 className="text-[11px] font-semibold text-primary/90 tracking-wider border-b border-border/40 pb-2 mb-3">
+                                        Edit Inventory Details
+                                    </h3>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold text-muted-foreground tracking-wide" htmlFor="inventory-name">Item Name *</Label>
+                                        <Input
+                                            id="inventory-name"
+                                            name="inventory_name"
+                                            value={form.name}
+                                            placeholder="e.g. Bed Sheets"
+                                            className={cn("h-11 border-border shadow-none focus-visible:ring-1 focus-visible:ring-primary", submitted && formErrors.name ? "border-red-500" : "")}
+                                            onChange={(e) => {
+                                                setForm({ ...form, name: normalizeTextInput(e.target.value) })
+                                                setFormErrors(e => ({ ...e, name: "" }))
+                                            }}
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-6">
                                         <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider" htmlFor="inventory-name">Item Name *</Label>
-                                            <Input
-                                                id="inventory-name"
-                                                name="inventory_name"
-                                                value={form.name}
-                                                placeholder="e.g. Bed Sheets"
-                                                className={cn("h-11 border-border shadow-none focus-visible:ring-1 focus-visible:ring-primary", submitted && formErrors.name ? "border-red-500" : "")}
+                                            <Label className="text-xs font-bold text-muted-foreground tracking-wide" htmlFor="inventory-type">Inventory Type *</Label>
+                                            <NativeSelect
+                                                id="inventory-type"
+                                                name="inventory_type_id"
+                                                className={cn("h-11 border border-primary/20 bg-background rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary w-full shadow-none", submitted && formErrors.inventory_type_id ? "border-red-500" : "")}
+                                                value={form.inventory_type_id ?? ""}
                                                 onChange={(e) => {
-                                                    setForm({ ...form, name: normalizeTextInput(e.target.value) })
-                                                    setFormErrors(e => ({ ...e, name: "" }))
+                                                    setForm({ ...form, inventory_type_id: Number(e.target.value) })
+                                                    setFormErrors(e => ({ ...e, inventory_type_id: "" }))
                                                 }}
+                                            >
+                                                <option value="" disabled>Select Type</option>
+                                                {inventoryTypes.map(t => (
+                                                    <option key={t.id} value={t.id}>
+                                                        {t.type}
+                                                    </option>
+                                                ))}
+                                            </NativeSelect>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-bold text-muted-foreground tracking-wide" htmlFor="inventory-use-type">Use Type *</Label>
+                                            <NativeSelect
+                                                id="inventory-use-type"
+                                                name="inventory_use_type"
+                                                className={cn("h-11 border border-primary/20 bg-background rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary w-full shadow-none", submitted && formErrors.use_type ? "border-red-500" : "")}
+                                                value={form.use_type ?? ""}
+                                                onChange={(e) => {
+                                                    setForm({ ...form, use_type: e.target.value })
+                                                    setFormErrors(e => ({ ...e, use_type: "" }))
+                                                }}
+                                            >
+                                                <option value="fix">Fix</option>
+                                                <option value="usable">Usable</option>
+                                            </NativeSelect>
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-2">
+                                        <div className="flex items-center gap-4">
+                                            <Switch
+                                                checked={form?.is_active}
+                                                onCheckedChange={(v) =>
+                                                    setForm({ ...form, is_active: v })
+                                                }
                                             />
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-6">
-                                            <div className="space-y-2">
-                                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider" htmlFor="inventory-type">Inventory Type *</Label>
-                                                <NativeSelect
-                                                    id="inventory-type"
-                                                    name="inventory_type_id"
-                                                    className={cn("h-11 border border-primary/20 bg-background rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary w-full shadow-none", submitted && formErrors.inventory_type_id ? "border-red-500" : "")}
-                                                    value={form.inventory_type_id ?? ""}
-                                                    onChange={(e) => {
-                                                        setForm({ ...form, inventory_type_id: Number(e.target.value) })
-                                                        setFormErrors(e => ({ ...e, inventory_type_id: "" }))
-                                                    }}
-                                                >
-                                                    <option value="" disabled>Select Type</option>
-                                                    {inventoryTypes.map(t => (
-                                                        <option key={t.id} value={t.id}>
-                                                            {t.type}
-                                                        </option>
-                                                    ))}
-                                                </NativeSelect>
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider" htmlFor="inventory-use-type">Use Type *</Label>
-                                                <NativeSelect
-                                                    id="inventory-use-type"
-                                                    name="inventory_use_type"
-                                                    className={cn("h-11 border border-primary/20 bg-background rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary w-full shadow-none", submitted && formErrors.use_type ? "border-red-500" : "")}
-                                                    value={form.use_type ?? ""}
-                                                    onChange={(e) => {
-                                                        setForm({ ...form, use_type: e.target.value })
-                                                        setFormErrors(e => ({ ...e, use_type: "" }))
-                                                    }}
-                                                >
-                                                    <option value="fix">Fix</option>
-                                                    <option value="usable">Usable</option>
-                                                </NativeSelect>
-                                            </div>
-                                        </div>
-
-                                        <div className="pt-2">
-                                            <div className="flex items-center gap-4">
-                                                <Switch
-                                                    checked={form?.is_active}
-                                                    onCheckedChange={(v) =>
-                                                        setForm({ ...form, is_active: v })
-                                                    }
-                                                />
-                                                <div className="space-y-0.5">
-                                                    <Label className="text-sm font-bold text-foreground cursor-pointer" onClick={() => setForm({ ...form, is_active: !form.is_active })}>
-                                                        Mark as Active
-                                                    </Label>
-                                                    <p className="text-xs text-muted-foreground">Inactive items will not be available for use.</p>
-                                                </div>
+                                            <div className="space-y-0.5">
+                                                <Label className="text-sm font-bold text-foreground cursor-pointer" onClick={() => setForm({ ...form, is_active: !form.is_active })}>
+                                                    Mark as Active
+                                                </Label>
+                                                <p className="text-xs text-muted-foreground">Inactive items will not be available for use.</p>
                                             </div>
                                         </div>
                                     </div>
-                                )}
-                            </div>
+                                </div>
+                            )}
 
                             <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-border">
                                 <Button
@@ -1066,11 +1043,11 @@ export default function InventoryMaster() {
                                         className="min-w-[140px]"
                                         onClick={handleForm}
                                     >
-                                        Save Changes
+                                        Update
                                     </Button>
                                 )}
                             </div>
-                        </div>
+                        </motion.div>
                     </SheetContent>
                 </Sheet>
             </section>

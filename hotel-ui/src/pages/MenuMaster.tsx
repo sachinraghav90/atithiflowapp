@@ -18,13 +18,15 @@ import { cn } from "@/lib/utils";
 import MenuMasterBulkSheet from "@/components/MenuMasterBulkSheet";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Download, FilterX, Plus, Pencil, RefreshCcw, UtensilsCrossed, Flame, Clock, User, Calendar, Info, Package, DollarSign, Camera, ClipboardList } from "lucide-react";
+import { Download, FilterX, Plus, Pencil, RefreshCcw, UtensilsCrossed, Flame, Clock, Info, DollarSign, Camera } from "lucide-react";
 import { GridBadge } from "@/components/ui/grid-badge";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { toast } from "react-toastify";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
+import PropertyViewSection from "@/components/PropertyViewSection";
+import ViewField from "@/components/ViewField";
 
 type MenuItem = {
     id: string;
@@ -143,7 +145,9 @@ export default function MenuMaster() {
     const [editGroupName, setEditGroupName] = useState("");
     const [groupErrors, setGroupErrors] = useState<Record<string, string>>({});
     const [groupEditState, setGroupEditState] = useState({});
-    const [bulkOpen, setBulkOpen] = useState(false)
+    const [bulkOpen, setBulkOpen] = useState(false);
+    const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
+    const [isDescExpanded, setIsDescExpanded] = useState(false);
 
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
     const isSuperAdmin = useAppSelector(selectIsSuperAdmin)
@@ -151,7 +155,6 @@ export default function MenuMaster() {
 
     const { 
         myProperties, 
-        isMultiProperty, 
         isInitializing, 
         isLoading: myPropertiesLoading 
     } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
@@ -203,9 +206,6 @@ export default function MenuMaster() {
             name
         };
     }
-
-
-
 
     useEffect(() => {
         if (!form.image) return;
@@ -319,11 +319,15 @@ export default function MenuMaster() {
 
     const openView = (item: MenuItem) => {
         setSelected(item);
+        setSheetTab("summary");
+        setIsDescExpanded(false);
         setMode("view");
     };
 
     const openEdit = (item: MenuItem) => {
         setSelected(item);
+        setSheetTab("summary");
+        setIsDescExpanded(false);
         setForm({
             item_name: item.item_name,
             menuItemGroupId: item.menu_item_group_id,
@@ -381,7 +385,7 @@ export default function MenuMaster() {
     const { permission } = usePermission(pathname)
 
     return (
-        <div className="flex flex-col">
+        <div className="flex flex-col bg-background">
             <section className="p-6 lg:p-8 space-y-6">
 
                 {/* Header */}
@@ -390,7 +394,7 @@ export default function MenuMaster() {
                     {/* LEFT SIDE */}
                     <div className="shrink-0">
                         <h1 className="text-2xl font-bold">Menu Items</h1>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-muted-foreground mt-1">
                             Manage restaurant menu items
                         </p>
                     </div>
@@ -452,11 +456,10 @@ export default function MenuMaster() {
                                         image: null,
                                         description: "",
                                     });
-                                    // setMode("add");
                                     setBulkOpen(true)
                                 }}
                             >
-                                 <Plus className="h-4 w-4 mr-none" /> Add Menu Item
+                                 <Plus className="h-4 w-4 mr-1" /> Add Menu Item
                             </Button>
                         )}
 
@@ -465,7 +468,7 @@ export default function MenuMaster() {
                 </div>
 
 
-                <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
+                <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0 shadow-sm">
                     <div className="w-full">
                         <GridToolbar className="border-b-0">
                             <GridToolbarRow className="gap-2">
@@ -653,7 +656,7 @@ export default function MenuMaster() {
                                                     <Pencil className="w-3.5 h-3.5 mx-auto" />
                                                 </Button>
                                             </TooltipTrigger>
-                                            <TooltipContent>View / Edit Details</TooltipContent>
+                                            <TooltipContent>Update Item</TooltipContent>
                                         </Tooltip>
                                     )}
                                 </>
@@ -666,322 +669,278 @@ export default function MenuMaster() {
 
             {/* VIEW / EDIT / ADD SHEET */}
             <Sheet open={!!mode} onOpenChange={() => setMode(null)}>
-                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
+                <SheetContent side="right" className="w-full lg:max-w-3xl sm:max-w-2xl overflow-y-auto bg-background">
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="space-y-1"
+                        className="space-y-6"
                     >
-                        <SheetHeader className="border-b border-border/50 pb-4 mb-4">
-                            <div className="flex items-start justify-between pr-8">
-                                <div className="flex items-start gap-4">
-                                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary shadow-sm shrink-0 mt-1">
-                                        {mode === "view" ? <UtensilsCrossed className="w-5 h-5" /> : mode === "edit" ? <Pencil className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
-                                    </div>
-                                    <div className="space-y-0.5">
-                                        <SheetTitle className="text-xl font-bold text-foreground">
-                                            {mode === "add" ? "Create Menu Item" : mode === "edit" ? "Update Menu Item" : "Menu Item Summary"}
-                                            {(mode === "view" || mode === "edit") && selected?.id && (
-                                                <span className="ml-2 text-primary font-semibold">[#{formatModuleDisplayId("menu", selected.id)}]</span>
-                                            )}
-                                        </SheetTitle>
-                                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
-                                            {mode === "add" ? "Setup your new food or beverage item" : mode === "edit" ? `Modify existing menu item details for #${formatModuleDisplayId("menu", selected?.id || "")}` : `Detailed summary of menu item configuration for #${formatModuleDisplayId("menu", selected?.id || "")}`}
-                                        </p>
-                                    </div>
-                                </div>
+                        <SheetHeader className="mb-6">
+                            <div className="space-y-1">
+                                <SheetTitle className="text-xl font-bold">
+                                    {mode === "add" ? "Create Menu Item" : mode === "edit" ? `Update Menu Item [${selected?.id ? `#${formatModuleDisplayId("menu", selected.id)}` : "..."}]` : `Menu Item [${selected?.id ? `#${formatModuleDisplayId("menu", selected.id)}` : "..."}]`}
+                                </SheetTitle>
+                                <p className="text-xs text-muted-foreground font-medium tracking-wider">
+                                    {mode === "add" ? "Setup your new food or beverage item" : mode === "edit" ? "Modify existing menu item details" : "Detailed summary of menu item configuration"}
+                                </p>
                             </div>
                         </SheetHeader>
 
+                        {/* Sheet Tabs */}
+                        {mode === "view" && (
+                            <div className="border-b border-border flex">
+                                <button
+                                    onClick={() => setSheetTab("summary")}
+                                    className={cn(
+                                        "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
+                                        sheetTab === "summary"
+                                            ? "border-primary text-primary"
+                                            : "border-transparent text-muted-foreground hover:text-foreground"
+                                    )}
+                                >
+                                    Summary
+                                </button>
+                                <button
+                                    onClick={() => setSheetTab("history")}
+                                    className={cn(
+                                        "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                        sheetTab === "history"
+                                            ? "border-primary text-primary"
+                                            : "border-transparent text-muted-foreground hover:text-foreground"
+                                    )}
+                                >
+                                    History
+                                </button>
+                            </div>
+                        )}
+
                         {/* CONTENT BLOCKS */}
-                        <div className="mt-6">
-                            {mode === "view" && selected && (
-                                <div className="space-y-3">
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
-                                        {/* Row 1: Left: Basic Info | Right: Pricing & Status */}
-                                        <div className="p-[14px] rounded-xl border border-primary/10 bg-accent shadow-sm space-y-3">
-                                            <div className="flex items-center gap-2 text-primary">
-                                                <Info className="w-3.5 h-3.5" />
-                                                <span className="text-[10px] font-bold uppercase tracking-wider">Basic Information</span>
-                                            </div>
-                                            <div className="space-y-3">
-                                                <div className="space-y-1">
-                                                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Item Name</Label>
-                                                    <p className="text-sm font-bold text-foreground py-1.5 px-2.5 bg-background/50 rounded-lg border border-primary/5 shadow-sm">{selected.item_name}</p>
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Menu Group</Label>
-                                                    <p className="text-xs font-semibold text-foreground py-1.5 px-2.5 bg-background/50 rounded-lg border border-primary/5 shadow-sm">{selected.menu_item_group || "General"}</p>
-                                                </div>
-                                            </div>
-                                        </div>
+                        {mode === "view" && selected && (
+                            <div className="space-y-3">
+                                {sheetTab === "summary" && (
+                                    <div className="space-y-3">
+                                        <PropertyViewSection title="Item Details" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2">
+                                            <ViewField label="Name" value={selected.item_name} />
+                                            <ViewField label="Menu Group" value={selected.menu_item_group || "General"} />
+                                            <ViewField label="Dietary Type" value={selected.is_veg ? "Veg" : "Non-Veg"} />
+                                            <ViewField label="Price" value={`₹ ${selected.price}`} />
+                                            <ViewField label="Prep Time" value={selected.prep_time ? `${selected.prep_time} mins` : "—"} />
+                                            <ViewField label="Status" value={selected.is_active ? "Active" : "Inactive"} />
+                                        </PropertyViewSection>
 
-                                        <div className="flex flex-col gap-3">
-                                            {/* Pricing & Status Combined */}
-                                            <div className="p-[14px] rounded-xl border border-primary/10 bg-accent shadow-sm space-y-3 flex-1">
-                                                <div className="flex items-center gap-2 text-primary">
-                                                    <DollarSign className="w-3.5 h-3.5" />
-                                                    <span className="text-[10px] font-bold uppercase tracking-wider">Pricing & Status</span>
-                                                </div>
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    <div className="space-y-1">
-                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Price</Label>
-                                                        <p className="text-sm font-bold text-primary py-1.5 px-2.5 bg-background/50 rounded-lg border border-primary/5 shadow-sm">₹{selected.price}</p>
+                                        <PropertyViewSection title="Description & Media" className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] font-bold text-muted-foreground tracking-wide">Item Description</Label>
+                                                <div className="relative aspect-video rounded-lg bg-accent/30 border border-primary/50 overflow-hidden flex flex-col">
+                                                    <div className={cn(
+                                                        "flex-1 p-3 text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap overflow-y-auto scrollbar-thin",
+                                                        !isDescExpanded && selected.description && selected.description.length > 150 ? "line-clamp-4" : ""
+                                                    )}>
+                                                        {selected.description || "No description provided for this menu item."}
                                                     </div>
-                                                    <div className="space-y-1">
-                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Prep Time</Label>
-                                                        <p className="text-xs font-semibold text-foreground py-1.5 px-2.5 bg-background/50 rounded-lg border border-primary/5 shadow-sm">{selected.prep_time ? `${selected.prep_time} mins` : "—"}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="grid grid-cols-2 gap-3 pt-2.5 border-t border-primary/5">
-                                                    <div className="space-y-1">
-                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Dietary Type</Label>
-                                                        <div className="pt-0.5">
-                                                            <GridBadge status={selected.is_veg ? "veg" : "non-veg"} statusType="menuType" className="h-7 px-3 text-[10px] font-bold">
-                                                                {selected.is_veg ? "Veg" : "Non-Veg"}
-                                                            </GridBadge>
-                                                        </div>
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Status</Label>
-                                                        <div className="pt-0.5">
-                                                            <GridBadge status={selected.is_active ? "active" : "inactive"} statusType="toggle" className="h-7 px-3 text-[10px] font-bold">
-                                                                {selected.is_active ? "Active" : "Inactive"}
-                                                            </GridBadge>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Row 2: Left: Description | Right: Image */}
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
-                                        <div className="p-[14px] rounded-xl border border-primary/10 bg-accent shadow-sm flex flex-col space-y-3">
-                                            <div className="flex items-center gap-2 text-primary shrink-0">
-                                                <ClipboardList className="w-3.5 h-3.5" />
-                                                <span className="text-[10px] font-bold uppercase tracking-wider">Item Description</span>
-                                            </div>
-                                            <div className="flex-1 p-3 rounded-lg border border-primary/5 bg-background/50 min-h-[160px]">
-                                                <p className="text-xs text-muted-foreground italic leading-relaxed whitespace-pre-wrap">
-                                                    {selected.description || "No description provided for this menu item."}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div className="p-[14px] rounded-xl border border-primary/10 bg-accent shadow-sm flex flex-col space-y-3">
-                                            <div className="flex items-center gap-2 text-primary shrink-0">
-                                                <Camera className="w-3.5 h-3.5" />
-                                                <span className="text-[10px] font-bold uppercase tracking-wider">Item Image</span>
-                                            </div>
-                                            <div 
-                                                className="flex-1 relative min-h-[160px] rounded-lg overflow-hidden border border-primary/5 bg-background shadow-inner cursor-zoom-in group"
-                                                onClick={() => setIsImagePreviewOpen(true)}
-                                            >
-                                                <img
-                                                    src={`${import.meta.env.VITE_API_URL}/menu/${selected.id}/image`}
-                                                    alt={selected.item_name}
-                                                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                                    onError={(e) => { e.currentTarget.src = "https://placehold.co/400x225?text=Preview+Unavailable"; }}
-                                                />
-                                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                                    <div className="bg-white/90 p-2 rounded-full shadow-lg">
-                                                        <Plus className="w-5 h-5 text-primary" />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex justify-end gap-3 pt-2">
-                                        <Button variant="heroOutline" size="default" className="px-6 shadow-sm" onClick={() => setMode(null)}>
-                                            Close
-                                        </Button>
-                                    </div>
-                                </div>
-                            )}
-                            {(mode === "add" || mode === "edit") && (
-                                <div className="space-y-3">
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
-                                        {/* Row 1: Left: Basic Info (Stacked) | Right: Pricing + Status (Stacked) */}
-                                        <div className="p-3 rounded-xl border border-primary/10 bg-accent shadow-sm space-y-3">
-                                            <div className="flex items-center gap-2 text-primary">
-                                                <Info className="w-3.5 h-3.5" />
-                                                <span className="text-[10px] font-bold uppercase tracking-wider">Basic Information</span>
-                                            </div>
-                                            <div className="space-y-2.5">
-                                                <div className="space-y-1">
-                                                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Item Name*</Label>
-                                                    <Input
-                                                        placeholder="e.g. Chocolate Brownie"
-                                                        className={cn("h-9 bg-background shadow-sm text-xs", submitted && formErrors.item_name ? "border-red-500 ring-red-50" : "border-primary/10")}
-                                                        value={form.item_name}
-                                                        onChange={(e) => {
-                                                            setForm({ ...form, item_name: e.target.value });
-                                                            setFormErrors(prev => ({ ...prev, item_name: "" }));
-                                                        }}
-                                                    />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Menu Group*</Label>
-                                                    <NativeSelect
-                                                        className={cn("h-9 bg-background shadow-sm text-xs", submitted && formErrors.menuItemGroupId ? "border-red-500 ring-red-50" : "border-primary/10")}
-                                                        value={form.menuItemGroupId}
-                                                        onChange={(e) => setForm({ ...form, menuItemGroupId: e.target.value })}
-                                                    >
-                                                        <option value="">Select Group</option>
-                                                        {menuItemGroups?.data?.map((g: any) => (
-                                                            <option key={g.id} value={g.id}>{g.name}</option>
-                                                        ))}
-                                                    </NativeSelect>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex flex-col gap-3">
-                                            {/* Pricing & Prep */}
-                                            <div className="p-3 rounded-xl border border-primary/10 bg-accent shadow-sm space-y-3">
-                                                <div className="flex items-center gap-2 text-primary">
-                                                    <Clock className="w-3.5 h-3.5" />
-                                                    <span className="text-[10px] font-bold uppercase tracking-wider">Pricing & Preparation</span>
-                                                </div>
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    <div className="space-y-1">
-                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Price (₹)*</Label>
-                                                        <Input
-                                                            type="number"
-                                                            placeholder="0.00"
-                                                            className={cn("h-9 bg-background shadow-sm text-xs", submitted && formErrors.price ? "border-red-500 ring-red-50" : "border-primary/10")}
-                                                            value={form.price}
-                                                            onChange={(e) => {
-                                                                setForm({ ...form, price: normalizeNumberInput(e.target.value) });
-                                                                setFormErrors(prev => ({ ...prev, price: "" }));
-                                                            }}
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-1">
-                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Prep Time (mins)</Label>
-                                                        <Input
-                                                            type="number"
-                                                            placeholder="e.g. 15"
-                                                            className={cn("h-9 bg-background shadow-sm text-xs", submitted && formErrors.prep_time ? "border-red-500 ring-red-50" : "border-primary/10")}
-                                                            value={form.prep_time}
-                                                            onChange={(e) => setForm({ ...form, prep_time: e.target.value === "" ? "" : Number(e.target.value) })}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            {/* Status & Type */}
-                                            <div className="p-3 rounded-xl border border-primary/10 bg-accent shadow-sm space-y-3">
-                                                <div className="flex items-center gap-2 text-primary">
-                                                    <Flame className="w-3.5 h-3.5" />
-                                                    <span className="text-[10px] font-bold uppercase tracking-wider">Status & Type</span>
-                                                </div>
-                                                <div className="flex items-center gap-6">
-                                                    <div className="flex items-center gap-2.5">
-                                                        <Switch
-                                                            className="scale-90"
-                                                            checked={form.is_active}
-                                                            onCheckedChange={(v) => setForm({ ...form, is_active: v })}
-                                                        />
-                                                        <Label className="text-[11px] font-medium cursor-pointer text-foreground/80">Active</Label>
-                                                    </div>
-                                                    <div className="flex items-center gap-2.5">
-                                                        <Switch
-                                                            className="scale-90"
-                                                            checked={form.is_veg}
-                                                            onCheckedChange={(v) => setForm({ ...form, is_veg: v })}
-                                                        />
-                                                        <Label className="text-[11px] font-medium cursor-pointer text-foreground/80">Pure Veg</Label>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Row 2: Left: Description | Right: Image */}
-                                        <div className="p-3 rounded-xl border border-primary/10 bg-accent shadow-sm space-y-3 flex flex-col">
-                                            <div className="flex items-center gap-2 text-primary">
-                                                <ClipboardList className="w-3.5 h-3.5" />
-                                                <span className="text-[10px] font-bold uppercase tracking-wider">Item Description</span>
-                                            </div>
-                                            <div className="flex-1 flex flex-col space-y-1.5">
-                                                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Short Description</Label>
-                                                <div className="relative flex-1">
-                                                    <textarea
-                                                        className="w-full h-full rounded-lg border border-primary/10 px-3 py-2 text-xs bg-background focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-muted-foreground/40 shadow-sm resize-none min-h-[140px]"
-                                                        placeholder="Briefly describe the item's ingredients or preparation..."
-                                                        maxLength={255}
-                                                        value={form.description}
-                                                        onChange={(e) => setForm({ ...form, description: e.target.value })}
-                                                    />
-                                                    <div className="absolute bottom-2 right-2.5 px-1.5 py-0.5 bg-background/80 backdrop-blur-sm rounded text-[10px] font-bold text-muted-foreground/60 select-none pointer-events-none">
-                                                        {form.description?.length || 0}/255
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="p-3 rounded-xl border border-primary/10 bg-accent shadow-sm space-y-3 flex flex-col">
-                                            <div className="flex items-center gap-2 text-primary">
-                                                <Camera className="w-3.5 h-3.5" />
-                                                <span className="text-[10px] font-bold uppercase tracking-wider">Item Image</span>
-                                            </div>
-                                            <div className="flex-1 flex flex-col space-y-2.5">
-                                                <div className="space-y-1">
-                                                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Upload New Image</Label>
-                                                    <Input
-                                                        type="file"
-                                                        accept="image/*"
-                                                        className="h-8 text-[10px] bg-background shadow-sm border-primary/10 file:text-[10px] file:font-semibold file:bg-primary/5 file:text-primary file:border-0 file:rounded-md file:mr-2 file:px-2 cursor-pointer"
-                                                        onChange={(e) => setForm({ ...form, image: e.target.files?.[0] ?? null })}
-                                                    />
-                                                </div>
-                                                <div className="flex-1 min-h-[110px] rounded-lg border border-dashed border-primary/10 bg-background/50 flex flex-col items-center justify-center p-2">
-                                                    {mode === "edit" && selected && !form.image ? (
-                                                        <div className="flex flex-col items-center gap-2">
-                                                            <div className="relative h-24 w-24 rounded-lg overflow-hidden border border-primary/10 shadow-sm bg-background">
-                                                                <img
-                                                                    src={`${import.meta.env.VITE_API_URL}/menu/${selected.id}/image`}
-                                                                    alt="Current"
-                                                                    className="h-full w-full object-cover"
-                                                                    onError={(e) => { e.currentTarget.src = "https://placehold.co/150x150?text=No+Image"; }}
-                                                                />
-                                                            </div>
-                                                            <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider">Current</span>
-                                                        </div>
-                                                    ) : form.image ? (
-                                                        <div className="flex flex-col items-center gap-2">
-                                                            <div className="relative h-24 w-24 rounded-lg overflow-hidden border border-primary/20 shadow-sm ring-2 ring-primary/5 bg-background">
-                                                                <img
-                                                                    src={URL.createObjectURL(form.image)}
-                                                                    alt="Preview"
-                                                                    className="h-full w-full object-cover"
-                                                                />
-                                                            </div>
-                                                            <span className="text-[9px] text-primary font-bold uppercase tracking-wider animate-pulse">New</span>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="text-muted-foreground/30 flex flex-col items-center gap-2">
-                                                            <div className="h-10 w-10 rounded-full bg-primary/5 flex items-center justify-center border border-dashed border-primary/10">
-                                                                <Plus className="w-5 h-5 opacity-40" />
-                                                            </div>
-                                                            <span className="text-[9px] font-bold uppercase tracking-widest">No Image</span>
+                                                    {selected.description && selected.description.length > 150 && (
+                                                        <div className="px-3 pb-2 bg-gradient-to-t from-accent/30 to-transparent pt-4 -mt-4">
+                                                            <button 
+                                                                onClick={() => setIsDescExpanded(!isDescExpanded)}
+                                                                className="text-[10px] font-bold text-primary hover:underline uppercase tracking-wider"
+                                                            >
+                                                                {isDescExpanded ? "Show Less" : "Show More"}
+                                                            </button>
                                                         </div>
                                                     )}
                                                 </div>
                                             </div>
+
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] font-bold text-muted-foreground tracking-wide">Item Image</Label>
+                                                <div 
+                                                    className="relative aspect-video rounded-lg overflow-hidden border border-primary/50 bg-accent/20 cursor-zoom-in group"
+                                                    onClick={() => setIsImagePreviewOpen(true)}
+                                                >
+                                                    <img
+                                                        src={`${import.meta.env.VITE_API_URL}/menu/${selected.id}/image`}
+                                                        alt={selected.item_name}
+                                                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                                        onError={(e) => { e.currentTarget.src = "https://placehold.co/400x225?text=Preview+Unavailable"; }}
+                                                    />
+                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                                        <div className="bg-white/90 p-2 rounded-full shadow-lg">
+                                                            <Plus className="w-5 h-5 text-primary" />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </PropertyViewSection>
+                                    </div>
+                                )}
+
+                                {sheetTab === "history" && (
+                                    <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
+                                        <p className="text-sm text-muted-foreground">No history logs available yet.</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {(mode === "add" || mode === "edit") && (
+                            <div className="space-y-5">
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-4 gap-y-3">
+                                    {/* Basic Info Card */}
+                                    <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-6">
+                                        <h3 className="text-[11px] font-semibold text-primary/90 tracking-wider border-b border-primary/50 pb-2 mb-3">
+                                            Basic Information
+                                        </h3>
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-xs font-bold text-muted-foreground tracking-wide">Item Name *</Label>
+                                                <Input
+                                                    placeholder="e.g. Chocolate Brownie"
+                                                    className={cn("h-11 bg-background shadow-none", submitted && formErrors.item_name ? "border-red-500" : "border-border/60")}
+                                                    value={form.item_name}
+                                                    onChange={(e) => {
+                                                        setForm({ ...form, item_name: e.target.value });
+                                                        setFormErrors(prev => ({ ...prev, item_name: "" }));
+                                                    }}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-xs font-bold text-muted-foreground tracking-wide">Menu Group *</Label>
+                                                <NativeSelect
+                                                    className={cn("h-11 bg-background shadow-none", submitted && formErrors.menuItemGroupId ? "border-red-500" : "border-border/60")}
+                                                    value={form.menuItemGroupId}
+                                                    onChange={(e) => setForm({ ...form, menuItemGroupId: e.target.value })}
+                                                >
+                                                    <option value="">Select Group</option>
+                                                    {menuItemGroups?.data?.map((g: any) => (
+                                                        <option key={g.id} value={g.id}>{g.name}</option>
+                                                    ))}
+                                                </NativeSelect>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div className="flex justify-end gap-3 pt-4 border-t border-primary/10">
-                                        <Button variant="heroOutline" onClick={() => setMode(null)}>
-                                            Cancel
-                                        </Button>
-                                        <Button variant="hero" onClick={handleForm}>
-                                            {mode === "add" ? "Create Menu Item" : "Update Menu Item"}
-                                        </Button>
+                                    {/* Pricing Card */}
+                                    <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-6">
+                                        <h3 className="text-[11px] font-semibold text-primary/90 tracking-wider border-b border-primary/50 pb-2 mb-3">
+                                            Pricing & Status
+                                        </h3>
+                                        <div className="space-y-4">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label className="text-xs font-bold text-muted-foreground tracking-wide">Price (₹) *</Label>
+                                                    <Input
+                                                        type="number"
+                                                        placeholder="0.00"
+                                                        className={cn("h-11 bg-background shadow-none", submitted && formErrors.price ? "border-red-500" : "border-border/60")}
+                                                        value={form.price}
+                                                        onChange={(e) => {
+                                                            setForm({ ...form, price: normalizeNumberInput(e.target.value) });
+                                                            setFormErrors(prev => ({ ...prev, price: "" }));
+                                                        }}
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label className="text-xs font-bold text-muted-foreground tracking-wide">Prep Time (mins)</Label>
+                                                    <Input
+                                                        type="number"
+                                                        placeholder="e.g. 15"
+                                                        className={cn("h-11 bg-background shadow-none", submitted && formErrors.prep_time ? "border-red-500" : "border-border/60")}
+                                                        value={form.prep_time}
+                                                        onChange={(e) => setForm({ ...form, prep_time: e.target.value === "" ? "" : Number(e.target.value) })}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-8 pt-2">
+                                                <div className="flex items-center gap-3">
+                                                    <Switch
+                                                        checked={form.is_active}
+                                                        onCheckedChange={(v) => setForm({ ...form, is_active: v })}
+                                                    />
+                                                    <Label className="text-sm font-semibold cursor-pointer">Active</Label>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <Switch
+                                                        checked={form.is_veg}
+                                                        onCheckedChange={(v) => setForm({ ...form, is_veg: v })}
+                                                    />
+                                                    <Label className="text-sm font-semibold cursor-pointer">Pure Veg</Label>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
+
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-4 gap-y-3">
+                                    {/* Description Card */}
+                                    <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-6">
+                                        <h3 className="text-[11px] font-semibold text-primary/90 tracking-wider border-b border-primary/50 pb-2 mb-3">
+                                            Item Description
+                                        </h3>
+                                        <div className="space-y-2">
+                                            <textarea
+                                                className="w-full min-h-[140px] rounded-lg border border-border/60 px-3 py-2 text-sm bg-background focus:ring-1 focus:ring-primary outline-none transition-all resize-none shadow-none"
+                                                placeholder="Briefly describe the item's ingredients or preparation..."
+                                                maxLength={255}
+                                                value={form.description}
+                                                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                                            />
+                                            <div className="text-[10px] font-bold text-muted-foreground/60 text-right">
+                                                {form.description?.length || 0}/255
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Image Card */}
+                                    <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-6">
+                                        <h3 className="text-[11px] font-semibold text-primary/90 tracking-wider border-b border-primary/50 pb-2 mb-3">
+                                            Item Image
+                                        </h3>
+                                        <div className="space-y-4">
+                                            <Input
+                                                type="file"
+                                                accept="image/*"
+                                                className="h-10 text-xs bg-background border-border/60 file:text-xs file:font-bold file:bg-primary/10 file:text-primary file:border-0 file:rounded-md file:mr-3 file:px-3 cursor-pointer"
+                                                onChange={(e) => setForm({ ...form, image: e.target.files?.[0] ?? null })}
+                                            />
+                                            <div className="h-[120px] rounded-lg border border-dashed border-primary/50 bg-accent/10 flex items-center justify-center">
+                                                {mode === "edit" && selected && !form.image ? (
+                                                    <div className="relative h-24 w-40 rounded-lg overflow-hidden border border-primary/50 shadow-sm">
+                                                        <img
+                                                            src={`${import.meta.env.VITE_API_URL}/menu/${selected.id}/image`}
+                                                            alt="Current"
+                                                            className="h-full w-full object-cover"
+                                                            onError={(e) => { e.currentTarget.src = "https://placehold.co/150x150?text=No+Image"; }}
+                                                        />
+                                                    </div>
+                                                ) : form.image ? (
+                                                    <div className="relative h-24 w-40 rounded-lg overflow-hidden border border-primary/20 shadow-sm ring-2 ring-primary/5">
+                                                        <img
+                                                            src={URL.createObjectURL(form.image)}
+                                                            alt="Preview"
+                                                            className="h-full w-full object-cover"
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <div className="text-muted-foreground/30 flex flex-col items-center gap-2">
+                                                        <Camera className="w-8 h-8 opacity-20" />
+                                                        <span className="text-[10px] font-bold uppercase tracking-widest">No Image Preview</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                            <Button variant="heroOutline" onClick={() => setMode(null)}>
+                                {mode === "view" ? "Close" : "Cancel"}
+                            </Button>
+                            {(mode === "add" || mode === "edit") && (
+                                <Button variant="hero" onClick={handleForm}>
+                                    {mode === "add" ? "Create Menu Item" : "Update"}
+                                </Button>
                             )}
                         </div>
                     </motion.div>
@@ -990,142 +949,137 @@ export default function MenuMaster() {
 
             {/* CREATE GROUP SHEET */}
             <Sheet open={createGroupOpen} onOpenChange={setCreateGroupOpen}>
-                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
+                <SheetContent side="right" className="w-full lg:max-w-3xl sm:max-w-2xl overflow-y-auto bg-background">
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="space-y-1"
+                        className="space-y-6"
                     >
-                        <SheetHeader>
-                            <SheetTitle>Create Menu Item Group</SheetTitle>
+                        <SheetHeader className="border-b border-border/50 pb-4 mb-4">
+                            <SheetTitle className="text-xl font-bold">Create Menu Item Group</SheetTitle>
                         </SheetHeader>
 
-                        <div className="space-y-4 mt-6">
-                            <div>
-                                <Label>Group Name*</Label>
-                                <Input
-                                    className={groupErrors.groupName ? "border-red-500" : ""}
-                                    value={groupName}
-                                    onChange={(e) => {
-                                        setGroupName(e.target.value);
-                                        if (e.target.value.trim()) {
-                                            setGroupErrors(prev => {
-                                                const copy = { ...prev };
-                                                delete copy.groupName;
-                                                return copy;
-                                            });
-                                        }
-                                    }}
-                                />
-                                {groupErrors.groupName && (
-                                    <p className="text-xs text-red-500 mt-1">
-                                        {groupErrors.groupName}
-                                    </p>
-                                )}
+                        <div className="space-y-6">
+                            <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-6">
+                                <h3 className="text-[11px] font-semibold text-primary/90 uppercase tracking-[0.16em] border-b border-primary/50 pb-2 mb-3">
+                                    Group Details
+                                </h3>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Group Name *</Label>
+                                    <Input
+                                        className={cn("h-11 bg-background shadow-none", groupErrors.groupName ? "border-red-500" : "border-border/60")}
+                                        value={groupName}
+                                        placeholder="e.g. Starters"
+                                        onChange={(e) => {
+                                            setGroupName(e.target.value);
+                                            if (e.target.value.trim()) {
+                                                setGroupErrors(prev => {
+                                                    const copy = { ...prev };
+                                                    delete copy.groupName;
+                                                    return copy;
+                                                });
+                                            }
+                                        }}
+                                    />
+                                    {groupErrors.groupName && (
+                                        <p className="text-[10px] text-red-500 font-bold mt-1">
+                                            {groupErrors.groupName}
+                                        </p>
+                                    )}
+                                </div>
                             </div>
 
-                            <Button
-                                variant="hero"
-                                className="w-full"
-                                onClick={async () => {
-                                    if (!selectedPropertyId) return;
-                                    if (!groupName.trim()) {
-                                        setGroupErrors({ groupName: "Group name is required" });
-                                        return;
-                                    }
-                                    try {
-                                        const payload = buildCreateGroupPayload(groupName, selectedPropertyId);
-                                        await apiToast(
-                                            createMenuItemGroup(payload).unwrap(),
-                                            "Menu group created successfully"
-                                        );
-                                        setGroupName("");
-                                        setCreateGroupOpen(false);
-                                    } catch (err) {
-                                        console.error("Group creation failed", err);
-                                    }
-                                }}
-                            >
-                                Create Group
-                            </Button>
+                            <div className="flex justify-end gap-3">
+                                <Button variant="heroOutline" onClick={() => setCreateGroupOpen(false)}>Cancel</Button>
+                                <Button
+                                    variant="hero"
+                                    onClick={async () => {
+                                        if (!selectedPropertyId) return;
+                                        if (!groupName.trim()) {
+                                            setGroupErrors({ groupName: "Group name is required" });
+                                            return;
+                                        }
+                                        try {
+                                            const payload = buildCreateGroupPayload(groupName, selectedPropertyId);
+                                            await apiToast(
+                                                createMenuItemGroup(payload).unwrap(),
+                                                "Menu group created successfully"
+                                            );
+                                            setGroupName("");
+                                            setCreateGroupOpen(false);
+                                        } catch (err) {
+                                            console.error("Group creation failed", err);
+                                        }
+                                    }}
+                                >
+                                    Create Group
+                                </Button>
+                            </div>
                         </div>
                     </motion.div>
                 </SheetContent>
             </Sheet>
 
             <Sheet open={viewGroupOpen} onOpenChange={setViewGroupOpen}>
-                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
+                <SheetContent side="right" className="w-full lg:max-w-3xl sm:max-w-2xl overflow-y-auto bg-background">
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="space-y-1"
+                        className="space-y-6"
                     >
-                        <SheetHeader>
-                            <SheetTitle>Menu Item Groups</SheetTitle>
+                        <SheetHeader className="border-b border-border/50 pb-4 mb-4">
+                            <SheetTitle className="text-xl font-bold">Menu Item Groups</SheetTitle>
                         </SheetHeader>
 
-                    <div className="mt-6 space-y-2">
-
+                    <div className="space-y-3">
                         {menuItemGroups && menuItemGroups?.data.map(group => {
-
                             const isEditing = editingGroupId === group.id;
-
                             return (
                                 <div
                                     key={group.id}
-                                    className="flex justify-between items-center border rounded-[4px] px-4 py-3 bg-card"
+                                    className="flex justify-between items-center border border-primary/50 rounded-[5px] px-4 py-3 bg-accent/5 transition-colors hover:bg-accent/10"
                                 >
-
                                     {/* LEFT SIDE */}
-                                    {isEditing ? (
-                                        <>
-                                            <Input
-                                                className={groupErrors.editGroupName ? "border-red-500" : ""}
-                                                value={editGroupName}
-                                                onChange={(e) => {
-                                                    setEditGroupName(e.target.value);
-
-                                                    if (e.target.value.trim()) {
-                                                        setGroupErrors(prev => {
-                                                            const copy = { ...prev };
-                                                            delete copy.editGroupName;
-                                                            return copy;
-                                                        });
-                                                    }
-                                                }}
-                                            />
-
-                                            {groupErrors.editGroupName && (
-                                                <p className="text-xs text-red-500 mt-1">
-                                                    {groupErrors.editGroupName}
-                                                </p>
-                                            )}</>
-
-
-                                    ) : (
-
-                                        <div className="flex items-center gap-2">
-
-                                            <span className="font-medium">
-                                                {group.name}
-                                            </span>
-
-                                            <GridBadge status={group.is_active ? "active" : "inactive"} statusType="toggle">
-                                                {group.is_active ? "Active" : "Inactive"}
-                                            </GridBadge>
-
-                                        </div>
-
-
-                                    )}
+                                    <div className="flex-1">
+                                        {isEditing ? (
+                                            <div className="space-y-1">
+                                                <Input
+                                                    className={cn("h-9 text-xs shadow-none", groupErrors.editGroupName ? "border-red-500" : "border-border/60")}
+                                                    value={editGroupName}
+                                                    onChange={(e) => {
+                                                        setEditGroupName(e.target.value);
+                                                        if (e.target.value.trim()) {
+                                                            setGroupErrors(prev => {
+                                                                const copy = { ...prev };
+                                                                delete copy.editGroupName;
+                                                                return copy;
+                                                            });
+                                                        }
+                                                    }}
+                                                />
+                                                {groupErrors.editGroupName && (
+                                                    <p className="text-[10px] text-red-500 font-bold">
+                                                        {groupErrors.editGroupName}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-3">
+                                                <span className="font-bold text-sm text-foreground">
+                                                    {group.name}
+                                                </span>
+                                                <GridBadge status={group.is_active ? "active" : "inactive"} statusType="toggle" className="h-6 text-[10px] font-bold">
+                                                    {group.is_active ? "Active" : "Inactive"}
+                                                </GridBadge>
+                                            </div>
+                                        )}
+                                    </div>
 
                                     {/* RIGHT SIDE ACTIONS */}
-                                    <div className="flex items-center gap-2">
-
+                                    <div className="flex items-center gap-2 shrink-0">
                                         {isEditing ? (
                                             <>
                                                 <Switch
-                                                    className="mx-1"
                                                     checked={
                                                         groupEditState[group.id]?.is_active ?? group.is_active
                                                     }
@@ -1141,47 +1095,38 @@ export default function MenuMaster() {
                                                 />
                                                 <Button
                                                     size="sm"
-                                                    className="ms-2"
                                                     variant="hero"
+                                                    className="h-8 text-xs px-3"
                                                     onClick={() => {
-
                                                         const errors: Record<string, string> = {};
-
                                                         if (!editGroupName.trim()) {
                                                             errors.editGroupName = "Group name required";
                                                         }
-
                                                         if (Object.keys(errors).length > 0) {
                                                             setGroupErrors(errors);
                                                             return;
                                                         }
-
                                                         setGroupErrors({});
-
                                                         const payload = {
                                                             id: group.id,
                                                             name: editGroupName,
                                                             is_active:
                                                                 groupEditState[group.id]?.is_active ?? group.is_active
                                                         };
-
                                                         apiToast(
                                                             updateMenuItemGroup(payload).unwrap(),
                                                             "Menu item group updated successfully"
                                                         );
-
                                                         setEditingGroupId(null);
                                                     }}
                                                 >
-                                                    Save
+                                                    Update
                                                 </Button>
-
                                                 <Button
                                                     size="sm"
                                                     variant="heroOutline"
-                                                    onClick={() => {
-                                                        setEditingGroupId(null);
-                                                    }}
+                                                    className="h-8 text-xs px-3"
+                                                    onClick={() => setEditingGroupId(null)}
                                                 >
                                                     Cancel
                                                 </Button>
@@ -1190,21 +1135,23 @@ export default function MenuMaster() {
                                             <Button
                                                 size="sm"
                                                 variant="heroOutline"
+                                                className="h-8 text-xs px-3"
                                                 onClick={() => {
                                                     setEditingGroupId(group.id);
                                                     setEditGroupName(group.name);
                                                 }}
                                             >
-                                                Edit
+                                                Edit Group
                                             </Button>
                                         )}
-
                                     </div>
-
                                 </div>
                             );
                         })}
+                    </div>
 
+                    <div className="flex justify-end pt-4 border-t border-border">
+                        <Button variant="heroOutline" onClick={() => setViewGroupOpen(false)}>Close</Button>
                     </div>
                     </motion.div>
                 </SheetContent>

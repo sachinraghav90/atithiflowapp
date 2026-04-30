@@ -9,104 +9,241 @@ import {
     SheetTitle,
 } from "@/components/ui/sheet";
 import { NativeSelect } from "@/components/ui/native-select";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
 import { useAppSelector } from "@/redux/hook";
 import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
-import { useAdjustStockMutation, useCreateInventoryMutation, useGetInventoryMasterByTypesQuery, useGetKitchenInventoryQuery, useLazyGetKitchenInventoryQuery, useGetLogsByTableQuery, useGetLogsQuery, useUpdateInventoryMutation } from "@/redux/services/hmsApi";
+import { 
+    useGetKitchenInventoryQuery, 
+    useGetLogsQuery as useGetAuditLogsQuery, 
+    useAdjustStockMutation as useUpdateKitchenInventoryMutation, 
+    useGetInventoryQuery as useGetInventoryMasterQuery, 
+    useCreateInventoryMutation as useCreateKitchenInventoryMutation 
+} from "@/redux/services/hmsApi";
 import { toast } from "react-toastify";
+import { normalizeNumberInput } from "@/utils/normalizeTextInput";
 import { useLocation } from "react-router-dom";
 import { usePermission } from "@/rbac/usePermission";
-import { normalizeNumberInput, normalizeSignedNumberInput } from "@/utils/normalizeTextInput";
-import KitchenInventoryBulkAdjustSheet from "@/components/KitchenInventoryBulkAdjustSheet";
-import { AppDataGrid, DataGridPagination, type ColumnDef } from "@/components/ui/data-grid";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Download, FilterX, Plus, Pencil, RefreshCcw, Package, Box, Calendar, ShieldCheck, History, User, Clock, Wrench, Boxes, FileText, Layers, Building2, PlusCircle } from "lucide-react";
-import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect } from "@/components/ui/grid-toolbar";
 import { exportToExcel } from "@/utils/exportToExcel";
-import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
-import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
-import { GridBadge } from "@/components/ui/grid-badge";
-import { motion } from "framer-motion";
+import { 
+    Download, 
+    FilterX, 
+    RefreshCcw, 
+    Pencil, 
+    Plus, 
+    History, 
+} from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
+import { 
+    GridToolbar, 
+    GridToolbarActions, 
+    GridToolbarRow, 
+    GridToolbarSearch, 
+    GridToolbarSelect 
+} from "@/components/ui/grid-toolbar";
 import { formatAppDateTime } from "@/utils/dateFormat";
+import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
+import KitchenInventoryBulkAdjustSheet from "@/components/KitchenInventoryBulkAdjustSheet";
+import { motion } from "framer-motion";
+import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
+import PropertyViewSection from "@/components/PropertyViewSection";
+import ViewField from "@/components/ViewField";
+import { cn } from "@/lib/utils";
 
+/* ---------------- Types ---------------- */
 type KitchenItem = {
     id: string;
-    property_id: string;
     inventory_master_id: number;
-    name: string;   // joined from inventory_master
-    inventory_type: string;   // optional join
-    quantity: string;
+    name: string;
+    inventory_type: string;
+    quantity: number | string;
     unit: string;
+    reorder_level: number;
+    is_active: boolean;
 };
 
-// CREATE
-function buildCreateKitchenItemPayload(data, propertyId) {
+/* ---------------- Helpers ---------------- */
+const parseAuditDetails = (details: any) => {
+    try {
+        return typeof details === "string" ? JSON.parse(details) : details;
+    } catch {
+        return null;
+    }
+};
 
-    return {
-        property_id: propertyId,
-        inventory_master_id: data.inventory_master_id,
-        quantity: data.quantity,
-        unit: data.unit
-    };
+const getAuditActionLabel = (audit: any) => {
+    const event = audit.event_type?.toUpperCase();
+    if (event === "CREATE") return "Stock Added";
+    if (event === "UPDATE") return "Stock Updated";
+    if (event === "ADJUST") return "Stock Adjusted";
+    return event;
+};
 
-}
+const getAuditChangeText = (details: any) => {
+    if (!details) return "--";
+    const { before, after, entity } = details;
+    const unit = entity?.unit || "";
+    
+    if (!before) {
+        return `Initialized with ${after?.quantity || 0} ${unit}`;
+    }
 
-function buildUpdateKitchenItemPayload(data) {
+    const diff = Number(after?.quantity || 0) - Number(before?.quantity || 0);
+    const sign = diff >= 0 ? "+" : "";
+    return `${before.quantity} ${unit} -> ${after.quantity} ${unit} (${sign}${diff.toFixed(2)})`;
+};
 
-    return {
-        quantity: data.quantity,
-        unit: data.unit,
-        comments: data.comments
-    };
-}
-// UI
+/* ---------------- Component ---------------- */
 export default function KitchenInventory() {
+    const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
+    const { myProperties, isInitializing, isLoading: myPropertiesLoading } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
+
+    const [activeTab, setActiveTab] = useState<"inventory" | "audit">("inventory");
     const [inventoryPage, setInventoryPage] = useState(1);
+    const [inventoryLimit, setInventoryLimit] = useState(10);
     const [auditPage, setAuditPage] = useState(1);
+    const [auditLimit, setAuditLimit] = useState(10);
+
     const [searchInput, setSearchInput] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
-    const [historySearchInput, setHistorySearchInput] = useState("");
-    const [historySearchQuery, setHistorySearchQuery] = useState("");
-    const [historyActionFilter, setHistoryActionFilter] = useState("");
     const [stockFilter, setStockFilter] = useState("");
     const [unitFilter, setUnitFilter] = useState("");
 
-    const [sheetOpen, setSheetOpen] = useState(false);
-    const [mode, setMode] = useState<"add" | "edit" | "view">("view");
+    const [historySearchInput, setHistorySearchInput] = useState("");
+    const [historySearchQuery, setHistorySearchQuery] = useState("");
+    const [historyActionFilter, setHistoryActionFilter] = useState("");
 
+    const [sheetOpen, setSheetOpen] = useState(false);
+    const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
+    const [bulkOpen, setBulkOpen] = useState(false);
+    const [mode, setMode] = useState<"view" | "edit" | "add">("view");
     const [selectedItem, setSelectedItem] = useState<KitchenItem | null>(null);
 
     const [editForm, setEditForm] = useState({
-        id: 0,
         quantity: 0,
         unit: "",
         comments: ""
     });
 
     const [createForm, setCreateForm] = useState({
-        inventory_master_id: null,
+        inventory_master_id: null as number | null,
         quantity: 0,
-        unit: ""
+        unit: "",
     });
-    const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
-    const [createErrors, setCreateErrors] = useState<Record<string, string>>({});
-    const [createSubmitted, setCreateSubmitted] = useState(false);
-    const [activeTab, setActiveTab] = useState<"inventory" | "audit">("inventory");
-    const [adjustOpen, setAdjustOpen] = useState(false);
-    const [adjustForm, setAdjustForm] = useState({
-        quantity: "",
-        unit: ""
+    const [createErrors, setCreateErrors] = useState<any>({});
+
+    const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
+    const isSuperAdmin = useAppSelector(selectIsSuperAdmin)
+    const isOwner = useAppSelector(selectIsOwner)
+
+    const pathname = useLocation().pathname;
+    const { permission } = usePermission(pathname);
+
+    const { 
+        data: kitchenInventory, 
+        isLoading: kitchenInventoryLoading, 
+        isFetching: kitchenInventoryFetching, 
+        refetch: refetchInventory 
+    } = useGetKitchenInventoryQuery({ 
+        propertyId: selectedPropertyId,
+        page: 1,
+        limit: 1000
+    }, {
+        skip: !isLoggedIn || !selectedPropertyId
     });
+
+    const {
+        data: inventoryAuditLogs,
+        isLoading: logsLoading,
+        isFetching: logsFetching,
+        refetch: refetchLogs
+    } = useGetAuditLogsQuery({
+        tableName: "kitchen_inventory",
+        propertyId: selectedPropertyId,
+        page: auditPage,
+        limit: auditLimit,
+    }, {
+        skip: !isLoggedIn || !selectedPropertyId || activeTab !== "audit"
+    });
+
     const [itemAuditPage, setItemAuditPage] = useState(1);
-    const [itemAuditLimit, setItemAuditLimit] = useState(10);
-    const [inventoryLimit, setInventoryLimit] = useState(10);
-    const [auditLimit, setAuditLimit] = useState(10);
-    const [bulkOpen, setBulkOpen] = useState(false);
+    const [itemAuditLimit, setItemAuditLimit] = useState(5);
+    const { data: auditLogs } = useGetAuditLogsQuery({
+        tableName: "kitchen_inventory",
+        eventId: selectedItem?.id,
+        page: itemAuditPage,
+        limit: itemAuditLimit,
+    }, {
+        skip: !selectedItem?.id || !sheetOpen || mode !== "view"
+    });
+
+    const { data: masterInventoryData } = useGetInventoryMasterQuery({
+        propertyId: selectedPropertyId,
+        page: 1,
+        limit: 1000
+    }, {
+        skip: !isLoggedIn || !selectedPropertyId
+    });
+
+    const masterInventory = useMemo(() => masterInventoryData?.data ?? [], [masterInventoryData]);
+
+    const [adjustStock] = useUpdateKitchenInventoryMutation();
+    const [createKitchenItem] = useCreateKitchenInventoryMutation();
+
+    const inventoryUnitOptions = useMemo(() => {
+        const units = (kitchenInventory?.data ?? []).map((item: KitchenItem) => item.unit).filter(Boolean);
+        return Array.from(new Set(units));
+    }, [kitchenInventory]);
+
+    const historyActionOptions = ["CREATE", "UPDATE", "ADJUST"];
+
+    const filteredKitchenInventory = useMemo(() => {
+        let rows = kitchenInventory?.data ?? [];
+        const q = searchQuery.toLowerCase();
+        
+        if (q) {
+            rows = rows.filter((item: KitchenItem) =>
+                item.name?.toLowerCase().includes(q) ||
+                formatModuleDisplayId("kitchen", item.id).toLowerCase().includes(q)
+            );
+        }
+
+        if (stockFilter === "low_stock") {
+            rows = rows.filter((item: KitchenItem) => Number(item.quantity) <= (item.reorder_level || 0));
+        }
+
+        if (unitFilter) {
+            rows = rows.filter((item: KitchenItem) => item.unit === unitFilter);
+        }
+
+        return rows;
+    }, [kitchenInventory, searchQuery, stockFilter, unitFilter]);
+
+    const inventoryTotalRecords = filteredKitchenInventory.length;
+    const inventoryTotalPages = Math.max(1, Math.ceil(inventoryTotalRecords / inventoryLimit));
+    const paginatedKitchenInventory = useMemo(() => {
+        const start = (inventoryPage - 1) * inventoryLimit;
+        return filteredKitchenInventory.slice(start, start + inventoryLimit);
+    }, [filteredKitchenInventory, inventoryPage, inventoryLimit]);
+
+    const filteredHistoryLogs = useMemo(() => {
+        let rows = inventoryAuditLogs?.data ?? [];
+        const q = historySearchQuery.toLowerCase();
+        
+        if (q) {
+            rows = rows.filter((audit: any) => {
+                const details = parseAuditDetails(audit.details);
+                return (
+                    details?.entity?.inventory_name?.toLowerCase().includes(q) ||
+                    formatModuleDisplayId("kitchen", audit.event_id).toLowerCase().includes(q)
+                );
+            });
+        }
+        return rows;
+    }, [inventoryAuditLogs, historySearchQuery]);
+
+    const historyTotalRecords = inventoryAuditLogs?.pagination?.totalItems ?? filteredHistoryLogs.length;
+    const historyTotalPages = inventoryAuditLogs?.pagination?.totalPages ?? 1;
+    const paginatedHistoryLogs = filteredHistoryLogs; // API paginated
 
     const availableUnits = [
         { id: "Nos", label: "Nos" },
@@ -119,393 +256,73 @@ export default function KitchenInventory() {
         { id: "Box", label: "Box" },
     ];
 
-    const isLoggedIn = useAppSelector(state => state.isLoggedIn.value);
-    const isSuperAdmin = useAppSelector(selectIsSuperAdmin);
-    const isOwner = useAppSelector(selectIsOwner);
-
-    const { 
-        myProperties, 
-        isMultiProperty, 
-        isInitializing, 
-        isLoading: myPropertiesLoading 
-    } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
- 
-    const [getExportInventory, { isFetching: exportingKitchen }] = useLazyGetKitchenInventoryQuery();
-
-    const {
-        data: kitchenInventory,
-        isLoading: kitchenInventoryLoading,
-        isFetching: kitchenInventoryFetching,
-        refetch: refetchKitchenInventory
-    } = useGetKitchenInventoryQuery({
-        propertyId: selectedPropertyId,
-        page: 1,
-        limit: 1000,
-    }, {
-        skip: !isLoggedIn || !selectedPropertyId
-    })
-
-    const { data: masterInventory } = useGetInventoryMasterByTypesQuery({ type: "Kitchen", propertyId: selectedPropertyId }, {
-        skip: !isLoggedIn || !selectedPropertyId
-    })
-
-    const {
-        data: logs,
-        isLoading: logsLoading,
-        isFetching: logsFetching,
-        refetch: refetchLogs
-    } = useGetLogsByTableQuery({ tableName: "kitchen_inventory", propertyId: selectedPropertyId, page: 1, limit: 1000 }, {
-        skip: !isLoggedIn || !selectedPropertyId
-    })
-
-    const { data: auditLogs } = useGetLogsQuery({ tableName: "kitchen_inventory", eventId: editForm.id, page: itemAuditPage, limit: itemAuditLimit }, {
-        skip: !isLoggedIn || !editForm.id
-    })
-
-    const [createInventory] = useCreateInventoryMutation()
-    const [updateInventory] = useUpdateInventoryMutation()
-    const [adjustStock] = useAdjustStockMutation()
-
-
     const isItemUsable = useMemo(() => {
-        if (!masterInventory || !createForm.inventory_master_id) return false;
-
-        const item = masterInventory.find(
-            x => x.id == createForm.inventory_master_id
-        );
-
-        return item?.use_type === "usable";
+        if (!createForm.inventory_master_id) return false;
+        const master = masterInventory.find(m => m.id === createForm.inventory_master_id);
+        return master?.use_type === "usable";
     }, [createForm.inventory_master_id, masterInventory]);
 
-
-
-    useEffect(() => {
-        setInventoryPage(1);
-        setAuditPage(1);
-    }, [selectedPropertyId, searchQuery, stockFilter, unitFilter, historySearchQuery, historyActionFilter]);
-
-    useEffect(() => {
-        if (searchInput.trim() === "") {
-            setSearchQuery("");
-            setInventoryPage(1);
-        }
-    }, [searchInput]);
-
-    useEffect(() => {
-        if (historySearchInput.trim() === "") {
-            setHistorySearchQuery("");
-            setAuditPage(1);
-        }
-    }, [historySearchInput]);
-    /* ---------------- Handlers ---------------- */
-
-    const openManage = (item: KitchenItem, m: "view" | "edit" = "view") => {
+    const openManage = (item: KitchenItem, m: "view" | "edit") => {
         setSelectedItem(item);
         setEditForm({
             quantity: Number(item.quantity),
             unit: item.unit || "",
-            id: +item.id,
             comments: ""
         });
         setMode(m);
+        setSheetTab("summary");
         setSheetOpen(true);
     };
 
-    const openAdd = () => {
-        setMode("add");
-        setCreateForm({
-            inventory_master_id: null,
-            quantity: 0,
-            unit: ""
+    const saveEdit = async () => {
+        if (!selectedItem) return;
+        const payload = {
+            property_id: selectedPropertyId,
+            inventory_master_id: selectedItem.inventory_master_id,
+            quantity: editForm.quantity,
+            unit: editForm.unit,
+            comments: editForm.comments
+        };
+
+        const promise = adjustStock(payload).unwrap();
+        toast.promise(promise, {
+            pending: "Updating inventory...",
+            success: "Inventory updated successfully",
+            error: "Failed to update inventory"
         });
-        setCreateSubmitted(false);
-        setCreateErrors({});
-        setSheetOpen(true);
+
+        await promise;
+        setSheetOpen(false);
     };
 
-    const saveEdit = () => {
-        const payload = buildUpdateKitchenItemPayload(editForm);
-        updateInventory({ id: editForm.id, payload })
-        setSheetOpen(false)
-    };
-
-    const createItem = () => {
-
-        setCreateSubmitted(true);
-
-        const errors: Record<string, string> = {};
-
-        if (!createForm.inventory_master_id) {
-            errors.inventory_master_id = "Please select inventory item";
-        }
-
-        if (!createForm.quantity || createForm.quantity <= 0) {
-            errors.quantity = "Quantity is required";
-        }
-
-        if (isItemUsable && !createForm.unit) {
-            errors.unit = "Unit is required";
-        }
+    const createItem = async () => {
+        const errors: any = {};
+        if (!createForm.inventory_master_id) errors.inventory_master_id = "Please select an item";
+        if (!createForm.quantity || createForm.quantity <= 0) errors.quantity = "Enter a valid quantity";
+        if (isItemUsable && !createForm.unit) errors.unit = "Please select a unit";
 
         if (Object.keys(errors).length > 0) {
             setCreateErrors(errors);
             return;
         }
 
-        setCreateErrors({}); // clear errors
-
-        const payload = buildCreateKitchenItemPayload(createForm, selectedPropertyId);
-
-        const promise = createInventory(payload)
-            .unwrap()
-            .catch((err) => {
-                throw new Error(
-                    err?.data?.message ||
-                    err?.data?.error ||
-                    err?.message ||
-                    "Error creating inventory item"
-                );
-            });
-
-        toast.promise(promise, {
-            pending: "Creating please wait",
-            success: "Item created successfully",
-            error: {
-                render({ data }) {
-                    const err = data as Error;
-                    return err?.message;
-                }
-            }
-        });
-
-        setCreateOpen(false);
-
-        setCreateForm({
-            inventory_master_id: null,
-            quantity: 0,
-            unit: ""
-        });
-
-        setCreateSubmitted(false);
-    };
-
-    const handleAdjustStock = () => {
-
-        if (!selectedItem) return;
-
-        if (!adjustForm.quantity) {
-            toast.error("Quantity required");
-            return;
-        }
-
         const payload = {
             property_id: selectedPropertyId,
-            inventory_master_id: selectedItem.inventory_master_id,
-            quantity: adjustForm.quantity,
-            unit: adjustForm.unit || selectedItem.unit
+            ...createForm
         };
 
-        const promise = adjustStock(payload)
-            .unwrap()
-            .catch(err => {
-                throw new Error(
-                    err?.data?.message ||
-                    err?.message ||
-                    "Failed to adjust stock"
-                );
-            });
-
+        const promise = createKitchenItem(payload).unwrap();
         toast.promise(promise, {
-            pending: "Adjusting stock...",
-            success: "Stock updated successfully",
-            error: {
-                render({ data }) {
-                    return (data as Error)?.message;
-                }
-            }
+            pending: "Adding inventory item...",
+            success: "Item added successfully",
+            error: "Failed to add item"
         });
 
-        setAdjustOpen(false);
-
-        setAdjustForm({
-            quantity: "",
-            unit: ""
-        });
+        await promise;
+        setSheetOpen(false);
+        setCreateForm({ inventory_master_id: null, quantity: 0, unit: "" });
+        setCreateErrors({});
     };
-
-    function parseAuditDetails(details: any) {
-        try {
-            if (typeof details === "string") {
-                return JSON.parse(details);
-            }
-            return details;
-        } catch {
-            return null;
-        }
-    }
-
-    function getAuditActionLabel(log: any) {
-        const action = log.event_type;
-        const tone =
-            action === "CREATE" ? "success" :
-            action === "DELETE" ? "danger" :
-            "info";
-        
-        return (
-            <GridBadge tone={tone}>
-                {action}
-            </GridBadge>
-        );
-    }
-
-    function getAuditChangeText(details: any) {
-        if (!details) return "--";
-
-        const before = details.before;
-        const after = details.after;
-
-        if (!before && after) {
-            return (
-                <span className="text-emerald-600 font-semibold text-xs py-0.5">
-                    Added {after.quantity} {after.unit || ""}
-                </span>
-            );
-        }
-
-        if (before && after) {
-            const qtyChanged = before.quantity !== after.quantity;
-            const unitChanged = before.unit !== after.unit;
-            
-            return (
-                <div className="flex flex-col gap-0.5 py-0.5">
-                    {qtyChanged && (
-                        <span className="text-sm">
-                            Qty: <span className="text-muted-foreground/60 line-through decoration-slate-300">{before.quantity} {before.unit || ""}</span>
-                            <span className="mx-2 text-primary">→</span>
-                            <span className="font-bold text-slate-700">{after.quantity} {after.unit || ""}</span>
-                        </span>
-                    )}
-                    {unitChanged && (
-                        <span className="text-[10px] font-bold text-blue-600/90 italic uppercase tracking-tight">
-                            Unit changed: {before.unit || "None"} → {after.unit || "None"}
-                        </span>
-                    )}
-                    {!qtyChanged && !unitChanged && <span className="text-muted-foreground text-xs italic">No visible change</span>}
-                </div>
-            );
-        }
-
-        return "--";
-    }
-
-    const pathname = useLocation().pathname
-    const { permission } = usePermission(pathname)
-
-
-    const inventoryUnitOptions = useMemo(() => {
-        const units = Array.from(
-            new Set((kitchenInventory?.data ?? []).map((item: KitchenItem) => item.unit).filter(Boolean))
-        );
-
-        return units.sort((a, b) => String(a).localeCompare(String(b)));
-    }, [kitchenInventory?.data]);
-
-    const cleanSearchQuery = useMemo(() => {
-        if (!searchQuery) return "";
-        const unitLabels = availableUnits.map((unit) => unit.label.toLowerCase());
-        const stockLabels = ["low stock"];
-        const filterKeywords = [...unitLabels, ...stockLabels];
-
-        return filterKeywords
-            .sort((left, right) => right.length - left.length)
-            .reduce((query, keyword) => {
-                const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-                return query.replace(new RegExp(`\\b${escapedKeyword}\\b`, "gi"), " ");
-            }, searchQuery)
-            .replace(/\s+/g, " ")
-            .trim();
-    }, [searchQuery]);
-
-    const filteredKitchenInventory = useMemo(() => {
-        const rows = kitchenInventory?.data ?? [];
-        const query = cleanSearchQuery.toLowerCase();
-
-        return rows.filter((item: any) => {
-            const matchesStock = !stockFilter || (
-                stockFilter === "low_stock" &&
-                Number(item.quantity) <= Number(item.reorder_level || 0)
-            );
-            const matchesUnit = !unitFilter || item.unit === unitFilter;
-            
-            const searchableFields = [
-                item.name,
-                item.inventory_type,
-                formatModuleDisplayId("kitchen", item.id),
-                item.unit
-            ];
-            const matchesSearch = !query || searchableFields.some(f => 
-                String(f ?? "").toLowerCase().includes(query)
-            );
-
-            return matchesStock && matchesUnit && matchesSearch;
-        });
-    }, [kitchenInventory?.data, stockFilter, unitFilter, cleanSearchQuery]);
-
-    const filteredHistoryLogs = useMemo(() => {
-        const rows = logs?.data ?? [];
-        const query = historySearchQuery.trim().toLowerCase();
-
-        return rows.filter((audit: any) => {
-            const details = parseAuditDetails(audit.details);
-            const itemName = details?.entity?.inventory_name || "";
-            const userName = `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim();
-
-            const matchesQuery = !query || [
-                itemName,
-                audit.event_type,
-                userName,
-                formatAppDateTime(audit.created_on),
-            ].some((field) => String(field ?? "").toLowerCase().includes(query));
-
-            const matchesAction = !historyActionFilter || audit.event_type === historyActionFilter;
-
-            return matchesQuery && matchesAction;
-        });
-    }, [logs?.data, historySearchQuery, historyActionFilter]);
-
-    const inventoryTotalRecords = filteredKitchenInventory.length;
-    const inventoryTotalPages = Math.max(1, Math.ceil(inventoryTotalRecords / inventoryLimit));
-    const paginatedKitchenInventory = useMemo(() => {
-        const start = (inventoryPage - 1) * inventoryLimit;
-        return filteredKitchenInventory.slice(start, start + inventoryLimit);
-    }, [filteredKitchenInventory, inventoryPage, inventoryLimit]);
-
-    const historyTotalRecords = filteredHistoryLogs.length;
-    const historyTotalPages = Math.max(1, Math.ceil(historyTotalRecords / auditLimit));
-    const paginatedHistoryLogs = useMemo(() => {
-        const start = (auditPage - 1) * auditLimit;
-        return filteredHistoryLogs.slice(start, start + auditLimit);
-    }, [filteredHistoryLogs, auditPage, auditLimit]);
-
-    useEffect(() => {
-        if (inventoryPage > inventoryTotalPages) {
-            setInventoryPage(inventoryTotalPages);
-        }
-    }, [inventoryPage, inventoryTotalPages]);
-
-    useEffect(() => {
-        if (auditPage > historyTotalPages) {
-            setAuditPage(historyTotalPages);
-        }
-    }, [auditPage, historyTotalPages]);
-
-    const historyActionOptions = useMemo(() => {
-        const actions = Array.from(
-            new Set((logs?.data ?? []).map((audit: any) => audit.event_type).filter(Boolean))
-        );
-
-        return actions.sort((a, b) => String(a).localeCompare(String(b)));
-    }, [logs?.data]);
 
     const resetInventoryFilters = () => {
         setSearchInput("");
@@ -515,41 +332,6 @@ export default function KitchenInventory() {
         setInventoryPage(1);
     };
 
-    const refreshInventoryGrid = async () => {
-        if (kitchenInventoryFetching) return;
-
-        const toastId = toast.loading("Refreshing data...");
-
-        try {
-            await refetchKitchenInventory();
-            toast.dismiss(toastId);
-            toast.success("Data refreshed");
-        } catch {
-            toast.dismiss(toastId);
-            toast.error("Failed to refresh");
-        }
-    };
-
-    const exportKitchenSheet = () => {
-        const items = filteredKitchenInventory;
-
-        if (!items.length) {
-            toast.info("No inventory rows to export");
-            return;
-        }
-
-        const formatted = items.map((item: KitchenItem) => ({
-            "Item ID": formatModuleDisplayId("kitchen", item.id),
-            "Item": item.name,
-            "Category": item.inventory_type || "--",
-            "Stock": item.quantity,
-            "Unit": item.unit || "--",
-        }));
-
-        exportToExcel(formatted, "Kitchen-Inventory.xlsx");
-        toast.success("Export completed");
-    };
-
     const resetHistoryFilters = () => {
         setHistorySearchInput("");
         setHistorySearchQuery("");
@@ -557,57 +339,59 @@ export default function KitchenInventory() {
         setAuditPage(1);
     };
 
-    const refreshHistoryGrid = async () => {
+    const refreshInventoryGrid = () => {
+        if (kitchenInventoryFetching) return;
+        apiToast(refetchInventory(), "Inventory refreshed");
+    };
+
+    const refreshHistoryGrid = () => {
         if (logsFetching) return;
+        apiToast(refetchLogs(), "History logs refreshed");
+    };
 
-        const toastId = toast.loading("Refreshing data...");
+    const apiToast = (promise: any, successMsg: string) => {
+        toast.promise(promise, {
+            pending: "Processing...",
+            success: successMsg,
+            error: "Operation failed"
+        });
+    };
 
-        try {
-            await refetchLogs();
-            toast.dismiss(toastId);
-            toast.success("Data refreshed");
-        } catch {
-            toast.dismiss(toastId);
-            toast.error("Failed to refresh");
-        }
+    const exportKitchenSheet = () => {
+        if (!filteredKitchenInventory.length) return toast.info("No rows to export");
+        const formatted = filteredKitchenInventory.map((item: KitchenItem) => ({
+            "Item ID": formatModuleDisplayId("kitchen", item.id),
+            "Name": item.name,
+            "Type": item.inventory_type,
+            "Stock": item.quantity,
+            "Unit": item.unit || "--",
+            "Reorder": item.reorder_level || 0,
+            "Status": item.is_active ? "Active" : "Inactive",
+        }));
+        exportToExcel(formatted, "Kitchen-Inventory.xlsx");
+        toast.success("Export completed");
     };
 
     const exportHistoryLogs = () => {
-        const logsToExport = filteredHistoryLogs;
-
-        if (!logsToExport.length) {
-            toast.info("No history rows to export");
-            return;
-        }
-
-        const formatted = logsToExport.map((audit: any) => {
+        if (!filteredHistoryLogs.length) return toast.info("No history rows to export");
+        const formatted = filteredHistoryLogs.map((audit: any) => {
             const details = parseAuditDetails(audit.details);
-            const before = details?.before;
-            const after = details?.after;
-            const entity = details?.entity;
-            const unit = entity?.use_type === "usable" ? entity?.unit || "" : "";
-            const change = before
-                ? `${before.quantity}${unit ? ` ${unit}` : ""} -> ${after?.quantity}${unit ? ` ${unit}` : ""}`
-                : `${after?.quantity}${unit ? ` ${unit}` : ""}`;
-
             return {
                 ITEM: details?.entity?.inventory_name || "--",
-                ACTION: audit.event_type,
-                CHANGE: change,
+                ACTION: getAuditActionLabel(audit),
+                CHANGE: getAuditChangeText(details),
                 USER: `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim(),
                 DATE: formatAppDateTime(audit.created_on),
             };
         });
-
         exportToExcel(formatted, "Kitchen-Inventory-History.xlsx");
         toast.success("Export completed");
     };
-    /* ---------------- UI ---------------- */
 
+    /* ---------------- UI ---------------- */
     return (
         <div className="flex flex-col">
             <section className="flex flex-col p-6 lg:p-8 gap-6">
-
                 {/* Header */}
                 <div className="flex justify-between items-center shrink-0">
                     <div>
@@ -625,12 +409,9 @@ export default function KitchenInventory() {
                                 <NativeSelect
                                     className="flex-1 bg-transparent px-2 focus:outline-none focus:ring-0 text-sm h-full truncate cursor-pointer"
                                     value={selectedPropertyId ?? ""}
-                                    onChange={(e) => {
-                                        setSelectedPropertyId(Number(e.target.value) || null);
-                                    }}
-                                    disabled={!(isSuperAdmin || isOwner)}
+                                    onChange={(e) => setSelectedPropertyId(Number(e.target.value) || null)}
                                 >
-                                    <option value="">All properties</option>
+                                    <option value="" disabled>Select Property</option>
                                     {!myPropertiesLoading &&
                                         myProperties?.properties?.map((property) => (
                                             <option key={property.id} value={property.id}>
@@ -641,40 +422,42 @@ export default function KitchenInventory() {
                             </div>
                         )}
 
-                        {permission?.can_create && <Button variant="hero" onClick={() => setBulkOpen(true)}>
-                             <Plus className="h-4 w-4 mr-none" />Adjust Stock
-                        </Button>}
+                        {permission?.can_create && (
+                            <Button variant="hero" onClick={() => {
+                                setMode("add");
+                                setSheetOpen(true);
+                            }}>
+                                <Plus className="h-4 w-4 mr-2" />Add Item
+                            </Button>
+                        )}
                     </div>
                 </div>
-                {/* Header Tabs */}
+
+                {/* Tabs */}
                 <div className="border-b border-border flex">
-                    <div
+                    <button
                         onClick={() => setActiveTab("inventory")}
-                        className={`
-                            px-4 py-3 text-sm font-medium cursor-pointer
-                            border-b-2 transition
-                            ${activeTab === "inventory"
-                                ? "border-primary text-foreground"
+                        className={cn(
+                            "px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px]",
+                            activeTab === "inventory"
+                                ? "border-primary text-primary"
                                 : "border-transparent text-muted-foreground hover:text-foreground"
-                            }`}
+                        )}
                     >
                         Inventory
-                    </div>
-
-                    <div
+                    </button>
+                    <button
                         onClick={() => setActiveTab("audit")}
-                        className={`
-                            px-4 py-3 text-sm font-medium cursor-pointer
-                            border-b-2 transition
-                            ${activeTab === "audit"
-                                ? "border-primary text-foreground"
+                        className={cn(
+                            "px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px]",
+                            activeTab === "audit"
+                                ? "border-primary text-primary"
                                 : "border-transparent text-muted-foreground hover:text-foreground"
-                            }`}
+                        )}
                     >
                         History
-                    </div>
+                    </button>
                 </div>
-
 
                 {activeTab === "inventory" && (
                     <div className="flex-1">
@@ -750,7 +533,7 @@ export default function KitchenInventory() {
 
                             <div className="px-2 pb-2">
                                 <AppDataGrid
-                                    scrollable={false}
+                                    density="compact"
                                     columns={[
                                         {
                                             label: "Item ID",
@@ -761,7 +544,6 @@ export default function KitchenInventory() {
                                                     type="button"
                                                     className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
                                                     onClick={() => openManage(item, "view")}
-                                                    aria-label={`Open summary view for kitchen item ${formatModuleDisplayId("kitchen", item.id)}`}
                                                 >
                                                     {formatModuleDisplayId("kitchen", item.id)}
                                                 </button>
@@ -772,7 +554,6 @@ export default function KitchenInventory() {
                                             key: "name",
                                             cellClassName: "font-semibold text-foreground min-w-[180px]",
                                         },
-
                                         {
                                             label: "Stock",
                                             headClassName: "text-center",
@@ -780,7 +561,7 @@ export default function KitchenInventory() {
                                             render: (item: any) => {
                                                 const lowStock = Number(item.quantity) <= (item.reorder_level || 0);
                                                 return (
-                                                    <span className={lowStock ? "text-red-600" : "text-foreground"}>
+                                                    <span className={cn("px-2 py-0.5 rounded text-xs font-bold", lowStock ? "bg-red-50 text-red-600 border border-red-100" : "bg-muted/30 text-foreground")}>
                                                         {item.quantity}
                                                     </span>
                                                 );
@@ -789,7 +570,7 @@ export default function KitchenInventory() {
                                         {
                                             label: "Unit",
                                             cellClassName: "text-muted-foreground min-w-[100px]",
-                                            render: (item: any) => item.unit || <span className="text-muted-foreground/40 italic">Not set</span>,
+                                            render: (item: any) => item.unit || "—",
                                         },
                                     ] as ColumnDef[]}
                                     data={paginatedKitchenInventory}
@@ -798,6 +579,7 @@ export default function KitchenInventory() {
                                     minWidth="760px"
                                     actionLabel=""
                                     actionClassName="text-center w-[60px]"
+                                    showActions={permission?.can_create}
                                     actions={(item: KitchenItem) => (
                                         <Tooltip>
                                             <TooltipTrigger asChild>
@@ -806,12 +588,11 @@ export default function KitchenInventory() {
                                                     variant="ghost"
                                                     className="h-7 w-7 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
                                                     onClick={() => openManage(item, "edit")}
-                                                    aria-label={`View and update details for inventory item ${item.name}`}
                                                 >
                                                     <Pencil className="w-3.5 h-3.5 mx-auto" />
                                                 </Button>
                                             </TooltipTrigger>
-                                            <TooltipContent>View / Update Details</TooltipContent>
+                                            <TooltipContent>Update Item</TooltipContent>
                                         </Tooltip>
                                     )}
                                     enablePagination
@@ -821,16 +602,14 @@ export default function KitchenInventory() {
                                         setPage: setInventoryPage,
                                         totalRecords: inventoryTotalRecords,
                                         limit: inventoryLimit,
-                                        onLimitChange: (value) => {
-                                            setInventoryLimit(value);
-                                            setInventoryPage(1);
-                                        },
-                                        disabled: kitchenInventoryLoading || kitchenInventoryFetching,
+                                        onLimitChange: (val) => { setInventoryLimit(val); setInventoryPage(1); },
+                                        disabled: kitchenInventoryFetching,
                                     }}
                                 />
                             </div>
                         </div>
-                    </div>)}
+                    </div>
+                )}
 
                 {activeTab === "audit" && (
                     <div className="flex-1">
@@ -893,7 +672,7 @@ export default function KitchenInventory() {
 
                             <div className="px-2 pb-2">
                                 <AppDataGrid
-                                    scrollable={false}
+                                    density="compact"
                                     columns={[
                                         {
                                             label: "Item ID",
@@ -908,22 +687,26 @@ export default function KitchenInventory() {
                                         {
                                             label: "Item",
                                             headClassName: "w-[220px]",
-                                            cellClassName: "font-medium min-w-[220px]",
+                                            cellClassName: "font-semibold text-foreground min-w-[220px]",
                                             render: (audit: any) => {
                                                 const details = parseAuditDetails(audit.details);
-                                                return details?.entity?.inventory_name || "--";
+                                                return details?.entity?.inventory_name || "—";
                                             },
                                         },
                                         {
                                             label: "Action",
                                             headClassName: "text-center w-[140px]",
                                             cellClassName: "text-center font-medium min-w-[140px]",
-                                            render: (audit: any) => getAuditActionLabel(audit),
+                                            render: (audit: any) => (
+                                                <span className="text-[10px] font-bold uppercase tracking-tight px-2 py-0.5 rounded bg-primary/10 text-primary">
+                                                    {getAuditActionLabel(audit)}
+                                                </span>
+                                            ),
                                         },
                                         {
                                             label: "Change",
                                             headClassName: "w-[320px]",
-                                            cellClassName: "min-w-[320px] whitespace-normal break-words underline-offset-4",
+                                            cellClassName: "min-w-[320px] whitespace-normal text-xs text-primary/80 font-medium",
                                             render: (audit: any) => getAuditChangeText(parseAuditDetails(audit.details)),
                                         },
                                         {
@@ -935,7 +718,7 @@ export default function KitchenInventory() {
                                         {
                                             label: "Date",
                                             headClassName: "w-[180px]",
-                                            cellClassName: "text-xs text-muted-foreground min-w-[180px]",
+                                            cellClassName: "text-[10px] text-muted-foreground min-w-[180px]",
                                             render: (audit: any) => formatAppDateTime(audit.created_on),
                                         },
                                     ] as ColumnDef[]}
@@ -950,228 +733,151 @@ export default function KitchenInventory() {
                                         setPage: setAuditPage,
                                         totalRecords: historyTotalRecords,
                                         limit: auditLimit,
-                                        onLimitChange: (value) => {
-                                            setAuditLimit(value);
-                                            setAuditPage(1);
-                                        },
-                                        disabled: logsLoading || logsFetching,
+                                        onLimitChange: (val) => { setAuditLimit(val); setAuditPage(1); },
+                                        disabled: logsFetching,
                                     }}
                                 />
                             </div>
                         </div>
                     </div>
                 )}
-
-
-
-                {/* Pagination */}
-                <div className="shrink-0 flex justify-end text-sm">
-
-                </div>
-
             </section>
 
-            {/* ================= SIDE SHEET (ADD / EDIT / VIEW) ================= */}
+            {/* SIDE SHEET */}
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto bg-background border-l border-border/50">
+                <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto bg-background">
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="space-y-1"
                     >
-                        <SheetHeader className="border-b border-border/50 pb-4 mb-4">
-                            <div className="flex items-start justify-between pr-8">
-                                <div className="flex items-start gap-4">
-                                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary shadow-sm shrink-0 mt-1">
-                                        {mode === "view" ? <Boxes className="w-5 h-5" /> : mode === "edit" ? <Pencil className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
-                                    </div>
-                                    <div className="space-y-1">
-                                        <SheetTitle className="text-xl font-bold text-foreground leading-snug">
-                                            {mode === "view" ? "Kitchen Inventory Item Details" : mode === "edit" ? "Update Kitchen Inventory Item" : "Create New Item"}
-                                            {(mode === "view" || mode === "edit") && selectedItem?.id && (
-                                                <span className="ml-2 text-primary font-semibold">[#{formatModuleDisplayId("kitchen", selectedItem.id)}]</span>
-                                            )}
-                                        </SheetTitle>
-                                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider max-w-[400px]">
-                                            {mode === "view" 
-                                                ? `View inventory item information and stock history for #${formatModuleDisplayId("kitchen", selectedItem?.id || "")}.` 
-                                                : mode === "edit" 
-                                                ? `Update existing inventory item details for #${formatModuleDisplayId("kitchen", selectedItem?.id || "")}.` 
-                                                : "Add a new item to your kitchen inventory."}
-                                        </p>
-                                    </div>
-                                </div>
+                        <SheetHeader className="mb-6">
+                            <div className="space-y-1">
+                                <SheetTitle className="text-xl font-bold">
+                                    {mode === "view" ? `Kitchen Inventory [${selectedItem?.id ? `#${formatModuleDisplayId("kitchen", selectedItem.id)}` : "..."}]` : mode === "edit" ? `Update Item [${selectedItem?.id ? `#${formatModuleDisplayId("kitchen", selectedItem.id)}` : "..."}]` : "Add Item"}
+                                </SheetTitle>
+                                <p className="text-xs text-muted-foreground font-medium  tracking-wider">
+                                    {mode === "view" ? "Detailed stock and audit information" : "Modify stock levels and unit configuration"}
+                                </p>
                             </div>
                         </SheetHeader>
 
+                        {mode === "view" && selectedItem && (
+                            <div className="space-y-6">
+                                {/* Sheet Tabs */}
+                                <div className="border-b border-border flex">
+                                    <button
+                                        onClick={() => setSheetTab("summary")}
+                                        className={cn(
+                                            "px-4 py-2 text-xs font-bold  tracking-widest transition-all border-b-2 -mb-[2px]",
+                                            sheetTab === "summary"
+                                                ? "border-primary text-primary"
+                                                : "border-transparent text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        Summary
+                                    </button>
+                                    <button
+                                        onClick={() => setSheetTab("history")}
+                                        className={cn(
+                                            "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
+                                            sheetTab === "history"
+                                                ? "border-primary text-primary"
+                                                : "border-transparent text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        History
+                                    </button>
+                                </div>
 
-                        <div className="flex-1 overflow-y-auto pr-2 -mr-2">
-                            {mode === "view" && selectedItem && (
-                                <div className="space-y-4">
-                                    {/* Highlight Card */}
-                                    <div className="flex items-center gap-4 p-4 rounded-xl border border-primary/10 bg-accent shadow-sm">
-                                        <div className="h-24 w-24 rounded-2xl bg-primary/5 flex items-center justify-center text-primary border border-primary/10 shadow-inner">
-                                            <Package className="w-12 h-12" />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-base font-bold text-foreground leading-tight">{selectedItem.name}</h3>
-                                            <p className="text-xs text-muted-foreground font-medium">Item ID: {formatModuleDisplayId("kitchen", selectedItem.id)} • Kitchen Inventory</p>
-                                        </div>
-                                        <div className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-50 text-green-700 border border-green-100">
-                                            <div className="w-2 h-2 rounded-full bg-green-500" />
-                                            <span className="text-[10px] font-bold uppercase tracking-widest">Active</span>
-                                        </div>
-                                    </div>
+                                {sheetTab === "summary" && (
+                                    <PropertyViewSection title="Inventory Overview" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                        <ViewField label="Item Name" value={selectedItem.name} className="sm:col-span-2" />
+                                        <ViewField label="Category" value={selectedItem.inventory_type} />
+                                        <ViewField label="Reorder Level" value={selectedItem.reorder_level} />
+                                        <ViewField label="Current Stock" value={`${selectedItem.quantity} ${selectedItem.unit}`} />
+                                        <ViewField label="Status" value={selectedItem.is_active ? "Active" : "Inactive"} />
+                                    </PropertyViewSection>
+                                )}
 
-                                    {/* Details Grid */}
-                                    <div className="grid grid-cols-4 gap-px bg-primary/10 border border-primary/10 rounded-xl overflow-hidden bg-accent">
-                                        <div className="p-3 flex items-start gap-3 bg-accent">
-                                            <div className="mt-0.5 h-7 w-7 rounded-lg bg-background flex items-center justify-center text-slate-500 border border-primary/5">
-                                                <Building2 className="w-3.5 h-3.5" />
-                                            </div>
-                                            <div className="space-y-0.5">
-                                                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Category</Label>
-                                                <p className="text-sm font-semibold text-foreground">
-                                                    {selectedItem.inventory_type || "—"}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div className="p-3 flex items-start gap-3 bg-accent">
-                                            <div className="mt-0.5 h-7 w-7 rounded-lg bg-background flex items-center justify-center text-slate-500 border border-primary/5">
-                                                <Layers className="w-3.5 h-3.5" />
-                                            </div>
-                                            <div className="space-y-0.5">
-                                                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Current Stock</Label>
-                                                <p className="text-sm font-semibold text-foreground">
-                                                    {Number(selectedItem.quantity).toFixed(2)} {selectedItem.unit || ""}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div className="p-3 flex items-start gap-3 bg-accent">
-                                            <div className="mt-0.5 h-7 w-7 rounded-lg bg-background flex items-center justify-center text-slate-500 border border-primary/5">
-                                                <Boxes className="w-3.5 h-3.5" />
-                                            </div>
-                                            <div className="space-y-0.5">
-                                                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Unit</Label>
-                                                <p className="text-sm font-semibold text-foreground">
-                                                    {selectedItem.unit || "—"}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div className="p-3 flex items-start gap-3 bg-accent">
-                                            <div className="mt-0.5 h-7 w-7 rounded-lg bg-background flex items-center justify-center text-slate-500 border border-primary/5">
-                                                <ShieldCheck className="w-3.5 h-3.5" />
-                                            </div>
-                                            <div className="space-y-0.5">
-                                                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Status</Label>
-                                                <div className="pt-0.5">
-                                                    <GridBadge status="active" statusType="toggle">Active</GridBadge>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* AUDIT HISTORY */}
-                                    <div className="pt-2">
-                                        <div className="flex items-center gap-2 mb-4">
-                                            <div className="h-8 w-8 rounded-lg bg-primary/5 flex items-center justify-center text-primary">
-                                                <History className="w-4 h-4" />
-                                            </div>
-                                            <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Audit History</h3>
-                                        </div>
+                                {sheetTab === "history" && (
+                                    <div className="space-y-3">
+                                      
+                                        
                                         {!auditLogs?.data?.length ? (
-                                            <div className="p-8 text-center rounded-xl border border-dashed border-border bg-accent/50">
-                                                <p className="text-sm text-muted-foreground">No audit history found.</p>
+                                            <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
+                                                <p className="text-xs text-muted-foreground italic">No recent activity logs.</p>
                                             </div>
                                         ) : (
-                                            <div className="space-y-4">
-                                                <div className="border border-primary/10 rounded-xl overflow-hidden bg-accent shadow-sm">
-                                                    <AppDataGrid
-                                                        columns={[
-                                                            { 
-                                                                label: "Action", 
-                                                                headClassName: "bg-primary/5 text-[10px] font-bold uppercase tracking-widest py-3",
-                                                                cellClassName: "py-3 px-4",
-                                                                render: (log: any) => (
-                                                                    <div className="inline-flex items-center px-2 py-0.5 rounded bg-primary/10 text-[10px] font-bold text-primary uppercase tracking-tight">
-                                                                        {getAuditActionLabel(log)}
-                                                                    </div>
-                                                                ) 
-                                                            },
-                                                            { 
-                                                                label: "Change", 
-                                                                headClassName: "bg-primary/5 text-[10px] font-bold uppercase tracking-widest py-3",
-                                                                cellClassName: "py-3 px-4 font-semibold text-xs text-primary/80",
-                                                                render: (log: any) => getAuditChangeText(parseAuditDetails(log.details)) 
-                                                            },
-                                                            { 
-                                                                label: "User", 
-                                                                headClassName: "bg-primary/5 text-[10px] font-bold uppercase tracking-widest py-3",
-                                                                cellClassName: "py-3 px-4 text-xs font-medium text-foreground/70",
-                                                                render: (log: any) => (
-                                                                    <div className="flex items-center gap-2">
-                                                                        <div className="h-6 w-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] text-slate-500">
-                                                                            <User className="w-3 h-3" />
-                                                                        </div>
-                                                                        {`${log.user_first_name} ${log.user_last_name}`}
-                                                                    </div>
-                                                                )
-                                                            },
-                                                            { 
-                                                                label: "Date", 
-                                                                headClassName: "bg-primary/5 text-[10px] font-bold uppercase tracking-widest py-3",
-                                                                cellClassName: "py-3 px-4 text-[10px] font-medium text-muted-foreground",
-                                                                render: (log: any) => (
-                                                                    <div className="flex items-center gap-1.5">
-                                                                        <Clock className="w-3 h-3" />
-                                                                        {formatAppDateTime(log.created_on)}
-                                                                    </div>
-                                                                )
-                                                            }
-                                                        ] as ColumnDef[]}
-                                                        data={auditLogs.data}
-                                                        rowKey={(log: any) => log.id}
-                                                        minWidth="400px"
-                                                        className="mt-0 border-none bg-accent"
-                                                        headerClassName="bg-transparent border-b border-primary/10"
-                                                        enablePagination
-                                                        paginationProps={{
-                                                            page: itemAuditPage,
-                                                            totalPages: auditLogs?.pagination?.totalPages ?? 1,
-                                                            setPage: setItemAuditPage,
-                                                            totalRecords: auditLogs?.pagination?.totalItems ?? auditLogs?.pagination?.total ?? auditLogs?.data?.length ?? 0,
-                                                            limit: itemAuditLimit,
-                                                            onLimitChange: (v) => { setItemAuditLimit(v); setItemAuditPage(1); },
-                                                            disabled: !auditLogs,
-                                                        }}
-                                                    />
-                                                </div>
+                                            <div className="border border-border rounded-lg overflow-hidden bg-background shadow-sm">
+                                                <AppDataGrid
+                                                    columns={[
+                                                        { 
+                                                            label: "Action", 
+                                                            render: (log: any) => (
+                                                                <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                                                                    {getAuditActionLabel(log)}
+                                                                </span>
+                                                            ) 
+                                                        },
+                                                        { 
+                                                            label: "Change", 
+                                                            cellClassName: "text-[11px] font-medium text-foreground/80",
+                                                            render: (log: any) => getAuditChangeText(parseAuditDetails(log.details)) 
+                                                        },
+                                                        { 
+                                                            label: "Date", 
+                                                            cellClassName: "text-[10px] text-muted-foreground",
+                                                            render: (log: any) => formatAppDateTime(log.created_on) 
+                                                        }
+                                                    ] as ColumnDef[]}
+                                                    data={auditLogs.data}
+                                                    rowKey={(log: any) => log.id}
+                                                    minWidth="300px"
+                                                    enablePagination
+                                                    paginationProps={{
+                                                        page: itemAuditPage,
+                                                        totalPages: auditLogs?.pagination?.totalPages ?? 1,
+                                                        setPage: setItemAuditPage,
+                                                        totalRecords: auditLogs?.pagination?.totalItems ?? auditLogs?.data?.length ?? 0,
+                                                        limit: itemAuditLimit,
+                                                        onLimitChange: (v) => { setItemAuditLimit(v); setItemAuditPage(1); },
+                                                        disabled: !auditLogs,
+                                                    }}
+                                                />
                                             </div>
                                         )}
                                     </div>
-                                </div>
-                            )}
+                                )}
 
-                            {mode === "edit" && selectedItem && (
-                                <div className="space-y-6 bg-accent p-6 rounded-xl border border-primary/10 shadow-sm">
-                                    <div className="space-y-6">
+                                <div className="flex justify-end gap-3 pt-6 border-t border-border">
+                                    <Button variant="heroOutline" onClick={() => setSheetOpen(false)}>Close</Button>
+                                </div>
+                            </div>
+                        )}
+
+                        {mode === "edit" && selectedItem && (
+                            <div className="space-y-5">
+                                <div className="rounded-[5px] border border-primary/50 bg-background p-5 shadow-sm space-y-5">
+                                    <h3 className="text-[11px] font-semibold text-primary/90 uppercase tracking-[0.16em] border-b border-primary/50 pb-2">
+                                        Update Stock Levels
+                                    </h3>
+
+                                    <div className="space-y-4">
                                         <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Update {selectedItem.name} Quantity *</Label>
+                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Target Quantity *</Label>
                                             <Input
                                                 type="text"
-                                                className="h-11 border-primary/20 bg-background shadow-none focus-visible:ring-1 focus-visible:ring-primary"
+                                                className="h-10 focus-visible:ring-1 focus-visible:ring-primary font-semibold"
                                                 value={editForm.quantity}
                                                 onChange={(e) => setEditForm(f => ({ ...f, quantity: +normalizeNumberInput(e.target.value) }))}
                                             />
                                         </div>
                                         
                                         <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Unit *</Label>
+                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Stock Unit *</Label>
                                             <NativeSelect
-                                                className="w-full h-11 border border-primary/20 bg-background rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary shadow-none"
+                                                className="w-full h-10 border border-border bg-background rounded-[3px] px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                                                 value={editForm.unit}
                                                 onChange={(e) => setEditForm(f => ({ ...f, unit: e.target.value }))}
                                             >
@@ -1183,149 +889,84 @@ export default function KitchenInventory() {
                                         </div>
 
                                         <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Comments</Label>
-                                            <div className="relative">
-                                                <textarea
-                                                    className="w-full min-h-[100px] border border-primary/20 bg-background rounded-md px-3 py-3 pr-10 text-sm focus:outline-none focus:ring-1 focus:ring-primary shadow-none resize-none"
-                                                    placeholder="Enter any additional comments (optional)..."
-                                                    value={editForm.comments}
-                                                    onChange={(e) => setEditForm(f => ({ ...f, comments: e.target.value }))}
-                                                    maxLength={255}
-                                                />
-                                                <div className="absolute bottom-2 right-2.5 px-1.5 py-0.5 bg-background/80 backdrop-blur-sm rounded text-[10px] font-bold text-muted-foreground/60 select-none">
-                                                    {editForm.comments.length} / 255
-                                                </div>
-                                            </div>
+                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Audit Comments</Label>
+                                            <textarea
+                                                className="w-full min-h-[100px] border border-border bg-background rounded-[3px] p-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                                                placeholder="Explain the reason for this manual update..."
+                                                value={editForm.comments}
+                                                onChange={(e) => setEditForm(f => ({ ...f, comments: e.target.value }))}
+                                                maxLength={255}
+                                            />
+                                            <div className="text-[10px] text-right text-muted-foreground font-bold">{editForm.comments.length}/255</div>
                                         </div>
                                     </div>
                                 </div>
-                            )}
-                        </div>
+
+                                <div className="flex justify-end gap-3 pt-6 border-t border-border mt-4">
+                                    <Button variant="heroOutline" onClick={() => setSheetOpen(false)}>Cancel</Button>
+                                    <Button variant="hero" onClick={saveEdit}>Update</Button>
+                                </div>
+                            </div>
+                        )}
 
                         {mode === "add" && (
                             <div className="space-y-4 mt-6">
-                                <div>
-                                    <Label>Inventory Item *</Label>
-                                    <NativeSelect
-                                        className={`w-full h-10 rounded px-3 border bg-background ${createErrors.inventory_master_id ? "border-red-500" : "border-border"}`}
-                                        value={createForm.inventory_master_id ?? ""}
-                                        onChange={(e) => setCreateForm(f => ({ ...f, inventory_master_id: Number(e.target.value) }))}
-                                    >
-                                        <option value="" disabled>-- Please Select --</option>
-                                        {masterInventory?.filter(item => item.is_active).map(item => (
-                                            <option key={item.id} value={item.id}>{item.name}</option>
-                                        ))}
-                                    </NativeSelect>
-                                    {createErrors.inventory_master_id && <p className="text-xs text-red-500 mt-1">{createErrors.inventory_master_id}</p>}
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <Label>Quantity*</Label>
-                                        <Input
-                                            className={`bg-background ${createErrors.quantity ? "border-red-500" : ""}`}
-                                            value={createForm.quantity}
-                                            onChange={(e) => setCreateForm(f => ({ ...f, quantity: +normalizeNumberInput(e.target.value) }))}
-                                        />
-                                        {createErrors.quantity && <p className="text-xs text-red-500 mt-1">{createErrors.quantity}</p>}
-                                    </div>
-                                    {isItemUsable && (
+                                <div className="rounded-[5px] border border-primary/50 bg-background p-5 shadow-sm space-y-5">
+                                    <h3 className="text-[11px] font-semibold text-primary/90 uppercase tracking-[0.16em] border-b border-primary/50 pb-2">
+                                     Item Details
+                                    </h3>
+                                    <div className="space-y-4">
                                         <div>
-                                            <Label>Unit*</Label>
+                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Inventory Item *</Label>
                                             <NativeSelect
-                                                className={`w-full h-10 rounded px-3 border bg-background ${createErrors.unit ? "border-red-500" : "border-border"}`}
-                                                value={createForm.unit ?? ""}
-                                                onChange={(e) => setCreateForm(f => ({ ...f, unit: e.target.value }))}
+                                                className={`w-full h-10 rounded-[3px] px-3 border bg-background mt-1 ${createErrors.inventory_master_id ? "border-red-500" : "border-border"}`}
+                                                value={createForm.inventory_master_id ?? ""}
+                                                onChange={(e) => setCreateForm(f => ({ ...f, inventory_master_id: Number(e.target.value) }))}
                                             >
-                                                <option value="" disabled>Select item</option>
-                                                {["Nos", "Piece", "Kilo Gram", "Gram", "Litre", "Milliliter", "Packet", "Box"].map(u => (
-                                                    <option key={u} value={u}>{u}</option>
+                                                <option value="" disabled>-- Please Select --</option>
+                                                {masterInventory?.filter(item => item.is_active).map(item => (
+                                                    <option key={item.id} value={item.id}>{item.name}</option>
                                                 ))}
                                             </NativeSelect>
-                                            {createErrors.unit && <p className="text-xs text-red-500 mt-1">{createErrors.unit}</p>}
+                                            {createErrors.inventory_master_id && <p className="text-xs text-red-500 mt-1">{createErrors.inventory_master_id}</p>}
                                         </div>
-                                    )}
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Quantity *</Label>
+                                                <Input
+                                                    className={`bg-background mt-1 ${createErrors.quantity ? "border-red-500" : ""}`}
+                                                    value={createForm.quantity}
+                                                    onChange={(e) => setCreateForm(f => ({ ...f, quantity: +normalizeNumberInput(e.target.value) }))}
+                                                />
+                                                {createErrors.quantity && <p className="text-xs text-red-500 mt-1">{createErrors.quantity}</p>}
+                                            </div>
+                                            {isItemUsable && (
+                                                <div>
+                                                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Unit *</Label>
+                                                    <NativeSelect
+                                                        className={`w-full h-10 rounded-[3px] px-3 border bg-background mt-1 ${createErrors.unit ? "border-red-500" : "border-border"}`}
+                                                        value={createForm.unit ?? ""}
+                                                        onChange={(e) => setCreateForm(f => ({ ...f, unit: e.target.value }))}
+                                                    >
+                                                        <option value="" disabled>Select unit</option>
+                                                        {availableUnits.map(u => (
+                                                            <option key={u.id} value={u.id}>{u.label}</option>
+                                                        ))}
+                                                    </NativeSelect>
+                                                    {createErrors.unit && <p className="text-xs text-red-500 mt-1">{createErrors.unit}</p>}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end gap-3 pt-6 border-t border-border mt-4">
+                                    <Button variant="heroOutline" onClick={() => setSheetOpen(false)}>Cancel</Button>
+                                    <Button variant="hero" onClick={createItem}>Create Item</Button>
                                 </div>
                             </div>
                         )}
-
-                        <div className="flex justify-end gap-3 pt-6 border-t mt-6">
-                            <Button variant="heroOutline" onClick={() => setSheetOpen(false)}>
-                                {mode === "view" ? "Close" : "Cancel"}
-                            </Button>
-                            {mode === "edit" && (
-                                <Button variant="hero" onClick={saveEdit}>
-                                    Save Changes
-                                </Button>
-                            )}
-                            {mode === "add" && (
-                                <Button variant="hero" onClick={createItem}>
-                                    Create Item
-                                </Button>
-                            )}
-                        </div>
-                    </motion.div>
-                </SheetContent>
-            </Sheet>
-
-            {/* ================= ADJUST STOCK SHEET ================= */}
-            <Sheet open={adjustOpen} onOpenChange={setAdjustOpen}>
-                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="space-y-1"
-                    >
-                        <SheetHeader>
-                            <SheetTitle>Adjust Stock</SheetTitle>
-                        </SheetHeader>
-
-                    {selectedItem && (
-                        <div className="space-y-4 mt-6">
-
-                            <Info label="Item" value={selectedItem.name} />
-
-                            <Info
-                                label="Current Stock"
-                                value={`${selectedItem.quantity} ${selectedItem.unit}`}
-                            />
-
-                            <div>
-                                <Label>Adjustment Quantity</Label>
-                                <Input
-                                    type="number"
-                                    placeholder="Use + or - value"
-                                    value={adjustForm.quantity}
-                                    onChange={(e) =>
-                                        setAdjustForm(f => ({
-                                            ...f,
-                                            quantity: normalizeSignedNumberInput(e.target.value).toString()
-                                        }))
-                                    }
-                                />
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    Use positive value to add stock, negative to reduce.
-                                </p>
-                            </div>
-
-                            </div>
-                        )}
-
-                        <div className="flex justify-end gap-3 pt-6 border-t mt-6">
-                            <Button
-                                variant="heroOutline"
-                                onClick={() => setAdjustOpen(false)}
-                            >
-                                Cancel
-                            </Button>
-
-                            <Button
-                                variant="hero"
-                                onClick={handleAdjustStock}
-                            >
-                                Adjust Stock
-                            </Button>
-                        </div>
                     </motion.div>
                 </SheetContent>
             </Sheet>
@@ -1338,34 +979,15 @@ export default function KitchenInventory() {
                 availableUnits={availableUnits}
                 currentInventory={kitchenInventory?.data}
                 onSubmit={(rows) => {
-
-                    const promise = Promise.all(
-                        rows.map(r => adjustStock(r).unwrap())
-                    );
-
+                    const promise = Promise.all(rows.map(r => adjustStock(r).unwrap()));
                     toast.promise(promise, {
-                        pending: "Adjusting stock...",
-                        success: "Bulk adjustment successful",
-                        error: "Failed to adjust stock"
+                        pending: "Applying bulk adjustments...",
+                        success: "Bulk stock update successful",
+                        error: "Failed to apply bulk adjustments"
                     });
-
                     setBulkOpen(false);
                 }}
             />
-
-
         </div>
     );
 }
-
-/* ---------------- Small UI Component ---------------- */
-
-function Info({ label, value }: { label: string; value: string }) {
-    return (
-        <div className="flex justify-between text-sm border-b pb-2">
-            <span className="text-muted-foreground">{label}</span>
-            <span className="font-medium">{value}</span>
-        </div>
-    );
-}
-

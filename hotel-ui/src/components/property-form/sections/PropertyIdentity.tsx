@@ -49,13 +49,13 @@ export default function PropertyIdentity({
 }: Props) {
 
     return (
-        <div className="border border-border rounded-[5px] p-4 bg-card">
+        <div className="rounded-[5px] border border-border/40 bg-background p-4 shadow-sm">
 
-            <div className="grid grid-cols-[1fr_auto] gap-5 items-stretch">
+            <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-stretch">
 
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-4">
 
-                    <h3 className="font-semibold text-sm text-primary uppercase tracking-wider">
+                    <h3 className="text-xs font-semibold text-primary/90 uppercase tracking-[0.16em]">
                         Property Identity
                     </h3>
 
@@ -74,7 +74,7 @@ export default function PropertyIdentity({
                 </div>
 
                 {/* ================= RIGHT MEDIA ================= */}
-                <div className="flex gap-3 h-full">
+                <div className="flex h-full flex-wrap gap-3">
 
                     {/* IMAGE */}
                     <MediaSquare
@@ -133,9 +133,9 @@ function MediaSquare({
     return (
         <div className="space-y-1">
 
-            <Label className="text-xs">{label}</Label>
+            <Label className="text-xs font-medium text-muted-foreground">{label}</Label>
 
-            <div className="relative w-28 aspect-square rounded-[3px] border border-border overflow-hidden">
+            <div className="relative w-28 aspect-square rounded-[3px] border border-border/60 bg-muted/30 overflow-hidden">
 
                 {src ? (
                     <img
@@ -144,7 +144,7 @@ function MediaSquare({
                         onError={onError}
                     />
                 ) : (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-muted text-center">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-muted/60 text-center">
                         <ImageIcon className="h-6 w-6 mb-1" />
                         <span className="text-[10px]">Upload</span>
                     </div>

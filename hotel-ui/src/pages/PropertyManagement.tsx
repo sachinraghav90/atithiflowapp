@@ -32,6 +32,7 @@ import PropertyCorporate from "@/components/property-form/sections/PropertyCorpo
 
 import { usePermission } from "@/rbac/usePermission";
 import PropertyViewSection from "@/components/PropertyViewSection";
+import ViewField from "@/components/ViewField";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -124,6 +125,7 @@ type FieldError = {
 export default function PropertyManagement() {
     const [mode, setMode] = useState<"add" | "edit" | "view">("add");
     const [sheetOpen, setSheetOpen] = useState(false);
+    const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
     const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
 
     // pagination
@@ -307,6 +309,7 @@ export default function PropertyManagement() {
 
     const openPropertyDetails = (property: Property, forceMode: "view" | "edit" = "view") => {
         setMode(forceMode);
+        setSheetTab("summary");
         setSelectedProperty(property);
 
         const prepared = {
@@ -799,6 +802,7 @@ export default function PropertyManagement() {
                         disabled={!permission?.can_create}
                         onClick={() => {
                             setMode("add");
+                            setSheetTab("summary");
                             setSelectedProperty(null);
                             setNewProperty(EMPTY_PROPERTY);
                             setSheetOpen(true);
@@ -958,112 +962,134 @@ export default function PropertyManagement() {
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
                 <SheetContent
                     side="right"
-                    className="w-full sm:max-w-4xl lg:max-w-5xl overflow-y-auto"
+                    className="w-full lg:max-w-4xl sm:max-w-3xl overflow-y-auto bg-background app-scrollbar"
                 >
 
-                    <motion.div className="space-y-6">
+                    <motion.div className="space-y-5">
 
-                        <SheetHeader>
+                        <SheetHeader className="mb-6">
                             <div className="space-y-1">
-                                <SheetTitle>
+                                <SheetTitle className="text-xl font-bold text-foreground">
                                     {mode === "add" || mode === "edit"
-                                        ? `Property [${mode === "add" ? "NEW" : newProperty.id ? `#${newProperty.id}` : "NEW"}]`
-                                        : `Property [#${newProperty.id}]`
+                                        ? `Property [${mode === "add" ? "NEW" : newProperty.id ? `#${formatModuleDisplayId("property", newProperty.id)}` : "NEW"}]`
+                                        : `Property Summary [#${formatModuleDisplayId("property", newProperty.id)}]`
                                     }
                                 </SheetTitle>
-                                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                                <p className="text-xs text-muted-foreground font-medium tracking-wide">
                                     {mode === "add"
-                                        ? "Create new property profile"
+                                        ? "Create New Property Profile"
                                         : mode === "edit"
-                                            ? "Edit property configuration"
-                                            : "Property information summary"}
+                                            ? "Edit Property Configuration"
+                                            : "Property Information Summary"}
                                 </p>
                             </div>
                         </SheetHeader>
 
                         {viewMode ? (
                             <div className="space-y-4">
-                                {/* ===== IDENTITY ===== */}
-                                <PropertyViewSection title="Property Identity">
-                                    <ViewField label="Property Name" value={newProperty.brand_name} />
-                                    <ViewField label="Property Code" value={newProperty.serial_number} />
-                                    <ViewField label="GSTIN" value={newProperty.gst_no} />
-                                    <ViewField label="Status" value={newProperty.status} />
-                                </PropertyViewSection>
+                                <div className="border-b border-border flex">
+                                    <button
+                                        onClick={() => setSheetTab("summary")}
+                                        className={cn(
+                                            "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                            sheetTab === "summary"
+                                                ? "border-primary text-primary"
+                                                : "border-transparent text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        Summary
+                                    </button>
+                                    <button
+                                        onClick={() => setSheetTab("history")}
+                                        className={cn(
+                                            "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                            sheetTab === "history"
+                                                ? "border-primary text-primary"
+                                                : "border-transparent text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        History
+                                    </button>
+                                </div>
 
-                                {/* ===== MEDIA ===== */}
-                                <PropertyViewSection title="Media">
+                                {sheetTab === "summary" && (
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                        <PropertyViewSection title="Property Identity" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                            <ViewField label="Property Name" value={newProperty.brand_name} />
+                                            <ViewField label="Property Code" value={newProperty.serial_number} />
+                                            <ViewField label="GSTIN" value={newProperty.gst_no} />
+                                            <ViewField label="Status" value={newProperty.status} />
+                                        </PropertyViewSection>
 
-                                    {/* IMAGE */}
-                                    {!imageError ? (
-                                        <div className="w-full max-w-sm aspect-video rounded-md overflow-hidden bg-muted">
-                                            <img
-                                                src={`${import.meta.env.VITE_API_URL}/properties/${newProperty.id}/image`}
-                                                className="w-full h-full object-cover"
-                                                onError={() => setImageError(true)}
-                                            />
-                                        </div>
-                                    ) : (
-                                        <div className="h-24 w-24 flex items-center justify-center bg-muted rounded-md">
-                                            <ImageIcon className="w-6 h-6 text-muted-foreground" />
-                                        </div>
+                                        <PropertyViewSection title="Media" className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+                                            {!imageError ? (
+                                                <div className="w-full aspect-video rounded-[5px] overflow-hidden bg-muted/60 border border-border/40">
+                                                    <img
+                                                        src={`${import.meta.env.VITE_API_URL}/properties/${newProperty.id}/image`}
+                                                        className="w-full h-full object-cover"
+                                                        onError={() => setImageError(true)}
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <div className="h-24 w-24 flex items-center justify-center bg-muted/60 rounded-[5px] border border-border/40">
+                                                    <ImageIcon className="w-6 h-6 text-muted-foreground" />
+                                                </div>
 
-                                    )}
+                                            )}
 
-                                    {/* LOGO */}
-                                    {!logoError ? (
-                                        <div className="w-24 aspect-square rounded-md overflow-hidden bg-muted flex items-center justify-center">
-                                            <img
-                                                src={`${import.meta.env.VITE_API_URL}/properties/${newProperty.id}/logo`}
-                                                className="w-full h-full object-contain"
-                                                onError={() => setLogoError(true)}
-                                            />
-                                        </div>
-                                    ) : (
-                                        <div className="h-24 w-24 flex items-center justify-center bg-muted rounded-md">
-                                            <ImageIcon className="w-6 h-6 text-muted-foreground" />
-                                        </div>
-                                    )}
+                                            {!logoError ? (
+                                                <div className="w-24 aspect-square rounded-[5px] overflow-hidden bg-muted/60 border border-border/40 flex items-center justify-center">
+                                                    <img
+                                                        src={`${import.meta.env.VITE_API_URL}/properties/${newProperty.id}/logo`}
+                                                        className="w-full h-full object-contain"
+                                                        onError={() => setLogoError(true)}
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <div className="h-24 w-24 flex items-center justify-center bg-muted/60 rounded-[5px] border border-border/40">
+                                                    <ImageIcon className="w-6 h-6 text-muted-foreground" />
+                                                </div>
+                                            )}
+                                        </PropertyViewSection>
 
-                                </PropertyViewSection>
+                                        <PropertyViewSection title="Location" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                            <ViewField label="Address" value={newProperty.address_line_1} />
+                                            <ViewField label="City" value={newProperty.city} />
+                                            <ViewField label="State" value={newProperty.state} />
+                                            <ViewField label="Country" value={newProperty.country} />
+                                            <ViewField label="Postal Code" value={newProperty.postal_code} />
+                                        </PropertyViewSection>
 
+                                        <PropertyViewSection title="Contact" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                            <ViewField label="Phone" value={newProperty.phone} />
+                                            <ViewField label="Alternate Phone" value={newProperty.phone2} />
+                                            <ViewField label="Email" value={newProperty.email} />
+                                        </PropertyViewSection>
 
-                                {/* ===== LOCATION ===== */}
-                                <PropertyViewSection title="Location">
-                                    <ViewField label="Address" value={newProperty.address_line_1} />
-                                    <ViewField label="City" value={newProperty.city} />
-                                    <ViewField label="State" value={newProperty.state} />
-                                    <ViewField label="Country" value={newProperty.country} />
-                                    <ViewField label="Postal Code" value={newProperty.postal_code} />
-                                </PropertyViewSection>
+                                        <PropertyViewSection title="Operations" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                            <ViewField label="Check In" value={newProperty.checkin_time} />
+                                            <ViewField label="Check Out" value={newProperty.checkout_time} />
+                                        </PropertyViewSection>
 
-                                {/* ===== CONTACT ===== */}
-                                <PropertyViewSection title="Contact">
-                                    <ViewField label="Phone" value={newProperty.phone} />
-                                    <ViewField label="Alternate Phone" value={newProperty.phone2} />
-                                    <ViewField label="Email" value={newProperty.email} />
-                                </PropertyViewSection>
+                                        <PropertyViewSection title="Tax" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                            <ViewField label="GST %" value={newProperty.gst} />
+                                            <ViewField label="Room Tax %" value={newProperty.room_tax_rate} />
+                                        </PropertyViewSection>
 
-                                {/* ===== OPERATIONS ===== */}
-                                <PropertyViewSection title="Operations">
-                                    <ViewField label="Check-in" value={newProperty.checkin_time} />
-                                    <ViewField label="Check-out" value={newProperty.checkout_time} />
-                                    {/* <ViewField label="Pet Friendly" value={newProperty.is_pet_friendly ? "Yes" : "No"} /> */}
-                                </PropertyViewSection>
+                                        {newProperty.address_line_1_office && (
+                                            <PropertyViewSection title="Corporate Office" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                                <ViewField label="Address" value={newProperty.address_line_1_office} />
+                                                <ViewField label="City" value={newProperty.city_office} />
+                                                <ViewField label="Phone" value={newProperty.phone_office} />
+                                            </PropertyViewSection>
+                                        )}
+                                    </div>
+                                )}
 
-                                {/* ===== TAX ===== */}
-                                <PropertyViewSection title="Tax">
-                                    <ViewField label="GST %" value={newProperty.gst} />
-                                    <ViewField label="Room Tax %" value={newProperty.room_tax_rate} />
-                                </PropertyViewSection>
-
-                                {/* ===== OFFICE (optional) ===== */}
-                                {newProperty.address_line_1_office && (
-                                    <PropertyViewSection title="Corporate Office">
-                                        <ViewField label="Address" value={newProperty.address_line_1_office} />
-                                        <ViewField label="City" value={newProperty.city_office} />
-                                        <ViewField label="Phone" value={newProperty.phone_office} />
-                                    </PropertyViewSection>
+                                {sheetTab === "history" && (
+                                    <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
+                                        <p className="text-sm text-muted-foreground">No history logs available yet.</p>
+                                    </div>
                                 )}
                             </div>
 
@@ -1162,7 +1188,7 @@ export default function PropertyManagement() {
                     </motion.div>
                     {/* ================= ACTION FOOTER ================= */}
 
-                    <div className="flex justify-end gap-3 pt-4 border-t border-border mt-6">
+                    <div className="flex justify-end gap-3 pt-4 border-t border-border/50 mt-6">
 
                         {/* Cancel always available */}
                         <Button
@@ -1192,7 +1218,7 @@ export default function PropertyManagement() {
                                 disabled={!isDirty}
                                 onClick={handleSubmitProperty}
                             >
-                                Save Changes
+                                Update
                             </Button>
                         )}
 
@@ -1237,14 +1263,3 @@ function PropertyStatusCell({ property, toggleActive, isUpdating }) {
     );
 }
 
-function ViewField({ label, value }) {
-
-    return (
-        <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground">{label}</p>
-            <p className="min-h-9 w-full rounded-[3px] bg-background px-3 py-1.5 flex items-center text-sm text-foreground cursor-default select-text">
-                {value || "-"}
-            </p>
-        </div>
-    );
-}

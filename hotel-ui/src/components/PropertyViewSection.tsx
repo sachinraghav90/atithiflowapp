@@ -1,21 +1,22 @@
 type Props = {
     title: string;
     children: React.ReactNode;
+    className?: string;
 };
 
-export default function PropertyViewSection({ title, children }: Props) {
+export default function PropertyViewSection({ title, children, className }: Props) {
 
     return (
-        <div className="space-y-3">
+        <section className="space-y-4 rounded-[5px] border-2 border-primary/50 bg-background p-4 shadow-sm">
 
-            <h3 className="text-xs font-semibold text-primary uppercase tracking-wider">{title}</h3>
+            <h3 className="text-[11px] font-semibold text-primary/90 tracking-wider border-b border-primary/50 pb-2 mb-3">
+                {title}
+            </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-
+            <div className={className || "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4"}>
                 {children}
-
             </div>
 
-        </div>
+        </section>
     );
 }

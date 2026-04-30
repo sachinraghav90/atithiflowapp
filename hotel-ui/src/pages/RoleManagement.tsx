@@ -358,7 +358,7 @@ export default function RoleManagement() {
                                 </SheetHeader>
                                 <div className="space-y-5 mt-6">
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Role Name</Label>
+                                        <Label className="text-xs font-medium text-muted-foreground">Role Name</Label>
                                         <Input
                                             className="h-9"
                                             value={newRoleName}
@@ -367,7 +367,7 @@ export default function RoleManagement() {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Default Module Access</Label>
+                                        <Label className="text-xs font-medium text-muted-foreground">Default Module Access</Label>
 
                                         <div className="space-y-1 max-h-[400px] overflow-y-auto border border-border rounded-[3px] p-2 bg-muted/10">
                                             {allSidebarLinksData?.roles.map((module) => (
@@ -399,7 +399,7 @@ export default function RoleManagement() {
                                                                         )
                                                                     }
                                                                 />
-                                                                <Label htmlFor={`new-perm-${module.id}-${action.key}`} className="text-[10px] font-bold uppercase text-muted-foreground cursor-pointer">
+                                                                <Label htmlFor={`new-perm-${module.id}-${action.key}`} className="text-[10px] font-bold text-muted-foreground cursor-pointer">
                                                                     {action.label}
                                                                 </Label>
                                                             </div>

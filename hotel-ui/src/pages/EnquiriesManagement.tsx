@@ -34,6 +34,8 @@ import { filterGridRowsByQuery } from "@/utils/filterGridRows";
 import { GridBadge } from "@/components/ui/grid-badge";
 import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
 import { formatAppDate, formatAppDateTime, parseAppDate, toDatetimeLocalValue } from "@/utils/dateFormat";
+import PropertyViewSection from "@/components/PropertyViewSection";
+import ViewField from "@/components/ViewField";
 
 type EnquiryStatus =
     | "open"
@@ -137,6 +139,7 @@ export default function EnquiriesManagement() {
     const [open, setOpen] = useState(false);
     const [editMode, setEditMode] = useState(false);
     const [selected, setSelected] = useState<Enquiry | null>(null);
+    const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
 
     const [status, setStatus] = useState<EnquiryStatus>("open");
     const [followUpDate, setFollowUpDate] = useState("");
@@ -553,168 +556,123 @@ export default function EnquiriesManagement() {
 
             {/* Manage Sheet */}
             <Sheet open={open} onOpenChange={setOpen}>
-                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
+                <SheetContent side="right" className="w-full lg:max-w-3xl sm:max-w-2xl overflow-y-auto bg-background">
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="space-y-1"
                     >
-                        <SheetHeader className="border-b border-border/50 pb-4 mb-4">
-                            <div className="flex items-center gap-4">
-                                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary shadow-sm">
-                                    {editMode ? <Pencil className="w-5 h-5" /> : <ClipboardList className="w-5 h-5" />}
-                                </div>
-                                <div className="space-y-0.5">
-                                    <SheetTitle className="text-xl font-bold text-foreground">
-                                        {editMode ? "Update Enquiry" : "Enquiry Summary"}
-                                        {selected?.id && <span className="ml-2 text-primary font-semibold">[#{formatModuleDisplayId("enquiry", selected.id)}]</span>}
-                                    </SheetTitle>
-                                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
-                                        {editMode 
-                                            ? `Modify lead lifecycle and internal notes for #${formatModuleDisplayId("enquiry", selected?.id || "")}.` 
-                                            : `Comprehensive summary of lead configuration for #${formatModuleDisplayId("enquiry", selected?.id || "")}.`}
-                                    </p>
-                                </div>
+                        <SheetHeader className="pb-4">
+                            <div className="space-y-0.5">
+                                <SheetTitle className="text-xl font-bold text-foreground">
+                                    {editMode ? "Update Enquiry" : "Enquiry Summary"}
+                                    {selected?.id && <span className="ml-2 font-semibold">[#{formatModuleDisplayId("enquiry", selected.id)}]</span>}
+                                </SheetTitle>
+                                <p className="text-xs text-muted-foreground font-medium tracking-wide">
+                                    {editMode 
+                                        ? `Adjust lead lifecycle and internal notes for #${formatModuleDisplayId("enquiry", selected?.id || "")}.` 
+                                        : `Comprehensive summary of lead configuration for #${formatModuleDisplayId("enquiry", selected?.id || "")}.`}
+                                </p>
                             </div>
                         </SheetHeader>
 
-
-                    {selected && !editMode && (
-                        <div className="space-y-3.5">
-                            {/* Row 1: Profile & Stay Schedule */}
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 items-stretch">
-                                <div className="p-3.5 rounded-xl border border-primary/10 bg-accent shadow-sm space-y-4">
-                                    <div className="flex items-center gap-2 text-primary">
-                                        <User className="w-3.5 h-3.5" />
-                                        <span className="text-[10px] font-bold uppercase tracking-wider">Guest Profile</span>
-                                    </div>
-                                    <div className="flex items-start gap-4 px-1">
-                                        <div className="h-16 w-16 rounded-2xl bg-primary/5 flex items-center justify-center text-primary border border-primary/10 shadow-inner shrink-0">
-                                            <span className="text-2xl font-black">{selected.guest_name?.charAt(0) || "G"}</span>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <h3 className="text-lg font-black text-foreground leading-tight">{selected.guest_name}</h3>
-                                            <div className="flex flex-wrap gap-x-3 gap-y-1 items-center text-xs text-muted-foreground font-medium">
-                                                <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {selected.mobile}</span>
-                                                <span className="flex items-center gap-1 font-bold text-primary/80"><Globe className="w-3 h-3" /> {selected.city || "—"}</span>
-                                            </div>
-                                            <p className="text-[10px] text-muted-foreground/70 uppercase tracking-widest pt-1">{selected.email || "No email provided"}</p>
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-3 gap-2 pt-1">
-                                        <div className="p-2 rounded-lg bg-background/50 border border-primary/5 flex flex-col items-center justify-center text-center">
-                                            <span className="text-[10px] font-bold text-muted-foreground uppercase">Source</span>
-                                            <span className="text-xs font-bold text-foreground truncate w-full">{selected.source || "Direct"}</span>
-                                        </div>
-                                        <div className="p-2 rounded-lg bg-background/50 border border-primary/5 flex flex-col items-center justify-center text-center">
-                                            <span className="text-[10px] font-bold text-muted-foreground uppercase">Type</span>
-                                            <span className="text-xs font-bold text-foreground truncate w-full">{selected.enquiry_type || "General"}</span>
-                                        </div>
-                                        <div className="p-2 rounded-lg bg-background/50 border border-primary/5 flex flex-col items-center justify-center text-center">
-                                            <span className="text-[10px] font-bold text-muted-foreground uppercase">Created By</span>
-                                            <span className="text-xs font-bold text-foreground truncate w-full" title={selected.created_by}>
-                                                {staffMap[selected.created_by || ""] || selected.created_by || "Admin"}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="p-3.5 rounded-xl border border-primary/10 bg-accent shadow-sm flex flex-col space-y-4">
-                                    <div className="flex items-center gap-2 text-primary shrink-0">
-                                        <Calendar className="w-3.5 h-3.5" />
-                                        <span className="text-[10px] font-bold uppercase tracking-wider">Stay Schedule</span>
-                                    </div>
-                                    <div className="flex-1 grid grid-cols-2 gap-3.5">
-                                        <div className="space-y-1.5">
-                                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Check-In</Label>
-                                            <p className="text-sm font-bold text-foreground py-2 px-3 bg-background/50 rounded-lg border border-primary/5 shadow-sm">{selected.check_in ? formatAppDate(selected.check_in) : "—"}</p>
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Check-Out</Label>
-                                            <p className="text-sm font-bold text-foreground py-2 px-3 bg-background/50 rounded-lg border border-primary/5 shadow-sm">{selected.check_out ? formatAppDate(selected.check_out) : "—"}</p>
-                                        </div>
-                                        <div className="space-y-1.5 col-span-2">
-                                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Selected Plan</Label>
-                                            <div className="py-2 px-3 bg-primary/5 rounded-lg border border-primary/10 flex items-center justify-between">
-                                                <span className="text-sm font-black text-primary uppercase">{selected.plan || "N/A"}</span>
-                                                <GridBadge status={selected.status} statusType="enquiry" className="h-6 px-3 text-[10px] font-bold">
-                                                    {formatEnquiryStatus(selected.status)}
-                                                </GridBadge>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                        {!editMode && (
+                            <div className="border-b border-border flex mb-4">
+                                <button
+                                    onClick={() => setSheetTab("summary")}
+                                    className={cn(
+                                        "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                        sheetTab === "summary"
+                                            ? "border-primary text-primary"
+                                            : "border-transparent text-muted-foreground hover:text-foreground"
+                                    )}
+                                >
+                                    Summary
+                                </button>
+                                <button
+                                    onClick={() => setSheetTab("history")}
+                                    className={cn(
+                                        "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                        sheetTab === "history"
+                                            ? "border-primary text-primary"
+                                            : "border-transparent text-muted-foreground hover:text-foreground"
+                                    )}
+                                >
+                                    History
+                                </button>
                             </div>
+                        )}
 
-                            {/* Row 2: Rooms & Notes */}
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 items-stretch">
-                                <div className="p-3.5 rounded-xl border border-primary/10 bg-accent shadow-sm space-y-4 flex flex-col">
-                                    <div className="flex items-center gap-2 text-primary shrink-0">
-                                        <Building2 className="w-3.5 h-3.5" />
-                                        <span className="text-[10px] font-bold uppercase tracking-wider">Room Requirements</span>
-                                    </div>
-                                    <div className="flex-1 space-y-2 max-h-[160px] overflow-y-auto pr-1">
-                                        {selected.room_details?.length ? (
-                                            selected.room_details.map((room, i) => (
-                                                <div key={i} className="flex justify-between items-center bg-background/50 border border-primary/5 rounded-lg px-3 py-2.5 shadow-sm">
-                                                    <span className="text-xs font-bold text-foreground">{room.room_type}</span>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-[10px] font-bold text-muted-foreground uppercase">Qty</span>
-                                                        <span className="h-6 min-w-[24px] flex items-center justify-center bg-primary/10 text-primary text-[10px] font-black rounded-md">{room.no_of_rooms}</span>
-                                                    </div>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <div className="h-full flex flex-col items-center justify-center text-muted-foreground/40 gap-2">
-                                                <Package className="w-8 h-8 opacity-20" />
-                                                <p className="text-[10px] font-bold uppercase tracking-widest">No Rooms Specified</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="pt-3 border-t border-primary/5 grid grid-cols-2 gap-3.5">
-                                        <div className="space-y-1">
-                                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Guests</Label>
-                                            <p className="text-xs font-bold text-foreground">{selected.total_members || 0} Total • {selected.child || 0} Child</p>
-                                        </div>
-                                        <div className="space-y-1 text-right">
-                                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Offer Price</Label>
-                                            <p className="text-sm font-black text-primary">{selected.offer_amount ? `₹${selected.offer_amount}` : "—"}</p>
-                                        </div>
-                                    </div>
-                                </div>
+                        {selected && !editMode && (
+                            <div className="space-y-4">
+                                {sheetTab === "summary" && (
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                        <PropertyViewSection title="Guest Profile" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                            <ViewField label="Guest Name" value={selected.guest_name} />
+                                            <ViewField label="Mobile" value={selected.mobile} />
+                                            <ViewField label="Email" value={selected.email} />
+                                            <ViewField label="City" value={selected.city} />
+                                            <ViewField label="Source" value={selected.source || "Direct"} />
+                                            <ViewField label="Enquiry Type" value={selected.enquiry_type || "General"} />
+                                        </PropertyViewSection>
 
-                                <div className="p-3.5 rounded-xl border border-primary/10 bg-accent shadow-sm space-y-4 flex flex-col">
-                                    <div className="flex items-center justify-center lg:justify-start gap-2 text-primary shrink-0">
-                                        <Activity className="w-3.5 h-3.5" />
-                                        <span className="text-[10px] font-bold uppercase tracking-wider">Internal Activity Notes</span>
+                                        <PropertyViewSection title="Stay Schedule" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                            <ViewField label="Check In" value={selected.check_in ? formatAppDate(selected.check_in) : "—"} />
+                                            <ViewField label="Check Out" value={selected.check_out ? formatAppDate(selected.check_out) : "—"} />
+                                            <ViewField label="Selected Plan" value={selected.plan} />
+                                            <ViewField label="Status" value={formatEnquiryStatus(selected.status)} />
+                                        </PropertyViewSection>
+
+                                        <PropertyViewSection title="Room Requirements" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                            {selected.room_details?.length ? (
+                                                selected.room_details.map((room, i) => (
+                                                    <ViewField
+                                                        key={i}
+                                                        label={room.room_type || `Room ${i + 1}`}
+                                                        value={`${room.no_of_rooms || 0} ${Number(room.no_of_rooms) === 1 ? "Room" : "Rooms"}`}
+                                                    />
+                                                ))
+                                            ) : (
+                                                <ViewField
+                                                    label="Room Requirements"
+                                                    value="No specific room requirements documented."
+                                                    className="sm:col-span-2"
+                                                />
+                                            )}
+                                            <ViewField label="Total Guests" value={`${selected.total_members || 0} Members • ${selected.child || 0} Children`} />
+                                            <ViewField label="Offer Amount" value={selected.offer_amount ? `₹ ${selected.offer_amount}` : "—"} />
+                                        </PropertyViewSection>
+
+                                        <PropertyViewSection title="Internal Activity Notes" className="grid grid-cols-1 gap-y-4">
+                                            <ViewField
+                                                label="Notes"
+                                                value={selected.comment || "No activity notes recorded yet for this enquiry."}
+                                            />
+                                        </PropertyViewSection>
                                     </div>
-                                    <div className="flex-1 bg-background/50 rounded-lg border border-primary/5 p-4 relative min-h-[140px]">
-                                        <p className="text-xs text-muted-foreground italic leading-relaxed whitespace-pre-wrap">
-                                            {comment || "No activity notes recorded yet for this enquiry."}
-                                        </p>
-                                        <div className="absolute top-2 right-2 opacity-10">
-                                            <ListTodo className="w-12 h-12" />
-                                        </div>
+                                )}
+
+                                {sheetTab === "history" && (
+                                    <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
+                                        <p className="text-sm text-muted-foreground">No history logs available yet.</p>
                                     </div>
-                                </div>
+                                )}
                             </div>
-                        </div>
-                    )}
+                        )}
 
-                    {selected && editMode && (
-                        <div className="space-y-3.5">
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 items-stretch">
+                        {selected && editMode && (
+                            <div className="space-y-5">
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                                 {/* Left: Status & Timing */}
-                                <div className="p-3.5 rounded-xl border border-primary/10 bg-accent shadow-sm space-y-4">
-                                    <div className="flex items-center gap-2 text-primary">
-                                        <User className="w-3.5 h-3.5" />
-                                        <span className="text-[10px] font-bold uppercase tracking-wider">Lead Lifecycle Management</span>
-                                    </div>
-                                    <div className="space-y-3.5">
-                                        <div className="space-y-1.5">
-                                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Lead Status*</Label>
+                                <div className="rounded-[5px] border-2 border-primary/50 bg-background p-4 shadow-sm space-y-6">
+                                    <h3 className="text-[11px] font-semibold text-primary/90 tracking-wider border-b border-primary/50 pb-2 mb-3">
+                                        Lead Lifecycle Management
+                                    </h3>
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-bold text-muted-foreground tracking-wide">Lead Status *</Label>
                                             <NativeSelect
-                                                className="w-full h-9 bg-background shadow-sm text-xs border-primary/10"
+                                                className="w-full h-11 bg-background shadow-none text-sm border-border/60"
                                                 value={status}
                                                 onChange={(e) => setStatus(e.target.value as EnquiryStatus)}
                                             >
@@ -723,67 +681,50 @@ export default function EnquiriesManagement() {
                                                 ))}
                                             </NativeSelect>
                                         </div>
-                                        <div className="space-y-1.5">
-                                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Follow-up Date & Time</Label>
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-bold text-muted-foreground tracking-wide">Follow-up Date & Time</Label>
                                             <ResponsiveDatePicker
                                                 value={parseAppDate(followUpDate)}
                                                 onChange={(date) => setFollowUpDate(toDatetimeLocalValue(date))}
                                                 showTime
-                                                className="h-9 rounded-[3px] bg-background border-primary/10 text-xs w-full"
+                                                className="h-11 rounded-[3px] bg-background border-border/60 text-sm w-full shadow-none"
                                             />
-                                        </div>
-                                    </div>
-                                    <div className="pt-3 border-t border-primary/5 grid grid-cols-2 gap-3.5">
-                                        <div className="space-y-1">
-                                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Guest</Label>
-                                            <p className="text-xs font-bold text-foreground truncate">{selected.guest_name}</p>
-                                        </div>
-                                        <div className="space-y-1 text-right">
-                                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Current Status</Label>
-                                            <div className="flex justify-end pt-0.5">
-                                                <GridBadge status={selected.status} statusType="enquiry" className="h-5 px-2 text-[8px] font-black">
-                                                    {formatEnquiryStatus(selected.status)}
-                                                </GridBadge>
-                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Right: Internal Notes */}
-                                <div className="p-3.5 rounded-xl border border-primary/10 bg-accent shadow-sm flex flex-col space-y-4">
-                                    <div className="flex items-center gap-2 text-primary shrink-0">
-                                        <ClipboardList className="w-3.5 h-3.5" />
-                                        <span className="text-[10px] font-bold uppercase tracking-wider">Internal Progress Notes</span>
-                                    </div>
-                                    <div className="flex-1 relative group">
+                                <div className="rounded-[5px] border-2 border-primary/50 bg-background p-4 shadow-sm space-y-6">
+                                    <h3 className="text-[11px] font-semibold text-primary/90 tracking-wider border-b border-primary/50 pb-2 mb-3">
+                                        Internal Progress Notes
+                                    </h3>
+                                    <div className="space-y-2 flex-1">
                                         <textarea
-                                            className="w-full h-full min-h-[160px] rounded-lg border border-primary/10 bg-background px-3 py-2.5 text-xs focus:ring-1 focus:ring-primary/30 outline-none transition-all placeholder:text-muted-foreground/30 leading-relaxed resize-none shadow-inner"
+                                            className="w-full min-h-[160px] rounded-lg border border-border/60 bg-background px-3 py-2.5 text-sm focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-muted-foreground/30 leading-relaxed resize-none shadow-none"
                                             value={comment}
                                             onChange={(e) => setComment(e.target.value)}
                                             maxLength={500}
                                             placeholder="Document follow-up outcomes, special requests, or internal progress notes here..."
                                         />
-                                        <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-background/80 backdrop-blur-sm border border-primary/5">
-                                            <span className={cn("text-[8px] font-bold tracking-widest", comment.length >= 450 ? "text-red-500" : "text-muted-foreground")}>
-                                                {comment.length}/500
-                                            </span>
+                                        <div className="text-[10px] font-bold text-muted-foreground/60 text-right">
+                                            {comment.length}/500
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
                             {bookingPermission?.can_create && !selected.is_reserved && (
-                                <div className="p-3.5 rounded-xl border border-dashed border-primary/20 bg-primary/5 flex items-center justify-between gap-4">
+                                <div className="p-4 rounded-[5px] border border-dashed border-primary/30 bg-primary/5 flex items-center justify-between gap-4">
                                     <div className="space-y-0.5">
-                                        <p className="text-xs font-black text-primary uppercase">Convert to Booking</p>
-                                        <p className="text-[10px] text-muted-foreground font-medium">Ready to confirm? Proceed to reservations with this enquiry data.</p>
+                                        <p className="text-xs font-bold text-primary tracking-wide">Convert to Booking</p>
+                                        <p className="text-[10px] text-muted-foreground font-bold">Ready to confirm? Proceed to reservations with this enquiry data.</p>
                                     </div>
                                     <Button
                                         variant="heroOutline"
-                                        className="h-9 px-6 text-xs font-bold flex items-center gap-2 shrink-0 bg-background shadow-sm hover:bg-primary/5"
+                                        className="h-10 px-6 text-xs font-bold flex items-center gap-2 bg-background shadow-sm hover:bg-primary/10 border-primary/30 text-primary"
                                         onClick={() => handleBook(selected)}
                                     >
-                                        <Plus className="w-3.5 h-3.5" /> Book Enquiry
+                                        <Plus className="w-4 h-4" /> Book Enquiry
                                     </Button>
                                 </div>
                             )}
@@ -802,7 +743,7 @@ export default function EnquiriesManagement() {
                                     variant="hero"
                                     onClick={handleUpdate}
                                 >
-                                    Update Enquiry
+                                    Update
                                 </Button>
                             )}
                         </div>

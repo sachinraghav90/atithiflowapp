@@ -31,6 +31,8 @@ import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { useGridPagination } from "@/hooks/useGridPagination";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { GridBadge } from "@/components/ui/grid-badge";
+import PropertyViewSection from "@/components/PropertyViewSection";
+import ViewField from "@/components/ViewField";
 
 /* -------------------- Types -------------------- */
 type PackageListItem = {
@@ -52,6 +54,7 @@ type PackageDetail = {
 export default function PackageManagement() {
     const [sheetOpen, setSheetOpen] = useState(false);
     const [mode, setMode] = useState<"add" | "edit" | "view">("add");
+    const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
     const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
     const { myProperties, isMultiProperty, isInitializing } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
 
@@ -99,6 +102,7 @@ export default function PackageManagement() {
     /* -------------------- Handlers -------------------- */
     const handleOpenAdd = () => {
         setMode("add");
+        setSheetTab("summary");
         setSelectedPackage({
             package_name: "",
             description: "",
@@ -112,6 +116,7 @@ export default function PackageManagement() {
     const handleOpenEdit = async (pkg: PackageListItem, forceMode: "edit" | "view" = "edit") => {
         setSelectedPackageId(() => +pkg?.id)
         setMode(forceMode);
+        setSheetTab("summary");
         setSheetOpen(true);
     };
 
@@ -481,136 +486,178 @@ export default function PackageManagement() {
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
                 <SheetContent
                     side="right"
-                    className="w-full sm:max-w-xl overflow-y-auto"
+                    className="w-full lg:max-w-3xl sm:max-w-2xl overflow-y-auto bg-background"
                 >
                         <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="space-y-6"
+                            className="space-y-1"
                         >
-                            <SheetHeader>
+                            <SheetHeader className="mb-6">
                                 <div className="space-y-1">
-                                    <SheetTitle>
-                                        {mode === "add" ? "Create New Plan" : `Plan [${selectedPackage?.id ? formatModuleDisplayId("package", selectedPackage.id) : "..."}]`}
+                                    <SheetTitle className="text-xl font-bold text-foreground">
+                                        {mode === "add" ? "Create New Plan" : mode === "edit" ? `Update Plan [${selectedPackage?.id ? `#${formatModuleDisplayId("package", selectedPackage.id)}` : "..."}]` : `Plan Summary [${selectedPackage?.id ? `#${formatModuleDisplayId("package", selectedPackage.id)}` : "..."}]`}
                                     </SheetTitle>
-                                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
-                                        {mode === "add" ? "Setup your new room plan details" : mode === "edit" ? "Modify existing plan information" : "Summary of plan details and pricing"}
+                                    <p className="text-xs text-muted-foreground font-medium tracking-wide">
+                                        {mode === "add" ? "Setup New Room Plan Details" : mode === "edit" ? "Modify Existing Plan Information" : "Summary of Plan Details and Pricing"}
                                     </p>
                                 </div>
                             </SheetHeader>
 
-                            {/* Package Name */}
-                            <div className="space-y-1.5">
-                                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Plan Name</Label>
-                                {mode === "view" || (mode === "edit" && selectedPackage?.system_generated) ? (
-                                    <p className="text-sm font-semibold text-foreground py-1 px-0.5">
-                                        {selectedPackage?.package_name || "—"}
-                                    </p>
-                                ) : (
-                                    <Input
-                                        className={cn("h-9", submitted && formErrors.package_name ? "border-red-500" : "")}
-                                        value={selectedPackage?.package_name}
-                                        placeholder="e.g. Continental Plan (CP)"
-                                        onChange={(e) => {
-                                            const next = e.target.value;
-                                            if (isWithinCharLimit(next, 50)) {
-                                                setSelectedPackage(prev => ({
-                                                    ...prev,
-                                                    package_name: normalizeTextInput(next),
-                                                }));
-                                                setFormErrors(prev => ({ ...prev, package_name: "" }));
-                                            }
-                                        }}
-                                    />
-                                )}
-                                {submitted && formErrors.package_name && <p className="text-[10px] text-red-500 font-medium">{formErrors.package_name}</p>}
-                            </div>
-
-                            {/* Description */}
-                            <div className="space-y-1.5">
-                                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Description</Label>
-                                {mode === "view" || (mode === "edit" && selectedPackage?.system_generated) ? (
-                                    <div className="bg-muted/10 p-3 rounded-[3px] border border-border/50 min-h-[80px]">
-                                        <p className="text-sm text-muted-foreground whitespace-pre-wrap italic">
-                                            {selectedPackage?.description || "No description provided"}
-                                        </p>
+                            {mode === "view" ? (
+                                <div className="space-y-4">
+                                    <div className="border-b border-border flex">
+                                        <button
+                                            onClick={() => setSheetTab("summary")}
+                                            className={cn(
+                                                "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                                sheetTab === "summary"
+                                                    ? "border-primary text-primary"
+                                                    : "border-transparent text-muted-foreground hover:text-foreground"
+                                            )}
+                                        >
+                                            Summary
+                                        </button>
+                                        <button
+                                            onClick={() => setSheetTab("history")}
+                                            className={cn(
+                                                "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                                sheetTab === "history"
+                                                    ? "border-primary text-primary"
+                                                    : "border-transparent text-muted-foreground hover:text-foreground"
+                                            )}
+                                        >
+                                            History
+                                        </button>
                                     </div>
-                                ) : (
-                                    <textarea
-                                        className="w-full min-h-[100px] rounded-[3px] border border-input bg-background px-3 py-2 text-sm focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-muted-foreground/50"
-                                        placeholder="Briefly describe what this plan includes..."
-                                        value={selectedPackage?.description}
-                                        onChange={(e) => {
-                                            const next = e.target.value
-                                            if (isWithinCharLimit(next, 200)) {
-                                                setSelectedPackage((prev) => ({
-                                                    ...prev,
-                                                    description: normalizeTextInput(e.target.value),
-                                                }))
-                                            }
-                                        }}
-                                    />
-                                )}
-                            </div>
 
-                            {/* Price */}
-                            <div className="space-y-1.5 pt-2">
-                                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Base Price (₹)</Label>
-                                {mode === "view" ? (
-                                    <p className="text-lg font-bold text-primary px-0.5">
-                                        ₹ {selectedPackage?.base_price || "0.00"}
-                                    </p>
-                                ) : (
-                                    <div className="relative max-w-[200px]">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">₹</span>
-                                        <Input
-                                            type="text"
-                                            className={cn("h-9 pl-7 font-semibold", submitted && formErrors.base_price ? "border-red-500" : "")}
-                                            value={selectedPackage?.base_price}
-                                            onChange={(e) => {
-                                                setSelectedPackage(prev => ({
-                                                    ...prev,
-                                                    base_price: normalizeNumberInput(e.target.value).toString(),
-                                                }));
-                                                setFormErrors(prev => ({ ...prev, base_price: "" }));
-                                            }}
-                                        />
-                                    </div>
-                                )}
-                                {submitted && formErrors.base_price && <p className="text-[10px] text-red-500 font-medium">{formErrors.base_price}</p>}
-                            </div>
+                                    {sheetTab === "summary" && (
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                            <PropertyViewSection title="Plan Configuration" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                                <ViewField label="Plan Name" value={selectedPackage?.package_name} />
+                                                <ViewField label="Base Price" value={selectedPackage?.base_price ? `₹ ${selectedPackage.base_price}` : "—"} />
+                                                <ViewField label="Type" value={selectedPackage?.system_generated ? "System" : "Custom"} />
+                                                <ViewField label="Status" value={selectedPackage?.is_active ? "Active" : "Inactive"} />
+                                            </PropertyViewSection>
 
-                            {/* Active */}
-                            <div className="flex items-center gap-3 pt-2">
-                                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Plan Status</Label>
-                                {mode === "view" || (mode === "edit" && selectedPackage?.system_generated) ? (
-                                    <GridBadge
-                                        status={selectedPackage?.is_active ? "active" : "inactive"}
-                                        statusType="toggle"
-                                        className="min-w-[80px]"
-                                    >
-                                        {selectedPackage?.is_active ? "Active" : "Inactive"}
-                                    </GridBadge>
-                                ) : (
-                                    <div className="flex items-center gap-2">
-                                        <Switch
-                                            checked={selectedPackage?.is_active}
-                                            onCheckedChange={(v) =>
-                                                setSelectedPackage((prev) => ({
-                                                    ...prev,
-                                                    is_active: v,
-                                                }))
-                                            }
-                                        />
-                                        <span className={cn("text-xs font-bold uppercase", selectedPackage?.is_active ? "text-green-600" : "text-muted-foreground")}>
-                                            {selectedPackage?.is_active ? "Active" : "Inactive"}
-                                        </span>
+                                            <PropertyViewSection title="Internal Description" className="grid grid-cols-1 gap-y-4">
+                                                <ViewField label="Description" value={selectedPackage?.description || "No description provided."} />
+                                            </PropertyViewSection>
+                                        </div>
+                                    )}
+
+                                    {sheetTab === "history" && (
+                                        <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
+                                            <p className="text-sm text-muted-foreground">No history logs available yet.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="space-y-5 mt-6">
+                                    <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-5">
+                                        <h3 className="text-[11px] font-semibold text-primary/90 uppercase tracking-[0.16em] border-b border-primary/50 pb-2">
+                                            Plan Details
+                                        </h3>
+
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Plan Name*</Label>
+                                                {selectedPackage?.system_generated ? (
+                                                    <p className="text-sm font-semibold text-foreground py-1 px-0.5">
+                                                        {selectedPackage?.package_name || "—"}
+                                                    </p>
+                                                ) : (
+                                                    <Input
+                                                        className={cn("h-10", submitted && formErrors.package_name ? "border-red-500" : "")}
+                                                        value={selectedPackage?.package_name}
+                                                        placeholder="e.g. Continental Plan (CP)"
+                                                        onChange={(e) => {
+                                                            const next = e.target.value;
+                                                            if (isWithinCharLimit(next, 50)) {
+                                                                setSelectedPackage(prev => ({
+                                                                    ...prev,
+                                                                    package_name: normalizeTextInput(next),
+                                                                }));
+                                                                setFormErrors(prev => ({ ...prev, package_name: "" }));
+                                                            }
+                                                        }}
+                                                    />
+                                                )}
+                                                {submitted && formErrors.package_name && <p className="text-[10px] text-red-500 font-medium">{formErrors.package_name}</p>}
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Description</Label>
+                                                {selectedPackage?.system_generated ? (
+                                                    <div className="bg-muted/10 p-3 rounded-[3px] border border-border/50 min-h-[80px]">
+                                                        <p className="text-sm text-muted-foreground whitespace-pre-wrap italic">
+                                                            {selectedPackage?.description || "No description provided"}
+                                                        </p>
+                                                    </div>
+                                                ) : (
+                                                    <textarea
+                                                        className="w-full min-h-[100px] rounded-lg border border-border/60 bg-background px-3 py-2.5 text-sm focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-muted-foreground/30 leading-relaxed resize-none shadow-none"
+                                                        placeholder="Briefly describe what this plan includes..."
+                                                        value={selectedPackage?.description}
+                                                        onChange={(e) => {
+                                                            const next = e.target.value
+                                                            if (isWithinCharLimit(next, 200)) {
+                                                                setSelectedPackage((prev) => ({
+                                                                    ...prev,
+                                                                    description: normalizeTextInput(e.target.value),
+                                                                }))
+                                                            }
+                                                        }}
+                                                    />
+                                                )}
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Base Price (₹)*</Label>
+                                                <div className="relative max-w-[200px]">
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">₹</span>
+                                                    <Input
+                                                        type="text"
+                                                        className={cn("h-10 pl-7 font-semibold", submitted && formErrors.base_price ? "border-red-500" : "")}
+                                                        value={selectedPackage?.base_price}
+                                                        onChange={(e) => {
+                                                            setSelectedPackage(prev => ({
+                                                                ...prev,
+                                                                base_price: normalizeNumberInput(e.target.value).toString(),
+                                                            }));
+                                                            setFormErrors(prev => ({ ...prev, base_price: "" }));
+                                                        }}
+                                                    />
+                                                </div>
+                                                {submitted && formErrors.base_price && <p className="text-[10px] text-red-500 font-medium">{formErrors.base_price}</p>}
+                                            </div>
+
+                                            <div className="flex items-center gap-3 rounded-[5px] border border-primary/50 p-4 bg-accent/20">
+                                                <Switch
+                                                    className="scale-90"
+                                                    checked={selectedPackage?.is_active}
+                                                    disabled={selectedPackage?.system_generated}
+                                                    onCheckedChange={(v) =>
+                                                        setSelectedPackage((prev) => ({
+                                                            ...prev,
+                                                            is_active: v,
+                                                        }))
+                                                    }
+                                                />
+                                                <span className={cn(
+                                                    "text-xs font-bold uppercase tracking-wider",
+                                                    selectedPackage?.is_active ? "text-green-600" : "text-muted-foreground"
+                                                )}>
+                                                    {selectedPackage?.is_active ? "Active" : "Inactive"}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
-                                )}
-                            </div>
+                                </div>
+                            )}
 
                             {/* Actions */}
-                            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                            <div className="flex justify-end gap-3 pt-6 border-t border-border mt-6">
                                 <Button
                                     variant="heroOutline"
                                     onClick={() => setSheetOpen(false)}
@@ -618,12 +665,12 @@ export default function PackageManagement() {
                                     {mode === "view" ? "Close" : "Cancel"}
                                 </Button>
 
-                                {mode === "view" ? null : (
+                                {mode !== "view" && (
                                     <Button
                                         variant="hero"
                                         onClick={handleSubmit}
                                     >
-                                        {mode === "add" ? "Create Plan" : "Save Changes"}
+                                        {mode === "add" ? "Create Plan" : "Update"}
                                     </Button>
                                 )}
                             </div>
@@ -633,4 +680,3 @@ export default function PackageManagement() {
         </div>
     );
 }
-

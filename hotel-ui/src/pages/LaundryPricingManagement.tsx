@@ -20,10 +20,9 @@ import { useLocation } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import { AppDataGrid, DataGrid, DataGridHeader, DataGridRow, DataGridHead, DataGridCell, type ColumnDef } from "@/components/ui/data-grid";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
-import { FilterX, RefreshCcw, Download, Pencil, Trash2, Plus, PlusCircle, ClipboardList, Layers, ShieldCheck, IndianRupee } from "lucide-react";
+import { FilterX, RefreshCcw, Download, Pencil, Trash2, Plus, PlusCircle, ClipboardList } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ValidationTooltip } from "@/components/ui/validation-tooltip";
-import { getStatusColor } from "@/constants/statusColors";
 import { toast } from "react-toastify";
 import { filterGridRowsByQuery } from "@/utils/filterGridRows";
 import { exportToExcel } from "@/utils/exportToExcel";
@@ -31,6 +30,8 @@ import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { useGridPagination } from "@/hooks/useGridPagination";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { GridBadge } from "@/components/ui/grid-badge";
+import PropertyViewSection from "@/components/PropertyViewSection";
+import ViewField from "@/components/ViewField";
 
 /* ---------------- Types ---------------- */
 type LaundryItem = {
@@ -62,9 +63,6 @@ type LaundryFormState = {
 };
 
 const DUPLICATE_ITEMS_MESSAGE = "Duplicate Items Not Allowed";
-
-const THEME_SURFACE_CLASS = "bg-background";
-const THEME_INPUT_CLASS = "bg-background border-border";
 
 function createEmptyLaundryPriceForm(): LaundryFormState {
     return {
@@ -104,6 +102,7 @@ export default function LaundryPricingManagement() {
     const [sheetOpen, setSheetOpen] = useState(false);
     const [mode, setMode] = useState<"edit" | "view" | "bulk_add">("view");
     const [selectedItem, setSelectedItem] = useState<LaundryItem | null>(null);
+    const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
 
     // Form States
     const [form, setForm] = useState<LaundryFormState>(createEmptyLaundryPriceForm);
@@ -169,6 +168,7 @@ export default function LaundryPricingManagement() {
     const openSheet = (item: LaundryItem | null, newMode: "edit" | "view" | "bulk_add") => {
         setMode(newMode);
         setSelectedItem(item);
+        setSheetTab("summary");
         setFormErrors({});
         setSubmitted(false);
 
@@ -582,7 +582,7 @@ export default function LaundryPricingManagement() {
                     onOpenAutoFocus={(event) => event.preventDefault()}
                     className={cn(
                         "w-full overflow-y-auto bg-background",
-                        mode === "bulk_add" ? "sm:max-w-4xl" : "sm:max-w-xl"
+                        mode === "bulk_add" ? "sm:max-w-4xl" : "lg:max-w-3xl sm:max-w-2xl"
                     )}
                 >
                     <motion.div
@@ -590,82 +590,66 @@ export default function LaundryPricingManagement() {
                         animate={{ opacity: 1, y: 0 }}
                         className="space-y-6"
                     >
-                        <SheetHeader className="border-b border-border/50 pb-3 mb-3">
-                            <div className="flex items-center gap-3">
-                                <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center text-primary shadow-sm">
-                                    {mode === "view" ? <ClipboardList className="w-4 h-4" /> : mode === "edit" ? <Pencil className="w-4 h-4" /> : <PlusCircle className="w-4 h-4" />}
-                                </div>
-                                <div className="space-y-0.5">
-                                    <SheetTitle className="text-lg font-bold text-foreground">
-                                        {mode === "view" ? "Laundry Pricing Summary" : mode === "edit" ? "Update Laundry Pricing" : "Add Laundry Items"}
-                                        {(mode === "view" || mode === "edit") && selectedItem?.id && (
-                                            <span className="ml-2 text-primary font-semibold">
-                                                {`[#${formatModuleDisplayId("laundry_pricing", selectedItem.id)}]`}
-                                            </span>
-                                        )}
-                                    </SheetTitle>
-                                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
-                                        {mode === "view" ? "Detailed pricing and availability summary" : mode === "edit" ? "Modify existing laundry item rate and details" : "Register new laundry items and their rates"}
-                                    </p>
-                                </div>
+                        <SheetHeader className="mb-6">
+                            <div className="space-y-1">
+                                <SheetTitle className="text-xl font-bold text-foreground">
+                                    {mode === "view" ? "Laundry Pricing Summary" : mode === "edit" ? "Update Laundry Pricing" : "Add Laundry Items"}
+                                    {(mode === "view" || mode === "edit") && selectedItem?.id && (
+                                        <span className="ml-2 font-semibold">
+                                            {`[#${formatModuleDisplayId("laundry_pricing", selectedItem.id)}]`}
+                                        </span>
+                                    )}
+                                </SheetTitle>
+                                <p className="text-xs text-muted-foreground font-medium tracking-wide">
+                                    {mode === "view" ? "Detailed Pricing and Availability Summary" : mode === "edit" ? "Modify Existing Laundry Item Rate and Details" : "Register New Laundry Items and Rates"}
+                                </p>
                             </div>
                         </SheetHeader>
 
                         {mode === "view" && selectedItem && (
                             <div className="space-y-4">
-                                {/* Highlight Card */}
-                                <div className="flex items-center gap-4 p-4 rounded-xl border border-primary/10 bg-accent shadow-sm">
-                                    <div className="h-16 w-16 rounded-xl bg-primary/5 flex items-center justify-center text-primary border border-primary/10 shadow-inner">
-                                        <ClipboardList className="w-8 h-8" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-base font-bold text-foreground leading-tight">{selectedItem.item_name}</h3>
-                                        <p className="text-xs text-muted-foreground font-medium">Item ID: {formatModuleDisplayId("laundry_pricing", selectedItem.id)} • Laundry Item</p>
-                                    </div>
-                                    <div className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-50 text-green-700 border border-green-100">
-                                        <div className="w-2 h-2 rounded-full bg-green-500" />
-                                        <span className="text-[10px] font-bold uppercase tracking-widest">{selectedItem.is_active ? "Active" : "Inactive"}</span>
-                                    </div>
+                                <div className="border-b border-border flex">
+                                    <button
+                                        onClick={() => setSheetTab("summary")}
+                                        className={cn(
+                                            "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                            sheetTab === "summary"
+                                                ? "border-primary text-primary"
+                                                : "border-transparent text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        Summary
+                                    </button>
+                                    <button
+                                        onClick={() => setSheetTab("history")}
+                                        className={cn(
+                                            "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                            sheetTab === "history"
+                                                ? "border-primary text-primary"
+                                                : "border-transparent text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        History
+                                    </button>
                                 </div>
 
-                                {/* Details Grid */}
-                                <div className="grid grid-cols-2 gap-px bg-primary/10 border border-primary/10 rounded-xl overflow-hidden bg-accent">
-                                    <div className="p-3 flex items-start gap-3 bg-accent">
-                                        <div className="mt-0.5 h-7 w-7 rounded-lg bg-background flex items-center justify-center text-slate-500 border border-primary/5">
-                                            <IndianRupee className="w-3.5 h-3.5" />
-                                        </div>
-                                        <div className="space-y-0.5">
-                                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Rate</Label>
-                                            <p className="text-sm font-semibold text-foreground">
-                                                ₹ {selectedItem.item_rate}
-                                            </p>
-                                        </div>
-                                    </div>
+                                {sheetTab === "summary" && (
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                        <PropertyViewSection title="Laundry Item Details" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                            <ViewField label="Item Name" value={selectedItem.item_name} />
+                                            <ViewField label="Item Rate" value={`₹ ${selectedItem.item_rate}`} />
+                                            <ViewField label="Status" value={selectedItem.is_active ? "Active" : "Inactive"} />
+                                        </PropertyViewSection>
 
-                                    <div className="p-3 flex items-start gap-3 bg-accent">
-                                        <div className="mt-0.5 h-7 w-7 rounded-lg bg-background flex items-center justify-center text-slate-500 border border-primary/5">
-                                            <ShieldCheck className="w-3.5 h-3.5" />
-                                        </div>
-                                        <div className="space-y-0.5">
-                                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Status</Label>
-                                            <div className="flex items-center gap-1.5">
-                                                <div className={cn("w-1.5 h-1.5 rounded-full", selectedItem.is_active ? "bg-green-500" : "bg-red-500")} />
-                                                <p className="text-sm font-semibold text-foreground">
-                                                    {selectedItem.is_active ? "Active" : "Inactive"}
-                                                </p>
-                                            </div>
-                                        </div>
+                                        <PropertyViewSection title="Description" className="grid grid-cols-1 gap-y-4">
+                                            <ViewField label="Description" value={selectedItem.description || "No description provided."} />
+                                        </PropertyViewSection>
                                     </div>
-                                </div>
+                                )}
 
-                                {selectedItem.description && (
-                                    <div className="p-4 rounded-xl border border-primary/10 bg-accent/50 space-y-2">
-                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                                            <Layers className="w-3 h-3" /> Description
-                                        </Label>
-                                        <p className="text-sm font-medium text-foreground leading-relaxed italic">
-                                            "{selectedItem.description}"
-                                        </p>
+                                {sheetTab === "history" && (
+                                    <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
+                                        <p className="text-sm text-muted-foreground">No history logs available yet.</p>
                                     </div>
                                 )}
                             </div>
@@ -673,7 +657,10 @@ export default function LaundryPricingManagement() {
 
                         {mode === "edit" && (
                             <div className="space-y-4">
-                                <div className="p-6 rounded-xl border border-primary/10 bg-accent shadow-sm space-y-6">
+                                <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-6">
+                                    <h3 className="text-[11px] font-semibold text-primary/90 uppercase tracking-[0.16em] border-b border-primary/50 pb-2 mb-3">
+                                        Edit Laundry Pricing
+                                    </h3>
                                     <div className="space-y-4">
                                         <div className="space-y-2">
                                             <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider" htmlFor="item-name">Item Name *</Label>
@@ -876,7 +863,7 @@ export default function LaundryPricingManagement() {
                                     variant="hero"
                                     onClick={handleSave}
                                 >
-                                    {mode === "edit" ? "Save Changes" : "Create Items"}
+                                    {mode === "edit" ? "Update" : "Create Items"}
                                 </Button>
                             )}
                         </div>

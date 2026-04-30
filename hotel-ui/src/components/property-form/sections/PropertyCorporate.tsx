@@ -70,9 +70,9 @@ export default function PropertyCorporate({
     };
 
     return (
-        <div className="space-y-4 border border-border rounded-[5px] p-4 bg-card">
+        <div className="space-y-4 rounded-[5px] border border-border/40 bg-background p-4 shadow-sm">
 
-            <h3 className="font-semibold text-sm text-primary uppercase tracking-wider">
+            <h3 className="text-xs font-semibold text-primary/90 uppercase tracking-[0.16em]">
                 Corporate Office Address (Optional)
             </h3>
 
@@ -91,7 +91,7 @@ export default function PropertyCorporate({
             </div>
 
             {showOfficeFields && (
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                     <FormInput
                         label="Corporate Office Address"
                         field="address_line_1_office"

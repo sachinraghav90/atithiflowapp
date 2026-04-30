@@ -834,7 +834,7 @@ export function CreateOrder() {
                         </div>
 
                         {/* PILOT ADD ROW + TOTAL FOOTER */}
-                        <div className="editable-grid-footer p-3 bg-background  border-slate-200 flex items-center justify-between min-w-[800px]">
+                        <div className="editable-grid-footer p-3 bg-background border-slate-200 flex items-center justify-between min-w-[800px]">
                             <div className="flex items-center gap-4">
                                 <button
                                     type="button"
