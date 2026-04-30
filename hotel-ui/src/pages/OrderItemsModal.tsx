@@ -17,6 +17,8 @@ import { motion } from "framer-motion";
 import { GridBadge } from "@/components/ui/grid-badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import PropertyViewSection from "@/components/PropertyViewSection";
+import ViewField from "@/components/ViewField";
 
 
 const ORDER_STATUSES = ["New", "Preparing", "Ready", "Delivered", "Cancelled"];
@@ -121,22 +123,16 @@ export function OrderItemsModal({
                     animate={{ opacity: 1, y: 0 }}
                     className="space-y-1"
                 >
-                    <SheetHeader className="border-b border-border/50 pb-4 mb-4">
-                        <div className="flex items-center gap-4">
-                            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary shadow-sm">
-                                {editMode ? <Pencil className="w-5 h-5" /> : <ShoppingCart className="w-5 h-5" />}
-                            </div>
-                            <div className="space-y-0.5">
-                                <SheetTitle className="text-xl font-bold text-foreground">
-                                    {editMode ? "Update Order" : "Order Summary"}
-                                    {data?.id && <span className="ml-2 text-primary font-semibold">[#{formatOrderDisplayId(data.id)}]</span>}
-                                </SheetTitle>
-                                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
-                                    {editMode 
-                                        ? `Update order status and payment details for #${formatOrderDisplayId(data?.id || "")}.` 
-                                        : `View complete order information and items for #${formatOrderDisplayId(data?.id || "")}.`}
-                                </p>
-                            </div>
+                    <SheetHeader className="mb-6">
+                        <div className="space-y-1">
+                            <SheetTitle className="text-xl font-bold">
+                                {editMode ? `Update Order [${data?.id ? `#${formatOrderDisplayId(data.id)}` : "..."}]` : `Order Summary [${data?.id ? `#${formatOrderDisplayId(data.id)}` : "..."}]`}
+                            </SheetTitle>
+                            <p className="text-xs text-muted-foreground font-medium tracking-wider">
+                                {editMode 
+                                    ? "Update order status and payment details" 
+                                    : "View complete order information and items"}
+                            </p>
                         </div>
                     </SheetHeader>
                 {isLoading && (
@@ -162,88 +158,59 @@ export function OrderItemsModal({
                 {data && (
                     <div className="space-y-4">
 
-                        {/* ================= HIGHLIGHT CARD ================= */}
-                        <div className="flex items-center gap-4 p-[14px] rounded-xl border border-primary/10 bg-accent shadow-sm">
-                            <div className="h-20 w-20 rounded-2xl bg-primary/5 flex items-center justify-center text-primary border border-primary/10 shadow-inner shrink-0">
-                                <User className="w-10 h-10" />
-                            </div>
-                            <div className="space-y-1">
-                                <h3 className="text-lg font-bold text-foreground leading-tight">{data.guest_name || "Guest Order"}</h3>
-                                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
-                                    {data.order_type || "Restaurant"} • {formatOrderDisplayId(data.id)}
-                                </p>
-                            </div>
-                            <div className="ml-auto flex flex-col gap-2 items-end">
-                                <div className="flex gap-2">
-                                    <GridBadge status={data.order_status} statusType="order" className="h-7 px-3 text-[10px] font-bold">
-                                        {data.order_status}
-                                    </GridBadge>
-                                    <GridBadge status={data.payment_status} statusType="payment" className="h-7 px-3 text-[10px] font-bold">
-                                        {data.payment_status}
-                                    </GridBadge>
-                                </div>
-                                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest px-1">
-                                    {formatAppDateTime(data.order_date)}
-                                </p>
-                            </div>
-                        </div>
-
                         {/* ================= INFORMATION GRID ================= */}
                         {!editMode ? (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                <div className="grid grid-cols-1 gap-3 col-span-2">
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <InfoItem icon={<Phone className="w-3.5 h-3.5" />} label="Mobile Number" value={data.guest_mobile} />
-                                        <InfoItem icon={<Calendar className="w-3.5 h-3.5" />} label="Expected Delivery" value={data.expected_delivery_time ? formatAppDateTime(data.expected_delivery_time) : "—"} />
-                                    </div>
-                                    <div className="grid grid-cols-3 gap-3">
-                                        <InfoItem icon={<UtensilsCrossed className="w-3.5 h-3.5" />} label="Table" value={data.table_no} />
-                                        <InfoItem icon={<MapPin className="w-3.5 h-3.5" />} label="Room" value={data.room_no} />
-                                        <InfoItem icon={<Truck className="w-3.5 h-3.5" />} label="Delivery Partner" value={data.delivery_partner_name} />
-                                    </div>
-                                </div>
-                                <div className="p-4 rounded-xl border border-primary/10 bg-primary/5 shadow-sm flex flex-col justify-center items-center text-center space-y-1.5">
-                                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                                        <CreditCard className="w-4 h-4" />
-                                    </div>
-                                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Order Total</Label>
-                                    <p className="text-2xl font-black text-primary">₹{Number(data.total_amount).toFixed(2)}</p>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                <div className="space-y-3">
-                                    <div className="flex items-center gap-2 px-1">
-                                        <InfoIcon className="w-4 h-4 text-primary" />
-                                        <h4 className="text-sm font-bold text-foreground uppercase tracking-wider">Order Information (Read Only)</h4>
-                                    </div>
-                                    <div className="grid grid-cols-3 gap-px bg-primary/10 border border-primary/10 rounded-xl overflow-hidden bg-accent">
-                                        <InfoItem icon={<User className="w-3.5 h-3.5" />} label="Guest" value={data.guest_name} />
-                                        <InfoItem icon={<Phone className="w-3.5 h-3.5" />} label="Mobile Number" value={data.guest_mobile} />
-                                        <InfoItem icon={<ClipboardList className="w-3.5 h-3.5" />} label="Order Type" value={data.order_type} />
-                                        <InfoItem icon={<MapPin className="w-3.5 h-3.5" />} label="Room" value={data.room_no} />
-                                        <InfoItem icon={<UtensilsCrossed className="w-3.5 h-3.5" />} label="Table" value={data.table_no} />
-                                        <InfoItem icon={<Truck className="w-3.5 h-3.5" />} label="Delivery Partner" value={data.delivery_partner_name} />
-                                    </div>
-                                    <div className="p-3 flex items-center gap-3 bg-accent border border-primary/10 rounded-xl">
-                                        <Calendar className="w-4 h-4 text-slate-500" />
-                                        <div className="space-y-0.5">
-                                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Expected Delivery</Label>
-                                            <p className="text-sm font-semibold text-foreground">{data.expected_delivery_time ? formatAppDateTime(data.expected_delivery_time) : "—"}</p>
+                            <div className="space-y-6">
+                                <PropertyViewSection title="Order Details" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                                    <ViewField label="Guest Name" value={data.guest_name || "Guest Order"} />
+                                    <ViewField label="Mobile Number" value={data.guest_mobile} />
+                                    <ViewField label="Order Type" value={data.order_type || "Restaurant"} />
+                                    <ViewField label="Room" value={data.room_no} />
+                                    <ViewField label="Table" value={data.table_no} />
+                                    <ViewField label="Delivery Partner" value={data.delivery_partner_name} />
+                                    <ViewField label="Expected Delivery" value={data.expected_delivery_time ? formatAppDateTime(data.expected_delivery_time) : "—"} />
+                                    <ViewField label="Order Date" value={formatAppDateTime(data.order_date)} />
+                                    <ViewField label="Order Total" value={`₹${Number(data.total_amount).toFixed(2)}`} />
+                                    <div>
+                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Order Status</Label>
+                                        <div className="mt-1">
+                                            <GridBadge status={data.order_status} statusType="order" className="h-7 px-3 text-[10px] font-bold">
+                                                {data.order_status}
+                                            </GridBadge>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className="space-y-3 pt-1">
-                                    <div className="flex items-center gap-2 px-1">
-                                        <Pencil className="w-4 h-4 text-primary" />
-                                        <h4 className="text-sm font-bold text-foreground uppercase tracking-wider">Update Status</h4>
+                                    <div>
+                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Payment Status</Label>
+                                        <div className="mt-1">
+                                            <GridBadge status={data.payment_status} statusType="payment" className="h-7 px-3 text-[10px] font-bold">
+                                                {data.payment_status}
+                                            </GridBadge>
+                                        </div>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4 bg-accent p-4 rounded-xl border border-primary/10 shadow-sm">
+                                </PropertyViewSection>
+                            </div>
+                        ) : (
+                            <div className="space-y-5">
+                                <PropertyViewSection title="Order Details" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                                    <ViewField label="Guest Name" value={data.guest_name || "Guest Order"} />
+                                    <ViewField label="Mobile Number" value={data.guest_mobile} />
+                                    <ViewField label="Order Type" value={data.order_type || "Restaurant"} />
+                                    <ViewField label="Room" value={data.room_no} />
+                                    <ViewField label="Table" value={data.table_no} />
+                                    <ViewField label="Delivery Partner" value={data.delivery_partner_name} />
+                                    <ViewField label="Expected Delivery" value={data.expected_delivery_time ? formatAppDateTime(data.expected_delivery_time) : "—"} />
+                                </PropertyViewSection>
+
+                                <div className="rounded-[5px] border border-primary/50 bg-background p-5 shadow-sm space-y-5">
+                                    <h3 className="text-[11px] font-semibold text-primary/90 uppercase tracking-[0.16em] border-b border-primary/50 pb-2">
+                                        Update Status
+                                    </h3>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Order Status *</Label>
+                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Order Status *</Label>
                                             <NativeSelect
-                                                className="w-full h-11 border border-primary/20 bg-background rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary shadow-none"
+                                                className="w-full h-10 border border-border bg-background rounded-[3px] px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary shadow-none"
                                                 value={draftOrderStatus}
                                                 onChange={(e) => setDraftOrderStatus(e.target.value)}
                                             >
@@ -253,9 +220,9 @@ export function OrderItemsModal({
                                             </NativeSelect>
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Payment Status *</Label>
+                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Payment Status *</Label>
                                             <NativeSelect
-                                                className="w-full h-11 border border-primary/20 bg-background rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary shadow-none"
+                                                className="w-full h-10 border border-border bg-background rounded-[3px] px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary shadow-none"
                                                 value={draftPaymentStatus}
                                                 onChange={(e) => setDraftPaymentStatus(e.target.value)}
                                             >
@@ -270,19 +237,15 @@ export function OrderItemsModal({
                         )}
 
                         {/* ================= ITEMS SECTION ================= */}
-                        <div className="space-y-3">
-                            <div className="flex items-center gap-2 px-1">
-                                <ClipboardList className="w-4 h-4 text-primary" />
-                                <h4 className="text-sm font-bold text-foreground uppercase tracking-wider">Items Ordered</h4>
-                            </div>
-                            <div className="border border-primary/10 rounded-xl overflow-hidden bg-accent shadow-sm">
+                        <PropertyViewSection title="Items Ordered" className="mt-0">
+                            <div className="border border-border rounded-lg overflow-hidden bg-background shadow-sm">
                                 <AppDataGrid
                                     scrollable={false}
                                     columns={[
                                         {
                                             label: "Item",
-                                            headClassName: "bg-primary/5 text-[10px] font-bold uppercase tracking-widest py-3",
-                                            cellClassName: "py-3 px-2 font-medium min-w-[360px]",
+                                            headClassName: "w-[360px]",
+                                            cellClassName: "font-medium min-w-[360px]",
                                             render: (item: any) => (
                                                 <div className="flex items-center gap-4">
                                                     <div 
@@ -316,37 +279,31 @@ export function OrderItemsModal({
                                         },
                                         {
                                             label: "Qty",
-                                            headClassName: "bg-primary/5 text-[10px] font-bold uppercase tracking-widest py-3 text-center",
-                                            cellClassName: "py-3 px-2 text-center min-w-[50px] font-semibold text-primary",
+                                            headClassName: "text-center",
+                                            cellClassName: "text-center min-w-[50px] font-semibold text-primary",
                                             render: (item: any) => item.quantity,
                                         },
                                         {
                                             label: "Price",
-                                            headClassName: "bg-primary/5 text-[10px] font-bold uppercase tracking-widest py-3 text-right",
-                                            cellClassName: "py-3 px-2 text-right min-w-[80px] text-muted-foreground",
+                                            headClassName: "text-right",
+                                            cellClassName: "text-right min-w-[80px] text-muted-foreground",
                                             render: (item: any) => `₹${Number(item.unit_price).toFixed(2)}`,
                                         },
                                         {
                                             label: "Total",
-                                            headClassName: "bg-primary/5 text-[10px] font-bold uppercase tracking-widest py-3 text-right",
-                                            cellClassName: "py-3 px-2 text-right font-bold min-w-[80px] text-foreground",
+                                            headClassName: "text-right",
+                                            cellClassName: "text-right font-bold min-w-[80px] text-foreground",
                                             render: (item: any) => `₹${Number(item.item_total).toFixed(2)}`,
                                         },
                                     ] as ColumnDef[]}
                                     data={data.items ?? []}
                                     rowKey={(item: any, index) => item.id ?? index}
                                     minWidth="560px"
-                                    className="mt-0 border-none bg-accent"
-                                    headerClassName="bg-transparent border-b border-primary/10"
                                 />
-                                <div className="p-3 flex items-center justify-between bg-primary/5 border-t border-primary/10">
-                                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Grand Total</span>
-                                    <span className="text-xl font-bold text-primary">₹{Number(data.total_amount).toFixed(2)}</span>
-                                </div>
                             </div>
-                        </div>
+                        </PropertyViewSection>
 
-                        <div className="flex justify-end gap-3 pt-3 border-t border-border">
+                        <div className="flex justify-end gap-3 pt-6 border-t border-border mt-4">
                             <Button
                                 variant="heroOutline"
                                 onClick={onClose}
@@ -391,22 +348,5 @@ export function OrderItemsModal({
                 </DialogContent>
             </Dialog>
         </Sheet>
-    );
-}
-
-/* small helper */
-function InfoItem({ icon, label, value, className }: { icon: React.ReactNode; label: string; value: any; className?: string }) {
-    return (
-        <div className={cn("p-3 flex items-start gap-3 bg-accent", className)}>
-            <div className="mt-0.5 h-7 w-7 rounded-lg bg-background flex items-center justify-center text-slate-500 border border-primary/5">
-                {icon}
-            </div>
-            <div className="space-y-0.5">
-                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{label}</Label>
-                <p className="text-sm font-semibold text-foreground">
-                    {value || "—"}
-                </p>
-            </div>
-        </div>
     );
 }

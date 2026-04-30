@@ -895,7 +895,7 @@ export default function InventoryMaster() {
                             <SheetHeader className="mb-6">
                                 <div className="space-y-1">
                                     <SheetTitle className="text-xl font-bold">
-                                        {mode === "view" ? `Master Inventory [${selected?.id ? `#${formatModuleDisplayId("inventory", selected.id)}` : "..."}]` : mode === "edit" ? `Update Item [${selected?.id ? `#${formatModuleDisplayId("inventory", selected.id)}` : "..."}]` : "Add Item"}
+                                        {mode === "view" ? `Master Inventory [${selected?.id ? `#${formatModuleDisplayId("inventory", selected.id)}` : "..."}]` : mode === "edit" ? `Update Master Inventory [${selected?.id ? `#${formatModuleDisplayId("inventory", selected.id)}` : "..."}]` : "Add Master Inventory Item"}
                                     </SheetTitle>
                                     <p className="text-xs text-muted-foreground font-medium tracking-wider">
                                         {mode === "view" ? "Inventory configuration details" : "Modify existing inventory item details."}

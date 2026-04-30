@@ -754,7 +754,7 @@ export default function KitchenInventory() {
                         <SheetHeader className="mb-6">
                             <div className="space-y-1">
                                 <SheetTitle className="text-xl font-bold">
-                                    {mode === "view" ? `Kitchen Inventory [${selectedItem?.id ? `#${formatModuleDisplayId("kitchen", selectedItem.id)}` : "..."}]` : mode === "edit" ? `Update Item [${selectedItem?.id ? `#${formatModuleDisplayId("kitchen", selectedItem.id)}` : "..."}]` : "Add Item"}
+                                    {mode === "view" ? `Kitchen Inventory [${selectedItem?.id ? `#${formatModuleDisplayId("kitchen", selectedItem.id)}` : "..."}]` : mode === "edit" ? `Update Kitchen Inventory [${selectedItem?.id ? `#${formatModuleDisplayId("kitchen", selectedItem.id)}` : "..."}]` : "Add Item"}
                                 </SheetTitle>
                                 <p className="text-xs text-muted-foreground font-medium  tracking-wider">
                                     {mode === "view" ? "Detailed stock and audit information" : "Modify stock levels and unit configuration"}
