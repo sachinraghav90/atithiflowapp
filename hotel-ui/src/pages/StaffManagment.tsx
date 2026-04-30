@@ -714,23 +714,22 @@ export default function StaffManagement() {
                         className="space-y-1"
                     >
                         <SheetHeader>
-                            <SheetTitle>
-                                {mode === "add"
-                                    ? "Add Staff"
-                                    : mode === "edit"
-                                        ? "Edit Staff"
-                                        : "Staff summary"}
-                            </SheetTitle>
+                            <div className="space-y-1">
+                                <SheetTitle>
+                                    {mode === "add" ? "Register New Staff" : mode === "edit" ? `Edit Staff Member [${staff?.id ? formatModuleDisplayId("staff", staff.id) : "..."}]` : `Staff Summary [${staff?.id ? formatModuleDisplayId("staff", staff.id) : "..."}]`}
+                                </SheetTitle>
+                                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                                    {mode === "add" ? "Create a new profile for hotel personnel" : mode === "edit" ? "Modify existing staff member information" : "Detailed profile information of staff member"}
+                                </p>
+                            </div>
                         </SheetHeader>
 
                         {viewMode ? (
 
-                            <>
+                            <div className="space-y-8 mt-6">
                                 {/* ================= PERSONAL DETAILS ================= */}
-
                                 <StaffViewSection title="Personal Details">
-                                    <div className="grid grid-cols-1 gap-4">
-
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                                         <ViewField label="First Name" value={staff.first_name} />
                                         <ViewField label="Middle Name" value={staff.middle_name} />
                                         <ViewField label="Last Name" value={staff.last_name} />
@@ -739,14 +738,13 @@ export default function StaffManagement() {
                                         <ViewField label="DOB" value={staff.dob} />
                                         <ViewField label="Nationality" value={staff.nationality} />
                                         <ViewField label="Blood Group" value={staff.blood_group} />
-
                                     </div>
                                 </StaffViewSection>
 
-                                {/* ================= CONTACT ================= */}
 
+                                {/* ================= CONTACT ================= */}
                                 <StaffViewSection title="Contact & Login">
-                                    <div className="grid grid-cols-1 gap-4">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                                         <ViewField label="Email" value={staff.email} />
                                         <ViewField label="Phone" value={staff.phone1} />
                                         <ViewField label="Alternate Phone" value={staff.phone2} />
@@ -754,10 +752,10 @@ export default function StaffManagement() {
                                     </div>
                                 </StaffViewSection>
 
-                                {/* ================= ROLE ================= */}
 
+                                {/* ================= ROLE ================= */}
                                 <StaffViewSection title="Property & Role">
-                                    <div className="grid grid-cols-1 gap-4">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                                         <ViewField label="Property" value={staff.property_id} />
                                         <ViewField label="Department" value={staff.department} />
                                         <ViewField label="Designation" value={staff.designation} />
@@ -767,10 +765,10 @@ export default function StaffManagement() {
                                     </div>
                                 </StaffViewSection>
 
-                                {/* ================= EMERGENCY ================= */}
 
+                                {/* ================= EMERGENCY ================= */}
                                 <StaffViewSection title="Emergency Contacts">
-                                    <div className="grid grid-cols-1 gap-4">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                                         <ViewField label="Primary Contact" value={staff.emergency_contact} />
                                         <ViewField label="Contact Name" value={staff.emergency_contact_name} />
                                         <ViewField label="Relation" value={staff.emergency_contact_relation} />
@@ -778,15 +776,15 @@ export default function StaffManagement() {
                                     </div>
                                 </StaffViewSection>
 
-                                {/* ================= IDENTIFICATION ================= */}
 
+                                {/* ================= IDENTIFICATION ================= */}
                                 <StaffViewSection title="Identification">
-                                    <div className="grid grid-cols-1 gap-4">
+                                    <div className="grid grid-cols-2 gap-6">
                                         <ViewField label="ID Proof Type" value={staff.id_proof_type} />
                                         <ViewField label="ID Number" value={staff.id_number} />
                                     </div>
                                 </StaffViewSection>
-                            </>
+                            </div>
 
                         ) : (
 
@@ -907,19 +905,21 @@ export default function StaffManagement() {
                     <div className="space-y-4">
 
                         <div>
-                            <Label>New Password</Label>
+                            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">New Password</Label>
                             <Input
                                 type="password"
                                 value={newPassword}
+                                className="h-9"
                                 onChange={(e) => setNewPassword(e.target.value)}
                             />
                         </div>
 
                         <div>
-                            <Label>Confirm Password</Label>
+                            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Confirm Password</Label>
                             <Input
                                 type="password"
                                 value={confirmPassword}
+                                className="h-9"
                                 onChange={(e) => setConfirmPassword(e.target.value)}
                             />
                         </div>
@@ -949,21 +949,21 @@ export default function StaffManagement() {
     );
 }
 
-function ViewField({ label, value }) {
+function ViewField({ label, value }: { label: string, value?: string | number }) {
     return (
-        <div className="space-y-2">
-            <p className="text-sm font-medium text-foreground">{label}</p>
-            <p className="min-h-10 w-full rounded-[3px] bg-background px-3 py-2 flex items-center text-sm text-foreground cursor-default select-text">
-                {value || "-"}
+        <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</Label>
+            <p className="text-sm font-semibold text-foreground px-0.5">
+                {value || "—"}
             </p>
         </div>
     );
 }
 
-function StaffViewSection({ title, children }) {
+function StaffViewSection({ title, children }: { title: string, children: React.ReactNode }) {
     return (
-        <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-foreground">
+        <div className="space-y-4 pt-4 border-t border-border first:pt-0 first:border-0">
+            <h3 className="text-xs font-bold text-primary uppercase tracking-wider">
                 {title}
             </h3>
             {children}

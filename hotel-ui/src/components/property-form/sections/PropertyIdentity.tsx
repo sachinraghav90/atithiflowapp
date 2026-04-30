@@ -49,14 +49,13 @@ export default function PropertyIdentity({
 }: Props) {
 
     return (
-        <div className="border border-border rounded-[5px] p-5 bg-card">
+        <div className="border border-border rounded-[5px] p-4 bg-card">
 
-            <div className="grid grid-cols-[1fr_auto] gap-6 items-stretch">
+            <div className="grid grid-cols-[1fr_auto] gap-5 items-stretch">
 
-                {/* ================= LEFT SIDE ================= */}
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-3">
 
-                    <h3 className="font-semibold text-base">
+                    <h3 className="font-semibold text-sm text-primary uppercase tracking-wider">
                         Property Identity
                     </h3>
 

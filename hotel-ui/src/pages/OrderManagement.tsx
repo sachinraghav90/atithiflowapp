@@ -266,10 +266,10 @@ export function OrdersManagement() {
 
     return (
         <div className="flex flex-col">
-            <section className="p-6 lg:p-8 space-y-6">
+            <section className="p-4 lg:p-6 space-y-5">
                 <div className="flex items-center justify-between w-full">
                     <div className="flex flex-col">
-                        <h1 className="text-2xl font-bold leading-tight">Orders</h1>
+                        <h1 className="text-2xl font-bold leading-tight">Restaurant Orders</h1>
                         <p className="text-sm text-muted-foreground">
                             Restaurant & room service orders
                         </p>

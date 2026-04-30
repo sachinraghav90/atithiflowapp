@@ -27,7 +27,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
-import { Download, FilterX, Pencil, RefreshCcw, Trash2, Plus, PlusCircle } from "lucide-react";
+import { CalendarIcon, ClipboardList, Download, FilterX, Package, Pencil, RefreshCcw, ShieldCheck, Trash2, Truck, Plus, PlusCircle } from "lucide-react";
 import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -158,6 +158,54 @@ function formatDisplayStatus(value?: string | null) {
     return formatReadableLabel(value) || "--";
 }
 
+function formatLaundryOrderDisplayId(rawId: string | number | null | undefined) {
+    const normalizedRawId = String(rawId ?? "").trim();
+
+    if (!normalizedRawId) {
+        return formatModuleDisplayId("laundry_order", rawId, { padLength: 4 });
+    }
+
+    const prefixedMatch = normalizedRawId.match(/^#?LO(\d+)$/i);
+
+    if (prefixedMatch) {
+        return `LO${prefixedMatch[1].padStart(4, "0")}`;
+    }
+
+    return formatModuleDisplayId("laundry_order", rawId, { padLength: 4 });
+}
+
+function parseLaundryAmount(value?: string | number | null) {
+    const normalizedValue = String(value ?? "").replace(/[^\d.-]/g, "");
+    const amount = Number(normalizedValue);
+
+    return Number.isFinite(amount) ? amount : null;
+}
+
+function formatLaundryAmount(value?: string | number | null) {
+    const amount = parseLaundryAmount(value);
+
+    if (amount === null) {
+        return "--";
+    }
+
+    return `Rs. ${amount.toLocaleString("en-IN", {
+        minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+        maximumFractionDigits: 2,
+    })}`;
+}
+
+function getLaundryOrderTotalAmount(order: LaundryOrder) {
+    const itemTotal = order.items?.reduce((sum, item) => {
+        return sum + (parseLaundryAmount(item?.amount) ?? 0);
+    }, 0);
+
+    if (itemTotal) {
+        return itemTotal;
+    }
+
+    return parseLaundryAmount(order.amount) ?? 0;
+}
+
 function getLaundryVendorStatus(order: LaundryOrder) {
     return order.vendor_status || order.vendorStatus || "NOT_ALLOTTED";
 }
@@ -236,7 +284,7 @@ function getLaundryAuditChangeText(audit: any) {
 
 function getLaundryAuditDisplay(audit: any) {
     return {
-        orderLabel: formatModuleDisplayId("laundry_order", audit.event_id),
+        orderLabel: formatLaundryOrderDisplayId(audit.event_id),
         actionLabel: formatDisplayStatus(audit.event_type),
         actionClassName: "border-slate-300/80 bg-slate-100/90 text-slate-700",
         changeText: getLaundryAuditChangeText(audit) || "--",
@@ -698,9 +746,9 @@ export default function LaundryOrdersManagement() {
                             order,
                         })
                     }
-                    aria-label={`Open summary view for laundry order ${formatModuleDisplayId("laundry_order", order.id)}`}
+                    aria-label={`Open summary view for laundry order ${formatLaundryOrderDisplayId(order.id)}`}
                 >
-                    {formatModuleDisplayId("laundry_order", order.id)}
+                    {formatLaundryOrderDisplayId(order.id)}
                 </button>
             ),
         },
@@ -831,7 +879,7 @@ export default function LaundryOrdersManagement() {
                 const displayOrder = getLaundryOrderDisplay(order, vendors);
 
                 return {
-                    "Laundry ID": formatModuleDisplayId("laundry_order", order.id),
+                    "Laundry ID": formatLaundryOrderDisplayId(order.id),
                     "Item Name": displayOrder.itemLabel,
                     "No. of Items": displayOrder.itemCountLabel,
                     "Pickup Date": displayOrder.pickupDateLabel,
@@ -1036,7 +1084,7 @@ export default function LaundryOrdersManagement() {
                                             <Button
                                                 size="icon"
                                                 variant="ghost"
-                                                className="h-7 w-7 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                                className="h-7 w-7 bg-primary hover:bg-primary/80 text-primary-foreground transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
                                                 onClick={() => {
                                                     setEditOrder(order);
                                                     setViewItemsModal({
@@ -1049,7 +1097,7 @@ export default function LaundryOrdersManagement() {
                                                 <Pencil className="w-3.5 h-3.5 mx-auto" />
                                             </Button>
                                         </TooltipTrigger>
-                                        <TooltipContent>Edit Order</TooltipContent>
+                                        <TooltipContent>Update Order</TooltipContent>
                                     </Tooltip>
                                 )}
                                 enablePagination={!!laundryData?.pagination}
@@ -1457,179 +1505,343 @@ export default function LaundryOrdersManagement() {
                     setViewItemsModal({ open: false, editMode: false, order: null })
                 }
             >
-                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
+                <SheetContent side="right" className="w-full lg:max-w-4xl sm:max-w-3xl overflow-y-auto bg-background border-l border-border/50 p-4">
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="space-y-6"
+                        className="space-y-1"
                     >
-                        <SheetHeader>
-                            <SheetTitle>{viewItemsModal.editMode ? "Edit laundry order" : "Laundry order summary"}</SheetTitle>
+                        <SheetHeader className="border-b border-border/50 pb-3 mb-3">
+                            <div className="flex items-center gap-3">
+                                <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center text-primary shadow-sm">
+                                    {viewItemsModal.editMode ? <Pencil className="w-4 h-4" /> : <ClipboardList className="w-4 h-4" />}
+                                </div>
+                                <div className="space-y-0.5">
+                                    <SheetTitle className="text-lg font-bold text-foreground">
+                                        {viewItemsModal.editMode ? "Update Laundry Order" : "Laundry Order Summary"}
+                                        {viewItemsModal.order?.id && (
+                                            <span className="ml-2 text-primary font-semibold">
+                                                {`[#${formatLaundryOrderDisplayId(viewItemsModal.order.id)}]`}
+                                            </span>
+                                        )}
+                                    </SheetTitle>
+                                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                                        {viewItemsModal.editMode
+                                            ? "Update existing laundry order details."
+                                            : `Laundry order details for #${viewItemsModal.order?.id ? formatLaundryOrderDisplayId(viewItemsModal.order.id) : "..."}.`}
+                                    </p>
+                                </div>
+                            </div>
                         </SheetHeader>
 
+                        <div>
+                            {viewItemsModal.order && (() => {
+                                const order = viewItemsModal.order;
+                                const displayOrder = getLaundryOrderDisplay(order, vendors);
+                                const displayId = formatLaundryOrderDisplayId(order.id);
+                                const orderItems = Array.isArray(order.items) ? order.items : [];
+
+                                return (
+                                    <div className="space-y-3">
+                                        {!viewItemsModal.editMode && (
+                                            <div className="grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 p-2.5 rounded-lg border border-primary/10 bg-accent shadow-sm">
+                                                <div className="h-11 w-11 rounded-lg bg-primary/5 flex items-center justify-center text-primary border border-primary/10 shadow-inner shrink-0">
+                                                    <ClipboardList className="w-5 h-5" />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <h3 className="text-sm font-bold text-foreground leading-tight truncate">Laundry Order #{displayId}</h3>
+                                                    <p className="text-xs text-muted-foreground font-medium">
+                                                        {displayOrder.itemCountLabel} - {displayOrder.vendorName}
+                                                    </p>
+                                                </div>
+                                                <div className="hidden md:block text-right border-r border-primary/10 pr-3">
+                                                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total</Label>
+                                                    <p className="text-sm font-bold text-primary leading-tight">
+                                                        {formatLaundryAmount(getLaundryOrderTotalAmount(order))}
+                                                    </p>
+                                                </div>
+                                                <GridBadge status={order.laundry_status} statusType="laundry">
+                                                    {displayOrder.laundryStatusLabel}
+                                                </GridBadge>
+                                            </div>
+                                        )}
+
+                                        {!viewItemsModal.editMode ? (
+                                            <div className="grid grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr_1fr] gap-px bg-primary/10 border border-primary/10 rounded-lg overflow-hidden bg-accent">
+                                                <div className="p-2.5 flex items-start gap-2 bg-accent">
+                                                    <div className="mt-0.5 h-6 w-6 rounded-md bg-background flex items-center justify-center text-slate-500 border border-primary/5">
+                                                        <Truck className="w-3.5 h-3.5" />
+                                                    </div>
+                                                    <div className="min-w-0 space-y-0.5">
+                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Vendor</Label>
+                                                        <p className="text-sm font-semibold text-foreground leading-snug">{displayOrder.vendorName}</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="p-2.5 flex items-start gap-2 bg-accent">
+                                                    <div className="mt-0.5 h-6 w-6 rounded-md bg-background flex items-center justify-center text-slate-500 border border-primary/5">
+                                                        <Truck className="w-3.5 h-3.5" />
+                                                    </div>
+                                                    <div className="min-w-0 space-y-0.5">
+                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Vendor Status</Label>
+                                                        <GridBadge status={displayOrder.vendorStatus} statusType="vendor" className="h-6 px-2 text-[10px]">
+                                                            {displayOrder.vendorStatusLabel}
+                                                        </GridBadge>
+                                                    </div>
+                                                </div>
+
+                                                <div className="p-2.5 flex items-start gap-2 bg-accent">
+                                                    <div className="mt-0.5 h-6 w-6 rounded-md bg-background flex items-center justify-center text-slate-500 border border-primary/5">
+                                                        <ShieldCheck className="w-3.5 h-3.5" />
+                                                    </div>
+                                                    <div className="min-w-0 space-y-0.5">
+                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Laundry Status</Label>
+                                                        <GridBadge status={order.laundry_status} statusType="laundry" className="h-6 px-2 text-[10px]">
+                                                            {displayOrder.laundryStatusLabel}
+                                                        </GridBadge>
+                                                    </div>
+                                                </div>
+
+                                                <div className="p-2.5 flex items-start gap-2 bg-accent">
+                                                    <div className="mt-0.5 h-6 w-6 rounded-md bg-background flex items-center justify-center text-slate-500 border border-primary/5">
+                                                        <CalendarIcon className="w-3.5 h-3.5" />
+                                                    </div>
+                                                    <div className="min-w-0 space-y-0.5">
+                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Pickup Date</Label>
+                                                        <p className="text-sm font-semibold text-foreground leading-snug">{formatDateTime(order.pickup_date)}</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="p-2.5 flex items-start gap-2 bg-accent col-span-2 lg:col-span-1">
+                                                    <div className="mt-0.5 h-6 w-6 rounded-md bg-background flex items-center justify-center text-slate-500 border border-primary/5">
+                                                        <CalendarIcon className="w-3.5 h-3.5" />
+                                                    </div>
+                                                    <div className="min-w-0 space-y-0.5">
+                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Delivery Date</Label>
+                                                        <p className="text-sm font-semibold text-foreground leading-snug">{formatDateTime(order.delivery_date)}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 text-sm">
+                                            <div className="bg-accent border border-primary/10 rounded-lg p-3 space-y-3 shadow-sm">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="h-7 w-7 rounded-lg bg-background flex items-center justify-center text-primary border border-primary/5">
+                                                        <Truck className="w-3.5 h-3.5" />
+                                                    </div>
+                                                    <h3 className="text-xs font-bold text-primary uppercase tracking-wider">Order Assignment</h3>
+                                                </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                    <div>
+                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Vendor</Label>
+                                                        {viewItemsModal.editMode ? (
+                                                            <NativeSelect
+                                                                className="w-full h-9 border border-primary/20 bg-background rounded-md px-3 text-sm shadow-none focus:outline-none focus:ring-1 focus:ring-primary mt-1"
+                                                                value={editOrder?.vendor_id || ""}
+                                                                onChange={(e) =>
+                                                                    setEditOrder(prev => ({
+                                                                        ...prev,
+                                                                        vendor_id: e.target.value ? Number(e.target.value) : null
+                                                                    }))
+                                                                }
+                                                            >
+                                                                <option value="">Select Vendor</option>
+                                                                {vendors?.map(v => (
+                                                                    <option key={v.id} value={v.id}>{v.name}</option>
+                                                                ))}
+                                                            </NativeSelect>
+                                                        ) : (
+                                                            <p className="mt-1 text-sm font-semibold text-foreground">
+                                                                {displayOrder.vendorName}
+                                                            </p>
+                                                        )}
+                                                    </div>
+
+                                                    <div>
+                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Vendor Status</Label>
+                                                        {viewItemsModal.editMode ? (
+                                                            <NativeSelect
+                                                                className="w-full h-9 border border-primary/20 bg-background rounded-md px-3 text-sm shadow-none focus:outline-none focus:ring-1 focus:ring-primary mt-1"
+                                                                value={editOrder?.vendor_status || editOrder?.vendorStatus}
+                                                                onChange={(e) =>
+                                                                    setEditOrder(prev => ({
+                                                                        ...prev,
+                                                                        vendor_status: e.target.value
+                                                                    }))
+                                                                }
+                                                            >
+                                                                {VENDOR_STATUSES.map(s => (
+                                                                    <option key={s} value={s}>{formatDisplayStatus(s)}</option>
+                                                                ))}
+                                                            </NativeSelect>
+                                                        ) : (
+                                                            <div className="mt-1">
+                                                                <GridBadge status={displayOrder.vendorStatus} statusType="vendor">
+                                                                    {displayOrder.vendorStatusLabel}
+                                                                </GridBadge>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-accent border border-primary/10 rounded-lg p-3 space-y-3 shadow-sm">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="h-7 w-7 rounded-lg bg-background flex items-center justify-center text-primary border border-primary/5">
+                                                        <ShieldCheck className="w-3.5 h-3.5" />
+                                                    </div>
+                                                    <h3 className="text-xs font-bold text-primary uppercase tracking-wider">Status & Delivery</h3>
+                                                </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                                    <div>
+                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Laundry Status</Label>
+                                                        {viewItemsModal.editMode ? (
+                                                            <NativeSelect
+                                                                className="w-full h-9 border border-primary/20 bg-background rounded-md px-3 text-sm shadow-none focus:outline-none focus:ring-1 focus:ring-primary mt-1"
+                                                                value={editOrder?.laundry_status}
+                                                                onChange={(e) =>
+                                                                    setEditOrder(prev => ({
+                                                                        ...prev,
+                                                                        laundry_status: e.target.value
+                                                                    }))
+                                                                }
+                                                            >
+                                                                {LAUNDRY_STATUSES.map(s => (
+                                                                    <option key={s} value={s}>{formatDisplayStatus(s)}</option>
+                                                                ))}
+                                                            </NativeSelect>
+                                                        ) : (
+                                                            <div className="mt-1">
+                                                                <GridBadge status={order.laundry_status} statusType="laundry">
+                                                                    {displayOrder.laundryStatusLabel}
+                                                                </GridBadge>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    <div>
+                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Delivery Date</Label>
+                                                        {viewItemsModal.editMode ? (
+                                                            <DatePicker
+                                                                selected={parseDate(editOrder?.delivery_date || order.delivery_date)}
+                                                                onChange={(date) =>
+                                                                    setEditOrder(prev => ({
+                                                                        ...prev,
+                                                                        delivery_date: formatDate(date)
+                                                                    }))
+                                                                }
+                                                                showTimeSelect
+                                                                timeIntervals={15}
+                                                                minDate={now}
+                                                                minTime={
+                                                                    parseDate(form.pickupDate)?.toDateString() === now.toDateString()
+                                                                        ? now
+                                                                        : new Date(new Date().setHours(0, 0, 0, 0))
+                                                                }
+                                                                maxTime={new Date(new Date().setHours(23, 59, 59, 999))}
+                                                                dateFormat="dd/MM/yy HH:mm"
+                                                                wrapperClassName="block w-full"
+                                                                className="w-full h-9 border border-primary/20 bg-background rounded-md px-3 text-sm shadow-none outline-none focus:ring-1 focus:ring-primary mt-1"
+                                                            />
+                                                        ) : (
+                                                            <p className="mt-1 text-sm font-semibold text-foreground">
+                                                                {formatDateTime(order.delivery_date)}
+                                                            </p>
+                                                        )}
+                                                    </div>
+
+                                                    <div>
+                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Pickup Date</Label>
+                                                        <p className="mt-1 text-sm font-semibold text-foreground">
+                                                            {formatDateTime(order.pickup_date)}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            </div>
+                                        )}
+
+                                        <div className="bg-accent border border-primary/10 rounded-lg overflow-hidden shadow-sm">
+                                            <div className="px-3 py-2.5 border-b border-primary/10 bg-primary/5 flex items-center gap-2">
+                                                <div className="h-7 w-7 rounded-lg bg-background flex items-center justify-center text-primary border border-primary/5">
+                                                    <Package className="w-3.5 h-3.5" />
+                                                </div>
+                                                <h3 className="text-xs font-bold text-primary uppercase tracking-wider">Order Items</h3>
+                                            </div>
+                                            <div className="p-2">
+                                                <AppDataGrid
+                                                    columns={[
+                                                        {
+                                                            label: "Item",
+                                                            className: "w-[46%]",
+                                                            cellClassName: "font-medium text-foreground",
+                                                            render: (item: any) => item.item_name || "--",
+                                                        },
+                                                        {
+                                                            label: "Room",
+                                                            className: "w-[18%]",
+                                                            headClassName: "text-center",
+                                                            cellClassName: "text-center text-muted-foreground",
+                                                            render: (item: any) => item.room_no || "--",
+                                                        },
+                                                        {
+                                                            label: "Qty",
+                                                            className: "w-[12%]",
+                                                            headClassName: "text-center",
+                                                            cellClassName: "text-center font-medium",
+                                                            render: (item: any) => item.item_count ?? "--",
+                                                        },
+                                                        {
+                                                            label: "Amount",
+                                                            className: "w-[24%]",
+                                                            headClassName: "text-right",
+                                                            cellClassName: "text-right font-medium",
+                                                            render: (item: any) => formatLaundryAmount(item.amount),
+                                                        },
+                                                    ] as ColumnDef[]}
+                                                    data={orderItems}
+                                                    rowKey={(_, index) => index}
+                                                    emptyText="No laundry items found"
+                                                    minWidth="500px"
+                                                    density="compact"
+                                                    scrollable={false}
+                                                    showActions={false}
+                                                    className="mt-0 border-primary/10 bg-background"
+                                                    tableClassName="text-xs"
+                                                />
+                                                <div className="flex items-center justify-end gap-3 px-3 py-2 border border-t-0 border-primary/10 rounded-b-[5px] bg-primary/5">
+                                                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total Amount</span>
+                                                    <span className="text-sm font-bold text-primary">{formatLaundryAmount(getLaundryOrderTotalAmount(order))}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+                        </div>
+
                         {viewItemsModal.order && (
-                            <div className="space-y-6">
-                                {/* ===== HEADER DETAILS ===== */}
-                                <div className="grid grid-cols-1 gap-6 text-sm">
-                                    <div className="bg-muted/5 border rounded-lg p-5 space-y-4">
-                                        <h3 className="text-sm font-bold text-primary uppercase tracking-wider">Order Assignment</h3>
-                                        <div className="space-y-4">
-                                            <div>
-                                                <Label className="text-muted-foreground">Vendor</Label>
-                                                {viewItemsModal.editMode ? (
-                                                    <NativeSelect
-                                                        className="w-full h-9 border rounded px-2 mt-1"
-                                                        value={editOrder?.vendor_id || ""}
-                                                        onChange={(e) =>
-                                                            setEditOrder(prev => ({
-                                                                ...prev,
-                                                                vendor_id: e.target.value ? Number(e.target.value) : null
-                                                            }))
-                                                        }
-                                                    >
-                                                        <option value="">Select Vendor</option>
-                                                        {vendors?.map(v => (
-                                                            <option key={v.id} value={v.id}>{v.name}</option>
-                                                        ))}
-                                                    </NativeSelect>
-                                                ) : (
-                                                    <p className="mt-1 font-medium">
-                                                        {getLaundryVendorName(viewItemsModal.order, vendors)}
-                                                    </p>
-                                                )}
-                                            </div>
-
-                                            <div>
-                                                <Label className="text-muted-foreground">Vendor Status</Label>
-                                                {viewItemsModal.editMode ? (
-                                                    <NativeSelect
-                                                        className="w-full h-9 border rounded px-2 mt-1"
-                                                        value={editOrder?.vendor_status || editOrder?.vendorStatus}
-                                                        onChange={(e) =>
-                                                            setEditOrder(prev => ({
-                                                                ...prev,
-                                                                vendor_status: e.target.value
-                                                            }))
-                                                        }
-                                                    >
-                                                        {(["NOT_ALLOTTED", "PICKED_UP", "RECEIVED"] as VendorStatus[]).map(s => (
-                                                            <option key={s} value={s}>{formatDisplayStatus(s)}</option>
-                                                        ))}
-                                                    </NativeSelect>
-                                                ) : (
-                                                    <p className="mt-1 font-medium">
-                                                        {formatDisplayStatus(viewItemsModal.order.vendor_status || viewItemsModal.order.vendorStatus)}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-muted/5 border rounded-lg p-5 space-y-4">
-                                        <h3 className="text-sm font-bold text-primary uppercase tracking-wider">Status & Delivery</h3>
-                                        <div className="space-y-4">
-                                            <div>
-                                                <Label className="text-muted-foreground">Laundry Status</Label>
-                                                {viewItemsModal.editMode ? (
-                                                    <NativeSelect
-                                                        className="w-full h-9 border rounded px-2 mt-1"
-                                                        value={editOrder?.laundry_status}
-                                                        onChange={(e) =>
-                                                            setEditOrder(prev => ({
-                                                                ...prev,
-                                                                laundry_status: e.target.value
-                                                            }))
-                                                        }
-                                                    >
-                                                        {(["PENDING", "PICKED_UP", "IN_PROCESS", "DELIVERED", "CANCELLED"] as LaundryStatus[]).map(s => (
-                                                            <option key={s} value={s}>{formatDisplayStatus(s)}</option>
-                                                        ))}
-                                                    </NativeSelect>
-                                                ) : (
-                                                    <p className="mt-1 font-medium">
-                                                        {formatDisplayStatus(viewItemsModal.order.laundry_status)}
-                                                    </p>
-                                                )}
-                                            </div>
-
-                                            <div>
-                                                <Label className="text-muted-foreground">Delivery Date</Label>
-                                                {viewItemsModal.editMode ? (
-                                                    <DatePicker
-                                                        selected={parseDate(editOrder?.delivery_date || viewItemsModal.order.delivery_date)}
-                                                        onChange={(date) =>
-                                                            setEditOrder(prev => ({
-                                                                ...prev,
-                                                                delivery_date: formatDate(date)
-                                                            }))
-                                                        }
-                                                        showTimeSelect
-                                                        timeIntervals={15}
-                                                        minDate={now}
-                                                        minTime={
-                                                            parseDate(form.pickupDate)?.toDateString() === now.toDateString()
-                                                                ? now
-                                                                : new Date(new Date().setHours(0, 0, 0, 0))
-                                                        }
-                                                        maxTime={new Date(new Date().setHours(23, 59, 59, 999))}
-                                                        dateFormat="dd/MM/yy HH:mm"
-                                                        className="w-full h-9 border rounded px-2 mt-1"
-                                                    />
-                                                ) : (
-                                                    <p className="mt-1 font-medium">
-                                                        {formatDateTime(viewItemsModal.order.delivery_date)}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="bg-muted/5 border rounded-lg overflow-hidden">
-                                    <div className="px-5 py-3 border-b bg-muted/20">
-                                        <h3 className="text-sm font-bold text-primary uppercase tracking-wider">Order Items</h3>
-                                    </div>
-                                    <div className="grid grid-cols-[2fr_1fr_1fr_1fr] text-xs font-medium bg-muted/10 border-b">
-                                        <div className="px-3 py-2 border-r">Item</div>
-                                        <div className="px-3 py-2 border-r">Room</div>
-                                        <div className="px-3 py-2 border-r">Qty</div>
-                                        <div className="px-3 py-2">Amount</div>
-                                    </div>
-                                    {viewItemsModal.order.items?.map((i, index) => (
-                                        <div
-                                            key={index}
-                                            className="grid grid-cols-[2fr_1fr_1fr_1fr] text-sm border-b last:border-b-0"
-                                        >
-                                            <div className="px-3 py-2 border-r">{i.item_name}</div>
-                                            <div className="px-3 py-2 border-r">{i.room_no || "--"}</div>
-                                            <div className="px-3 py-2 border-r">{i.item_count}</div>
-                                            <div className="px-3 py-2">₹{i.amount}</div>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <div className="flex justify-end gap-3 pt-4 border-t border-border">
-                                    {!viewItemsModal.editMode ? (
+                            <div className="flex justify-end gap-3 pt-4 mt-4 border-t border-border">
+                                {!viewItemsModal.editMode ? (
+                                    <Button
+                                        variant="heroOutline"
+                                        onClick={() => setViewItemsModal({ open: false, editMode: false, order: null })}
+                                    >
+                                        Close
+                                    </Button>
+                                ) : (
+                                    <>
                                         <Button
                                             variant="heroOutline"
                                             onClick={() => setViewItemsModal({ open: false, editMode: false, order: null })}
                                         >
-                                            Close
+                                            Cancel
                                         </Button>
-                                    ) : (
-                                        <>
-                                            <Button
-                                                variant="heroOutline"
-                                                onClick={() => setViewItemsModal({ open: false, editMode: false, order: null })}
-                                            >
-                                                Cancel
-                                            </Button>
-                                            <Button variant="hero" onClick={updateOrder}>
-                                                Save Changes
-                                            </Button>
-                                        </>
-                                    )}
-                                </div>
+                                        <Button variant="hero" onClick={updateOrder}>
+                                            Save Changes
+                                        </Button>
+                                    </>
+                                )}
                             </div>
                         )}
                     </motion.div>

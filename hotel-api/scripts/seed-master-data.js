@@ -103,7 +103,7 @@ import { getDb } from "../utils/getDb.js";
                 sort_order: 13,
             },
             {
-                link_name: "Orders",
+                link_name: "Restaurant Orders",
                 endpoint: "/orders",
                 sort_order: 14,
             },
@@ -113,7 +113,7 @@ import { getDb } from "../utils/getDb.js";
             //     sort_order: 15,
             // },
             {
-                link_name: "Kitchen",
+                link_name: "Kitchen Inventory",
                 endpoint: "/kitchen-inventory",
                 sort_order: 16,
             },

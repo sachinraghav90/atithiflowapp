@@ -523,37 +523,44 @@ export default function RoomTypeBasePriceManagement() {
                         className="space-y-6 mt-4"
                     >
                         <SheetHeader>
-                            <SheetTitle>
-                                {mode === "view" ? "Room summary" : "Edit room category"}
-                            </SheetTitle>
+                            <div className="space-y-1">
+                                <SheetTitle>
+                                    {mode === "view" ? `Room Category [${selectedRow?.id ? formatModuleDisplayId("room", selectedRow.id) : "..."}]` : "Edit Configuration"}
+                                </SheetTitle>
+                                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                                    {mode === "view" ? "Summary of room configuration and pricing" : "Modify base price and room details"}
+                                </p>
+                            </div>
                         </SheetHeader>
 
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label className="text-xs uppercase tracking-wider">Room Category</Label>
+
+                        <div className="space-y-5 mt-6">
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Room Category Name</Label>
                                 {mode === "view" || (mode === "edit" && selectedRow?.system_generated) ? (
-                                    <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">
-                                        {selectedRow?.room_category_name}
+                                    <p className="text-sm font-semibold text-foreground py-1 px-0.5">
+                                        {selectedRow?.room_category_name || "—"}
                                     </p>
                                 ) : (
                                     <Input
-                                        className="h-10 w-full rounded focus-visible:ring-1 focus-visible:ring-primary"
+                                        className="h-9 focus-visible:ring-1 focus-visible:ring-primary"
                                         value={formCategory}
                                         onChange={(e) => setFormCategory(e.target.value)}
                                     />
                                 )}
                             </div>
+
  
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider block">Bed Type</Label>
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">Bed Type</Label>
                                     {mode === "view" || (mode === "edit" && selectedRow?.system_generated) ? (
-                                        <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">
-                                            {selectedRow?.bed_type_name}
+                                        <p className="text-sm font-semibold text-foreground py-1 px-0.5">
+                                            {selectedRow?.bed_type_name || "—"}
                                         </p>
                                     ) : (
                                         <NativeSelect
-                                            className="h-10 w-full border border-border bg-background rounded px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                                            className="h-9 w-full border border-border bg-background rounded-[3px] px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                                             value={formBedType}
                                             onChange={(e) => setFormBedType(e.target.value)}
                                         >
@@ -564,15 +571,15 @@ export default function RoomTypeBasePriceManagement() {
                                         </NativeSelect>
                                     )}
                                 </div>
-                                <div className="space-y-2">
-                                    <Label className="text-xs uppercase tracking-wider block">AC Type</Label>
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">AC Type</Label>
                                     {mode === "view" || (mode === "edit" && selectedRow?.system_generated) ? (
-                                        <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">
-                                            {selectedRow?.ac_type_name}
+                                        <p className="text-sm font-semibold text-foreground py-1 px-0.5">
+                                            {selectedRow?.ac_type_name || "—"}
                                         </p>
                                     ) : (
                                         <NativeSelect
-                                            className="h-10 w-full border border-border bg-background rounded px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                                            className="h-9 w-full border border-border bg-background rounded-[3px] px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                                             value={formAcType}
                                             onChange={(e) => setFormAcType(e.target.value)}
                                         >
@@ -584,11 +591,12 @@ export default function RoomTypeBasePriceManagement() {
                                     )}
                                 </div>
                             </div>
+
  
                             <div className="space-y-2 pt-4 border-t border-border">
                                 <Label className="text-xs uppercase tracking-wider">Base Price</Label>
                                 {mode === "view" ? (
-                                    <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">
+                                    <p className="text-sm font-semibold text-foreground py-1 px-0.5">
                                         ₹ {selectedRow?.base_price || "0.00"}
                                     </p>
                                 ) : (

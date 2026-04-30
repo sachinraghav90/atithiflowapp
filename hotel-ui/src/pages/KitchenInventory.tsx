@@ -25,7 +25,7 @@ import { normalizeNumberInput, normalizeSignedNumberInput } from "@/utils/normal
 import KitchenInventoryBulkAdjustSheet from "@/components/KitchenInventoryBulkAdjustSheet";
 import { AppDataGrid, DataGridPagination, type ColumnDef } from "@/components/ui/data-grid";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Download, FilterX, Plus, Pencil, RefreshCcw } from "lucide-react";
+import { Download, FilterX, Plus, Pencil, RefreshCcw, Package, Box, Calendar, ShieldCheck, History, User, Clock, Wrench, Boxes, FileText, Layers, Building2, PlusCircle } from "lucide-react";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect } from "@/components/ui/grid-toolbar";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
@@ -103,7 +103,7 @@ export default function KitchenInventory() {
         unit: ""
     });
     const [itemAuditPage, setItemAuditPage] = useState(1);
-    const [itemAuditLimit, setItemAuditLimit] = useState(20);
+    const [itemAuditLimit, setItemAuditLimit] = useState(10);
     const [inventoryLimit, setInventoryLimit] = useState(10);
     const [auditLimit, setAuditLimit] = useState(10);
     const [bulkOpen, setBulkOpen] = useState(false);
@@ -611,7 +611,7 @@ export default function KitchenInventory() {
                 {/* Header */}
                 <div className="flex justify-between items-center shrink-0">
                     <div>
-                        <h1 className="text-2xl font-bold">Kitchen</h1>
+                        <h1 className="text-2xl font-bold">Kitchen Inventory</h1>
                         <p className="text-sm text-muted-foreground">
                             Stock, costing & procurement management
                         </p>
@@ -806,12 +806,12 @@ export default function KitchenInventory() {
                                                     variant="ghost"
                                                     className="h-7 w-7 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
                                                     onClick={() => openManage(item, "edit")}
-                                                    aria-label={`View and edit details for inventory item ${item.name}`}
+                                                    aria-label={`View and update details for inventory item ${item.name}`}
                                                 >
                                                     <Pencil className="w-3.5 h-3.5 mx-auto" />
                                                 </Button>
                                             </TooltipTrigger>
-                                            <TooltipContent>View / Edit Details</TooltipContent>
+                                            <TooltipContent>View / Update Details</TooltipContent>
                                         </Tooltip>
                                     )}
                                     enablePagination
@@ -973,99 +973,205 @@ export default function KitchenInventory() {
 
             {/* ================= SIDE SHEET (ADD / EDIT / VIEW) ================= */}
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
+                <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto bg-background border-l border-border/50">
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="space-y-1"
                     >
-                        <SheetHeader>
-                            <div className="flex items-center justify-between w-full">
-                                <SheetTitle>
-                                    {mode === "add" ? "Add Inventory Item" : mode === "edit" ? "Edit Inventory Item" : "Inventory Item Details"}
-                                </SheetTitle>
-                                {permission?.can_create && mode === "view" && (
-                                    <div className="flex gap-2 mr-6">
-                                        <Button
-                                            variant="heroOutline"
-                                            onClick={() => setMode("edit")}
-                                        >
-                                            Update Stock
-                                        </Button>
-                                        <Button
-                                            variant="heroOutline"
-                                            onClick={() => {
-                                                setAdjustOpen(true);
-                                                setSheetOpen(false);
-                                            }}
-                                        >
-                                            Add New Stock
-                                        </Button>
+                        <SheetHeader className="border-b border-border/50 pb-4 mb-4">
+                            <div className="flex items-start justify-between pr-8">
+                                <div className="flex items-start gap-4">
+                                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary shadow-sm shrink-0 mt-1">
+                                        {mode === "view" ? <Boxes className="w-5 h-5" /> : mode === "edit" ? <Pencil className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
                                     </div>
-                                )}
+                                    <div className="space-y-1">
+                                        <SheetTitle className="text-xl font-bold text-foreground leading-snug">
+                                            {mode === "view" ? "Kitchen Inventory Item Details" : mode === "edit" ? "Update Kitchen Inventory Item" : "Create New Item"}
+                                            {(mode === "view" || mode === "edit") && selectedItem?.id && (
+                                                <span className="ml-2 text-primary font-semibold">[#{formatModuleDisplayId("kitchen", selectedItem.id)}]</span>
+                                            )}
+                                        </SheetTitle>
+                                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider max-w-[400px]">
+                                            {mode === "view" 
+                                                ? `View inventory item information and stock history for #${formatModuleDisplayId("kitchen", selectedItem?.id || "")}.` 
+                                                : mode === "edit" 
+                                                ? `Update existing inventory item details for #${formatModuleDisplayId("kitchen", selectedItem?.id || "")}.` 
+                                                : "Add a new item to your kitchen inventory."}
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </SheetHeader>
 
 
-                        {mode === "view" && selectedItem && (
-                            <div className="space-y-6 mt-6">
-                                <div className="space-y-3">
-                                    <Info label="Name" value={selectedItem.name} />
-                                    <Info label="Category" value={selectedItem.inventory_type} />
-                                    <Info label="Stock" value={`${selectedItem.quantity}${selectedItem.unit ? ` ${selectedItem.unit}` : ""}`} />
-                                </div>
+                        <div className="flex-1 overflow-y-auto pr-2 -mr-2">
+                            {mode === "view" && selectedItem && (
+                                <div className="space-y-4">
+                                    {/* Highlight Card */}
+                                    <div className="flex items-center gap-4 p-4 rounded-xl border border-primary/10 bg-accent shadow-sm">
+                                        <div className="h-24 w-24 rounded-2xl bg-primary/5 flex items-center justify-center text-primary border border-primary/10 shadow-inner">
+                                            <Package className="w-12 h-12" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-base font-bold text-foreground leading-tight">{selectedItem.name}</h3>
+                                            <p className="text-xs text-muted-foreground font-medium">Item ID: {formatModuleDisplayId("kitchen", selectedItem.id)} • Kitchen Inventory</p>
+                                        </div>
+                                        <div className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-50 text-green-700 border border-green-100">
+                                            <div className="w-2 h-2 rounded-full bg-green-500" />
+                                            <span className="text-[10px] font-bold uppercase tracking-widest">Active</span>
+                                        </div>
+                                    </div>
 
-                                {/* AUDIT HISTORY */}
-                                <div className="pt-6">
-                                    <h3 className="text-sm font-semibold mb-3">Audit History</h3>
-                                    {!auditLogs?.data?.length ? (
-                                        <p className="text-sm text-muted-foreground">No audit history found.</p>
-                                    ) : (
-                                        <div className="space-y-3">
-                                            <div className="border rounded-[3px] overflow-hidden">
-                                                <AppDataGrid
-                                                    columns={[
-                                                        { label: "Action", headClassName: "text-center", cellClassName: "text-center font-medium", render: (log: any) => getAuditActionLabel(log) },
-                                                        { label: "Change", render: (log: any) => getAuditChangeText(parseAuditDetails(log.details)) },
-                                                        { label: "User", cellClassName: "text-muted-foreground", render: (log: any) => `${log.user_first_name} ${log.user_last_name}` },
-                                                        { label: "Date", cellClassName: "text-xs text-muted-foreground", render: (log: any) => formatAppDateTime(log.created_on) }
-                                                    ] as ColumnDef[]}
-                                                    data={auditLogs.data}
-                                                    rowKey={(log: any) => log.id}
-                                                    minWidth="400px"
-                                                    className="mt-0"
-                                                />
+                                    {/* Details Grid */}
+                                    <div className="grid grid-cols-4 gap-px bg-primary/10 border border-primary/10 rounded-xl overflow-hidden bg-accent">
+                                        <div className="p-3 flex items-start gap-3 bg-accent">
+                                            <div className="mt-0.5 h-7 w-7 rounded-lg bg-background flex items-center justify-center text-slate-500 border border-primary/5">
+                                                <Building2 className="w-3.5 h-3.5" />
                                             </div>
-                                            <DataGridPagination
-                                                page={itemAuditPage}
-                                                totalPages={auditLogs?.pagination?.totalPages ?? 1}
-                                                setPage={setItemAuditPage}
-                                                totalRecords={auditLogs?.pagination?.totalItems ?? auditLogs?.pagination?.total ?? auditLogs?.data?.length ?? 0}
-                                                limit={itemAuditLimit}
-                                                onLimitChange={(v) => { setItemAuditLimit(v); setItemAuditPage(1); }}
-                                                disabled={!auditLogs}
+                                            <div className="space-y-0.5">
+                                                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Category</Label>
+                                                <p className="text-sm font-semibold text-foreground">
+                                                    {selectedItem.inventory_type || "—"}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="p-3 flex items-start gap-3 bg-accent">
+                                            <div className="mt-0.5 h-7 w-7 rounded-lg bg-background flex items-center justify-center text-slate-500 border border-primary/5">
+                                                <Layers className="w-3.5 h-3.5" />
+                                            </div>
+                                            <div className="space-y-0.5">
+                                                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Current Stock</Label>
+                                                <p className="text-sm font-semibold text-foreground">
+                                                    {Number(selectedItem.quantity).toFixed(2)} {selectedItem.unit || ""}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="p-3 flex items-start gap-3 bg-accent">
+                                            <div className="mt-0.5 h-7 w-7 rounded-lg bg-background flex items-center justify-center text-slate-500 border border-primary/5">
+                                                <Boxes className="w-3.5 h-3.5" />
+                                            </div>
+                                            <div className="space-y-0.5">
+                                                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Unit</Label>
+                                                <p className="text-sm font-semibold text-foreground">
+                                                    {selectedItem.unit || "—"}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="p-3 flex items-start gap-3 bg-accent">
+                                            <div className="mt-0.5 h-7 w-7 rounded-lg bg-background flex items-center justify-center text-slate-500 border border-primary/5">
+                                                <ShieldCheck className="w-3.5 h-3.5" />
+                                            </div>
+                                            <div className="space-y-0.5">
+                                                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Status</Label>
+                                                <div className="pt-0.5">
+                                                    <GridBadge status="active" statusType="toggle">Active</GridBadge>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* AUDIT HISTORY */}
+                                    <div className="pt-2">
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <div className="h-8 w-8 rounded-lg bg-primary/5 flex items-center justify-center text-primary">
+                                                <History className="w-4 h-4" />
+                                            </div>
+                                            <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Audit History</h3>
+                                        </div>
+                                        {!auditLogs?.data?.length ? (
+                                            <div className="p-8 text-center rounded-xl border border-dashed border-border bg-accent/50">
+                                                <p className="text-sm text-muted-foreground">No audit history found.</p>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-4">
+                                                <div className="border border-primary/10 rounded-xl overflow-hidden bg-accent shadow-sm">
+                                                    <AppDataGrid
+                                                        columns={[
+                                                            { 
+                                                                label: "Action", 
+                                                                headClassName: "bg-primary/5 text-[10px] font-bold uppercase tracking-widest py-3",
+                                                                cellClassName: "py-3 px-4",
+                                                                render: (log: any) => (
+                                                                    <div className="inline-flex items-center px-2 py-0.5 rounded bg-primary/10 text-[10px] font-bold text-primary uppercase tracking-tight">
+                                                                        {getAuditActionLabel(log)}
+                                                                    </div>
+                                                                ) 
+                                                            },
+                                                            { 
+                                                                label: "Change", 
+                                                                headClassName: "bg-primary/5 text-[10px] font-bold uppercase tracking-widest py-3",
+                                                                cellClassName: "py-3 px-4 font-semibold text-xs text-primary/80",
+                                                                render: (log: any) => getAuditChangeText(parseAuditDetails(log.details)) 
+                                                            },
+                                                            { 
+                                                                label: "User", 
+                                                                headClassName: "bg-primary/5 text-[10px] font-bold uppercase tracking-widest py-3",
+                                                                cellClassName: "py-3 px-4 text-xs font-medium text-foreground/70",
+                                                                render: (log: any) => (
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div className="h-6 w-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] text-slate-500">
+                                                                            <User className="w-3 h-3" />
+                                                                        </div>
+                                                                        {`${log.user_first_name} ${log.user_last_name}`}
+                                                                    </div>
+                                                                )
+                                                            },
+                                                            { 
+                                                                label: "Date", 
+                                                                headClassName: "bg-primary/5 text-[10px] font-bold uppercase tracking-widest py-3",
+                                                                cellClassName: "py-3 px-4 text-[10px] font-medium text-muted-foreground",
+                                                                render: (log: any) => (
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <Clock className="w-3 h-3" />
+                                                                        {formatAppDateTime(log.created_on)}
+                                                                    </div>
+                                                                )
+                                                            }
+                                                        ] as ColumnDef[]}
+                                                        data={auditLogs.data}
+                                                        rowKey={(log: any) => log.id}
+                                                        minWidth="400px"
+                                                        className="mt-0 border-none bg-accent"
+                                                        headerClassName="bg-transparent border-b border-primary/10"
+                                                        enablePagination
+                                                        paginationProps={{
+                                                            page: itemAuditPage,
+                                                            totalPages: auditLogs?.pagination?.totalPages ?? 1,
+                                                            setPage: setItemAuditPage,
+                                                            totalRecords: auditLogs?.pagination?.totalItems ?? auditLogs?.pagination?.total ?? auditLogs?.data?.length ?? 0,
+                                                            limit: itemAuditLimit,
+                                                            onLimitChange: (v) => { setItemAuditLimit(v); setItemAuditPage(1); },
+                                                            disabled: !auditLogs,
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {mode === "edit" && selectedItem && (
+                                <div className="space-y-6 bg-accent p-6 rounded-xl border border-primary/10 shadow-sm">
+                                    <div className="space-y-6">
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Update {selectedItem.name} Quantity *</Label>
+                                            <Input
+                                                type="text"
+                                                className="h-11 border-primary/20 bg-background shadow-none focus-visible:ring-1 focus-visible:ring-primary"
+                                                value={editForm.quantity}
+                                                onChange={(e) => setEditForm(f => ({ ...f, quantity: +normalizeNumberInput(e.target.value) }))}
                                             />
                                         </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {mode === "edit" && selectedItem && (
-                            <div className="space-y-6 mt-6">
-                                <div className="space-y-4">
-                                    <div>
-                                        <Label>Update {selectedItem.name} Quantity</Label>
-                                        <Input
-                                            type="text"
-                                            className="bg-background"
-                                            value={editForm.quantity}
-                                            onChange={(e) => setEditForm(f => ({ ...f, quantity: +normalizeNumberInput(e.target.value) }))}
-                                        />
-                                        <div className="space-y-1 mt-4">
-                                            <Label>Unit</Label>
+                                        
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Unit *</Label>
                                             <NativeSelect
-                                                className="w-full h-10 rounded px-3 border border-border bg-background"
+                                                className="w-full h-11 border border-primary/20 bg-background rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary shadow-none"
                                                 value={editForm.unit}
                                                 onChange={(e) => setEditForm(f => ({ ...f, unit: e.target.value }))}
                                             >
@@ -1075,18 +1181,26 @@ export default function KitchenInventory() {
                                                 ))}
                                             </NativeSelect>
                                         </div>
-                                        <div className="space-y-1 mt-4">
-                                            <Label>Comments</Label>
-                                            <textarea
-                                                className="w-full min-h-[50px] rounded-[3px] border px-3 py-2 text-sm bg-background"
-                                                value={editForm.comments}
-                                                onChange={(e) => setEditForm(f => ({ ...f, comments: e.target.value }))}
-                                            />
+
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Comments</Label>
+                                            <div className="relative">
+                                                <textarea
+                                                    className="w-full min-h-[100px] border border-primary/20 bg-background rounded-md px-3 py-3 pr-10 text-sm focus:outline-none focus:ring-1 focus:ring-primary shadow-none resize-none"
+                                                    placeholder="Enter any additional comments (optional)..."
+                                                    value={editForm.comments}
+                                                    onChange={(e) => setEditForm(f => ({ ...f, comments: e.target.value }))}
+                                                    maxLength={255}
+                                                />
+                                                <div className="absolute bottom-2 right-2.5 px-1.5 py-0.5 bg-background/80 backdrop-blur-sm rounded text-[10px] font-bold text-muted-foreground/60 select-none">
+                                                    {editForm.comments.length} / 255
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
 
                         {mode === "add" && (
                             <div className="space-y-4 mt-6">

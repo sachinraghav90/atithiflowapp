@@ -20,7 +20,7 @@ import { useLocation } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import { AppDataGrid, DataGrid, DataGridHeader, DataGridRow, DataGridHead, DataGridCell, type ColumnDef } from "@/components/ui/data-grid";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
-import { FilterX, RefreshCcw, Download, Pencil, Trash2, Plus, PlusCircle } from "lucide-react";
+import { FilterX, RefreshCcw, Download, Pencil, Trash2, Plus, PlusCircle, ClipboardList, Layers, ShieldCheck, IndianRupee } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ValidationTooltip } from "@/components/ui/validation-tooltip";
 import { getStatusColor } from "@/constants/statusColors";
@@ -550,14 +550,14 @@ export default function LaundryPricingManagement() {
                                         <Button
                                             size="icon"
                                             variant="ghost"
-                                            className="h-7 w-7 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
-                                            aria-label={`Edit laundry item ${item.item_name}`}
+                                            className="h-7 w-7 bg-primary hover:bg-primary/80 text-primary-foreground transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                            aria-label={`Update laundry item ${item.item_name}`}
                                             onClick={() => openSheet(item, "edit")}
                                         >
                                             <Pencil className="w-3.5 h-3.5 mx-auto" />
                                         </Button>
                                     </TooltipTrigger>
-                                    <TooltipContent>Edit Item</TooltipContent>
+                                    <TooltipContent>Update Item</TooltipContent>
                                 </Tooltip>
                             )}
                             enablePagination
@@ -590,102 +590,147 @@ export default function LaundryPricingManagement() {
                         animate={{ opacity: 1, y: 0 }}
                         className="space-y-6"
                     >
-                        <SheetHeader>
-                            <SheetTitle>
-                                {mode === "view" ? "Item summary" : mode === "edit" ? "Edit laundry item" : "Add laundry items"}
-                            </SheetTitle>
+                        <SheetHeader className="border-b border-border/50 pb-3 mb-3">
+                            <div className="flex items-center gap-3">
+                                <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center text-primary shadow-sm">
+                                    {mode === "view" ? <ClipboardList className="w-4 h-4" /> : mode === "edit" ? <Pencil className="w-4 h-4" /> : <PlusCircle className="w-4 h-4" />}
+                                </div>
+                                <div className="space-y-0.5">
+                                    <SheetTitle className="text-lg font-bold text-foreground">
+                                        {mode === "view" ? "Laundry Pricing Summary" : mode === "edit" ? "Update Laundry Pricing" : "Add Laundry Items"}
+                                        {(mode === "view" || mode === "edit") && selectedItem?.id && (
+                                            <span className="ml-2 text-primary font-semibold">
+                                                {`[#${formatModuleDisplayId("laundry_pricing", selectedItem.id)}]`}
+                                            </span>
+                                        )}
+                                    </SheetTitle>
+                                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                                        {mode === "view" ? "Detailed pricing and availability summary" : mode === "edit" ? "Modify existing laundry item rate and details" : "Register new laundry items and their rates"}
+                                    </p>
+                                </div>
+                            </div>
                         </SheetHeader>
 
                         {mode === "view" && selectedItem && (
-                            <div className="space-y-6">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label>Item ID</Label>
-                                        <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">
-                                            {formatModuleDisplayId("laundry", selectedItem.id)}
-                                        </p>
+                            <div className="space-y-4">
+                                {/* Highlight Card */}
+                                <div className="flex items-center gap-4 p-4 rounded-xl border border-primary/10 bg-accent shadow-sm">
+                                    <div className="h-16 w-16 rounded-xl bg-primary/5 flex items-center justify-center text-primary border border-primary/10 shadow-inner">
+                                        <ClipboardList className="w-8 h-8" />
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label>Status</Label>
-                                        <div className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">
-                                            <span className={cn("px-3 py-1 text-xs font-semibold rounded-[3px]", getStatusColor(selectedItem.is_active ? "active" : "inactive", "toggle"))}>
-                                                {selectedItem.is_active ? "Active" : "Inactive"}
-                                            </span>
+                                    <div>
+                                        <h3 className="text-base font-bold text-foreground leading-tight">{selectedItem.item_name}</h3>
+                                        <p className="text-xs text-muted-foreground font-medium">Item ID: {formatModuleDisplayId("laundry_pricing", selectedItem.id)} • Laundry Item</p>
+                                    </div>
+                                    <div className="ml-auto flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-50 text-green-700 border border-green-100">
+                                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                                        <span className="text-[10px] font-bold uppercase tracking-widest">{selectedItem.is_active ? "Active" : "Inactive"}</span>
+                                    </div>
+                                </div>
+
+                                {/* Details Grid */}
+                                <div className="grid grid-cols-2 gap-px bg-primary/10 border border-primary/10 rounded-xl overflow-hidden bg-accent">
+                                    <div className="p-3 flex items-start gap-3 bg-accent">
+                                        <div className="mt-0.5 h-7 w-7 rounded-lg bg-background flex items-center justify-center text-slate-500 border border-primary/5">
+                                            <IndianRupee className="w-3.5 h-3.5" />
+                                        </div>
+                                        <div className="space-y-0.5">
+                                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Rate</Label>
+                                            <p className="text-sm font-semibold text-foreground">
+                                                ₹ {selectedItem.item_rate}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="p-3 flex items-start gap-3 bg-accent">
+                                        <div className="mt-0.5 h-7 w-7 rounded-lg bg-background flex items-center justify-center text-slate-500 border border-primary/5">
+                                            <ShieldCheck className="w-3.5 h-3.5" />
+                                        </div>
+                                        <div className="space-y-0.5">
+                                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Status</Label>
+                                            <div className="flex items-center gap-1.5">
+                                                <div className={cn("w-1.5 h-1.5 rounded-full", selectedItem.is_active ? "bg-green-500" : "bg-red-500")} />
+                                                <p className="text-sm font-semibold text-foreground">
+                                                    {selectedItem.is_active ? "Active" : "Inactive"}
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="space-y-2">
-                                    <Label>Item Name</Label>
-                                    <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text font-semibold">
-                                        {selectedItem.item_name}
-                                    </p>
-                                </div>
-
-                                {!!selectedItem.description && (
-                                    <div className="space-y-2">
-                                        <Label>Description</Label>
-                                        <p className="w-full rounded-[3px] bg-background px-3 py-2 text-sm text-foreground cursor-default select-text whitespace-pre-wrap flex">
-                                            {selectedItem.description}
+                                {selectedItem.description && (
+                                    <div className="p-4 rounded-xl border border-primary/10 bg-accent/50 space-y-2">
+                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                                            <Layers className="w-3 h-3" /> Description
+                                        </Label>
+                                        <p className="text-sm font-medium text-foreground leading-relaxed italic">
+                                            "{selectedItem.description}"
                                         </p>
                                     </div>
                                 )}
-
-                                <div className="space-y-2 pt-4 border-t border-border">
-                                    <Label>Rate</Label>
-                                    <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text text-lg font-bold">
-                                        ₹ {selectedItem.item_rate}
-                                    </p>
-                                </div>
                             </div>
                         )}
 
                         {mode === "edit" && (
                             <div className="space-y-4">
-                                <div>
-                                    <Label htmlFor="item-name">Item Name *</Label>
-                                    <Input
-                                        id="item-name"
-                                        className={cn("mt-1 h-10 bg-background border-border", submitted && formErrors.item_name && "border-red-500")}
-                                        value={form.item_name}
-                                        onChange={(e) => {
-                                            setForm(p => ({ ...p, item_name: normalizeTextInput(e.target.value) }));
-                                            setFormErrors(p => ({ ...p, item_name: "" }));
-                                        }}
-                                        disabled={mode === "edit" && selectedItem?.system_generated}
-                                    />
-                                    {submitted && formErrors.item_name && <p className="text-xs text-red-500 mt-1">{formErrors.item_name}</p>}
-                                </div>
-                                <div>
-                                    <Label htmlFor="description">Description</Label>
-                                    <Input
-                                        id="description"
-                                        className={cn("mt-1 h-10 bg-background border-border")}
-                                        value={form.description}
-                                        onChange={(e) => setForm(p => ({ ...p, description: normalizeTextInput(e.target.value) }))}
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <Label htmlFor="rate">Rate (₹) *</Label>
-                                        <Input
-                                            id="rate"
-                                            className={cn("mt-1 h-10 bg-background border-border", submitted && formErrors.item_rate && "border-red-500")}
-                                            value={form.item_rate}
-                                            onChange={(e) => {
-                                                setForm(p => ({ ...p, item_rate: normalizeNumberInput(e.target.value) }));
-                                                setFormErrors(p => ({ ...p, item_rate: "" }));
-                                            }}
-                                        />
-                                        {submitted && formErrors.item_rate && <p className="text-xs text-red-500 mt-1">{formErrors.item_rate}</p>}
-                                    </div>
-                                    <div className="flex items-center gap-2 pt-6">
-                                        <Switch
-                                            id="item-active"
-                                            checked={form.is_active}
-                                            onCheckedChange={(val) => setForm(p => ({ ...p, is_active: val }))}
-                                        />
-                                        <Label htmlFor="item-active">Active</Label>
+                                <div className="p-6 rounded-xl border border-primary/10 bg-accent shadow-sm space-y-6">
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider" htmlFor="item-name">Item Name *</Label>
+                                            <Input
+                                                id="item-name"
+                                                placeholder="e.g. Dry Cleaning"
+                                                className={cn("h-11 bg-background border-primary/20 shadow-none focus-visible:ring-1 focus-visible:ring-primary", submitted && formErrors.item_name && "border-red-500")}
+                                                value={form.item_name}
+                                                onChange={(e) => {
+                                                    setForm(p => ({ ...p, item_name: normalizeTextInput(e.target.value) }));
+                                                    setFormErrors(p => ({ ...p, item_name: "" }));
+                                                }}
+                                                disabled={mode === "edit" && selectedItem?.system_generated}
+                                            />
+                                            {submitted && formErrors.item_name && <p className="text-[10px] font-medium text-red-500 mt-0.5">{formErrors.item_name}</p>}
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider" htmlFor="rate">Rate (₹) *</Label>
+                                                <Input
+                                                    id="rate"
+                                                    placeholder="0.00"
+                                                    className={cn("h-11 bg-background border-primary/20 font-bold shadow-none focus-visible:ring-1 focus-visible:ring-primary", submitted && formErrors.item_rate && "border-red-500")}
+                                                    value={form.item_rate}
+                                                    onChange={(e) => {
+                                                        setForm(p => ({ ...p, item_rate: normalizeNumberInput(e.target.value) }));
+                                                        setFormErrors(p => ({ ...p, item_rate: "" }));
+                                                    }}
+                                                />
+                                                {submitted && formErrors.item_rate && <p className="text-[10px] font-medium text-red-500 mt-0.5">{formErrors.item_rate}</p>}
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Status</Label>
+                                                <div className="flex items-center gap-3 h-11 px-3 bg-background border border-primary/20 rounded-md">
+                                                    <Switch
+                                                        id="item-active"
+                                                        checked={form.is_active}
+                                                        onCheckedChange={(val) => setForm(p => ({ ...p, is_active: val }))}
+                                                    />
+                                                    <Label className="text-sm font-semibold text-foreground cursor-pointer" htmlFor="item-active">
+                                                        {form.is_active ? "Active" : "Inactive"}
+                                                    </Label>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider" htmlFor="description">Description</Label>
+                                            <textarea
+                                                id="description"
+                                                placeholder="Enter a brief description of the laundry service..."
+                                                className="w-full min-h-[100px] bg-background border border-primary/20 rounded-md px-3 py-2 text-sm shadow-none focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                                                value={form.description}
+                                                onChange={(e) => setForm(p => ({ ...p, description: normalizeTextInput(e.target.value) }))}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </div>

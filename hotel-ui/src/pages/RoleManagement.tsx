@@ -349,37 +349,45 @@ export default function RoleManagement() {
                                 className="space-y-1"
                             >
                                 <SheetHeader>
-                                    <SheetTitle>Create New Role</SheetTitle>
+                                    <div className="space-y-1">
+                                        <SheetTitle>Create New Role</SheetTitle>
+                                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                                            Define access levels and module permissions
+                                        </p>
+                                    </div>
                                 </SheetHeader>
-                                <div className="space-y-4 mt-4">
-                                    <div className="space-y-2">
-                                        <Label>Role Name</Label>
+                                <div className="space-y-5 mt-6">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Role Name</Label>
                                         <Input
+                                            className="h-9"
                                             value={newRoleName}
                                             onChange={(e) => setNewRoleName(normalizeTextInput(e.target.value))}
-                                            placeholder="e.g. Front Desk"
+                                            placeholder="e.g. Front Desk Manager"
                                         />
                                     </div>
-                                    <div className="space-y-3">
-                                        <Label className="text-sm">Permissions</Label>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Default Module Access</Label>
 
-                                        <div className="space-y-2 max-h-60 overflow-y-auto border rounded-[3px] p-3">
+                                        <div className="space-y-1 max-h-[400px] overflow-y-auto border border-border rounded-[3px] p-2 bg-muted/10">
                                             {allSidebarLinksData?.roles.map((module) => (
                                                 <div
                                                     key={module.id}
-                                                    className="flex items-center justify-between"
+                                                    className="flex items-center justify-between p-2 hover:bg-background rounded transition-colors border-b border-border/50 last:border-b-0"
                                                 >
-                                                    <span className="text-sm font-medium">
+                                                    <span className="text-sm font-semibold text-foreground">
                                                         {module.link_name}
                                                     </span>
 
-                                                    <div className="flex gap-4">
+                                                    <div className="flex gap-3">
                                                         {PERMISSION_ACTIONS.map((action) => (
                                                             <div
                                                                 key={action.key}
-                                                                className="flex items-center gap-1"
+                                                                className="flex items-center gap-1.5"
                                                             >
                                                                 <Checkbox
+                                                                    id={`new-perm-${module.id}-${action.key}`}
+                                                                    className="h-4 w-4"
                                                                     checked={
                                                                         newRolePermissions[module.id]?.[action.field]
                                                                     }
@@ -391,7 +399,7 @@ export default function RoleManagement() {
                                                                         )
                                                                     }
                                                                 />
-                                                                <Label className="text-xs">
+                                                                <Label htmlFor={`new-perm-${module.id}-${action.key}`} className="text-[10px] font-bold uppercase text-muted-foreground cursor-pointer">
                                                                     {action.label}
                                                                 </Label>
                                                             </div>
@@ -458,14 +466,16 @@ export default function RoleManagement() {
                         animate={{ opacity: 1, y: 0 }}
                         className="bg-card rounded-[5px] border border-border shadow-sm p-6"
                     >
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-between mb-6 border-b border-border/50 pb-4">
+                            <div className="flex items-center gap-3">
 
                                 {!isEditingRoleName ? (
-                                    <>
-                                        <h2 className="text-lg font-semibold text-foreground">
-                                            Permissions – {selectedRoleName}
-                                        </h2>
+                                    <div className="space-y-0.5">
+                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Managing Access For</p>
+                                        <div className="flex items-center gap-2">
+                                            <h2 className="text-xl font-bold text-primary">
+                                                {selectedRoleName}
+                                            </h2>
 
                                         {permission?.can_create && !(selectedRoleName === "SUPER_ADMIN" || selectedRoleName === "ADMIN" || selectedRoleName === "OWNER") && (
                                             <Pencil
@@ -473,7 +483,8 @@ export default function RoleManagement() {
                                                 onClick={() => setIsEditingRoleName(true)}
                                             />
                                         )}
-                                    </>
+                                        </div>
+                                    </div>
                                 ) : (
                                     <div className="flex items-center gap-2">
 
@@ -526,19 +537,19 @@ export default function RoleManagement() {
                             </div>
                         </div>
 
-                        <div className="space-y-4 max-h-[calc(100vh-14rem)] overflow-y-auto pr-1">
+                        <div className="space-y-2 max-h-[calc(100vh-16rem)] overflow-y-auto pr-2">
                             {!allSidebarLinksLoading &&
                                 !allSidebarLinksError &&
                                 allSidebarLinksData.roles.map((module) => (
                                     <div
                                         key={module.id}
-                                        className="flex items-center justify-between border border-border rounded-[3px] p-4"
+                                        className="flex items-center justify-between border border-border/50 rounded-[3px] p-3 bg-muted/5 hover:bg-muted/10 transition-colors"
                                     >
-                                        <span className="font-medium text-foreground">
+                                        <span className="font-semibold text-sm text-foreground">
                                             {module.link_name}
                                         </span>
 
-                                        <div className="flex items-center gap-6">
+                                        <div className="flex items-center gap-4">
                                             {["deny", "read", "write", "delete"].map((action) => {
                                                 const perms = sidebarPermissionPayload.permissions[module.id] || { can_delete: false, can_update: false, can_create: false, can_read: false };
 
@@ -551,21 +562,35 @@ export default function RoleManagement() {
                                                 else if (perms.can_update && perms.can_create) selected = "write";
                                                 else if (perms.can_read) selected = "read";
 
+                                                const isRadioSelected = selected === action;
+                                                const radioId = `perm-${module.id}-${action}`;
+
                                                 return (
                                                     <label
                                                         key={action}
-                                                        className="flex items-center gap-2 cursor-pointer"
+                                                        htmlFor={radioId}
+                                                        className={cn(
+                                                            "flex items-center gap-2 cursor-pointer px-2 py-1 rounded-[3px] transition-all border border-transparent",
+                                                            isRadioSelected ? "bg-primary/10 border-primary/20" : "hover:bg-muted/30"
+                                                        )}
                                                     >
-                                                        <input
-                                                            disabled={!permission?.can_create || (module.link_name === "Roles" && selectedRoleName === "SUPER_ADMIN") || (module.link_name === "Roles" && (action === "delete" || action === "write"))}
-                                                            type="radio"
-                                                            name={`perm-${module.id}`}
-                                                            checked={selected === action}
-                                                            onChange={() => permission?.can_create &&
-                                                                onPermissionRadioChange(module.id, action as any)
-                                                            }
-                                                        />
-                                                        <span className="text-sm capitalize">
+                                                        <div className="relative flex items-center justify-center">
+                                                            <input
+                                                                id={radioId}
+                                                                disabled={!permission?.can_create || (module.link_name === "Roles" && selectedRoleName === "SUPER_ADMIN") || (module.link_name === "Roles" && (action === "delete" || action === "write"))}
+                                                                type="radio"
+                                                                name={`perm-${module.id}`}
+                                                                className="w-3.5 h-3.5 cursor-pointer accent-primary"
+                                                                checked={isRadioSelected}
+                                                                onChange={() => permission?.can_create &&
+                                                                    onPermissionRadioChange(module.id, action as any)
+                                                                }
+                                                            />
+                                                        </div>
+                                                        <span className={cn(
+                                                            "text-[10px] font-bold uppercase tracking-tight",
+                                                            isRadioSelected ? "text-primary" : "text-muted-foreground"
+                                                        )}>
                                                             {getPermissionLabel(action)}
                                                         </span>
 

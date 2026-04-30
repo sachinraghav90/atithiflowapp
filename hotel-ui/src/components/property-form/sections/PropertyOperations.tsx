@@ -17,15 +17,15 @@ export default function PropertyOperations({
 }: Props) {
 
     return (
-        <div className="space-y-3 border border-border rounded-[5px] p-5 bg-card">
+        <div className="space-y-4 border border-border rounded-[5px] p-4 bg-card">
 
-            <h3 className="font-semibold text-base">
+            <h3 className="font-semibold text-sm text-primary uppercase tracking-wider">
                 Operations & Timings
             </h3>
 
             {/* CHECKIN / CHECKOUT */}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
 
                 <FormInput
                     label="Check-in Time"

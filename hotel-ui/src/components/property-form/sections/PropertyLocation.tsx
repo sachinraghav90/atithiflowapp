@@ -19,27 +19,29 @@ export default function PropertyLocation({
 }: Props) {
 
     return (
-        <div className="space-y-3 border border-border rounded-[5px] p-5 bg-card">
+        <div className="space-y-4 border border-border rounded-[5px] p-4 bg-card">
 
-            <h3 className="font-semibold text-base">
+            <h3 className="font-semibold text-sm text-primary uppercase tracking-wider">
                 Location & Contact Details
             </h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
 
                 {/* ADDRESS */}
 
-                <FormInput
-                    label="Address (Full Street Address)"
-                    field="address_line_1"
-                    value={value}
-                    setValue={setValue}
-                    errors={errors}
-                    setErrors={setErrors}
-                    viewMode={viewMode}
-                    required
-                    maxLength={200}
-                />
+                <div className="sm:col-span-2">
+                    <FormInput
+                        label="Address (Full Street Address)"
+                        field="address_line_1"
+                        value={value}
+                        setValue={setValue}
+                        errors={errors}
+                        setErrors={setErrors}
+                        viewMode={viewMode}
+                        required
+                        maxLength={200}
+                    />
+                </div>
 
                 {/* CITY / STATE / POSTAL */}
 

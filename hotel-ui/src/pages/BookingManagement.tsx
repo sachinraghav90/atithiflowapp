@@ -342,9 +342,9 @@ export default function BookingsManagement() {
 
         return (
             <>
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
                     {/* Left Stats */}
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         <SummaryCard label="Final Amount" value={`₹ ${totalAmt}`} />
                         <SummaryCard label="Paid Amount" value={`₹ ${totalPaid}`} />
                         <SummaryCard
@@ -355,7 +355,7 @@ export default function BookingsManagement() {
                     </div>
 
                     {/* Center */}
-                    <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3">
                         <InfoCard label="Estimated Arrival" value={formatToDDMMYY(booking?.estimated_arrival)} />
                         <InfoCard label="Estimated Departure" value={formatToDDMMYY(booking?.estimated_departure)} />
                         <InfoCard label="Nights" value={booking?.booking_nights || 0} />
@@ -365,13 +365,13 @@ export default function BookingsManagement() {
                     </div>
 
                     {/* Right Stats */}
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         <SummaryCard label="Total Guests" value={(booking?.adult || 0) + (booking?.child || 0)} />
                         <SummaryCard label="Rooms Booked" value={booking?.rooms?.length || 0} />
                         <SummaryCard label="Booking Date" value={formatToDDMMYY(booking?.booking_date)} />
                     </div>
                 </div>
-                <div className="mt-4">
+                <div className="mt-6">
                     <InfoCard label="Comments" value={(booking?.comments || "No comments")} />
                 </div>
             </>
@@ -381,20 +381,20 @@ export default function BookingsManagement() {
     function SummaryCard({ label, value, highlight }: any) {
         return (
             <div
-                className={`rounded-[3px] p-4 text-white ${highlight ? "bg-destructive" : "bg-primary"
+                className={`rounded-[3px] p-3 text-white ${highlight ? "bg-destructive" : "bg-primary"
                     }`}
             >
-                <p className="text-sm opacity-90">{label}</p>
-                <p className="text-lg font-semibold">{value}</p>
+                <p className="text-xs opacity-90">{label}</p>
+                <p className="text-base font-semibold mt-1">{value}</p>
             </div>
         );
     }
 
     function InfoCard({ label, value }: any) {
         return (
-            <div className="rounded-[3px] border border-border bg-card p-4">
-                <p className="text-xs text-muted-foreground">{label}</p>
-                <p className="font-medium mt-1">{value}</p>
+            <div className="rounded-[3px] border border-border bg-card p-3">
+                <p className="text-xs text-muted-foreground font-medium">{label}</p>
+                <p className="text-sm font-medium mt-1.5">{value}</p>
             </div>
         );
     }
@@ -774,17 +774,22 @@ export default function BookingsManagement() {
                         className="space-y-6"
                     >
                         <SheetHeader>
-                            <SheetTitle>
-                                {editMode ? "Manage Booking" : "Booking Summary"} ({formatModuleDisplayId("booking", bookingId)})
-                            </SheetTitle>
+                            <div className="space-y-1">
+                                <SheetTitle>
+                                    Booking[#{formatModuleDisplayId("booking", bookingId)}]
+                                </SheetTitle>
+                                <p className="text-xs text-muted-foreground font-medium">
+                                    {editMode ? "Manage Booking" : "Booking Summary"}
+                                </p>
+                            </div>
                         </SheetHeader>
 
                         {/* Status Update */}
                         {editMode && (
-                            <div className="space-y-2 pt-4">
-                                <Label>Booking Status</Label>
+                            <div className="space-y-2 border-b border-border pb-4">
+                                <Label className="text-sm font-semibold">Booking Status</Label>
                                 <NativeSelect
-                                    className="h-10 w-full rounded-[3px] border border-border bg-background px-3 text-sm"
+                                    className="h-10 max-w-xs rounded-[3px] border border-border bg-background px-3 text-sm"
                                     value={updatedStatus || selectedBooking?.booking.booking_status || ""}
                                     onChange={(e) => setUpdatedStatus(e.target.value)}
                                     disabled={selectedBooking?.booking.booking_status === "CANCELLED"}

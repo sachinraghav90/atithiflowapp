@@ -65,15 +65,15 @@ export default function PropertyConfiguration({
         );
 
     return (
-        <div className="space-y-3 border border-border rounded-[5px] p-5 bg-card">
+        <div className="space-y-4 border border-border rounded-[5px] p-4 bg-card">
 
-            <h3 className="font-semibold text-base">
+            <h3 className="font-semibold text-sm text-primary uppercase tracking-wider">
                 Property Configuration
             </h3>
 
             {/* FLOORS + ROOMS SUMMARY */}
 
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
 
 
                 {/* Serial Number */}
@@ -92,14 +92,14 @@ export default function PropertyConfiguration({
 
                 {/* Serial Suffix */}
 
-                <div className="space-y-2">
-                    <Label>Serial Suffix *</Label>
+                <div className="space-y-1">
+                    <Label className="text-xs font-medium text-muted-foreground">Serial Suffix *</Label>
 
                     <NativeSelect
                         disabled={viewMode}
                         value={value.serial_suffix}
                         title={errors.serial_suffix?.message || ""}
-                        className={`w-full h-10 rounded-[3px] border px-3 text-sm ${errors.serial_suffix
+                        className={`w-full h-9 rounded-[3px] border px-3 text-sm ${errors.serial_suffix
                             ? "border-red-500 bg-background"
                             : "border-border bg-background"
                             }`}
@@ -137,14 +137,14 @@ export default function PropertyConfiguration({
 
                 {/* TOTAL ROOMS AUTO */}
 
-                <div className="space-y-2">
+                <div className="space-y-1">
 
-                    <Label>Total Rooms</Label>
+                    <Label className="text-xs font-medium text-muted-foreground">Total Rooms</Label>
 
                     <input
                         disabled
                         value={totalRooms}
-                        className="w-full h-10 rounded-[3px] border border-border px-3 text-sm bg-background"
+                        className="w-full h-9 rounded-[3px] border border-border px-3 text-sm bg-muted/20"
                     />
 
                 </div>
@@ -155,13 +155,13 @@ export default function PropertyConfiguration({
 
             <div className="space-y-3">
 
-                <Label>Floor Configuration</Label>
+                <Label className="text-xs font-medium text-muted-foreground">Floor Configuration</Label>
 
                 <div className="border border-border rounded-[3px] overflow-hidden">
 
                     {/* HEADER */}
 
-                    <div className="grid grid-cols-[1fr_1fr_auto] gap-4 px-4 py-3 text-sm bg-muted/30">
+                    <div className="grid grid-cols-[1fr_1fr_auto] gap-3 px-3 py-2 text-xs font-semibold uppercase tracking-wider bg-muted/50 text-muted-foreground">
 
                         <span>Floor</span>
                         <span>Rooms Count</span>
@@ -175,16 +175,16 @@ export default function PropertyConfiguration({
 
                         <div
                             key={index}
-                            className="grid grid-cols-[1fr_.6fr_auto] gap-4 px-4 py-3 border-t"
+                            className="grid grid-cols-[1fr_.6fr_auto] gap-3 px-3 py-2 border-t items-center"
                         >
 
-                            <span>Floor {floor.floor_number}</span>
+                            <span className="text-sm font-medium">Floor {floor.floor_number}</span>
 
                             <input
                                 disabled={viewMode}
                                 value={floor.total_rooms}
                                 maxLength={2}
-                                className="w-full h-10 rounded-[3px] border border-border px-3 text-sm bg-background"
+                                className="w-full h-8 rounded-[3px] border border-border px-3 text-sm bg-background focus:ring-1 focus:ring-primary outline-none"
                                 onChange={(e) => {
 
                                     const val = normalizeNumberInput(e.target.value);
@@ -206,9 +206,9 @@ export default function PropertyConfiguration({
 
                             {!viewMode && (
                                 <Button
-                                    size="sm"
+                                    size="xs"
                                     variant="ghost"
-                                    className="border"
+                                    className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
                                     onClick={() =>
                                         syncFloors(
                                             Math.max(
@@ -237,6 +237,7 @@ export default function PropertyConfiguration({
                     <Button
                         size="sm"
                         variant="heroOutline"
+                        className="h-8 text-xs"
                         onClick={() =>
                             syncFloors(
                                 (value.total_floors || 0) + 1

@@ -108,9 +108,9 @@ export default function PropertyBank({
     };
 
     return (
-        <div className="space-y-3 border border-border rounded-[5px] p-5 bg-card">
+        <div className="space-y-4 border border-border rounded-[5px] p-4 bg-card">
 
-            <h3 className="font-semibold text-base">
+            <h3 className="font-semibold text-sm text-primary uppercase tracking-wider">
                 Bank Details (Optional)
             </h3>
 
@@ -122,12 +122,13 @@ export default function PropertyBank({
                     onCheckedChange={setHasBankDetails}
                 />
 
-                <Label>Add Bank Details</Label>
+                <Label className="text-xs font-medium text-muted-foreground">Add Bank Details</Label>
 
                 {!viewMode && hasBankDetails && (
                     <Button
                         size="sm"
                         variant="heroOutline"
+                        className="h-8 text-xs"
                         onClick={addBankAccount}
                     >
                         + Add Account
@@ -136,16 +137,16 @@ export default function PropertyBank({
 
             </div>
             {hasBankDetails && (
-                <div className="border rounded-[3px] overflow-hidden">
+                <div className="border border-border rounded-[3px] overflow-hidden">
 
                     {/* ===== TABLE HEADER ===== */}
-                    <div className="grid grid-cols-[1fr_1fr_1fr_1fr_.2fr] bg-muted text-sm font-medium border-b">
+                    <div className="grid grid-cols-[1fr_1fr_1fr_1fr_.2fr] bg-muted/50 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b">
 
-                        <div className="p-2 font-bold text-left">Bank Name *</div>
-                        <div className="p-2 font-bold text-left">Account Holder *</div>
-                        <div className="p-2 font-bold text-left">Account Number *</div>
-                        <div className="p-2 font-bold text-left">IFSC Code *</div>
-                        <div className="p-2 font-bold text-right"></div>
+                        <div className="p-3 text-left">Bank Name *</div>
+                        <div className="p-3 text-left">Account Holder *</div>
+                        <div className="p-3 text-left">Account Number *</div>
+                        <div className="p-3 text-left">IFSC Code *</div>
+                        <div className="p-3 text-right"></div>
 
                     </div>
 
@@ -154,7 +155,7 @@ export default function PropertyBank({
 
                         <div
                             key={index}
-                            className="grid grid-cols-[1fr_1fr_1fr_1fr_.2fr] border-b last:border-b-0"
+                            className="grid grid-cols-[1fr_1fr_1fr_1fr_.2fr] border-b last:border-b-0 items-center"
                         >
 
                             <TableInput
@@ -198,11 +199,12 @@ export default function PropertyBank({
                                 maxLength={20}
                             />
 
-                            <div className="flex items-center justify-end pr-2">
+                            <div className="flex items-center justify-end pr-3">
                                 {!viewMode && bankAccounts.length > 1 && (
                                     <Button
                                         size="icon"
                                         variant="ghost"
+                                        className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
                                         onClick={() => removeBankAccount(index)}
                                     >
                                         ✕

@@ -70,9 +70,9 @@ export default function PropertyCorporate({
     };
 
     return (
-        <div className="space-y-3 border border-border rounded-[5px] p-5 bg-card">
+        <div className="space-y-4 border border-border rounded-[5px] p-4 bg-card">
 
-            <h3 className="font-semibold text-base">
+            <h3 className="font-semibold text-sm text-primary uppercase tracking-wider">
                 Corporate Office Address (Optional)
             </h3>
 
@@ -86,12 +86,12 @@ export default function PropertyCorporate({
                     onCheckedChange={setShowOfficeFields}
                 />
 
-                <Label>Add Corporate Office Details</Label>
+                <Label className="text-xs font-medium text-muted-foreground">Add Corporate Office Details</Label>
 
             </div>
 
             {showOfficeFields && (
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                     <FormInput
                         label="Corporate Office Address"
                         field="address_line_1_office"

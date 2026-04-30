@@ -501,38 +501,51 @@ export default function VendorsManagement() {
                         className="space-y-1"
                     >
                         <SheetHeader>
-                            <SheetTitle>
-                                {mode === "add"
-                                    ? "Add Vendor"
-                                    : mode === "edit"
-                                        ? "Edit Vendor"
-                                        : "Vendor summary"}
-                            </SheetTitle>
+                            <div className="space-y-1">
+                                <SheetTitle>
+                                    {mode === "add" || mode === "edit"
+                                        ? `Vendor [${mode === "add" ? "#NEW" : editingVendor?.id ? formatModuleDisplayId("vendor", editingVendor.id) : "#NEW"}]`
+                                        : `Vendor Summary [${editingVendor?.id ? formatModuleDisplayId("vendor", editingVendor.id) : "..."}]`
+                                    }
+                                </SheetTitle>
+                                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                                    {mode === "add"
+                                        ? "Onboard new supplier or service provider"
+                                        : mode === "edit"
+                                            ? "Modify existing vendor contact or tax information"
+                                            : "Comprehensive overview of vendor relationship"}
+                                </p>
+                            </div>
                         </SheetHeader>
 
                         {mode === "view" ? (
                             <div className="space-y-6 mt-6">
-                                <div className="grid grid-cols-1 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                                     <VendorViewSection title="Basic Information">
                                         <div className="space-y-4">
-                                            <DetailRow label="Name" value={form.name} />
-                                            <DetailRow label="Vendor Type" value={form.vendor_type} />
-                                            <DetailRow label="Status" value={form.is_active ? "Active" : "Inactive"} />
+                                            <DetailRow label="Vendor Name" value={form.name} />
+                                            <DetailRow label="Primary Category" value={formatReadableLabel(form.vendor_type)} />
+                                            <div className="space-y-1.5">
+                                                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Relationship Status</div>
+                                                <GridBadge status={form.is_active ? "active" : "inactive"} statusType="toggle" className="mt-0.5">
+                                                    {form.is_active ? "Active" : "Inactive"}
+                                                </GridBadge>
+                                            </div>
                                         </div>
                                     </VendorViewSection>
 
-                                    <VendorViewSection title="Contact Details">
+                                    <VendorViewSection title="Contact Channels">
                                         <div className="space-y-4">
-                                            <DetailRow label="Contact No" value={form.contact_no} />
-                                            <DetailRow label="Email" value={form.email_id} />
-                                            <DetailRow label="Address" value={form.address} />
+                                            <DetailRow label="Direct Contact" value={form.contact_no} />
+                                            <DetailRow label="Official Email" value={form.email_id} />
+                                            <DetailRow label="Physical Address" value={form.address} />
                                         </div>
                                     </VendorViewSection>
 
-                                    <VendorViewSection title="Tax & Identity">
-                                        <div className="space-y-4">
-                                            <DetailRow label="PAN" value={form.pan_no} />
-                                            <DetailRow label="GST" value={form.gst_no} />
+                                    <VendorViewSection title="Compliance & Tax">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <DetailRow label="PAN Number" value={form.pan_no} />
+                                            <DetailRow label="GST Identification" value={form.gst_no} />
                                         </div>
                                     </VendorViewSection>
                                 </div>
@@ -682,7 +695,7 @@ export default function VendorsManagement() {
                             </div>
                         )}
 
-                        <div className="flex justify-end gap-3 pt-4 border-t border-border mt-6">
+                        <div className="flex justify-end gap-3 pt-3 border-t border-border mt-4">
                             {mode === "view" ? (
                                 <Button
                                     variant="heroOutline"
@@ -720,7 +733,7 @@ export default function VendorsManagement() {
 function VendorViewSection({ title, children }: { title: string; children: React.ReactNode }) {
     return (
         <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+            <h3 className="text-xs font-bold text-primary uppercase tracking-wider border-b border-primary/20 pb-1">{title}</h3>
             {children}
         </div>
     );
@@ -728,9 +741,9 @@ function VendorViewSection({ title, children }: { title: string; children: React
 
 function DetailRow({ label, value }: { label: string; value: string | number | null | undefined }) {
     return (
-        <div className="space-y-2">
-            <div className="text-sm font-medium text-foreground">{label}</div>
-            <div className="min-h-10 w-full rounded-[3px] bg-background px-3 py-2 flex items-center text-sm text-foreground cursor-default select-text">
+        <div className="space-y-1">
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</div>
+            <div className="text-sm font-semibold text-foreground px-0.5">
                 {value || "—"}
             </div>
         </div>

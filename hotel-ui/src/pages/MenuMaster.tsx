@@ -12,13 +12,13 @@ import { normalizeNumberInput } from "@/utils/normalizeTextInput";
 import { useLocation } from "react-router-dom";
 import { usePermission } from "@/rbac/usePermission";
 import { SheetContent, SheetHeader, SheetTitle, Sheet } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiToast } from "@/utils/apiToastPromise";
 import { cn } from "@/lib/utils";
 import MenuMasterBulkSheet from "@/components/MenuMasterBulkSheet";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Download, FilterX, Plus, Pencil, RefreshCcw } from "lucide-react";
-import { getStatusColor } from "@/constants/statusColors";
+import { Download, FilterX, Plus, Pencil, RefreshCcw, UtensilsCrossed, Flame, Clock, User, Calendar, Info, Package, DollarSign, Camera, ClipboardList } from "lucide-react";
 import { GridBadge } from "@/components/ui/grid-badge";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
 import { exportToExcel } from "@/utils/exportToExcel";
@@ -48,6 +48,7 @@ type MenuForm = {
     is_veg: boolean;
     prep_time?: number | "";
     image?: File | null;
+    description: string;
 };
 
 
@@ -63,6 +64,7 @@ function buildCreateMenuPayload(
     fd.append("price", form.price);
     fd.append("isActive", String(form.is_active));
     fd.append("isVeg", String(form.is_veg));
+    fd.append("description", form.description);
 
     if (form.prep_time !== "") {
         fd.append("prepTime", String(form.prep_time));
@@ -96,6 +98,10 @@ function buildUpdateMenuPayload(
         fd.append("isVeg", String(form.is_veg));
     }
 
+    if (form.description !== undefined) {
+        fd.append("description", form.description);
+    }
+
     if (form.image) {
         fd.append("image", form.image);
     }
@@ -113,6 +119,7 @@ export default function MenuMaster() {
     const [statusFilter, setStatusFilter] = useState("");
     const [mode, setMode] = useState<"view" | "edit" | "add" | null>(null);
     const [selected, setSelected] = useState<MenuItem | null>(null);
+    const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
 
     const [form, setForm] = useState<MenuForm>({
         item_name: "",
@@ -122,6 +129,7 @@ export default function MenuMaster() {
         is_veg: true,
         prep_time: "",
         image: null,
+        description: "",
     });
 
     const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
@@ -324,6 +332,7 @@ export default function MenuMaster() {
             is_veg: item.is_veg,
             prep_time: item.prep_time ?? "",
             image: null,
+            description: item.description ?? "",
         });
         setMode("edit");
     };
@@ -441,6 +450,7 @@ export default function MenuMaster() {
                                         is_veg: true,
                                         prep_time: "",
                                         image: null,
+                                        description: "",
                                     });
                                     // setMode("add");
                                     setBulkOpen(true)
@@ -653,6 +663,7 @@ export default function MenuMaster() {
                 </div>
             </section>
 
+
             {/* VIEW / EDIT / ADD SHEET */}
             <Sheet open={!!mode} onOpenChange={() => setMode(null)}>
                 <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
@@ -661,154 +672,313 @@ export default function MenuMaster() {
                         animate={{ opacity: 1, y: 0 }}
                         className="space-y-1"
                     >
-                        <SheetHeader>
-                            <SheetTitle>
-                                {mode === "view"
-                                    ? "View Menu Item"
-                                    : mode === "edit"
-                                        ? "Edit Menu Item"
-                                        : "Add Menu Item"}
-                            </SheetTitle>
+                        <SheetHeader className="border-b border-border/50 pb-4 mb-4">
+                            <div className="flex items-start justify-between pr-8">
+                                <div className="flex items-start gap-4">
+                                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary shadow-sm shrink-0 mt-1">
+                                        {mode === "view" ? <UtensilsCrossed className="w-5 h-5" /> : mode === "edit" ? <Pencil className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                                    </div>
+                                    <div className="space-y-0.5">
+                                        <SheetTitle className="text-xl font-bold text-foreground">
+                                            {mode === "add" ? "Create Menu Item" : mode === "edit" ? "Update Menu Item" : "Menu Item Summary"}
+                                            {(mode === "view" || mode === "edit") && selected?.id && (
+                                                <span className="ml-2 text-primary font-semibold">[#{formatModuleDisplayId("menu", selected.id)}]</span>
+                                            )}
+                                        </SheetTitle>
+                                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                                            {mode === "add" ? "Setup your new food or beverage item" : mode === "edit" ? `Modify existing menu item details for #${formatModuleDisplayId("menu", selected?.id || "")}` : `Detailed summary of menu item configuration for #${formatModuleDisplayId("menu", selected?.id || "")}`}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
                         </SheetHeader>
 
                         {/* CONTENT BLOCKS */}
                         <div className="mt-6">
                             {mode === "view" && selected && (
-                                <div className="space-y-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-                                        <div className="space-y-3">
-                                            <div className="space-y-2">
-                                                <Label>Name</Label>
-                                                <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">{selected.item_name}</p>
+                                <div className="space-y-3">
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
+                                        {/* Row 1: Left: Basic Info | Right: Pricing & Status */}
+                                        <div className="p-[14px] rounded-xl border border-primary/10 bg-accent shadow-sm space-y-3">
+                                            <div className="flex items-center gap-2 text-primary">
+                                                <Info className="w-3.5 h-3.5" />
+                                                <span className="text-[10px] font-bold uppercase tracking-wider">Basic Information</span>
                                             </div>
-                                            <div className="space-y-2">
-                                                <Label>Group</Label>
-                                                <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">{selected.menu_item_group}</p>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Price</Label>
-                                                <p>₹{selected.price}</p>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Type</Label>
-                                                <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">{selected.is_veg ? "Veg" : "Non-Veg"}</p>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Preparation Time</Label>
-                                                <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">{selected.prep_time} minutes</p>
+                                            <div className="space-y-3">
+                                                <div className="space-y-1">
+                                                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Item Name</Label>
+                                                    <p className="text-sm font-bold text-foreground py-1.5 px-2.5 bg-background/50 rounded-lg border border-primary/5 shadow-sm">{selected.item_name}</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Menu Group</Label>
+                                                    <p className="text-xs font-semibold text-foreground py-1.5 px-2.5 bg-background/50 rounded-lg border border-primary/5 shadow-sm">{selected.menu_item_group || "General"}</p>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className="flex justify-center items-start">
-                                            <img
-                                                src={`${import.meta.env.VITE_API_URL}/menu/${selected.id}/image`}
-                                                alt={selected.item_name}
-                                                className="h-48 w-48 rounded-[3px] object-cover border"
-                                                onError={(e) => {
-                                                    e.currentTarget.src = "https://placehold.co/200x200?text=No+Image";
-                                                }}
-                                            />
+
+                                        <div className="flex flex-col gap-3">
+                                            {/* Pricing & Status Combined */}
+                                            <div className="p-[14px] rounded-xl border border-primary/10 bg-accent shadow-sm space-y-3 flex-1">
+                                                <div className="flex items-center gap-2 text-primary">
+                                                    <DollarSign className="w-3.5 h-3.5" />
+                                                    <span className="text-[10px] font-bold uppercase tracking-wider">Pricing & Status</span>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div className="space-y-1">
+                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Price</Label>
+                                                        <p className="text-sm font-bold text-primary py-1.5 px-2.5 bg-background/50 rounded-lg border border-primary/5 shadow-sm">₹{selected.price}</p>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Prep Time</Label>
+                                                        <p className="text-xs font-semibold text-foreground py-1.5 px-2.5 bg-background/50 rounded-lg border border-primary/5 shadow-sm">{selected.prep_time ? `${selected.prep_time} mins` : "—"}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-3 pt-2.5 border-t border-primary/5">
+                                                    <div className="space-y-1">
+                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Dietary Type</Label>
+                                                        <div className="pt-0.5">
+                                                            <GridBadge status={selected.is_veg ? "veg" : "non-veg"} statusType="menuType" className="h-7 px-3 text-[10px] font-bold">
+                                                                {selected.is_veg ? "Veg" : "Non-Veg"}
+                                                            </GridBadge>
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Status</Label>
+                                                        <div className="pt-0.5">
+                                                            <GridBadge status={selected.is_active ? "active" : "inactive"} statusType="toggle" className="h-7 px-3 text-[10px] font-bold">
+                                                                {selected.is_active ? "Active" : "Inactive"}
+                                                            </GridBadge>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="flex justify-end gap-3 pt-4 border-t border-border">
-                                        <Button variant="heroOutline" onClick={() => setMode(null)}>
+
+                                    {/* Row 2: Left: Description | Right: Image */}
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
+                                        <div className="p-[14px] rounded-xl border border-primary/10 bg-accent shadow-sm flex flex-col space-y-3">
+                                            <div className="flex items-center gap-2 text-primary shrink-0">
+                                                <ClipboardList className="w-3.5 h-3.5" />
+                                                <span className="text-[10px] font-bold uppercase tracking-wider">Item Description</span>
+                                            </div>
+                                            <div className="flex-1 p-3 rounded-lg border border-primary/5 bg-background/50 min-h-[160px]">
+                                                <p className="text-xs text-muted-foreground italic leading-relaxed whitespace-pre-wrap">
+                                                    {selected.description || "No description provided for this menu item."}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="p-[14px] rounded-xl border border-primary/10 bg-accent shadow-sm flex flex-col space-y-3">
+                                            <div className="flex items-center gap-2 text-primary shrink-0">
+                                                <Camera className="w-3.5 h-3.5" />
+                                                <span className="text-[10px] font-bold uppercase tracking-wider">Item Image</span>
+                                            </div>
+                                            <div 
+                                                className="flex-1 relative min-h-[160px] rounded-lg overflow-hidden border border-primary/5 bg-background shadow-inner cursor-zoom-in group"
+                                                onClick={() => setIsImagePreviewOpen(true)}
+                                            >
+                                                <img
+                                                    src={`${import.meta.env.VITE_API_URL}/menu/${selected.id}/image`}
+                                                    alt={selected.item_name}
+                                                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                                    onError={(e) => { e.currentTarget.src = "https://placehold.co/400x225?text=Preview+Unavailable"; }}
+                                                />
+                                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                                    <div className="bg-white/90 p-2 rounded-full shadow-lg">
+                                                        <Plus className="w-5 h-5 text-primary" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex justify-end gap-3 pt-2">
+                                        <Button variant="heroOutline" size="default" className="px-6 shadow-sm" onClick={() => setMode(null)}>
                                             Close
                                         </Button>
                                     </div>
                                 </div>
                             )}
-
-                            {(mode === "edit" || mode === "add") && (
-                                <div className="space-y-6">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label>Name</Label>
-                                            <Input
-                                                className={submitted && formErrors.item_name ? "border-red-500" : ""}
-                                                value={form.item_name}
-                                                onChange={(e) => {
-                                                    setForm({ ...form, item_name: e.target.value });
-                                                    setFormErrors(p => ({ ...p, item_name: "" }));
-                                                }}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>Group</Label>
-                                            <NativeSelect
-                                                className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
-                                                value={form.menuItemGroupId}
-                                                onChange={(e) => setForm({ ...form, menuItemGroupId: e.target.value })}
-                                            >
-                                                <option value="" disabled>-- Please Select --</option>
-                                                {menuGroupsLight?.map((group) => (
-                                                    <option key={group.id} value={group.id}>{group.name}</option>
-                                                ))}
-                                            </NativeSelect>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>Price*</Label>
-                                            <Input
-                                                type="text"
-                                                value={form.price}
-                                                className={submitted && formErrors.price ? "border-red-500" : ""}
-                                                onChange={(e) => {
-                                                    setForm({ ...form, price: normalizeNumberInput(e.target.value).toString() });
-                                                    setFormErrors(p => ({ ...p, price: "" }));
-                                                }}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label>Prep Time (min)</Label>
-                                            <Input
-                                                type="text"
-                                                value={form.prep_time}
-                                                className={submitted && formErrors.prep_time ? "border-red-500" : ""}
-                                                onChange={(e) => {
-                                                    setForm({ ...form, prep_time: normalizeNumberInput(e.target.value) });
-                                                    setFormErrors(p => ({ ...p, prep_time: "" }));
-                                                }}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="flex gap-6">
-                                        {mode === "edit" && (
-                                            <div className="flex items-center gap-2">
-                                                <Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
-                                                <Label>Active</Label>
+                            {(mode === "add" || mode === "edit") && (
+                                <div className="space-y-3">
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-stretch">
+                                        {/* Row 1: Left: Basic Info (Stacked) | Right: Pricing + Status (Stacked) */}
+                                        <div className="p-3 rounded-xl border border-primary/10 bg-accent shadow-sm space-y-3">
+                                            <div className="flex items-center gap-2 text-primary">
+                                                <Info className="w-3.5 h-3.5" />
+                                                <span className="text-[10px] font-bold uppercase tracking-wider">Basic Information</span>
                                             </div>
-                                        )}
-                                        <div className="flex items-center gap-2">
-                                            <Switch checked={form.is_veg} onCheckedChange={(v) => setForm({ ...form, is_veg: v })} />
-                                            <Label>Veg</Label>
+                                            <div className="space-y-2.5">
+                                                <div className="space-y-1">
+                                                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Item Name*</Label>
+                                                    <Input
+                                                        placeholder="e.g. Chocolate Brownie"
+                                                        className={cn("h-9 bg-background shadow-sm text-xs", submitted && formErrors.item_name ? "border-red-500 ring-red-50" : "border-primary/10")}
+                                                        value={form.item_name}
+                                                        onChange={(e) => {
+                                                            setForm({ ...form, item_name: e.target.value });
+                                                            setFormErrors(prev => ({ ...prev, item_name: "" }));
+                                                        }}
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Menu Group*</Label>
+                                                    <NativeSelect
+                                                        className={cn("h-9 bg-background shadow-sm text-xs", submitted && formErrors.menuItemGroupId ? "border-red-500 ring-red-50" : "border-primary/10")}
+                                                        value={form.menuItemGroupId}
+                                                        onChange={(e) => setForm({ ...form, menuItemGroupId: e.target.value })}
+                                                    >
+                                                        <option value="">Select Group</option>
+                                                        {menuItemGroups?.data?.map((g: any) => (
+                                                            <option key={g.id} value={g.id}>{g.name}</option>
+                                                        ))}
+                                                    </NativeSelect>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex flex-col gap-3">
+                                            {/* Pricing & Prep */}
+                                            <div className="p-3 rounded-xl border border-primary/10 bg-accent shadow-sm space-y-3">
+                                                <div className="flex items-center gap-2 text-primary">
+                                                    <Clock className="w-3.5 h-3.5" />
+                                                    <span className="text-[10px] font-bold uppercase tracking-wider">Pricing & Preparation</span>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div className="space-y-1">
+                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Price (₹)*</Label>
+                                                        <Input
+                                                            type="number"
+                                                            placeholder="0.00"
+                                                            className={cn("h-9 bg-background shadow-sm text-xs", submitted && formErrors.price ? "border-red-500 ring-red-50" : "border-primary/10")}
+                                                            value={form.price}
+                                                            onChange={(e) => {
+                                                                setForm({ ...form, price: normalizeNumberInput(e.target.value) });
+                                                                setFormErrors(prev => ({ ...prev, price: "" }));
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Prep Time (mins)</Label>
+                                                        <Input
+                                                            type="number"
+                                                            placeholder="e.g. 15"
+                                                            className={cn("h-9 bg-background shadow-sm text-xs", submitted && formErrors.prep_time ? "border-red-500 ring-red-50" : "border-primary/10")}
+                                                            value={form.prep_time}
+                                                            onChange={(e) => setForm({ ...form, prep_time: e.target.value === "" ? "" : Number(e.target.value) })}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {/* Status & Type */}
+                                            <div className="p-3 rounded-xl border border-primary/10 bg-accent shadow-sm space-y-3">
+                                                <div className="flex items-center gap-2 text-primary">
+                                                    <Flame className="w-3.5 h-3.5" />
+                                                    <span className="text-[10px] font-bold uppercase tracking-wider">Status & Type</span>
+                                                </div>
+                                                <div className="flex items-center gap-6">
+                                                    <div className="flex items-center gap-2.5">
+                                                        <Switch
+                                                            className="scale-90"
+                                                            checked={form.is_active}
+                                                            onCheckedChange={(v) => setForm({ ...form, is_active: v })}
+                                                        />
+                                                        <Label className="text-[11px] font-medium cursor-pointer text-foreground/80">Active</Label>
+                                                    </div>
+                                                    <div className="flex items-center gap-2.5">
+                                                        <Switch
+                                                            className="scale-90"
+                                                            checked={form.is_veg}
+                                                            onCheckedChange={(v) => setForm({ ...form, is_veg: v })}
+                                                        />
+                                                        <Label className="text-[11px] font-medium cursor-pointer text-foreground/80">Pure Veg</Label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Row 2: Left: Description | Right: Image */}
+                                        <div className="p-3 rounded-xl border border-primary/10 bg-accent shadow-sm space-y-3 flex flex-col">
+                                            <div className="flex items-center gap-2 text-primary">
+                                                <ClipboardList className="w-3.5 h-3.5" />
+                                                <span className="text-[10px] font-bold uppercase tracking-wider">Item Description</span>
+                                            </div>
+                                            <div className="flex-1 flex flex-col space-y-1.5">
+                                                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Short Description</Label>
+                                                <div className="relative flex-1">
+                                                    <textarea
+                                                        className="w-full h-full rounded-lg border border-primary/10 px-3 py-2 text-xs bg-background focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder:text-muted-foreground/40 shadow-sm resize-none min-h-[140px]"
+                                                        placeholder="Briefly describe the item's ingredients or preparation..."
+                                                        maxLength={255}
+                                                        value={form.description}
+                                                        onChange={(e) => setForm({ ...form, description: e.target.value })}
+                                                    />
+                                                    <div className="absolute bottom-2 right-2.5 px-1.5 py-0.5 bg-background/80 backdrop-blur-sm rounded text-[10px] font-bold text-muted-foreground/60 select-none pointer-events-none">
+                                                        {form.description?.length || 0}/255
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="p-3 rounded-xl border border-primary/10 bg-accent shadow-sm space-y-3 flex flex-col">
+                                            <div className="flex items-center gap-2 text-primary">
+                                                <Camera className="w-3.5 h-3.5" />
+                                                <span className="text-[10px] font-bold uppercase tracking-wider">Item Image</span>
+                                            </div>
+                                            <div className="flex-1 flex flex-col space-y-2.5">
+                                                <div className="space-y-1">
+                                                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Upload New Image</Label>
+                                                    <Input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        className="h-8 text-[10px] bg-background shadow-sm border-primary/10 file:text-[10px] file:font-semibold file:bg-primary/5 file:text-primary file:border-0 file:rounded-md file:mr-2 file:px-2 cursor-pointer"
+                                                        onChange={(e) => setForm({ ...form, image: e.target.files?.[0] ?? null })}
+                                                    />
+                                                </div>
+                                                <div className="flex-1 min-h-[110px] rounded-lg border border-dashed border-primary/10 bg-background/50 flex flex-col items-center justify-center p-2">
+                                                    {mode === "edit" && selected && !form.image ? (
+                                                        <div className="flex flex-col items-center gap-2">
+                                                            <div className="relative h-24 w-24 rounded-lg overflow-hidden border border-primary/10 shadow-sm bg-background">
+                                                                <img
+                                                                    src={`${import.meta.env.VITE_API_URL}/menu/${selected.id}/image`}
+                                                                    alt="Current"
+                                                                    className="h-full w-full object-cover"
+                                                                    onError={(e) => { e.currentTarget.src = "https://placehold.co/150x150?text=No+Image"; }}
+                                                                />
+                                                            </div>
+                                                            <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider">Current</span>
+                                                        </div>
+                                                    ) : form.image ? (
+                                                        <div className="flex flex-col items-center gap-2">
+                                                            <div className="relative h-24 w-24 rounded-lg overflow-hidden border border-primary/20 shadow-sm ring-2 ring-primary/5 bg-background">
+                                                                <img
+                                                                    src={URL.createObjectURL(form.image)}
+                                                                    alt="Preview"
+                                                                    className="h-full w-full object-cover"
+                                                                />
+                                                            </div>
+                                                            <span className="text-[9px] text-primary font-bold uppercase tracking-wider animate-pulse">New</span>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-muted-foreground/30 flex flex-col items-center gap-2">
+                                                            <div className="h-10 w-10 rounded-full bg-primary/5 flex items-center justify-center border border-dashed border-primary/10">
+                                                                <Plus className="w-5 h-5 opacity-40" />
+                                                            </div>
+                                                            <span className="text-[9px] font-bold uppercase tracking-widest">No Image</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                                        <div className="space-y-2">
-                                            <Label>Image</Label>
-                                            <Input type="file" accept="image/*" onChange={(e) => setForm({ ...form, image: e.target.files?.[0] ?? null })} />
-                                        </div>
-                                        <div className="flex justify-center">
-                                            {mode === "edit" && selected && !form.image && (
-                                                <img
-                                                    src={`${import.meta.env.VITE_API_URL}/menu/${selected.id}/image`}
-                                                    alt="Current"
-                                                    className="h-40 w-40 rounded-[3px] object-cover border"
-                                                    onError={(e) => { e.currentTarget.src = "https://placehold.co/160x160?text=No+Image"; }}
-                                                />
-                                            )}
-                                            {form.image && (
-                                                <img src={URL.createObjectURL(form.image)} alt="Preview" className="h-40 w-40 rounded-[3px] object-cover border" />
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                                    <div className="flex justify-end gap-3 pt-4 border-t border-primary/10">
                                         <Button variant="heroOutline" onClick={() => setMode(null)}>
                                             Cancel
                                         </Button>
                                         <Button variant="hero" onClick={handleForm}>
-                                            {mode === "add" ? "Create Item" : "Save Changes"}
+                                            {mode === "add" ? "Create Menu Item" : "Update Menu Item"}
                                         </Button>
                                     </div>
                                 </div>
@@ -940,14 +1110,9 @@ export default function MenuMaster() {
                                                 {group.name}
                                             </span>
 
-                                            <span
-                                                className={cn(
-                                                    "text-xs px-2 py-0.5 rounded font-medium",
-                                                    getStatusColor(group.is_active ? "active" : "inactive", "toggle")
-                                                )}
-                                            >
+                                            <GridBadge status={group.is_active ? "active" : "inactive"} statusType="toggle">
                                                 {group.is_active ? "Active" : "Inactive"}
-                                            </span>
+                                            </GridBadge>
 
                                         </div>
 
@@ -1048,7 +1213,7 @@ export default function MenuMaster() {
             <MenuMasterBulkSheet
                 open={bulkOpen}
                 onOpenChange={setBulkOpen}
-                propertyId={selectedPropertyId!}
+                propertyId={Number(selectedPropertyId)}
                 menuGroups={menuGroupsLight || []}
                 existingItems={menuLight || []}
                 onSubmit={async (payload) => {
@@ -1060,9 +1225,27 @@ export default function MenuMaster() {
                 }}
             />
 
-
+            {/* Image Preview Dialog */}
+            <Dialog open={isImagePreviewOpen} onOpenChange={setIsImagePreviewOpen}>
+                <DialogContent className="max-w-[90vw] lg:max-w-4xl p-0 overflow-hidden border-none bg-transparent shadow-none">
+                    <DialogHeader className="hidden">
+                        <DialogTitle>Item Image Preview</DialogTitle>
+                    </DialogHeader>
+                    <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black/20 backdrop-blur-md">
+                        <img
+                            src={selected ? `${import.meta.env.VITE_API_URL}/menu/${selected.id}/image` : ""}
+                            alt={selected?.item_name}
+                            className="w-full h-full object-contain"
+                            onError={(e) => { e.currentTarget.src = "https://placehold.co/800x450?text=Preview+Unavailable"; }}
+                        />
+                        <div className="absolute top-4 left-4">
+                            <div className="bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10">
+                                <p className="text-white text-xs font-bold uppercase tracking-widest">{selected?.item_name}</p>
+                            </div>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
-
-

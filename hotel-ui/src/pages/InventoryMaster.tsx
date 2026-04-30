@@ -24,7 +24,7 @@ import { usePermission } from "@/rbac/usePermission";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Pencil, RefreshCcw, FilterX, Download, Trash2, Plus, PlusCircle } from "lucide-react";
+import { Pencil, RefreshCcw, FilterX, Download, Trash2, Plus, PlusCircle, Box, Package, Calendar, ShieldCheck, Wrench, Building2 } from "lucide-react";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { getStatusColor } from "@/constants/statusColors";
@@ -58,6 +58,16 @@ type InventoryForm = {
         name?: boolean;
     };
 };
+
+type FormErrors = Record<string, string>;
+type BulkErrors = Record<number, FormErrors>;
+
+interface ApiError {
+    data?: {
+        message?: string;
+    };
+    message?: string;
+}
 
 const DUPLICATE_ITEMS_MESSAGE = "Duplicate items are not Allowed";
 
@@ -188,7 +198,7 @@ export default function InventoryMaster() {
                     {
                         error: {
                             render({ data }) {
-                                const err = data as any;
+                                const err = data as ApiError;
                                 return err?.data?.message || err?.message || "Error updating inventory";
                             }
                         },
@@ -197,8 +207,9 @@ export default function InventoryMaster() {
                     }
                 );
                 setMode(null);
-            } catch (err: any) {
-                const message = err?.data?.message || err?.message || "";
+            } catch (err: unknown) {
+                const error = err as ApiError;
+                const message = error?.data?.message || error?.message || "";
                 if (message.toLowerCase().includes("already exists") || message.toLowerCase().includes("duplicate")) {
                     setFormErrors((prev) => ({
                         ...prev,
@@ -251,7 +262,7 @@ export default function InventoryMaster() {
         idx: number,
         currentDuplicates: string[] = dbDuplicates
     ) => {
-        const rowError: any = {};
+        const rowError: FormErrors = {};
         const normalizedName = normalizeInventoryName(row.name);
         const canCheckDuplicate = !!row.inventory_type_id && !!row.use_type && !!normalizedName;
 
@@ -279,7 +290,7 @@ export default function InventoryMaster() {
     };
 
     const bulkErrors = useMemo(() => {
-        const errs: Record<number, any> = {};
+        const errs: BulkErrors = {};
         bulkRows.forEach((row, idx) => {
             const rowError = getBulkRowErrors(row, idx, dbDuplicates);
             if (Object.keys(rowError).length > 0) {
@@ -292,7 +303,7 @@ export default function InventoryMaster() {
     const handleBulkSubmit = async () => {
         setSubmittedBulk(true);
         const currentDuplicates = await ensureBulkDuplicateInventory(bulkRows);
-        const currentBulkErrors = bulkRows.reduce<Record<number, any>>((errors, row, index) => {
+        const currentBulkErrors = bulkRows.reduce<BulkErrors>((errors, row, index) => {
             const rowErrors = getBulkRowErrors(row, index, currentDuplicates);
             if (Object.keys(rowErrors).length > 0) {
                 errors[index] = rowErrors;
@@ -315,9 +326,10 @@ export default function InventoryMaster() {
             setMode(null);
             setSubmittedBulk(false);
             setBulkRows([{ inventory_type_id: null, use_type: "fix", name: "", is_active: true, touched: {} }]);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Bulk create error:", err);
-            const msg = err?.data?.message || err?.message || "";
+            const error = err as ApiError;
+            const msg = error?.data?.message || error?.message || "";
             const lowerMsg = String(msg).toLowerCase();
             const isDuplicateError =
                 lowerMsg.includes("unique constraint") ||
@@ -691,13 +703,13 @@ export default function InventoryMaster() {
                                                         size="icon"
                                                         variant="ghost"
                                                         className="h-7 w-7 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
-                                                        aria-label={`Edit details for inventory ${item.name}`}
+                                                        aria-label={`Update details for inventory ${item.name}`}
                                                         onClick={() => openEdit(item)}
                                                     >
                                                         <Pencil className="w-3.5 h-3.5 mx-auto" />
                                                     </Button>
                                                 </TooltipTrigger>
-                                                <TooltipContent>Edit Details</TooltipContent>
+                                                <TooltipContent>Update Details</TooltipContent>
                                             </Tooltip>
                                         )}
                                     </div>
@@ -868,122 +880,181 @@ export default function InventoryMaster() {
 
                 {/* EDIT/VIEW SHEET */}
                 <Sheet open={mode === "edit" || mode === "view"} onOpenChange={(open) => !open && setMode(null)}>
-                    <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
-                        <div className="space-y-6">
-                            <SheetHeader>
-                                <SheetTitle>
-                                    {mode === "view" ? "Inventory summary" : "Edit inventory"}
-                                </SheetTitle>
+                    <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto bg-background border-l border-border/50">
+                        <div className="flex flex-col h-full">
+                            <SheetHeader className="border-b border-border/50 pb-5 mb-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary shadow-sm">
+                                        {mode === "view" ? <Package className="w-5 h-5" /> : <Pencil className="w-5 h-5" />}
+                                    </div>
+                                    <div className="space-y-0.5">
+                                        <SheetTitle className="text-xl font-bold text-foreground">
+                                            {mode === "view" ? "Master Inventory Summary" : "Update Master Inventory Item"}
+                                            {selected?.id && <span className="ml-2 text-primary font-semibold">[#{formatModuleDisplayId("inventory", selected.id)}]</span>}
+                                        </SheetTitle>
+                                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                                            {mode === "view" 
+                                                ? `Inventory configuration details for #${selected?.id ? formatModuleDisplayId("inventory", selected.id) : "..."}` 
+                                                : "Update existing inventory item details."}
+                                        </p>
+                                    </div>
+                                </div>
                             </SheetHeader>
 
-                            {mode === "view" && selected && (
-                                <div className="space-y-6">
-                                    <div className="space-y-2">
-                                        <Label>Name</Label>
-                                        <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">
-                                            {selected.name}
-                                        </p>
-                                    </div>
+                            <div className="flex-1 overflow-y-auto pr-2 -mr-2">
+                                {mode === "view" && selected && (
+                                    <div className="space-y-6">
+                                        {/* Highlight Card */}
+                                        <div className="flex items-center gap-4 p-5 rounded-xl border border-primary/10 bg-accent shadow-sm">
+                                            <div className="h-24 w-24 rounded-2xl bg-primary/5 flex items-center justify-center text-primary border border-primary/10 shadow-inner">
+                                                <Package className="w-12 h-12" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <h3 className="text-lg font-bold text-foreground leading-tight">{selected.name}</h3>
+                                                <p className="text-sm text-muted-foreground font-medium">Inventory #{formatModuleDisplayId("inventory", selected.id)}</p>
+                                            </div>
+                                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-50 text-green-700 border border-green-100">
+                                                <div className="w-2 h-2 rounded-full bg-green-500" />
+                                                <span className="text-[10px] font-bold uppercase tracking-widest">{selected.is_active ? "Active" : "Inactive"}</span>
+                                            </div>
+                                        </div>
 
-                                    <div className="space-y-2">
-                                        <Label>Inventory Type</Label>
-                                        <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">
-                                            {selected.inventory_type}
-                                        </p>
-                                    </div>
+                                        {/* Details Grid */}
+                                        <div className="grid grid-cols-2 gap-px bg-primary/10 border border-primary/10 rounded-xl overflow-hidden bg-accent">
+                                            <div className="p-4 flex items-start gap-3 bg-accent">
+                                                <div className="mt-0.5 h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-500 border border-slate-100">
+                                                    <Building2 className="w-4 h-4" />
+                                                </div>
+                                                <div className="space-y-0.5">
+                                                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Inventory Type</Label>
+                                                    <p className="text-sm font-semibold text-foreground">
+                                                        {formatReadableLabel(selected.inventory_type) || "—"}
+                                                    </p>
+                                                </div>
+                                            </div>
 
-                                    <div className="space-y-2">
-                                        <Label>Use Type</Label>
-                                        <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text capitalize">
-                                            {selected.use_type}
-                                        </p>
-                                    </div>
+                                            <div className="p-4 flex items-start gap-3 bg-accent">
+                                                <div className="mt-0.5 h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-500 border border-slate-100">
+                                                    <Wrench className="w-4 h-4" />
+                                                </div>
+                                                <div className="space-y-0.5">
+                                                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Use Type</Label>
+                                                    <p className="text-sm font-semibold text-foreground capitalize">
+                                                        {selected.use_type}
+                                                    </p>
+                                                </div>
+                                            </div>
 
-                                    <div className="space-y-2 pt-4 border-t border-border">
-                                        <Label>Created On</Label>
-                                        <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">
-                                            {formatAppDate(selected.created_on)}
-                                        </p>
-                                    </div>
+                                            <div className="p-4 flex items-start gap-3 bg-accent border-t border-primary/10">
+                                                <div className="mt-0.5 h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-500 border border-slate-100">
+                                                    <Calendar className="w-4 h-4" />
+                                                </div>
+                                                <div className="space-y-0.5">
+                                                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Created On</Label>
+                                                    <p className="text-sm font-semibold text-foreground">
+                                                        {formatAppDate(selected.created_on)}
+                                                    </p>
+                                                </div>
+                                            </div>
 
-                                    <div className="flex items-center gap-2">
-                                        <Label>Status</Label>
-                                        <span className={cn("px-3 py-1 rounded-[3px] text-xs font-semibold", getStatusColor(selected.is_active ? "active" : "inactive", "toggle"))}>
-                                            {selected.is_active ? "Active" : "Inactive"}
-                                        </span>
+                                            <div className="p-4 flex items-start gap-3 bg-accent border-t border-primary/10">
+                                                <div className="mt-0.5 h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-500 border border-slate-100">
+                                                    <ShieldCheck className="w-4 h-4" />
+                                                </div>
+                                                <div className="space-y-0.5">
+                                                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Status</Label>
+                                                    <div className="pt-0.5">
+                                                        <GridBadge status={selected.is_active ? "active" : "inactive"} statusType="toggle">
+                                                            {selected.is_active ? "Active" : "Inactive"}
+                                                        </GridBadge>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
 
-                            {mode === "edit" && (
-                                <div className="space-y-6">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="inventory-type">Inventory Type*</Label>
-                                        <NativeSelect
-                                            id="inventory-type"
-                                            name="inventory_type_id"
-                                            className={submitted && formErrors.inventory_type_id ? "w-full h-10 border rounded px-3 border-red-500 bg-background" : "w-full h-10 border rounded px-3 bg-background"}
-                                            value={form.inventory_type_id ?? ""}
-                                            onChange={(e) => {
-                                                setForm({ ...form, inventory_type_id: Number(e.target.value) })
-                                                setFormErrors(e => ({ ...e, inventory_type_id: "" }))
-                                            }}
-                                        >
-                                            <option value="">-- Please Select --</option>
-                                            {inventoryTypes.map(t => (
-                                                <option key={t.id} value={t.id}>
-                                                    {t.type}
-                                                </option>
-                                            ))}
-                                        </NativeSelect>
+                                {mode === "edit" && (
+                                    <div className="space-y-6 bg-accent p-6 rounded-xl border border-primary/10 shadow-sm">
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider" htmlFor="inventory-name">Item Name *</Label>
+                                            <Input
+                                                id="inventory-name"
+                                                name="inventory_name"
+                                                value={form.name}
+                                                placeholder="e.g. Bed Sheets"
+                                                className={cn("h-11 border-border shadow-none focus-visible:ring-1 focus-visible:ring-primary", submitted && formErrors.name ? "border-red-500" : "")}
+                                                onChange={(e) => {
+                                                    setForm({ ...form, name: normalizeTextInput(e.target.value) })
+                                                    setFormErrors(e => ({ ...e, name: "" }))
+                                                }}
+                                            />
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-6">
+                                            <div className="space-y-2">
+                                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider" htmlFor="inventory-type">Inventory Type *</Label>
+                                                <NativeSelect
+                                                    id="inventory-type"
+                                                    name="inventory_type_id"
+                                                    className={cn("h-11 border border-primary/20 bg-background rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary w-full shadow-none", submitted && formErrors.inventory_type_id ? "border-red-500" : "")}
+                                                    value={form.inventory_type_id ?? ""}
+                                                    onChange={(e) => {
+                                                        setForm({ ...form, inventory_type_id: Number(e.target.value) })
+                                                        setFormErrors(e => ({ ...e, inventory_type_id: "" }))
+                                                    }}
+                                                >
+                                                    <option value="" disabled>Select Type</option>
+                                                    {inventoryTypes.map(t => (
+                                                        <option key={t.id} value={t.id}>
+                                                            {t.type}
+                                                        </option>
+                                                    ))}
+                                                </NativeSelect>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider" htmlFor="inventory-use-type">Use Type *</Label>
+                                                <NativeSelect
+                                                    id="inventory-use-type"
+                                                    name="inventory_use_type"
+                                                    className={cn("h-11 border border-primary/20 bg-background rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary w-full shadow-none", submitted && formErrors.use_type ? "border-red-500" : "")}
+                                                    value={form.use_type ?? ""}
+                                                    onChange={(e) => {
+                                                        setForm({ ...form, use_type: e.target.value })
+                                                        setFormErrors(e => ({ ...e, use_type: "" }))
+                                                    }}
+                                                >
+                                                    <option value="fix">Fix</option>
+                                                    <option value="usable">Usable</option>
+                                                </NativeSelect>
+                                            </div>
+                                        </div>
+
+                                        <div className="pt-2">
+                                            <div className="flex items-center gap-4">
+                                                <Switch
+                                                    checked={form?.is_active}
+                                                    onCheckedChange={(v) =>
+                                                        setForm({ ...form, is_active: v })
+                                                    }
+                                                />
+                                                <div className="space-y-0.5">
+                                                    <Label className="text-sm font-bold text-foreground cursor-pointer" onClick={() => setForm({ ...form, is_active: !form.is_active })}>
+                                                        Mark as Active
+                                                    </Label>
+                                                    <p className="text-xs text-muted-foreground">Inactive items will not be available for use.</p>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
+                                )}
+                            </div>
 
-                                    <div className="space-y-2">
-                                        <Label htmlFor="inventory-use-type">Use Type*</Label>
-                                        <NativeSelect
-                                            id="inventory-use-type"
-                                            name="inventory_use_type"
-                                            className={submitted && formErrors.use_type ? "w-full h-10 border rounded px-3 border-red-500 bg-background" : "w-full h-10 border rounded px-3 bg-background"}
-                                            value={form.use_type ?? ""}
-                                            onChange={(e) => {
-                                                setForm({ ...form, use_type: e.target.value })
-                                                setFormErrors(e => ({ ...e, use_type: "" }))
-                                            }}
-                                        >
-                                            <option value="fix">Fix</option>
-                                            <option value="usable">Usable</option>
-                                        </NativeSelect>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="inventory-name">Name*</Label>
-                                        <Input
-                                            id="inventory-name"
-                                            name="inventory_name"
-                                            value={form.name}
-                                            className={submitted && formErrors.name ? "border-red-500" : ""}
-                                            onChange={(e) => {
-                                                setForm({ ...form, name: normalizeTextInput(e.target.value) })
-                                                setFormErrors(e => ({ ...e, name: "" }))
-                                            }}
-                                        />
-                                    </div>
-
-                                    <div className="flex items-center gap-2">
-                                        <Switch
-                                            checked={form?.is_active}
-                                            onCheckedChange={(v) =>
-                                                setForm({ ...form, is_active: v })
-                                            }
-                                        />
-                                        <Label>Active</Label>
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                            <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-border">
                                 <Button
                                     variant="heroOutline"
+                                    className="min-w-[100px]"
                                     onClick={() => setMode(null)}
                                 >
                                     {mode === "view" ? "Close" : "Cancel"}
@@ -992,6 +1063,7 @@ export default function InventoryMaster() {
                                 {mode === "edit" && (
                                     <Button
                                         variant="hero"
+                                        className="min-w-[140px]"
                                         onClick={handleForm}
                                     >
                                         Save Changes

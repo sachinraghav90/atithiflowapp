@@ -63,13 +63,13 @@ export default function PropertyTax({
             : null;
 
     return (
-        <div className="space-y-3 border border-border rounded-[5px] p-5 bg-card">
+        <div className="space-y-4 border border-border rounded-[5px] p-4 bg-card">
 
-            <h3 className="font-semibold text-base">
+            <h3 className="font-semibold text-sm text-primary uppercase tracking-wider">
                 Legal & Tax Information
             </h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
 
                 {/* GSTIN */}
 
@@ -88,33 +88,7 @@ export default function PropertyTax({
                         }
                         transform={(val: string) => val.toUpperCase()}
                     />
-
-                    {/* {inlineError("gst_no") && (
-                        <p className="text-red-500 text-xs mt-1">
-                            {inlineError("gst_no")}
-                        </p>
-                    )} */}
                 </div>
-
-                {/* PAN */}
-
-                {/* <div>
-                    <FormInput
-                        label="PAN Number"
-                        field="pan_no"
-                        value={value}
-                        setValue={setValue}
-                        errors={errors}
-                        setErrors={setErrors}
-                        viewMode={viewMode}
-                        required
-                        onChangeExtra={(val: string) =>
-                            validatePAN(val.toUpperCase())
-                        }
-                        transform={(val: string) => val.toUpperCase()}
-                    />
-
-                </div> */}
 
                 {/* ROOM TAX RATE */}
 
@@ -127,7 +101,6 @@ export default function PropertyTax({
                     errors={errors}
                     setErrors={setErrors}
                     viewMode={viewMode}
-                    // required
                     transform={(val: string) =>
                         normalizeNumberInput(val)
                     }
@@ -136,14 +109,14 @@ export default function PropertyTax({
 
                 {/* GST RATE SELECT */}
 
-                <div className="space-y-2">
-                    <Label>GST Rate for Rooms *</Label>
+                <div className="space-y-1">
+                    <Label className="text-xs font-medium text-muted-foreground">GST Rate for Rooms *</Label>
 
                     <NativeSelect
                         disabled={viewMode}
                         value={value.gst}
                         title={errors.gst?.message || ""}
-                        className={`w-full h-10 rounded-[3px] border px-3 text-sm ${errors.gst
+                        className={`w-full h-9 rounded-[3px] border px-3 text-sm ${errors.gst
                             ? "border-red-500 bg-background"
                             : "border-border bg-background"
                             }`}

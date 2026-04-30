@@ -251,30 +251,31 @@ export default function BookingGuestsManagement() {
                         return (
                             <div
                                 key={key}
-                                className="rounded-[5px] border bg-card p-6 space-y-4"
+                                className="rounded-[5px] border border-border bg-card p-4 space-y-4 shadow-sm"
                             >
-                                <div className="flex justify-between">
-                                    <p className="font-semibold">
-                                        Guest {index + 1}
+                                <div className="flex justify-between items-center border-b border-border/50 pb-3">
+                                    <p className="text-xs font-bold text-primary uppercase tracking-wider">
+                                        Guest {index + 1} Profile
                                     </p>
 
                                     <Button
-                                        size="sm"
+                                        size="xs"
                                         variant="ghost"
-                                        className="text-destructive"
+                                        className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7"
                                         disabled={index === 0}
                                         onClick={() =>
                                             removeGuest(index)
                                         }
                                     >
-                                        Remove
+                                        Remove Guest
                                     </Button>
                                 </div>
 
                                 <div className="grid sm:grid-cols-3 gap-4">
-                                    <div>
-                                        <Label>First Name *</Label>
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-medium text-muted-foreground">First Name *</Label>
                                         <Input
+                                            className="h-9"
                                             value={g.first_name}
                                             onChange={(e) =>
                                                 updateGuest(index, {
@@ -285,9 +286,10 @@ export default function BookingGuestsManagement() {
                                         />
                                     </div>
 
-                                    <div>
-                                        <Label>Middle Name</Label>
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-medium text-muted-foreground">Middle Name</Label>
                                         <Input
+                                            className="h-9"
                                             value={g.middle_name ?? ""}
                                             onChange={(e) =>
                                                 updateGuest(index, {
@@ -298,9 +300,10 @@ export default function BookingGuestsManagement() {
                                         />
                                     </div>
 
-                                    <div>
-                                        <Label>Last Name</Label>
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-medium text-muted-foreground">Last Name</Label>
                                         <Input
+                                            className="h-9"
                                             value={g.last_name ?? ""}
                                             onChange={(e) =>
                                                 updateGuest(index, {
@@ -313,96 +316,111 @@ export default function BookingGuestsManagement() {
                                 </div>
 
                                 <div className="grid sm:grid-cols-3 gap-4">
-                                    <Input
-                                        placeholder="Phone"
-                                        value={g.phone ?? ""}
-                                        onChange={(e) =>
-                                            updateGuest(index, {
-                                                phone: e.target.value,
-                                            })
-                                        }
-                                    />
-                                    <Input
-                                        placeholder="Email"
-                                        value={g.email ?? ""}
-                                        onChange={(e) =>
-                                            updateGuest(index, {
-                                                email: e.target.value,
-                                            })
-                                        }
-                                    />
-                                    <Input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={(e) =>
-                                            handleFile(
-                                                key,
-                                                e.target.files?.[0]
-                                            )
-                                        }
-                                    />
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-medium text-muted-foreground">Phone Number</Label>
+                                        <Input
+                                            className="h-9"
+                                            placeholder="Enter mobile number"
+                                            value={g.phone ?? ""}
+                                            onChange={(e) =>
+                                                updateGuest(index, {
+                                                    phone: e.target.value,
+                                                })
+                                            }
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-medium text-muted-foreground">Email Address</Label>
+                                        <Input
+                                            className="h-9"
+                                            placeholder="Enter email"
+                                            value={g.email ?? ""}
+                                            onChange={(e) =>
+                                                updateGuest(index, {
+                                                    email: e.target.value,
+                                                })
+                                            }
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-medium text-muted-foreground">ID Proof Photo</Label>
+                                        <Input
+                                            className="h-9 py-1 px-2 text-xs"
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) =>
+                                                handleFile(
+                                                    key,
+                                                    e.target.files?.[0]
+                                                )
+                                            }
+                                        />
+                                    </div>
                                 </div>
 
                                 {g.has_id_proof && g.id && (
-                                    <Button
-                                        size="sm"
-                                        variant="heroOutline"
-                                        onClick={() =>
-                                            setPreviewId(
-                                                `${import.meta.env.VITE_API_URL
-                                                }/guests/${g.id}/id-proof`
-                                            )
-                                        }
-                                    >
-                                        View ID Proof
-                                    </Button>
+                                    <div className="pt-2">
+                                        <Button
+                                            size="sm"
+                                            variant="heroOutline"
+                                            className="h-8 text-xs"
+                                            onClick={() =>
+                                                setPreviewId(
+                                                    `${import.meta.env.VITE_API_URL
+                                                    }/guests/${g.id}/id-proof`
+                                                )
+                                            }
+                                        >
+                                            View ID Proof
+                                        </Button>
+                                    </div>
                                 )}
 
                                 {index === 0 && (
-                                    <div className="mt-6 rounded-[5px] border bg-muted/30 p-5 space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <p className="font-semibold">Vehicle Details</p>
+                                    <div className="mt-6 rounded-[5px] border border-border bg-muted/20 p-4 space-y-4">
+                                        <div className="flex items-center justify-between border-b border-border/50 pb-3">
+                                            <p className="text-xs font-bold text-primary uppercase tracking-wider">Vehicle Details</p>
 
                                             <button
                                                 type="button"
-                                                className="flex items-center gap-1.5 text-primary hover:underline text-sm font-medium transition-colors"
+                                                className="flex items-center gap-1.5 text-primary hover:underline text-xs font-bold transition-colors uppercase tracking-tight"
                                                 onClick={addVehicle}
                                             >
-                                                <PlusCircle className="w-4 h-4" /> Add New Vehicle(s)
+                                                <PlusCircle className="w-4 h-4" /> Add Vehicle
                                             </button>
                                         </div>
 
                                         {vehicles.length === 0 && (
-                                            <p className="text-sm text-muted-foreground">
-                                                No vehicle added
+                                            <p className="text-xs text-muted-foreground italic py-2">
+                                                No vehicles registered for this guest
                                             </p>
                                         )}
 
                                         {vehicles.map((v, vIndex) => (
                                             <div
                                                 key={vIndex}
-                                                className="rounded-[3px] border bg-card p-4 space-y-4"
+                                                className="rounded-[3px] border border-border bg-card p-3 space-y-4 shadow-sm"
                                             >
-                                                <div className="flex justify-between items-center">
-                                                    <p className="font-medium">
-                                                        Vehicle {vIndex + 1}
+                                                <div className="flex justify-between items-center border-b border-border/50 pb-2">
+                                                    <p className="text-[11px] font-bold text-muted-foreground uppercase">
+                                                        Vehicle #{vIndex + 1}
                                                     </p>
 
                                                     <Button
-                                                        size="sm"
+                                                        size="xs"
                                                         variant="ghost"
-                                                        className="text-destructive"
+                                                        className="text-destructive h-6 px-2 text-[10px] uppercase font-bold"
                                                         onClick={() => removeVehicle(vIndex)}
                                                     >
                                                         Remove
                                                     </Button>
                                                 </div>
 
-                                                <div className="grid sm:grid-cols-4 gap-4">
-                                                    <div>
-                                                        <Label>Vehicle Type</Label>
+                                                <div className="grid sm:grid-cols-4 gap-3">
+                                                    <div className="space-y-1">
+                                                        <Label className="text-xs font-medium text-muted-foreground">Vehicle Type</Label>
                                                         <NativeSelect
-                                                            className="w-full h-10 rounded-[3px] border px-3 text-sm"
+                                                            className="w-full h-8 rounded-[3px] border px-2 text-sm"
                                                             value={v.vehicle_type}
                                                             onChange={(e) =>
                                                                 updateVehicle(vIndex, {
@@ -416,9 +434,10 @@ export default function BookingGuestsManagement() {
                                                         </NativeSelect>
                                                     </div>
 
-                                                    <div>
-                                                        <Label>Vehicle Name</Label>
+                                                    <div className="space-y-1">
+                                                        <Label className="text-xs font-medium text-muted-foreground">Vehicle Name</Label>
                                                         <Input
+                                                            className="h-8 text-sm px-2"
                                                             value={v.vehicle_name ?? ""}
                                                             onChange={(e) =>
                                                                 updateVehicle(vIndex, {
@@ -428,9 +447,10 @@ export default function BookingGuestsManagement() {
                                                         />
                                                     </div>
 
-                                                    <div>
-                                                        <Label>Vehicle Number</Label>
+                                                    <div className="space-y-1">
+                                                        <Label className="text-xs font-medium text-muted-foreground">Vehicle Number</Label>
                                                         <Input
+                                                            className="h-8 text-sm px-2"
                                                             value={v.vehicle_number ?? ""}
                                                             onChange={(e) =>
                                                                 updateVehicle(vIndex, {
@@ -440,9 +460,10 @@ export default function BookingGuestsManagement() {
                                                         />
                                                     </div>
 
-                                                    <div>
-                                                        <Label>Room No</Label>
+                                                    <div className="space-y-1">
+                                                        <Label className="text-xs font-medium text-muted-foreground">Room No</Label>
                                                         <Input
+                                                            className="h-8 text-sm px-2"
                                                             value={v.room_no ?? ""}
                                                             onChange={(e) =>
                                                                 updateVehicle(vIndex, {

@@ -51,9 +51,9 @@ export default function FormInput({
         error?.type === "required" ? error.message : "";
 
     return (
-        <div className="space-y-2">
+        <div className="space-y-1">
 
-            <Label className="font-bold">
+            <Label className="text-xs font-medium text-muted-foreground">
                 {label} {required && "*"}
             </Label>
 

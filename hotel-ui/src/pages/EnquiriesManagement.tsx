@@ -14,8 +14,10 @@ import {
     useGetPropertyEnquiriesQuery,
     useLazyExportPropertyEnquiriesQuery,
     useUpdateEnquiryMutation,
+    useGetStaffByPropertyQuery,
 } from "@/redux/services/hmsApi";
 import { useAppSelector } from "@/redux/hook";
+import { cn } from "@/lib/utils";
 import { normalizeTextInput } from "@/utils/normalizeTextInput";
 import { formatReadableLabel } from "@/utils/formatString";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
@@ -25,7 +27,7 @@ import { usePermission } from "@/rbac/usePermission";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect } from "@/components/ui/grid-toolbar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Download, FilterX, Pencil, Plus, RefreshCcw } from "lucide-react";
+import { Download, FilterX, Pencil, Plus, RefreshCcw, User, Phone, MapPin, Calendar, Clock, ClipboardList, Info, Building2, Package, Globe, UserCheck, DollarSign, ListTodo, Activity } from "lucide-react";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { filterGridRowsByQuery } from "@/utils/filterGridRows";
@@ -143,6 +145,25 @@ export default function EnquiriesManagement() {
     const [searchInput, setSearchInput] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState<EnquiryStatus | "">("");
+
+    const { data: staffData } = useGetStaffByPropertyQuery({ 
+        property_id: selectedPropertyId 
+    }, { 
+        skip: !isLoggedIn || !selectedPropertyId 
+    });
+
+    const staffMap = useMemo(() => {
+        const map: Record<string, string> = {};
+        if (staffData?.data) {
+            staffData.data.forEach((staff: any) => {
+                const name = `${staff.first_name || ""} ${staff.last_name || ""}`.trim();
+                if (staff.user_id) {
+                    map[staff.user_id] = name || staff.email || staff.user_id;
+                }
+            });
+        }
+        return map;
+    }, [staffData]);
 
     const navigate = useNavigate()
 
@@ -538,158 +559,237 @@ export default function EnquiriesManagement() {
                         animate={{ opacity: 1, y: 0 }}
                         className="space-y-1"
                     >
-                        <SheetHeader>
-                            <SheetTitle>{editMode ? "Manage Enquiry" : "Enquiry Summary"}</SheetTitle>
+                        <SheetHeader className="border-b border-border/50 pb-4 mb-4">
+                            <div className="flex items-center gap-4">
+                                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary shadow-sm">
+                                    {editMode ? <Pencil className="w-5 h-5" /> : <ClipboardList className="w-5 h-5" />}
+                                </div>
+                                <div className="space-y-0.5">
+                                    <SheetTitle className="text-xl font-bold text-foreground">
+                                        {editMode ? "Update Enquiry" : "Enquiry Summary"}
+                                        {selected?.id && <span className="ml-2 text-primary font-semibold">[#{formatModuleDisplayId("enquiry", selected.id)}]</span>}
+                                    </SheetTitle>
+                                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                                        {editMode 
+                                            ? `Modify lead lifecycle and internal notes for #${formatModuleDisplayId("enquiry", selected?.id || "")}.` 
+                                            : `Comprehensive summary of lead configuration for #${formatModuleDisplayId("enquiry", selected?.id || "")}.`}
+                                    </p>
+                                </div>
+                            </div>
                         </SheetHeader>
 
-                    {selected && (
-                        <div className="grid grid-cols-1 gap-6 text-sm">
 
-                            {/* LEFT — READ ONLY DETAILS */}
-                            <div className="space-y-5">
-                                <div>
-                                    <Label>Guest Info</Label>
-                                    <p className="font-medium text-base">{selected.guest_name}</p>
-                                    <p className="text-muted-foreground">
-                                        {selected.mobile} • {selected.email || "No email"}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        {selected.city} • {selected.nationality?.toUpperCase()}
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <Label>Stay Details</Label>
-                                    <p className="font-medium">
-                                        {selected.check_in
-                                            ? formatAppDate(selected.check_in)
-                                            : "—"}
-                                        {" → "}
-                                        {selected.check_out
-                                            ? formatAppDate(selected.check_out)
-                                            : "—"}
-                                    </p>
-                                    <p className="text-muted-foreground">
-                                        Plan: {selected.plan || "—"}
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <Label>Room Selection</Label>
-                                    <div className="space-y-2 mt-1">
-                                        {selected.room_details?.length ? (
-                                            selected.room_details.map((room, i) => (
-                                                <div
-                                                    key={i}
-                                                    className="flex justify-between border rounded p-2 bg-muted/20"
-                                                >
-                                                    <span>{room.room_type}</span>
-                                                    <span className="font-medium">
-                                                        {room.no_of_rooms} room
-                                                        {room.no_of_rooms > 1 ? "s" : ""}
-                                                    </span>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <p className="text-muted-foreground text-sm">No room selected</p>
-                                        )}
+                    {selected && !editMode && (
+                        <div className="space-y-3.5">
+                            {/* Row 1: Profile & Stay Schedule */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 items-stretch">
+                                <div className="p-3.5 rounded-xl border border-primary/10 bg-accent shadow-sm space-y-4">
+                                    <div className="flex items-center gap-2 text-primary">
+                                        <User className="w-3.5 h-3.5" />
+                                        <span className="text-[10px] font-bold uppercase tracking-wider">Guest Profile</span>
+                                    </div>
+                                    <div className="flex items-start gap-4 px-1">
+                                        <div className="h-16 w-16 rounded-2xl bg-primary/5 flex items-center justify-center text-primary border border-primary/10 shadow-inner shrink-0">
+                                            <span className="text-2xl font-black">{selected.guest_name?.charAt(0) || "G"}</span>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <h3 className="text-lg font-black text-foreground leading-tight">{selected.guest_name}</h3>
+                                            <div className="flex flex-wrap gap-x-3 gap-y-1 items-center text-xs text-muted-foreground font-medium">
+                                                <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {selected.mobile}</span>
+                                                <span className="flex items-center gap-1 font-bold text-primary/80"><Globe className="w-3 h-3" /> {selected.city || "—"}</span>
+                                            </div>
+                                            <p className="text-[10px] text-muted-foreground/70 uppercase tracking-widest pt-1">{selected.email || "No email provided"}</p>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2 pt-1">
+                                        <div className="p-2 rounded-lg bg-background/50 border border-primary/5 flex flex-col items-center justify-center text-center">
+                                            <span className="text-[10px] font-bold text-muted-foreground uppercase">Source</span>
+                                            <span className="text-xs font-bold text-foreground truncate w-full">{selected.source || "Direct"}</span>
+                                        </div>
+                                        <div className="p-2 rounded-lg bg-background/50 border border-primary/5 flex flex-col items-center justify-center text-center">
+                                            <span className="text-[10px] font-bold text-muted-foreground uppercase">Type</span>
+                                            <span className="text-xs font-bold text-foreground truncate w-full">{selected.enquiry_type || "General"}</span>
+                                        </div>
+                                        <div className="p-2 rounded-lg bg-background/50 border border-primary/5 flex flex-col items-center justify-center text-center">
+                                            <span className="text-[10px] font-bold text-muted-foreground uppercase">Created By</span>
+                                            <span className="text-xs font-bold text-foreground truncate w-full" title={selected.created_by}>
+                                                {staffMap[selected.created_by || ""] || selected.created_by || "Admin"}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div>
-                                    <Label>Guest Composition</Label>
-                                    <p className="text-muted-foreground border rounded p-2 bg-muted/20">
-                                        Total: <span className="text-foreground font-medium">{selected.total_members || 0}</span> |
-                                        Seniors: <span className="text-foreground font-medium">{selected.senior_citizens || 0}</span> |
-                                        Children: <span className="text-foreground font-medium">{selected.child || 0}</span> |
-                                        Specially Abled: <span className="text-foreground font-medium">{selected.specially_abled || 0}</span>
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <Label>Pricing</Label>
-                                    <div className="flex gap-4">
-                                        <p>Quote: <span className="font-medium">{selected.quote_amount ? `₹${selected.quote_amount}` : "—"}</span></p>
-                                        <p>Offer: <span className="font-medium text-primary">{selected.offer_amount ? `₹${selected.offer_amount}` : "—"}</span></p>
+                                <div className="p-3.5 rounded-xl border border-primary/10 bg-accent shadow-sm flex flex-col space-y-4">
+                                    <div className="flex items-center gap-2 text-primary shrink-0">
+                                        <Calendar className="w-3.5 h-3.5" />
+                                        <span className="text-[10px] font-bold uppercase tracking-wider">Stay Schedule</span>
+                                    </div>
+                                    <div className="flex-1 grid grid-cols-2 gap-3.5">
+                                        <div className="space-y-1.5">
+                                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Check-In</Label>
+                                            <p className="text-sm font-bold text-foreground py-2 px-3 bg-background/50 rounded-lg border border-primary/5 shadow-sm">{selected.check_in ? formatAppDate(selected.check_in) : "—"}</p>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Check-Out</Label>
+                                            <p className="text-sm font-bold text-foreground py-2 px-3 bg-background/50 rounded-lg border border-primary/5 shadow-sm">{selected.check_out ? formatAppDate(selected.check_out) : "—"}</p>
+                                        </div>
+                                        <div className="space-y-1.5 col-span-2">
+                                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Selected Plan</Label>
+                                            <div className="py-2 px-3 bg-primary/5 rounded-lg border border-primary/10 flex items-center justify-between">
+                                                <span className="text-sm font-black text-primary uppercase">{selected.plan || "N/A"}</span>
+                                                <GridBadge status={selected.status} statusType="enquiry" className="h-6 px-3 text-[10px] font-bold">
+                                                    {formatEnquiryStatus(selected.status)}
+                                                </GridBadge>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* RIGHT — EDITABLE / READ-ONLY */}
-                            <div className="space-y-4">
-                                <div>
-                                    <Label className={editMode ? "text-primary font-bold" : "text-muted-foreground"}>
-                                        {editMode ? "Update Lead Status" : "Lead Status"}
-                                    </Label>
-                                    {!editMode ? (
-                                        <p className="font-medium mt-1 text-sm uppercase">
-                                            {status.replace("_", " ")}
-                                        </p>
-                                    ) : (
-                                        <NativeSelect
-                                            className="w-full h-10 rounded-[3px] border px-3 text-sm mt-1"
-                                            value={status}
-                                            onChange={(e) =>
-                                                setStatus(e.target.value as EnquiryStatus)
-                                            }
-                                        >
-                                            <option value="open">Open</option>
-                                            <option value="follow_up">Follow Up</option>
-                                            <option value="closed">Closed</option>
-                                            <option value="cancelled">Cancelled</option>
-                                        </NativeSelect>
-                                    )}
+                            {/* Row 2: Rooms & Notes */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 items-stretch">
+                                <div className="p-3.5 rounded-xl border border-primary/10 bg-accent shadow-sm space-y-4 flex flex-col">
+                                    <div className="flex items-center gap-2 text-primary shrink-0">
+                                        <Building2 className="w-3.5 h-3.5" />
+                                        <span className="text-[10px] font-bold uppercase tracking-wider">Room Requirements</span>
+                                    </div>
+                                    <div className="flex-1 space-y-2 max-h-[160px] overflow-y-auto pr-1">
+                                        {selected.room_details?.length ? (
+                                            selected.room_details.map((room, i) => (
+                                                <div key={i} className="flex justify-between items-center bg-background/50 border border-primary/5 rounded-lg px-3 py-2.5 shadow-sm">
+                                                    <span className="text-xs font-bold text-foreground">{room.room_type}</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[10px] font-bold text-muted-foreground uppercase">Qty</span>
+                                                        <span className="h-6 min-w-[24px] flex items-center justify-center bg-primary/10 text-primary text-[10px] font-black rounded-md">{room.no_of_rooms}</span>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="h-full flex flex-col items-center justify-center text-muted-foreground/40 gap-2">
+                                                <Package className="w-8 h-8 opacity-20" />
+                                                <p className="text-[10px] font-bold uppercase tracking-widest">No Rooms Specified</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="pt-3 border-t border-primary/5 grid grid-cols-2 gap-3.5">
+                                        <div className="space-y-1">
+                                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Guests</Label>
+                                            <p className="text-xs font-bold text-foreground">{selected.total_members || 0} Total • {selected.child || 0} Child</p>
+                                        </div>
+                                        <div className="space-y-1 text-right">
+                                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Offer Price</Label>
+                                            <p className="text-sm font-black text-primary">{selected.offer_amount ? `₹${selected.offer_amount}` : "—"}</p>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                {status === "follow_up" && (
-                                    <div className="animate-in fade-in duration-300">
-                                        <Label className="text-muted-foreground">Follow-up Date</Label>
-                                        {!editMode ? (
-                                            <p className="font-medium mt-1 text-sm">
-                                                {formatAppDateTime(followUpDate)}
-                                            </p>
-                                        ) : (
+                                <div className="p-3.5 rounded-xl border border-primary/10 bg-accent shadow-sm space-y-4 flex flex-col">
+                                    <div className="flex items-center justify-center lg:justify-start gap-2 text-primary shrink-0">
+                                        <Activity className="w-3.5 h-3.5" />
+                                        <span className="text-[10px] font-bold uppercase tracking-wider">Internal Activity Notes</span>
+                                    </div>
+                                    <div className="flex-1 bg-background/50 rounded-lg border border-primary/5 p-4 relative min-h-[140px]">
+                                        <p className="text-xs text-muted-foreground italic leading-relaxed whitespace-pre-wrap">
+                                            {comment || "No activity notes recorded yet for this enquiry."}
+                                        </p>
+                                        <div className="absolute top-2 right-2 opacity-10">
+                                            <ListTodo className="w-12 h-12" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {selected && editMode && (
+                        <div className="space-y-3.5">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 items-stretch">
+                                {/* Left: Status & Timing */}
+                                <div className="p-3.5 rounded-xl border border-primary/10 bg-accent shadow-sm space-y-4">
+                                    <div className="flex items-center gap-2 text-primary">
+                                        <User className="w-3.5 h-3.5" />
+                                        <span className="text-[10px] font-bold uppercase tracking-wider">Lead Lifecycle Management</span>
+                                    </div>
+                                    <div className="space-y-3.5">
+                                        <div className="space-y-1.5">
+                                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Lead Status*</Label>
+                                            <NativeSelect
+                                                className="w-full h-9 bg-background shadow-sm text-xs border-primary/10"
+                                                value={status}
+                                                onChange={(e) => setStatus(e.target.value as EnquiryStatus)}
+                                            >
+                                                {ENQUIRY_STATUS_OPTIONS.map(opt => (
+                                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                ))}
+                                            </NativeSelect>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Follow-up Date & Time</Label>
                                             <ResponsiveDatePicker
                                                 value={parseAppDate(followUpDate)}
                                                 onChange={(date) => setFollowUpDate(toDatetimeLocalValue(date))}
                                                 showTime
-                                                className="mt-1 h-10 rounded-[3px]"
+                                                className="h-9 rounded-[3px] bg-background border-primary/10 text-xs w-full"
                                             />
-                                        )}
+                                        </div>
                                     </div>
-                                )}
-
-                                <div>
-                                    <Label className="text-muted-foreground">Internal Notes</Label>
-                                    {!editMode ? (
-                                        <p className="font-medium mt-1 text-sm whitespace-pre-wrap">
-                                            {comment || "—"}
-                                        </p>
-                                    ) : (
-                                        <textarea
-                                            className="w-full min-h-[120px] rounded-[3px] border px-3 py-2 text-sm mt-1 focus:ring-1 focus:ring-primary outline-none transition-all"
-                                            value={comment}
-                                            onChange={(e) => setComment(e.target.value)}
-                                            placeholder="Add a reason or next steps..."
-                                        />
-                                    )}
+                                    <div className="pt-3 border-t border-primary/5 grid grid-cols-2 gap-3.5">
+                                        <div className="space-y-1">
+                                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Guest</Label>
+                                            <p className="text-xs font-bold text-foreground truncate">{selected.guest_name}</p>
+                                        </div>
+                                        <div className="space-y-1 text-right">
+                                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Current Status</Label>
+                                            <div className="flex justify-end pt-0.5">
+                                                <GridBadge status={selected.status} statusType="enquiry" className="h-5 px-2 text-[8px] font-black">
+                                                    {formatEnquiryStatus(selected.status)}
+                                                </GridBadge>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                {editMode && bookingPermission?.can_create && !selected.is_reserved && (
-                                    <div className="space-y-2 pt-2">
-                                            <Button
-                                                variant="heroOutline"
-                                                className="w-full h-11"
-                                                onClick={() => handleBook(selected)}
-                                            >
-                                                Book Enquiry
-                                            </Button>
+                                {/* Right: Internal Notes */}
+                                <div className="p-3.5 rounded-xl border border-primary/10 bg-accent shadow-sm flex flex-col space-y-4">
+                                    <div className="flex items-center gap-2 text-primary shrink-0">
+                                        <ClipboardList className="w-3.5 h-3.5" />
+                                        <span className="text-[10px] font-bold uppercase tracking-wider">Internal Progress Notes</span>
                                     </div>
-                                )}
+                                    <div className="flex-1 relative group">
+                                        <textarea
+                                            className="w-full h-full min-h-[160px] rounded-lg border border-primary/10 bg-background px-3 py-2.5 text-xs focus:ring-1 focus:ring-primary/30 outline-none transition-all placeholder:text-muted-foreground/30 leading-relaxed resize-none shadow-inner"
+                                            value={comment}
+                                            onChange={(e) => setComment(e.target.value)}
+                                            maxLength={500}
+                                            placeholder="Document follow-up outcomes, special requests, or internal progress notes here..."
+                                        />
+                                        <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-background/80 backdrop-blur-sm border border-primary/5">
+                                            <span className={cn("text-[8px] font-bold tracking-widest", comment.length >= 450 ? "text-red-500" : "text-muted-foreground")}>
+                                                {comment.length}/500
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
+
+                            {bookingPermission?.can_create && !selected.is_reserved && (
+                                <div className="p-3.5 rounded-xl border border-dashed border-primary/20 bg-primary/5 flex items-center justify-between gap-4">
+                                    <div className="space-y-0.5">
+                                        <p className="text-xs font-black text-primary uppercase">Convert to Booking</p>
+                                        <p className="text-[10px] text-muted-foreground font-medium">Ready to confirm? Proceed to reservations with this enquiry data.</p>
+                                    </div>
+                                    <Button
+                                        variant="heroOutline"
+                                        className="h-9 px-6 text-xs font-bold flex items-center gap-2 shrink-0 bg-background shadow-sm hover:bg-primary/5"
+                                        onClick={() => handleBook(selected)}
+                                    >
+                                        <Plus className="w-3.5 h-3.5" /> Book Enquiry
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     )}
-                        <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                        <div className="flex justify-end gap-3 pt-6 border-t border-border mt-6">
                             <Button
                                 variant="heroOutline"
                                 onClick={() => setOpen(false)}

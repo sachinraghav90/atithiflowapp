@@ -489,28 +489,28 @@ export default function PackageManagement() {
                             className="space-y-6"
                         >
                             <SheetHeader>
-                                <SheetTitle>
-                                    {mode === "add"
-                                        ? "Add plan"
-                                        : mode === "edit"
-                                            ? "Edit plan"
-                                            : "Plan summary"}
-                                </SheetTitle>
+                                <div className="space-y-1">
+                                    <SheetTitle>
+                                        {mode === "add" ? "Create New Plan" : `Plan [${selectedPackage?.id ? formatModuleDisplayId("package", selectedPackage.id) : "..."}]`}
+                                    </SheetTitle>
+                                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                                        {mode === "add" ? "Setup your new room plan details" : mode === "edit" ? "Modify existing plan information" : "Summary of plan details and pricing"}
+                                    </p>
+                                </div>
                             </SheetHeader>
 
                             {/* Package Name */}
-                            <div className="space-y-2">
-                                <Label>Plan Name</Label>
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Plan Name</Label>
                                 {mode === "view" || (mode === "edit" && selectedPackage?.system_generated) ? (
-                                    <p
-                                        className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text"
-                                    >
-                                        {selectedPackage?.package_name}
+                                    <p className="text-sm font-semibold text-foreground py-1 px-0.5">
+                                        {selectedPackage?.package_name || "—"}
                                     </p>
                                 ) : (
                                     <Input
-                                        className={submitted && formErrors.package_name ? "border-red-500" : ""}
+                                        className={cn("h-9", submitted && formErrors.package_name ? "border-red-500" : "")}
                                         value={selectedPackage?.package_name}
+                                        placeholder="e.g. Continental Plan (CP)"
                                         onChange={(e) => {
                                             const next = e.target.value;
                                             if (isWithinCharLimit(next, 50)) {
@@ -523,20 +523,22 @@ export default function PackageManagement() {
                                         }}
                                     />
                                 )}
+                                {submitted && formErrors.package_name && <p className="text-[10px] text-red-500 font-medium">{formErrors.package_name}</p>}
                             </div>
 
                             {/* Description */}
-                            <div className="space-y-2">
-                                <Label>Description</Label>
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Description</Label>
                                 {mode === "view" || (mode === "edit" && selectedPackage?.system_generated) ? (
-                                    <p
-                                        className="w-full rounded-[3px] bg-background px-3 py-2 text-sm text-foreground cursor-default select-text whitespace-pre-wrap flex"
-                                    >
-                                        {selectedPackage?.description || "-"}
-                                    </p>
+                                    <div className="bg-muted/10 p-3 rounded-[3px] border border-border/50 min-h-[80px]">
+                                        <p className="text-sm text-muted-foreground whitespace-pre-wrap italic">
+                                            {selectedPackage?.description || "No description provided"}
+                                        </p>
+                                    </div>
                                 ) : (
                                     <textarea
-                                        className="w-full min-h-[100px] rounded-[3px] border border-border bg-background px-3 py-2 text-sm"
+                                        className="w-full min-h-[100px] rounded-[3px] border border-input bg-background px-3 py-2 text-sm focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-muted-foreground/50"
+                                        placeholder="Briefly describe what this plan includes..."
                                         value={selectedPackage?.description}
                                         onChange={(e) => {
                                             const next = e.target.value
@@ -552,44 +554,45 @@ export default function PackageManagement() {
                             </div>
 
                             {/* Price */}
-                            <div className="space-y-2 pt-4 border-t border-border">
-                                <Label>Base Price</Label>
+                            <div className="space-y-1.5 pt-2">
+                                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Base Price (₹)</Label>
                                 {mode === "view" ? (
-                                    <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default">
+                                    <p className="text-lg font-bold text-primary px-0.5">
                                         ₹ {selectedPackage?.base_price || "0.00"}
                                     </p>
                                 ) : (
-                                    <Input
-                                        type="text"
-                                        className={submitted && formErrors.base_price ? "border-red-500" : ""}
-                                        value={selectedPackage?.base_price}
-                                        onChange={(e) => {
-                                            setSelectedPackage(prev => ({
-                                                ...prev,
-                                                base_price: normalizeNumberInput(e.target.value).toString(),
-                                            }));
-                                            setFormErrors(prev => ({ ...prev, base_price: "" }));
-                                        }}
-                                    />
+                                    <div className="relative max-w-[200px]">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">₹</span>
+                                        <Input
+                                            type="text"
+                                            className={cn("h-9 pl-7 font-semibold", submitted && formErrors.base_price ? "border-red-500" : "")}
+                                            value={selectedPackage?.base_price}
+                                            onChange={(e) => {
+                                                setSelectedPackage(prev => ({
+                                                    ...prev,
+                                                    base_price: normalizeNumberInput(e.target.value).toString(),
+                                                }));
+                                                setFormErrors(prev => ({ ...prev, base_price: "" }));
+                                            }}
+                                        />
+                                    </div>
                                 )}
+                                {submitted && formErrors.base_price && <p className="text-[10px] text-red-500 font-medium">{formErrors.base_price}</p>}
                             </div>
 
                             {/* Active */}
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-3 pt-2">
+                                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Plan Status</Label>
                                 {mode === "view" || (mode === "edit" && selectedPackage?.system_generated) ? (
-                                    <div className="flex items-center gap-2">
-                                        <Label>Status</Label>
-                                        <span
-                                            className={cn(
-                                                "px-3 py-1 rounded-[3px] text-xs font-semibold",
-                                                getStatusColor(selectedPackage?.is_active ? "active" : "inactive", "toggle")
-                                            )}
-                                        >
-                                            {selectedPackage?.is_active ? "Active" : "Inactive"}
-                                        </span>
-                                    </div>
+                                    <GridBadge
+                                        status={selectedPackage?.is_active ? "active" : "inactive"}
+                                        statusType="toggle"
+                                        className="min-w-[80px]"
+                                    >
+                                        {selectedPackage?.is_active ? "Active" : "Inactive"}
+                                    </GridBadge>
                                 ) : (
-                                    <>
+                                    <div className="flex items-center gap-2">
                                         <Switch
                                             checked={selectedPackage?.is_active}
                                             onCheckedChange={(v) =>
@@ -599,8 +602,10 @@ export default function PackageManagement() {
                                                 }))
                                             }
                                         />
-                                        <Label>Active</Label>
-                                    </>
+                                        <span className={cn("text-xs font-bold uppercase", selectedPackage?.is_active ? "text-green-600" : "text-muted-foreground")}>
+                                            {selectedPackage?.is_active ? "Active" : "Inactive"}
+                                        </span>
+                                    </div>
                                 )}
                             </div>
 

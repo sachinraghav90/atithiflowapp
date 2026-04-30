@@ -294,12 +294,19 @@ export default function PaymentsManagement() {
                 <Sheet open={detailsOpen} onOpenChange={setDetailsOpen}>
                     <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
                         <SheetHeader>
-                            <SheetTitle>Payment summary</SheetTitle>
+                            <div className="space-y-1">
+                                <SheetTitle>
+                                    Payment[#{formatModuleDisplayId("payment", selectedPayment.id)}]
+                                </SheetTitle>
+                                <p className="text-xs text-muted-foreground font-medium">
+                                    Payment Summary
+                                </p>
+                            </div>
                         </SheetHeader>
 
                         {selectedPayment && (
-                            <div className="space-y-6 mt-6">
-                                <div className="space-y-6">
+                            <div className="space-y-4 mt-4">
+                                <div className="space-y-4">
                                     <Detail label="Payment ID" value={formatModuleDisplayId("payment", selectedPayment.id)} />
                                     <Detail label="Booking ID" value={formatModuleDisplayId("booking", selectedPayment.booking_id)} />
                                     <Detail label="Property Name" value={selectedPaymentData?.property_name} />
@@ -310,7 +317,7 @@ export default function PaymentsManagement() {
                                     <Detail label="Status" value={selectedPayment.payment_status} />
                                 </div>
 
-                                <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                                <div className="flex justify-end gap-3 pt-3 border-t border-border">
                                     <Button
                                         variant="heroOutline"
                                         onClick={() => setDetailsOpen(false)}
@@ -331,9 +338,9 @@ export default function PaymentsManagement() {
 /* ---------------- Small UI ---------------- */
 function Detail({ label, value }: { label: string; value: string | number | null | undefined }) {
     return (
-        <div className="space-y-2">
-            <span className="text-sm font-medium text-foreground">{label}</span>
-            <span className="font-semibold">{value ?? "—"}</span>
+        <div className="space-y-1">
+            <span className="text-xs font-medium text-muted-foreground">{label}</span>
+            <span className="text-sm font-semibold">{value ?? "—"}</span>
         </div>
     );
 }

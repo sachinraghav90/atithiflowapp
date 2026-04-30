@@ -961,20 +961,28 @@ export default function PropertyManagement() {
                     className="w-full sm:max-w-4xl lg:max-w-5xl overflow-y-auto"
                 >
 
-                    <motion.div className="space-y-1">
+                    <motion.div className="space-y-6">
 
                         <SheetHeader>
-                            <SheetTitle>
-                                {mode === "add"
-                                    ? "Add Property"
-                                    : mode === "edit"
-                                        ? "Edit Property"
-                                        : "Property summary"}
-                            </SheetTitle>
+                            <div className="space-y-1">
+                                <SheetTitle>
+                                    {mode === "add" || mode === "edit"
+                                        ? `Property [${mode === "add" ? "NEW" : newProperty.id ? `#${newProperty.id}` : "NEW"}]`
+                                        : `Property [#${newProperty.id}]`
+                                    }
+                                </SheetTitle>
+                                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                                    {mode === "add"
+                                        ? "Create new property profile"
+                                        : mode === "edit"
+                                            ? "Edit property configuration"
+                                            : "Property information summary"}
+                                </p>
+                            </div>
                         </SheetHeader>
 
                         {viewMode ? (
-                            <>
+                            <div className="space-y-4">
                                 {/* ===== IDENTITY ===== */}
                                 <PropertyViewSection title="Property Identity">
                                     <ViewField label="Property Name" value={newProperty.brand_name} />
@@ -1057,7 +1065,7 @@ export default function PropertyManagement() {
                                         <ViewField label="Phone" value={newProperty.phone_office} />
                                     </PropertyViewSection>
                                 )}
-                            </>
+                            </div>
 
                         ) : (
                             <>
@@ -1232,9 +1240,9 @@ function PropertyStatusCell({ property, toggleActive, isUpdating }) {
 function ViewField({ label, value }) {
 
     return (
-        <div className="space-y-2">
-            <p className="text-sm font-medium text-foreground">{label}</p>
-            <p className="min-h-10 w-full rounded-[3px] bg-background px-3 py-2 flex items-center text-sm text-foreground cursor-default select-text">
+        <div className="space-y-1">
+            <p className="text-xs font-medium text-muted-foreground">{label}</p>
+            <p className="min-h-9 w-full rounded-[3px] bg-background px-3 py-1.5 flex items-center text-sm text-foreground cursor-default select-text">
                 {value || "-"}
             </p>
         </div>
