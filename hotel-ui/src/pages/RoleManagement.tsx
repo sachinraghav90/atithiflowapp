@@ -538,7 +538,7 @@ export default function RoleManagement() {
                             </div>
                         </div>
 
-                        <div className="space-y-2 max-h-[calc(100vh-16rem)] overflow-y-auto pr-2">
+                        <div className="space-y-2">
                             {!allSidebarLinksLoading &&
                                 !allSidebarLinksError &&
                                 allSidebarLinksData.roles.map((module) => (
