@@ -819,6 +819,7 @@ export default function PropertyManagement() {
                                 <GridToolbarSearch
                                     value={search}
                                     onChange={setSearch}
+                                    onSearch={() => setPage(1)}
                                     placeholder="Search property name, city, state..."
                                 />
 
