@@ -593,7 +593,7 @@ export default function LaundryPricingManagement() {
                         <SheetHeader className="mb-6">
                             <div className="space-y-1">
                                 <SheetTitle className="text-xl font-bold text-foreground">
-                                    {mode === "view" ? "Laundry Pricing Summary" : mode === "edit" ? "Update Laundry Pricing" : "Add Laundry Items"}
+                                    {mode === "view" ? "Laundry Pricing" : mode === "edit" ? "Update Laundry Pricing" : "Add Laundry Items"}
                                     {(mode === "view" || mode === "edit") && selectedItem?.id && (
                                         <span className="ml-2 font-semibold">
                                             {`[#${formatModuleDisplayId("laundry_pricing", selectedItem.id)}]`}
@@ -601,7 +601,7 @@ export default function LaundryPricingManagement() {
                                     )}
                                 </SheetTitle>
                                 <p className="text-xs text-muted-foreground font-medium tracking-wide">
-                                    {mode === "view" ? "Detailed Pricing and Availability Summary" : mode === "edit" ? "Modify Existing Laundry Item Rate and Details" : "Register New Laundry Items and Rates"}
+                                    {mode === "view" ? "Detailed Information about laundry item" : mode === "edit" ? "Modify Existing Laundry Item Rate and Details" : "Register New Laundry Items and Rates"}
                                 </p>
                             </div>
                         </SheetHeader>

@@ -307,6 +307,14 @@ export default function LaundryOrdersManagement() {
         order: null as LaundryOrder | null
     });
 
+    const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
+
+    useEffect(() => {
+        if (viewItemsModal.open) {
+            setSheetTab("summary");
+        }
+    }, [viewItemsModal.open]);
+
 
     const [statusModal, setStatusModal] = useState<{
         open: boolean;
@@ -775,6 +783,7 @@ export default function LaundryOrdersManagement() {
             cellClassName: "text-xs text-muted-foreground whitespace-nowrap",
             render: (order: LaundryOrder) => getLaundryOrderDisplay(order, vendors).deliveryDateLabel,
         },
+        
         {
             label: "Laundry Status",
             headClassName: "text-center",
@@ -784,6 +793,11 @@ export default function LaundryOrdersManagement() {
                     {getLaundryOrderDisplay(order, vendors).laundryStatusLabel}
                 </GridBadge>
             ),
+        },
+        {
+            label: "Total Amount",
+            cellClassName: "text-xs text-muted-foreground whitespace-nowrap",
+            render: (order: LaundryOrder) => formatLaundryAmount(getLaundryOrderTotalAmount(order)),
         },
         {
             label: "Vendor Status",
@@ -1520,17 +1534,12 @@ export default function LaundryOrdersManagement() {
                                 </div>
                                 <div className="space-y-0.5">
                                     <SheetTitle className="text-lg font-bold text-foreground">
-                                        {viewItemsModal.editMode ? "Update Laundry Order" : "Laundry Order Summary"}
-                                        {viewItemsModal.order?.id && (
-                                            <span className="ml-2 text-primary font-semibold">
-                                                {`[#${formatLaundryOrderDisplayId(viewItemsModal.order.id)}]`}
-                                            </span>
-                                        )}
+                                        {viewItemsModal.editMode ? `Update Laundry Order [${viewItemsModal.order?.id ? `#${formatLaundryOrderDisplayId(viewItemsModal.order.id)}` : "..."}]` : `Laundry Order [${viewItemsModal.order?.id ? `#${formatLaundryOrderDisplayId(viewItemsModal.order.id)}` : "..."}]`}
                                     </SheetTitle>
-                                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                                    <p className="text-xs text-muted-foreground font-medium  tracking-wider">
                                         {viewItemsModal.editMode
-                                            ? "Update existing laundry order details."
-                                            : `Laundry order details for #${viewItemsModal.order?.id ? formatLaundryOrderDisplayId(viewItemsModal.order.id) : "..."}.`}
+                                            ? "Update existing laundry order details"
+                                            : `Laundry order details`}
                                     </p>
                                 </div>
                             </div>
@@ -1544,38 +1553,46 @@ export default function LaundryOrdersManagement() {
                                 const orderItems = Array.isArray(order.items) ? order.items : [];
 
                                 return (
-                                    <div className="space-y-3">
-                                        {!viewItemsModal.editMode && (
-                                            <div className="grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 p-2.5 rounded-lg border border-primary/10 bg-accent shadow-sm">
-                                                <div className="h-11 w-11 rounded-lg bg-primary/5 flex items-center justify-center text-primary border border-primary/10 shadow-inner shrink-0">
-                                                    <ClipboardList className="w-5 h-5" />
-                                                </div>
-                                                <div className="min-w-0 flex-1">
-                                                    <h3 className="text-sm font-bold text-foreground leading-tight truncate">Laundry Order #{displayId}</h3>
-                                                    <p className="text-xs text-muted-foreground font-medium">
-                                                        {displayOrder.itemCountLabel} - {displayOrder.vendorName}
-                                                    </p>
-                                                </div>
-                                                <div className="hidden md:block text-right border-r border-primary/10 pr-3">
-                                                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total</Label>
-                                                    <p className="text-sm font-bold text-primary leading-tight">
-                                                        {formatLaundryAmount(getLaundryOrderTotalAmount(order))}
-                                                    </p>
-                                                </div>
-                                                <GridBadge status={order.laundry_status} statusType="laundry">
-                                                    {displayOrder.laundryStatusLabel}
-                                                </GridBadge>
-                                            </div>
-                                        )}
+                                    <div className="space-y-6">
+                                        {/* Sheet Tabs */}
+                                        <div className="border-b border-border flex">
+                                            <button
+                                                onClick={() => setSheetTab("summary")}
+                                                className={cn(
+                                                    "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
+                                                    sheetTab === "summary"
+                                                        ? "border-primary text-primary"
+                                                        : "border-transparent text-muted-foreground hover:text-foreground"
+                                                )}
+                                            >
+                                                Summary
+                                            </button>
+                                            <button
+                                                onClick={() => setSheetTab("history")}
+                                                className={cn(
+                                                    "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                                    sheetTab === "history"
+                                                        ? "border-primary text-primary"
+                                                        : "border-transparent text-muted-foreground hover:text-foreground"
+                                                )}
+                                            >
+                                                History
+                                            </button>
+                                        </div>
+
+                                        {sheetTab === "summary" && (
+                                            <div className="space-y-5">
+                                      
 
                                         {!viewItemsModal.editMode ? (
                                             <div className="space-y-4">
-                                                <PropertyViewSection title="Order Overview" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-4">
+                                                <PropertyViewSection title="Order Overview" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
                                                     <ViewField label="Vendor" value={displayOrder.vendorName} />
                                                     <ViewField label="Vendor Status" value={<GridBadge status={displayOrder.vendorStatus} statusType="vendor" className="h-6 px-2 text-[10px]">{displayOrder.vendorStatusLabel}</GridBadge>} />
                                                     <ViewField label="Laundry Status" value={<GridBadge status={order.laundry_status} statusType="laundry" className="h-6 px-2 text-[10px]">{displayOrder.laundryStatusLabel}</GridBadge>} />
                                                     <ViewField label="Pickup Date" value={formatDateTime(order.pickup_date)} />
                                                     <ViewField label="Delivery Date" value={formatDateTime(order.delivery_date)} />
+                                                    <ViewField label="Total Amount" value={formatLaundryAmount(getLaundryOrderTotalAmount(order))} className="font-semibold text-primary" />
                                                 </PropertyViewSection>
                                             </div>
                                         ) : (
@@ -1717,15 +1734,12 @@ export default function LaundryOrdersManagement() {
                                             </div>
                                         )}
 
-                                        <div className="bg-accent border border-primary/10 rounded-lg overflow-hidden shadow-sm">
-                                            <div className="px-3 py-2.5 border-b border-primary/10 bg-primary/5 flex items-center gap-2">
-                                                <div className="h-7 w-7 rounded-lg bg-background flex items-center justify-center text-primary border border-primary/5">
-                                                    <Package className="w-3.5 h-3.5" />
-                                                </div>
-                                                <h3 className="text-xs font-bold text-primary uppercase tracking-wider">Order Items</h3>
-                                            </div>
-                                            <div className="p-2">
+                                        <PropertyViewSection title="Order Items" className="mt-0">
+                                            <div className="border border-border rounded-lg overflow-hidden bg-background shadow-sm">
                                                 <AppDataGrid
+                                                    density="compact"
+                                                    scrollable={false}
+                                                    tableClassName="w-full"
                                                     columns={[
                                                         {
                                                             label: "Item",
@@ -1759,18 +1773,19 @@ export default function LaundryOrdersManagement() {
                                                     rowKey={(_, index) => index}
                                                     emptyText="No laundry items found"
                                                     minWidth="500px"
-                                                    density="compact"
-                                                    scrollable={false}
                                                     showActions={false}
-                                                    className="mt-0 border-primary/10 bg-background"
-                                                    tableClassName="text-xs"
+                                                    className="mt-0 border-0"
                                                 />
-                                                <div className="flex items-center justify-end gap-3 px-3 py-2 border border-t-0 border-primary/10 rounded-b-[5px] bg-primary/5">
-                                                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total Amount</span>
-                                                    <span className="text-sm font-bold text-primary">{formatLaundryAmount(getLaundryOrderTotalAmount(order))}</span>
-                                                </div>
                                             </div>
-                                        </div>
+                                        </PropertyViewSection>
+                                            </div>
+                                        )}
+
+                                        {sheetTab === "history" && (
+                                            <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
+                                                <p className="text-sm text-muted-foreground text-center">No history logs available yet.</p>
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })()}

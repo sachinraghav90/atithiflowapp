@@ -44,10 +44,12 @@ export function OrderItemsModal({
     const [draftOrderStatus, setDraftOrderStatus] = useState("");
     const [draftPaymentStatus, setDraftPaymentStatus] = useState("");
     const [previewImage, setPreviewImage] = useState<{ url: string; name: string } | null>(null);
+    const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
 
     useEffect(() => {
         if (open) {
             setEditMode(defaultEditMode);
+            setSheetTab("summary");
             return;
         }
 
@@ -126,12 +128,12 @@ export function OrderItemsModal({
                     <SheetHeader className="mb-4">
                         <div className="space-y-1">
                             <SheetTitle className="text-xl font-bold">
-                                {editMode ? `Update Order [${data?.id ? `#${formatOrderDisplayId(data.id)}` : "..."}]` : `Order Summary [${data?.id ? `#${formatOrderDisplayId(data.id)}` : "..."}]`}
+                                {editMode ? `Update Restaurant Order [${data?.id ? `#${formatOrderDisplayId(data.id)}` : "..."}]` : `Restaurant Order [${data?.id ? `#${formatOrderDisplayId(data.id)}` : "..."}]`}
                             </SheetTitle>
                             <p className="text-xs text-muted-foreground font-medium tracking-wider">
-                                {editMode 
-                                    ? "Update order status and payment details" 
-                                    : "View complete order information and items"}
+                                {editMode
+                                    ? "Update order status and payment details"
+                                    : "Complete order details with list of items"}
                             </p>
                         </div>
                     </SheetHeader>
@@ -156,8 +158,35 @@ export function OrderItemsModal({
                 )}
 
                 {data && (
-                    <div className="space-y-3">
+                    <div className="space-y-6">
+                        {/* Sheet Tabs */}
+                        <div className="border-b border-border flex">
+                            <button
+                                onClick={() => setSheetTab("summary")}
+                                className={cn(
+                                    "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
+                                    sheetTab === "summary"
+                                        ? "border-primary text-primary"
+                                        : "border-transparent text-muted-foreground hover:text-foreground"
+                                )}
+                            >
+                                Summary
+                            </button>
+                            <button
+                                onClick={() => setSheetTab("history")}
+                                className={cn(
+                                    "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                    sheetTab === "history"
+                                        ? "border-primary text-primary"
+                                        : "border-transparent text-muted-foreground hover:text-foreground"
+                                )}
+                            >
+                                History
+                            </button>
+                        </div>
 
+                        {sheetTab === "summary" && (
+                            <div className="space-y-5">
                         {/* ================= INFORMATION GRID ================= */}
                         {!editMode ? (
                             <div className="space-y-4">
@@ -304,6 +333,14 @@ export function OrderItemsModal({
                                 />
                             </div>
                         </PropertyViewSection>
+                            </div>
+                        )}
+
+                        {sheetTab === "history" && (
+                            <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
+                                <p className="text-sm text-muted-foreground text-center">No history logs available yet.</p>
+                            </div>
+                        )}
 
                         <div className="flex justify-end gap-3 pt-4 border-t border-border mt-3">
                             <Button

@@ -499,7 +499,7 @@ export default function PackageManagement() {
                                         {mode === "add" ? "Create New Plan" : mode === "edit" ? `Update Plan [${selectedPackage?.id ? `#${formatModuleDisplayId("package", selectedPackage.id)}` : "..."}]` : `Plan Summary [${selectedPackage?.id ? `#${formatModuleDisplayId("package", selectedPackage.id)}` : "..."}]`}
                                     </SheetTitle>
                                     <p className="text-xs text-muted-foreground font-medium tracking-wide">
-                                        {mode === "add" ? "Setup New Room Plan Details" : mode === "edit" ? "Modify Existing Plan Information" : "Summary of Plan Details and Pricing"}
+                                        {mode === "add" ? "Setup new room plan" : mode === "edit" ? "Modify existing plan information" : "Plan details and pricing"}
                                     </p>
                                 </div>
                             </SheetHeader>

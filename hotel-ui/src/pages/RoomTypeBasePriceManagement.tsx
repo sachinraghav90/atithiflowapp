@@ -24,6 +24,7 @@ import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, Gri
 import { useGridPagination } from "@/hooks/useGridPagination";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
+import { cn } from "@/lib/utils";
 import {
     Sheet,
     SheetContent,
@@ -63,7 +64,14 @@ export default function RoomTypeBasePriceManagement() {
     const isOwner = useAppSelector(selectIsOwner)
  
     const [sheetOpen, setSheetOpen] = useState(false);
+    const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
     const [mode, setMode] = useState<"view" | "edit">("view");
+
+    useEffect(() => {
+        if (sheetOpen) {
+            setSheetTab("summary");
+        }
+    }, [sheetOpen]);
     const [selectedRow, setSelectedRow] = useState<RateRow | null>(null);
     const [formPrice, setFormPrice] = useState("");
     const [formCategory, setFormCategory] = useState("");
@@ -529,15 +537,43 @@ export default function RoomTypeBasePriceManagement() {
                                 <SheetTitle>
                                     {mode === "view" ? `Room Category [${selectedRow?.id ? formatModuleDisplayId("room", selectedRow.id) : "..."}]` : "Edit Configuration"}
                                 </SheetTitle>
-                                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
-                                    {mode === "view" ? "Summary of room configuration and pricing" : "Modify base price and room details"}
+                                <p className="text-xs text-muted-foreground font-medium tracking-wider">
+                                    {mode === "view" ? "Room category details and pricing" : "Modify base price and room details"}
                                 </p>
                             </div>
                         </SheetHeader>
 
 
                         {mode === "view" ? (
-                            <div className="space-y-4 mt-6">
+                            <div className="space-y-6 mt-6">
+                                {/* Sheet Tabs */}
+                                <div className="border-b border-border flex">
+                                    <button
+                                        onClick={() => setSheetTab("summary")}
+                                        className={cn(
+                                            "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
+                                            sheetTab === "summary"
+                                                ? "border-primary text-primary"
+                                                : "border-transparent text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        Summary
+                                    </button>
+                                    <button
+                                        onClick={() => setSheetTab("history")}
+                                        className={cn(
+                                            "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                            sheetTab === "history"
+                                                ? "border-primary text-primary"
+                                                : "border-transparent text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        History
+                                    </button>
+                                </div>
+
+                                {sheetTab === "summary" && (
+                                    <div className="space-y-4">
                                 <PropertyViewSection title="Category Information" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                     <ViewField label="Room Category Name" value={selectedRow?.room_category_name} />
                                     <ViewField label="Bed Type" value={selectedRow?.bed_type_name} />
@@ -547,6 +583,14 @@ export default function RoomTypeBasePriceManagement() {
                                 <PropertyViewSection title="Pricing Details" className="grid grid-cols-1 gap-x-8 gap-y-4">
                                     <ViewField label="Base Price" value={`₹ ${selectedRow?.base_price || "0.00"}`} />
                                 </PropertyViewSection>
+                                    </div>
+                                )}
+
+                                {sheetTab === "history" && (
+                                    <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
+                                        <p className="text-sm text-muted-foreground text-center">No history logs available yet.</p>
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             <div className="space-y-5 mt-6">

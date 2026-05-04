@@ -749,10 +749,10 @@ export default function BookingsManagement() {
                         <SheetHeader>
                             <div className="space-y-1">
                                 <SheetTitle>
-                                    Booking[#{formatModuleDisplayId("booking", bookingId)}]
+                                    Booking [#{formatModuleDisplayId("booking", bookingId)}]
                                 </SheetTitle>
                                 <p className="text-xs text-muted-foreground font-medium">
-                                    {editMode ? "Manage Booking" : "Booking Summary"}
+                                    {editMode ? "Manage Booking" : "Booking related details"}
                                 </p>
                             </div>
                         </SheetHeader>
@@ -795,7 +795,7 @@ export default function BookingsManagement() {
                         </div>
 
                         {/* Scrollable Content */}
-                        <div className="h-[calc(100vh-8rem)] overflow-y-auto px-6 py-6">
+                        <div className="px-6 py-6">
                             <TabsContent value="summary">
                                 <BookingSummaryTab booking={selectedBooking?.booking} />
                             </TabsContent>
