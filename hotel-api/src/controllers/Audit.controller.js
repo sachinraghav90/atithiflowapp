@@ -5,8 +5,12 @@ class AuditController {
     async getByEventAndTable(req, res) {
         try {
             const { eventId, tableName, page } = req.query;
-            if (!eventId || !tableName) {
+            if (!eventId || eventId === "undefined" || !tableName) {
                 return res.status(400).json({ message: "eventId & tableName are required" });
+            }
+
+            if (isNaN(Number(eventId))) {
+                return res.status(400).json({ message: "eventId must be a valid number" });
             }
 
             const logs = await AuditService.getByEventAndTable({ eventId, tableName, page });

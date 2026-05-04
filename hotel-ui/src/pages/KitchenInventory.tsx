@@ -14,6 +14,7 @@ import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.select
 import { 
     useGetKitchenInventoryQuery, 
     useGetLogsQuery as useGetAuditLogsQuery, 
+    useGetLogsByTableQuery,
     useAdjustStockMutation as useUpdateKitchenInventoryMutation, 
     useGetInventoryQuery as useGetInventoryMasterQuery, 
     useCreateInventoryMutation as useCreateKitchenInventoryMutation 
@@ -156,7 +157,7 @@ export default function KitchenInventory() {
         isLoading: logsLoading,
         isFetching: logsFetching,
         refetch: refetchLogs
-    } = useGetAuditLogsQuery({
+    } = useGetLogsByTableQuery({
         tableName: "kitchen_inventory",
         propertyId: selectedPropertyId,
         page: auditPage,

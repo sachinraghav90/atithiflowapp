@@ -1376,8 +1376,14 @@ export const hmsApi = createApi({
 
     getLogs: builder.query({
       query: ({ tableName, eventId, page, limit = 20 }) => {
+        const params = new URLSearchParams({
+          tableName,
+          page: String(page),
+          limit: String(limit)
+        });
+        if (eventId) params.append("eventId", String(eventId));
         return {
-          url: `/audits?eventId=${eventId}&tableName=${tableName}&page=${page}&limit=${limit}`,
+          url: `/audits?${params.toString()}`,
           method: "GET",
         }
       },
