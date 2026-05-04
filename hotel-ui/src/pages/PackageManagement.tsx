@@ -532,7 +532,7 @@ export default function PackageManagement() {
                                     </div>
 
                                     {sheetTab === "summary" && (
-                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                        <div className="space-y-4">
                                             <PropertyViewSection title="Plan Configuration" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                                 <ViewField label="Plan Name" value={selectedPackage?.package_name} />
                                                 <ViewField label="Base Price" value={selectedPackage?.base_price ? `₹ ${selectedPackage.base_price}` : "—"} />

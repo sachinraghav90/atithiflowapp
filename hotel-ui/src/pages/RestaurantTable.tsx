@@ -37,7 +37,8 @@ import { cn } from "@/lib/utils";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { GridBadge } from "@/components/ui/grid-badge";
-
+import PropertyViewSection from "@/components/PropertyViewSection";
+import ViewField from "@/components/ViewField";
 const TABLE_STATUSES = ["Available", "Occupied", "Reserved", "Out of Service"];
 
 type RestaurantTable = {
@@ -398,45 +399,22 @@ export function RestaurantTables() {
                     </SheetHeader>
 
                     {mode === "view" && selectedTable && (
-                        <div className="mt-8 space-y-6">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <Label>Table ID</Label>
-                                    <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">{formatModuleDisplayId("table", selectedTable.id)}</p>
-                                </div>
-                                <div className="space-y-1">
-                                    <Label>Status</Label>
-                                    <div className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">
-                                        <span className={cn(
-                                            "px-3 py-1 rounded-[3px] text-xs font-semibold",
-                                            getStatusColor(selectedTable.status.toLowerCase().replace(/ /g, "_"), "laundry")
-                                        )}>
-                                            {selectedTable.status}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
+                        <div className="mt-6 space-y-4">
+                            <PropertyViewSection title="Table Details" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                <ViewField label="Table ID" value={formatModuleDisplayId("table", selectedTable.id)} />
+                                <ViewField label="Table Number" value={selectedTable.table_no} />
+                                <ViewField label="Capacity" value={`${selectedTable.capacity} Persons`} />
+                                <ViewField label="Location" value={selectedTable.location || "No location specified"} />
+                            </PropertyViewSection>
 
-                            <div className="space-y-1">
-                                <Label>Table Number</Label>
-                                <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">{selectedTable.table_no}</p>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <Label>Capacity</Label>
-                                    <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">{selectedTable.capacity} Persons</p>
-                                </div>
-                                <div className="space-y-1">
-                                    <Label>Min Order Amount</Label>
-                                    <p className="font-medium text-base">₹{selectedTable.min_order_amount || 0}</p>
-                                </div>
-                            </div>
-
-                            <div className="space-y-1">
-                                <Label>Location</Label>
-                                <p className="h-10 w-full rounded-[3px] bg-background px-3 flex items-center text-sm text-foreground cursor-default select-text">{selectedTable.location || "No location specified"}</p>
-                            </div>
+                            <PropertyViewSection title="Status & Pricing" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                <ViewField label="Status" value={
+                                    <GridBadge status={selectedTable.status} statusType="restaurantTable">
+                                        {selectedTable.status}
+                                    </GridBadge>
+                                } />
+                                <ViewField label="Min Order Amount" value={`₹${selectedTable.min_order_amount || 0}`} />
+                            </PropertyViewSection>
 
                             <div className="flex justify-end gap-3 pt-4 border-t border-border">
                                 <Button

@@ -24,6 +24,8 @@ import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { GridBadge } from "@/components/ui/grid-badge";
 import { formatReadableLabel } from "@/utils/formatString";
 import { formatAppDate } from "@/utils/dateFormat";
+import PropertyViewSection from "@/components/PropertyViewSection";
+import ViewField from "@/components/ViewField";
 
 type PropertyOption = {
     id: number;
@@ -296,7 +298,7 @@ export default function PaymentsManagement() {
                         <SheetHeader>
                             <div className="space-y-1">
                                 <SheetTitle>
-                                    Payment[#{formatModuleDisplayId("payment", selectedPayment.id)}]
+                                    Payment [{selectedPayment?.id ? `#${formatModuleDisplayId("payment", selectedPayment.id)}` : "..."}]
                                 </SheetTitle>
                                 <p className="text-xs text-muted-foreground font-medium">
                                     Payment Summary
@@ -305,19 +307,23 @@ export default function PaymentsManagement() {
                         </SheetHeader>
 
                         {selectedPayment && (
-                            <div className="space-y-4 mt-4">
-                                <div className="space-y-4">
-                                    <Detail label="Payment ID" value={formatModuleDisplayId("payment", selectedPayment.id)} />
-                                    <Detail label="Booking ID" value={formatModuleDisplayId("booking", selectedPayment.booking_id)} />
-                                    <Detail label="Property Name" value={selectedPaymentData?.property_name} />
-                                    <Detail label="Payment Date" value={formatDate(selectedPayment.payment_date)} />
-                                    <Detail label="Paid Amount" value={`₹ ${selectedPayment.paid_amount}`} />
-                                    <Detail label="Method" value={selectedPayment.payment_method} />
-                                    <Detail label="Transaction Type" value={selectedPaymentData?.payment_type} />
-                                    <Detail label="Status" value={selectedPayment.payment_status} />
-                                </div>
+                            <div className="mt-6 space-y-4">
+                                <PropertyViewSection title="Payment Details" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                    <ViewField label="Payment ID" value={formatModuleDisplayId("payment", selectedPayment.id)} />
+                                    <ViewField label="Booking ID" value={formatModuleDisplayId("booking", selectedPayment.booking_id)} />
+                                    <ViewField label="Property Name" value={selectedPaymentData?.property_name} />
+                                    <ViewField label="Payment Date" value={formatDate(selectedPayment.payment_date)} />
+                                    <ViewField label="Paid Amount" value={`₹ ${selectedPayment.paid_amount}`} />
+                                    <ViewField label="Method" value={formatReadableLabel(selectedPayment.payment_method)} />
+                                    <ViewField label="Transaction Type" value={selectedPaymentData?.payment_type} />
+                                    <ViewField label="Status" value={
+                                        <GridBadge status={selectedPayment.payment_status} statusType="payment">
+                                            {selectedPayment.payment_status}
+                                        </GridBadge>
+                                    } />
+                                </PropertyViewSection>
 
-                                <div className="flex justify-end gap-3 pt-3 border-t border-border">
+                                <div className="flex justify-end gap-3 pt-4 border-t border-border">
                                     <Button
                                         variant="heroOutline"
                                         onClick={() => setDetailsOpen(false)}
@@ -335,12 +341,3 @@ export default function PaymentsManagement() {
     );
 }
 
-/* ---------------- Small UI ---------------- */
-function Detail({ label, value }: { label: string; value: string | number | null | undefined }) {
-    return (
-        <div className="space-y-1">
-            <span className="text-xs font-medium text-muted-foreground">{label}</span>
-            <span className="text-sm font-semibold">{value ?? "—"}</span>
-        </div>
-    );
-}

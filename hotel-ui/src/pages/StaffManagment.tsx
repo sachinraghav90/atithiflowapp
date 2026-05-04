@@ -758,8 +758,8 @@ export default function StaffManagement() {
                                 </div>
 
                                 {sheetTab === "summary" && (
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                <PropertyViewSection title="Personal Details" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                    <div className="space-y-4">
+                                        <PropertyViewSection title="Personal Details" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                         <ViewField label="First Name" value={staff.first_name} />
                                         <ViewField label="Middle Name" value={staff.middle_name} />
                                         <ViewField label="Last Name" value={staff.last_name} />

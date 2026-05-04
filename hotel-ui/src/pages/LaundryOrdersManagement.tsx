@@ -49,6 +49,8 @@ import { ValidationTooltip } from "@/components/ui/validation-tooltip";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { formatReadableLabel } from "@/utils/formatString";
 import { formatAppDateTime } from "@/utils/dateFormat";
+import PropertyViewSection from "@/components/PropertyViewSection";
+import ViewField from "@/components/ViewField";
 
 /* ---------------- Types ---------------- */
 export type LaundryStatus =
@@ -1567,60 +1569,14 @@ export default function LaundryOrdersManagement() {
                                         )}
 
                                         {!viewItemsModal.editMode ? (
-                                            <div className="grid grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1fr_1fr] gap-px bg-primary/10 border border-primary/10 rounded-lg overflow-hidden bg-accent">
-                                                <div className="p-2.5 flex items-start gap-2 bg-accent">
-                                                    <div className="mt-0.5 h-6 w-6 rounded-md bg-background flex items-center justify-center text-slate-500 border border-primary/5">
-                                                        <Truck className="w-3.5 h-3.5" />
-                                                    </div>
-                                                    <div className="min-w-0 space-y-0.5">
-                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Vendor</Label>
-                                                        <p className="text-sm font-semibold text-foreground leading-snug">{displayOrder.vendorName}</p>
-                                                    </div>
-                                                </div>
-
-                                                <div className="p-2.5 flex items-start gap-2 bg-accent">
-                                                    <div className="mt-0.5 h-6 w-6 rounded-md bg-background flex items-center justify-center text-slate-500 border border-primary/5">
-                                                        <Truck className="w-3.5 h-3.5" />
-                                                    </div>
-                                                    <div className="min-w-0 space-y-0.5">
-                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Vendor Status</Label>
-                                                        <GridBadge status={displayOrder.vendorStatus} statusType="vendor" className="h-6 px-2 text-[10px]">
-                                                            {displayOrder.vendorStatusLabel}
-                                                        </GridBadge>
-                                                    </div>
-                                                </div>
-
-                                                <div className="p-2.5 flex items-start gap-2 bg-accent">
-                                                    <div className="mt-0.5 h-6 w-6 rounded-md bg-background flex items-center justify-center text-slate-500 border border-primary/5">
-                                                        <ShieldCheck className="w-3.5 h-3.5" />
-                                                    </div>
-                                                    <div className="min-w-0 space-y-0.5">
-                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Laundry Status</Label>
-                                                        <GridBadge status={order.laundry_status} statusType="laundry" className="h-6 px-2 text-[10px]">
-                                                            {displayOrder.laundryStatusLabel}
-                                                        </GridBadge>
-                                                    </div>
-                                                </div>
-
-                                                <div className="p-2.5 flex items-start gap-2 bg-accent">
-                                                    <div className="mt-0.5 h-6 w-6 rounded-md bg-background flex items-center justify-center text-slate-500 border border-primary/5">
-                                                        <CalendarIcon className="w-3.5 h-3.5" />
-                                                    </div>
-                                                    <div className="min-w-0 space-y-0.5">
-                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Pickup Date</Label>
-                                                        <p className="text-sm font-semibold text-foreground leading-snug">{formatDateTime(order.pickup_date)}</p>
-                                                    </div>
-                                                </div>
-
-                                                <div className="p-2.5 flex items-start gap-2 bg-accent col-span-2 lg:col-span-1">
-                                                    <div className="mt-0.5 h-6 w-6 rounded-md bg-background flex items-center justify-center text-slate-500 border border-primary/5">
-                                                        <CalendarIcon className="w-3.5 h-3.5" />
-                                                    </div>
-                                                    <div className="min-w-0 space-y-0.5">
-                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Delivery Date</Label>
-                                                        <p className="text-sm font-semibold text-foreground leading-snug">{formatDateTime(order.delivery_date)}</p>
-                                                    </div>
-                                                </div>
+                                            <div className="space-y-4">
+                                                <PropertyViewSection title="Order Overview" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-4">
+                                                    <ViewField label="Vendor" value={displayOrder.vendorName} />
+                                                    <ViewField label="Vendor Status" value={<GridBadge status={displayOrder.vendorStatus} statusType="vendor" className="h-6 px-2 text-[10px]">{displayOrder.vendorStatusLabel}</GridBadge>} />
+                                                    <ViewField label="Laundry Status" value={<GridBadge status={order.laundry_status} statusType="laundry" className="h-6 px-2 text-[10px]">{displayOrder.laundryStatusLabel}</GridBadge>} />
+                                                    <ViewField label="Pickup Date" value={formatDateTime(order.pickup_date)} />
+                                                    <ViewField label="Delivery Date" value={formatDateTime(order.delivery_date)} />
+                                                </PropertyViewSection>
                                             </div>
                                         ) : (
                                             <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 text-sm">

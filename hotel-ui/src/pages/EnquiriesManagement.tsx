@@ -606,7 +606,7 @@ export default function EnquiriesManagement() {
                         {selected && !editMode && (
                             <div className="space-y-4">
                                 {sheetTab === "summary" && (
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                    <div className="space-y-4">
                                         <PropertyViewSection title="Guest Profile" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                             <ViewField label="Guest Name" value={selected.guest_name} />
                                             <ViewField label="Mobile" value={selected.mobile} />

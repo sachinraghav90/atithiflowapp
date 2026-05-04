@@ -59,6 +59,8 @@ import { GridBadge } from "@/components/ui/grid-badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { formatAppDate, parseAppDate, toISODateOnly } from "@/utils/dateFormat";
+import PropertyViewSection from "@/components/PropertyViewSection";
+import ViewField from "@/components/ViewField";
 
 const REQUIRED_SCOPE_BY_STATUS: Record<string, "upcoming" | "past" | "all"> = {
     CONFIRMED: "upcoming",
@@ -341,60 +343,31 @@ export default function BookingsManagement() {
         const remaining = totalAmt - totalPaid;
 
         return (
-            <>
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                    {/* Left Stats */}
-                    <div className="space-y-3">
-                        <SummaryCard label="Final Amount" value={`₹ ${totalAmt}`} />
-                        <SummaryCard label="Paid Amount" value={`₹ ${totalPaid}`} />
-                        <SummaryCard
-                            label="Remaining Amount"
-                            value={`₹ ${remaining}`}
-                        // highlight
-                        />
-                    </div>
+            <div className="space-y-4">
+                <PropertyViewSection title="Financial Overview" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                    <ViewField label="Total Amount" value={`₹ ${totalAmt}`} />
+                    <ViewField label="Paid Amount" value={`₹ ${totalPaid}`} />
+                    <ViewField label="Remaining Balance" value={`₹ ${remaining}`} />
+                    <ViewField label="Discount" value={`₹ ${booking?.discount_amount || 0}`} />
+                </PropertyViewSection>
 
-                    {/* Center */}
-                    <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <InfoCard label="Estimated Arrival" value={formatToDDMMYY(booking?.estimated_arrival)} />
-                        <InfoCard label="Estimated Departure" value={formatToDDMMYY(booking?.estimated_departure)} />
-                        <InfoCard label="Nights" value={booking?.booking_nights || 0} />
-                        <InfoCard label="Booking Type" value={booking?.booking_type || "-"} />
-                        <InfoCard label="Booking Status" value={booking?.booking_status || "-"} />
-                        <InfoCard label="Discount" value={`₹ ${booking?.discount_amount || 0}`} />
-                    </div>
+                <PropertyViewSection title="Booking Information" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                    <ViewField label="Arrival Date" value={formatToDDMMYY(booking?.estimated_arrival)} />
+                    <ViewField label="Departure Date" value={formatToDDMMYY(booking?.estimated_departure)} />
+                    <ViewField label="Total Nights" value={booking?.booking_nights || 0} />
+                    <ViewField label="Booking Type" value={booking?.booking_type || "—"} />
+                    <ViewField label="Status" value={booking?.booking_status ? booking.booking_status.replace("_", " ") : "—"} />
+                    <ViewField label="Booking Date" value={formatToDDMMYY(booking?.booking_date)} />
+                </PropertyViewSection>
 
-                    {/* Right Stats */}
-                    <div className="space-y-3">
-                        <SummaryCard label="Total Guests" value={(booking?.adult || 0) + (booking?.child || 0)} />
-                        <SummaryCard label="Rooms Booked" value={booking?.rooms?.length || 0} />
-                        <SummaryCard label="Booking Date" value={formatToDDMMYY(booking?.booking_date)} />
-                    </div>
-                </div>
-                <div className="mt-6">
-                    <InfoCard label="Comments" value={(booking?.comments || "No comments")} />
-                </div>
-            </>
-        );
-    }
+                <PropertyViewSection title="Guest Details" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                    <ViewField label="Total Guests" value={`${(booking?.adult || 0) + (booking?.child || 0)} Guests (${booking?.adult || 0}A, ${booking?.child || 0}C)`} />
+                    <ViewField label="Rooms Booked" value={booking?.rooms?.length || 0} />
+                </PropertyViewSection>
 
-    function SummaryCard({ label, value, highlight }: any) {
-        return (
-            <div
-                className={`rounded-[3px] p-3 text-white ${highlight ? "bg-destructive" : "bg-primary"
-                    }`}
-            >
-                <p className="text-xs opacity-90">{label}</p>
-                <p className="text-base font-semibold mt-1">{value}</p>
-            </div>
-        );
-    }
-
-    function InfoCard({ label, value }: any) {
-        return (
-            <div className="rounded-[3px] border border-border bg-card p-3">
-                <p className="text-xs text-muted-foreground font-medium">{label}</p>
-                <p className="text-sm font-medium mt-1.5">{value}</p>
+                <PropertyViewSection title="Additional Notes" className="grid grid-cols-1 gap-y-4">
+                    <ViewField label="Comments" value={booking?.comments || "No comments"} />
+                </PropertyViewSection>
             </div>
         );
     }

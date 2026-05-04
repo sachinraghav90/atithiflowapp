@@ -793,7 +793,7 @@ export default function PropertyManagement() {
                     <div className="flex flex-col">
                         <h1 className="text-2xl font-bold leading-tight">Properties</h1>
                         <p className="text-sm text-muted-foreground mt-1">
-                            Manage your hotels and property-level configuration.
+                            Manage your hotels and properties.
                         </p>
                     </div>
 
@@ -1013,7 +1013,7 @@ export default function PropertyManagement() {
                                 </div>
 
                                 {sheetTab === "summary" && (
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                    <div className="space-y-4">
                                         <PropertyViewSection title="Property Identity" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                             <ViewField label="Property Name" value={newProperty.brand_name} />
                                             <ViewField label="Property Code" value={newProperty.serial_number} />

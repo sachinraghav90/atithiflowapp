@@ -561,7 +561,7 @@ export default function VendorsManagement() {
                                 </div>
 
                                 {sheetTab === "summary" && (
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                    <div className="space-y-4">
                                         <PropertyViewSection title="Basic Information" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                             <ViewField label="Vendor Name" value={form.name} />
                                             <ViewField label="Primary Category" value={formatReadableLabel(form.vendor_type)} />

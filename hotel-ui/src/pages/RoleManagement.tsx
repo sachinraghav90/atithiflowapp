@@ -28,6 +28,7 @@ import { normalizeTextInput } from "@/utils/normalizeTextInput";
 import { usePermission } from "@/rbac/usePermission";
 import { useLocation } from "react-router-dom";
 import { apiToast } from "@/utils/apiToastPromise";
+import { cn } from "@/lib/utils";
 
 const PERMISSION_ACTIONS = [
     { key: "read", label: "read", field: "can_read" },
@@ -580,7 +581,7 @@ export default function RoleManagement() {
                                                                 disabled={!permission?.can_create || (module.link_name === "Roles" && selectedRoleName === "SUPER_ADMIN") || (module.link_name === "Roles" && (action === "delete" || action === "write"))}
                                                                 type="radio"
                                                                 name={`perm-${module.id}`}
-                                                                className="w-3.5 h-3.5 cursor-pointer accent-primary"
+                                                                className="w-3.5 h-3.5 cursor-pointer appearance-none rounded-full border border-primary/30 checked:border-primary checked:border-[4px] bg-background transition-all"
                                                                 checked={isRadioSelected}
                                                                 onChange={() => permission?.can_create &&
                                                                     onPermissionRadioChange(module.id, action as any)
@@ -593,7 +594,6 @@ export default function RoleManagement() {
                                                         )}>
                                                             {getPermissionLabel(action)}
                                                         </span>
-
                                                     </label>
                                                 );
                                             })}

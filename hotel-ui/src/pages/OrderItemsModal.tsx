@@ -117,13 +117,13 @@ export function OrderItemsModal({
 
     return (
         <Sheet open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
-            <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
+            <SheetContent side="right" onOpenAutoFocus={(e) => e.preventDefault()} className="w-full lg:max-w-4xl sm:max-w-3xl overflow-y-auto bg-background">
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="space-y-1"
                 >
-                    <SheetHeader className="mb-6">
+                    <SheetHeader className="mb-4">
                         <div className="space-y-1">
                             <SheetTitle className="text-xl font-bold">
                                 {editMode ? `Update Order [${data?.id ? `#${formatOrderDisplayId(data.id)}` : "..."}]` : `Order Summary [${data?.id ? `#${formatOrderDisplayId(data.id)}` : "..."}]`}
@@ -156,12 +156,12 @@ export function OrderItemsModal({
                 )}
 
                 {data && (
-                    <div className="space-y-4">
+                    <div className="space-y-3">
 
                         {/* ================= INFORMATION GRID ================= */}
                         {!editMode ? (
-                            <div className="space-y-6">
-                                <PropertyViewSection title="Order Details" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                            <div className="space-y-4">
+                                <PropertyViewSection title="Order Details" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-2.5">
                                     <ViewField label="Guest Name" value={data.guest_name || "Guest Order"} />
                                     <ViewField label="Mobile Number" value={data.guest_mobile} />
                                     <ViewField label="Order Type" value={data.order_type || "Restaurant"} />
@@ -173,16 +173,16 @@ export function OrderItemsModal({
                                     <ViewField label="Order Total" value={`₹${Number(data.total_amount).toFixed(2)}`} />
                                     <div>
                                         <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Order Status</Label>
-                                        <div className="mt-1">
-                                            <GridBadge status={data.order_status} statusType="order" className="h-7 px-3 text-[10px] font-bold">
+                                        <div className="mt-0.5">
+                                            <GridBadge status={data.order_status} statusType="order" className="h-6 px-3 text-[10px] font-bold">
                                                 {data.order_status}
                                             </GridBadge>
                                         </div>
                                     </div>
                                     <div>
                                         <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Payment Status</Label>
-                                        <div className="mt-1">
-                                            <GridBadge status={data.payment_status} statusType="payment" className="h-7 px-3 text-[10px] font-bold">
+                                        <div className="mt-0.5">
+                                            <GridBadge status={data.payment_status} statusType="payment" className="h-6 px-3 text-[10px] font-bold">
                                                 {data.payment_status}
                                             </GridBadge>
                                         </div>
@@ -191,7 +191,7 @@ export function OrderItemsModal({
                             </div>
                         ) : (
                             <div className="space-y-5">
-                                <PropertyViewSection title="Order Details" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                                <PropertyViewSection title="Order Details" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-2.5">
                                     <ViewField label="Guest Name" value={data.guest_name || "Guest Order"} />
                                     <ViewField label="Mobile Number" value={data.guest_mobile} />
                                     <ViewField label="Order Type" value={data.order_type || "Restaurant"} />
@@ -201,8 +201,8 @@ export function OrderItemsModal({
                                     <ViewField label="Expected Delivery" value={data.expected_delivery_time ? formatAppDateTime(data.expected_delivery_time) : "—"} />
                                 </PropertyViewSection>
 
-                                <div className="rounded-[5px] border border-primary/50 bg-background p-5 shadow-sm space-y-5">
-                                    <h3 className="text-[11px] font-semibold text-primary/90 uppercase tracking-[0.16em] border-b border-primary/50 pb-2">
+                                <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-4">
+                                    <h3 className="text-[11px] font-semibold text-primary/90 uppercase tracking-[0.16em] border-b border-primary/50 pb-2 mb-1">
                                         Update Status
                                     </h3>
 
@@ -240,16 +240,18 @@ export function OrderItemsModal({
                         <PropertyViewSection title="Items Ordered" className="mt-0">
                             <div className="border border-border rounded-lg overflow-hidden bg-background shadow-sm">
                                 <AppDataGrid
+                                    density="compact"
                                     scrollable={false}
+                                    tableClassName="w-full"
                                     columns={[
                                         {
                                             label: "Item",
-                                            headClassName: "w-[360px]",
-                                            cellClassName: "font-medium min-w-[360px]",
+                                            headClassName: "w-[280px]",
+                                            cellClassName: "font-medium min-w-[280px]",
                                             render: (item: any) => (
-                                                <div className="flex items-center gap-4">
+                                                <div className="flex items-center gap-3">
                                                     <div 
-                                                        className="h-16 w-16 rounded-lg overflow-hidden border border-primary/10 bg-background shrink-0 shadow-sm cursor-zoom-in group relative"
+                                                        className="h-14 w-14 rounded-lg overflow-hidden border border-primary/10 bg-background shrink-0 shadow-sm cursor-zoom-in group relative"
                                                         onClick={() => setPreviewImage({ 
                                                             url: `${import.meta.env.VITE_API_URL}/menu/${item.menu_item_id}/image`,
                                                             name: item.item_name 
@@ -279,31 +281,31 @@ export function OrderItemsModal({
                                         },
                                         {
                                             label: "Qty",
-                                            headClassName: "text-center",
-                                            cellClassName: "text-center min-w-[50px] font-semibold text-primary",
+                                            headClassName: "text-center w-[60px]",
+                                            cellClassName: "text-center min-w-[60px] font-semibold text-primary",
                                             render: (item: any) => item.quantity,
                                         },
                                         {
                                             label: "Price",
-                                            headClassName: "text-right",
-                                            cellClassName: "text-right min-w-[80px] text-muted-foreground",
+                                            headClassName: "text-right w-[100px]",
+                                            cellClassName: "text-right min-w-[100px] text-muted-foreground",
                                             render: (item: any) => `₹${Number(item.unit_price).toFixed(2)}`,
                                         },
                                         {
                                             label: "Total",
-                                            headClassName: "text-right",
-                                            cellClassName: "text-right font-bold min-w-[80px] text-foreground",
+                                            headClassName: "text-right w-[100px]",
+                                            cellClassName: "text-right font-bold min-w-[100px] text-foreground",
                                             render: (item: any) => `₹${Number(item.item_total).toFixed(2)}`,
                                         },
                                     ] as ColumnDef[]}
                                     data={data.items ?? []}
                                     rowKey={(item: any, index) => item.id ?? index}
-                                    minWidth="560px"
+                                    minWidth="540px"
                                 />
                             </div>
                         </PropertyViewSection>
 
-                        <div className="flex justify-end gap-3 pt-6 border-t border-border mt-4">
+                        <div className="flex justify-end gap-3 pt-4 border-t border-border mt-3">
                             <Button
                                 variant="heroOutline"
                                 onClick={onClose}

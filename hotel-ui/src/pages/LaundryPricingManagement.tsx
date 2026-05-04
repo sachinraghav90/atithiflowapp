@@ -634,7 +634,7 @@ export default function LaundryPricingManagement() {
                                 </div>
 
                                 {sheetTab === "summary" && (
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                    <div className="space-y-4">
                                         <PropertyViewSection title="Laundry Item Details" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                             <ViewField label="Item Name" value={selectedItem.item_name} />
                                             <ViewField label="Item Rate" value={`₹ ${selectedItem.item_rate}`} />
