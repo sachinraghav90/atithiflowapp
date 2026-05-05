@@ -3,8 +3,8 @@ import BookingService from "../services/Booking.service.js"
 class Booking {
     async getBookings(req, res) {
         try {
-            const { propertyId, fromDate, toDate, page = 1, limit = 10, scope, status } = req.query
-            const bookings = await BookingService.getBookings({ fromDate, propertyId, toDate, limit, page, status, scope });
+            const { propertyId, fromDate, toDate, page = 1, limit = 10, scope, status, search } = req.query
+            const bookings = await BookingService.getBookings({ fromDate, propertyId, toDate, limit, page, status, scope, search });
             return res.json({ message: "Success", ...bookings })
         } catch (error) {
             console.log("🚀 ~ Booking ~ getBookings ~ error:", error)
@@ -122,12 +122,15 @@ class Booking {
     }
 
     async exportBookings(req, res) {
-        const { propertyId, fromDate, toDate } = req.query
+        const { propertyId, fromDate, toDate, scope, status, search } = req.query
 
         const bookings = await BookingService.exportBookings({
             propertyId,
             fromDate,
             toDate,
+            scope,
+            status,
+            search
         })
 
         res.json(bookings)

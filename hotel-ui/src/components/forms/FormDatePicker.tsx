@@ -14,13 +14,14 @@ export default function FormDatePicker({
     required,
     selected,
     onChange = () => { },
+    minDate,
 }: any) {
     const error = errors?.[field]
     const hoverError = error?.type === "required" ? error.message : ""
 
     return (
-        <div className="space-y-2">
-            <Label title={hoverError} className="text-sm font-semibold">
+        <div className="space-y-1">
+            <Label title={hoverError} className="text-sm text-foreground">
                 {label} {required && "*"}
             </Label>
             <ResponsiveDatePicker
@@ -35,6 +36,7 @@ export default function FormDatePicker({
                 }}
                 placeholder={APP_DATE_INPUT_PLACEHOLDER}
                 label={label}
+                minDate={minDate}
                 className={cn(error && "border-red-500 focus:ring-red-500")}
             />
             {error?.type === "invalid" && (

@@ -8,7 +8,7 @@ class VendorService {
         this.#DB = getDb()
     }
 
-    async getByPropertyId(propertyId, page = 1, limit = 10, search = "") {
+    async getByPropertyId(propertyId, page = 1, limit = 10, search = "", type = "", status = "") {
         const safePage = Math.max(Number(page) || 1, 1);
         const safeLimit = Math.min(Math.max(Number(limit) || 10, 1), 100);
         const offset = (safePage - 1) * safeLimit;
@@ -17,18 +17,58 @@ class VendorService {
         let params = [propertyId];
         let paramIndex = 2; // next placeholder index
 
-        if (search?.trim()) {
-
-            searchCondition = `
-            AND (
-                name ILIKE $${paramIndex}
-                OR pan_no ILIKE $${paramIndex}
-                OR gst_no ILIKE $${paramIndex}
-            )
-        `;
-
-            params.push(`%${search.trim()}%`);
+        if (type) {
+            searchCondition += ` AND vendor_type = $${paramIndex}`;
+            params.push(type);
             paramIndex++;
+        }
+
+        if (status) {
+            const normalizedStatus = String(status).trim().toLowerCase();
+
+            if (normalizedStatus === "active" || normalizedStatus === "true") {
+                searchCondition += ` AND is_active = $${paramIndex}`;
+                params.push(true);
+                paramIndex++;
+            }
+
+            if (normalizedStatus === "inactive" || normalizedStatus === "false") {
+                searchCondition += ` AND is_active = $${paramIndex}`;
+                params.push(false);
+                paramIndex++;
+            }
+        }
+
+        if (search?.trim()) {
+            const normalizedSearch = search.trim();
+            const formattedIdMatch = normalizedSearch.match(/^VE0*(\d+)$/i);
+            const isNumericIdSearch = /^\d+$/.test(normalizedSearch);
+
+            if (formattedIdMatch || isNumericIdSearch) {
+                const rawId = formattedIdMatch ? formattedIdMatch[1] : normalizedSearch;
+                const vendorId = Number(rawId);
+
+                searchCondition += `
+                    AND (
+                        id = $${paramIndex}
+                        OR name ILIKE $${paramIndex + 1}
+                        OR pan_no ILIKE $${paramIndex + 1}
+                        OR gst_no ILIKE $${paramIndex + 1}
+                    )
+                `;
+                params.push(vendorId, `%${normalizedSearch}%`);
+                paramIndex += 2;
+            } else {
+                searchCondition += `
+                    AND (
+                        name ILIKE $${paramIndex}
+                        OR pan_no ILIKE $${paramIndex}
+                        OR gst_no ILIKE $${paramIndex}
+                    )
+                `;
+                params.push(`%${normalizedSearch}%`);
+                paramIndex++;
+            }
         }
 
         // Add pagination params

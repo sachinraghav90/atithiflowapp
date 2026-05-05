@@ -1,9 +1,8 @@
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
 import FormInput from "@/components/forms/FormInput";
+import FormSelect from "@/components/forms/FormSelect";
 import { useEffect } from "react";
-import { NativeSelect } from "@/components/ui/native-select";
 import { APP_DATE_INPUT_PLACEHOLDER, parseAppDate, toISODateOnly } from "@/utils/dateFormat";
 
 type Props = {
@@ -45,14 +44,6 @@ export default function PropertyRole({
         return toISODateOnly(date);
     };
 
-    const clearError = (field: string) => {
-        setErrors((prev: any) => {
-            const next = { ...prev };
-            delete next[field];
-            return next;
-        });
-    };
-
     useEffect(() => {
         if (!isPrivilegeUser && Array.isArray(properties) && properties.length > 0) {
             setValue((prev: any) => ({
@@ -69,76 +60,49 @@ export default function PropertyRole({
                 Property & Role Assignment
             </h3>
 
-            {/* ================= PROPERTY / DEPARTMENT / DESIGNATION ================= */}
-
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4">
 
                 {/* PROPERTY */}
-
-                {isPrivilegeUser && <div className="space-y-2">
-
-                    <Label>Property</Label>
-
-                    <NativeSelect
-                        disabled={viewMode}
-                        title={errors.property_id?.type === "required" ? errors.property_id.message : ""}
-                        className={`w-full h-10 rounded-[3px] border px-3 text-sm ${errors.property_id ? "border-red-500 bg-background" : "border-border bg-background"
-                            }`}
-                        value={value.property_id || ""}
-                        onChange={(e) => {
-
-                            setValue((prev: any) => ({
-                                ...prev,
-                                property_id: e.target.value,
-                            }));
-
-                            clearError("property_id");
-                        }}
+                {isPrivilegeUser && (
+                    <FormSelect
+                        label="Property"
+                        field="property_id"
+                        value={value}
+                        setValue={setValue}
+                        errors={errors}
+                        setErrors={setErrors}
+                        required
+                        viewMode={viewMode}
                     >
-                        <option value="" disabled>
-                            -- Please Select --
-                        </option>
-
+                        <option value="" disabled>-- Please Select --</option>
                         {!myPropertiesLoading &&
                             properties?.map((property) => (
                                 <option key={property.id} value={property.id}>
                                     {property.brand_name}
                                 </option>
                             ))}
-                    </NativeSelect>
-
-                    {errors.property_id?.type === "invalid" && (
-                        <p className="text-xs text-red-500">
-                            {errors.property_id.message}
-                        </p>
-                    )}
-
-                </div>}
+                    </FormSelect>
+                )}
 
                 {/* ROLE */}
-
-                <div className="space-y-2">
-
-                    <Label>Role*</Label>
-
-                    <NativeSelect
-                        disabled={viewMode}
-                        title={errors.role_ids?.type === "required" ? errors.role_ids.message : ""}
-                        className={`w-full h-10 rounded-[3px] border px-3 text-sm ${errors.role_ids ? "border-red-500 bg-background" : "border-border bg-background"
-                            }`}
-                        value={value.role_ids?.[0] || ""}
-                        onChange={(e) => {
-
+                <div className="space-y-1">
+                    <Label className="text-sm">Role *</Label>
+                    <FormSelect
+                        label=""
+                        field="role_ids"
+                        value={{ role_ids: value.role_ids?.[0] || "" }}
+                        setValue={(fn: any) => {
+                            const updated = fn({ role_ids: value.role_ids?.[0] || "" });
                             setValue((prev: any) => ({
                                 ...prev,
-                                role_ids: [e.target.value],
+                                role_ids: [updated.role_ids],
                             }));
-
-                            clearError("role_ids");
                         }}
+                        errors={errors}
+                        setErrors={setErrors}
+                        viewMode={viewMode}
                     >
                         <option value="" disabled>-- Please Select --</option>
-
                         {roles
                             ?.filter(
                                 (role) =>
@@ -149,73 +113,50 @@ export default function PropertyRole({
                                     {role.name}
                                 </option>
                             ))}
-                    </NativeSelect>
-
-                    {errors.role_ids?.type === "invalid" && (
-                        <p className="text-xs text-red-500">
-                            {errors.role_ids.message}
-                        </p>
-                    )}
-
+                    </FormSelect>
                 </div>
 
                 {/* EMPLOYMENT TYPE */}
-
-                <div className="space-y-2">
-
-                    <Label>Employment Type</Label>
-
-                    <NativeSelect
-                        disabled={viewMode}
-                        className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
-                        value={value.employment_type || ""}
-                        onChange={(e) =>
-                            setValue((prev: any) => ({
-                                ...prev,
-                                employment_type: e.target.value,
-                            }))
-                        }
-                    >
-                        <option value="">-- Please Select --</option>
-                        <option value="full-time">Full Time</option>
-                        <option value="part-time">Part Time</option>
-                        <option value="contract">Contract</option>
-                    </NativeSelect>
-
-                </div>
+                <FormSelect
+                    label="Employment Type"
+                    field="employment_type"
+                    value={value}
+                    setValue={setValue}
+                    errors={errors}
+                    setErrors={setErrors}
+                    viewMode={viewMode}
+                >
+                    <option value="">-- Please Select --</option>
+                    <option value="full-time">Full Time</option>
+                    <option value="part-time">Part Time</option>
+                    <option value="contract">Contract</option>
+                </FormSelect>
 
                 {/* JOIN DATE */}
-
-                <div className="space-y-2">
-
-                    <Label>Joining Date*</Label>
+                <div className="space-y-1">
+                    <Label className="text-sm">Joining Date *</Label>
                     <ResponsiveDatePicker
                         value={parseDate(value.hire_date)}
                         minDate={new Date(2000, 0, 1)}
-                        onChange={(date) => {
-
+                        onChange={(date) =>
                             setValue((prev: any) => ({
                                 ...prev,
                                 hire_date: formatDate(date),
-                            }));
-
-                            clearError("hire_date");
-                        }}
+                            }))
+                        }
                         placeholder={APP_DATE_INPUT_PLACEHOLDER}
                         label="Joining Date"
                         disabled={viewMode}
-                        className={errors.hire_date ? "border-red-500" : ""}
+                        className={errors.hire_date ? "border-red-500" : "border-border/70"}
                     />
                     {errors.hire_date?.type === "invalid" && (
                         <p className="text-xs text-red-500 animate-in fade-in slide-in-from-top-1">
                             {errors.hire_date.message}
                         </p>
                     )}
-
                 </div>
 
                 {/* DEPARTMENT */}
-
                 <FormInput
                     label="Department"
                     field="department"
@@ -228,7 +169,6 @@ export default function PropertyRole({
                 />
 
                 {/* DESIGNATION */}
-
                 <FormInput
                     label="Designation"
                     field="designation"
@@ -239,10 +179,8 @@ export default function PropertyRole({
                     viewMode={viewMode}
                     maxLength={100}
                 />
-
             </div>
 
         </div>
     );
 }
-

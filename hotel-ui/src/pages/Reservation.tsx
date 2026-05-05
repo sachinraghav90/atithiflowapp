@@ -20,13 +20,11 @@ import {
 import { NativeSelect } from "@/components/ui/native-select";
 import {
     Command,
-    CommandEmpty,
     CommandGroup,
     CommandInput,
     CommandItem,
 } from "@/components/ui/command";
-import { BookType, Check, ChevronDown } from "lucide-react";
-import COUNTRY_CODES from '../utils/countryCode.json'
+import { ChevronDown } from "lucide-react";
 import {
     Sheet,
     SheetContent,
@@ -36,7 +34,6 @@ import {
 import { motion } from "framer-motion";
 import FormInput from "@/components/forms/FormInput";
 import FormDatePicker from "@/components/forms/FormDatePicker";
-import FormDateRangePicker from "@/components/forms/FormDateRangePicker";
 import FormSelect from "@/components/forms/FormSelect";
 import { parseAppDate, toISODateOnly } from "@/utils/dateFormat";
 
@@ -185,7 +182,6 @@ export default function ReservationManagement() {
     const [reservationErrors, setReservationErrors] = useState<Record<string, FieldError>>({});
     const [roomsModalOpen, setRoomsModalOpen] = useState(false);
     const [open, setOpen] = useState(false);
-    const [openCountry, setOpenCountry] = useState(false);
 
     const enquiryPrefilled = useRef(false);
 
@@ -273,6 +269,12 @@ export default function ReservationManagement() {
             errors.departureDate = {
                 type: "invalid",
                 message: departureError
+            };
+
+        if (arrivalDate && departureDate && departureDate < arrivalDate)
+            errors.departureDate = {
+                type: "invalid",
+                message: "Departure date cannot be before arrival date"
             };
 
         /* -------- Rooms & Guests -------- */
@@ -558,9 +560,9 @@ export default function ReservationManagement() {
         });
     };
 
-    const isAfter = (a: string, b: string) => {
+    const isSameOrAfter = (a: string, b: string) => {
         if (!a || !b) return true;
-        return new Date(a) > new Date(b);
+        return new Date(a) >= new Date(b);
     };
 
     const handleBookingRangeChange = ([start, end]: [Date | null, Date | null]) => {
@@ -583,8 +585,8 @@ export default function ReservationManagement() {
 
         if (!nextArrival) {
             setDepartureError("Select arrival date first");
-        } else if (!isAfter(nextDeparture, nextArrival)) {
-            setDepartureError("Departure must be after arrival date");
+        } else if (!isSameOrAfter(nextDeparture, nextArrival)) {
+            setDepartureError("Departure date cannot be before arrival date");
         } else {
             setDepartureError("");
         }
@@ -882,14 +884,6 @@ export default function ReservationManagement() {
         })
     }, [permission])
 
-    const phoneError = reservationErrors.phone;
-
-    const hoverError =
-        phoneError?.type === "required"
-            ? phoneError.message
-            : "";
-
-
     /* -------------------- UI -------------------- */
     return (
         <Sheet open onOpenChange={(nextOpen) => !nextOpen && navigate("/bookings")}>
@@ -1022,12 +1016,8 @@ export default function ReservationManagement() {
                                         const val = toISODateOnly(date);
                                         setArrivalDate(val);
                                         
-                                        // Auto-bump departure if needed
-                                        const d = new Date(val);
-                                        d.setDate(d.getDate() + 1);
-                                        const nextDay = toISODateOnly(d);
-                                        if (new Date(departureDate) <= new Date(val)) {
-                                            setDepartureDate(nextDay);
+                                        if (new Date(departureDate) < new Date(val)) {
+                                            setDepartureDate(val);
                                         }
                                     }}
                                     errors={reservationErrors}
@@ -1049,11 +1039,7 @@ export default function ReservationManagement() {
                                     errors={reservationErrors}
                                     setErrors={setReservationErrors}
                                     required
-                                    minDate={(() => {
-                                        const d = new Date(arrivalDate);
-                                        d.setDate(d.getDate() + 1);
-                                        return d;
-                                    })()}
+                                    minDate={parseDate(arrivalDate) || new Date()}
                                 />
 
                                 {/* BOOKING TYPE */}
@@ -1306,99 +1292,16 @@ export default function ReservationManagement() {
                                 )}
 
 
-                                {/* PHONE (custom because prefix + input combo) */}
-
-                                <div className="space-y-2">
-
-                                    {/* SINGLE LABEL */}
-                                    <Label>Phone</Label>
-
-                                    <div className="flex gap-[2px]">
-
-                                        {/* COUNTRY CODE */}
-                                        <div className="shrink-0">
-
-                                            <Popover open={openCountry} onOpenChange={setOpenCountry}>
-                                                <PopoverTrigger asChild>
-                                                    <Button
-                                                        variant="outline"
-                                                        className={cn(
-                                                            "h-10 bg-background justify-between rounded-r-none",
-                                                            reservationErrors.country_code && "border-red-500"
-                                                        )}
-                                                    >
-                                                        {guest.country_code || "Code"}
-                                                        <ChevronDown className="h-4 w-4 opacity-50" />
-                                                    </Button>
-                                                </PopoverTrigger>
-
-                                                <PopoverContent className="w-[220px] p-0">
-                                                    <Command>
-                                                        <CommandInput placeholder="Search country..." />
-                                                        <CommandEmpty>No country found</CommandEmpty>
-
-                                                        <CommandGroup
-                                                            className="max-h-60 overflow-y-auto"
-                                                            onWheel={(e) => e.stopPropagation()}
-                                                        >
-                                                            {COUNTRY_CODES.map((c) => (
-                                                                <CommandItem
-                                                                    key={c.country_code}
-                                                                    value={`${c.country_name_code} ${c.country_code}`}
-                                                                    onSelect={() => {
-
-                                                                        setGuest(prev => ({
-                                                                            ...prev,
-                                                                            country_code: c.country_code
-                                                                        }))
-                                                                        setOpenCountry(false);
-                                                                    }}
-                                                                >
-                                                                    <Check className="mr-2 h-4 w-4 opacity-0" />
-                                                                    {c.country_name_code} ({c.country_code})
-                                                                </CommandItem>
-                                                            ))}
-                                                        </CommandGroup>
-                                                    </Command>
-                                                </PopoverContent>
-                                            </Popover>
-
-                                        </div>
-
-                                        {/* PHONE INPUT */}
-                                        <div className="flex-1 ms-[2px]">
-
-                                            <Input
-                                                value={guest.phone || ""}
-                                                title={hoverError}
-                                                className={cn(
-                                                    "h-10 bg-background rounded-l-none",
-                                                    reservationErrors.phone && "border-red-500"
-                                                )}
-                                                onChange={(e) => {
-
-                                                    const v = e.target.value;
-
-                                                    if (v.length <= 15) {
-                                                        setGuest(prev => ({
-                                                            ...prev,
-                                                            phone: normalizeTextInput(v)
-                                                        }));
-
-                                                        setReservationErrors(prev => {
-                                                            const next = { ...prev };
-                                                            delete next.phone;
-                                                            return next;
-                                                        });
-                                                    }
-                                                }}
-                                            />
-
-                                        </div>
-
-                                    </div>
-
-                                </div>
+                                <FormInput
+                                    label="Phone"
+                                    field="phone"
+                                    value={guest}
+                                    setValue={setGuest}
+                                    errors={reservationErrors}
+                                    setErrors={setReservationErrors}
+                                    prefix="+91"
+                                    transform={(v: string) => v.replace(/\D/g, "").slice(0, 15)}
+                                />
 
 
                                 {/* EMAIL */}

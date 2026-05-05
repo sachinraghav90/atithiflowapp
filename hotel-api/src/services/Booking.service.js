@@ -15,6 +15,7 @@ class Booking {
         toDate,
         scope = "upcoming",
         status,
+        search,
         page = 1,
         limit = 10,
     }) {
@@ -25,6 +26,24 @@ class Booking {
         const conditions = [`b.property_id = $1`]
         const params = [property_id]
         let idx = 2
+
+        if (search) {
+            const normalizedSearch = search.trim();
+            const formattedIdMatch = normalizedSearch.match(/^BO0*(\d+)$/i);
+            const isNumericIdSearch = /^\d+$/.test(normalizedSearch);
+
+            if (formattedIdMatch || isNumericIdSearch) {
+                const rawId = formattedIdMatch ? formattedIdMatch[1] : normalizedSearch;
+                const bookingId = Number(rawId);
+                conditions.push(`(b.id = $${idx} OR b.booking_type ILIKE $${idx + 1} OR b.booking_status ILIKE $${idx + 1})`)
+                params.push(bookingId, `%${normalizedSearch}%`)
+                idx += 2
+            } else {
+                conditions.push(`(b.booking_type ILIKE $${idx} OR b.booking_status ILIKE $${idx})`)
+                params.push(`%${normalizedSearch}%`)
+                idx++
+            }
+        }
 
         if ((fromDate && fromDate.length === 10) || (toDate && toDate.length === 10)) {
             if (fromDate && fromDate.length === 10) {
@@ -770,12 +789,34 @@ class Booking {
         propertyId,
         fromDate,
         toDate,
+        scope,
+        status,
+        search
     }) {
         const property_id = Number(propertyId)
+        const today = new Date().toISOString()
 
         const conditions = [`b.property_id = $1`]
         const params = [property_id]
         let idx = 2
+
+        if (search) {
+            const normalizedSearch = search.trim();
+            const formattedIdMatch = normalizedSearch.match(/^BO0*(\d+)$/i);
+            const isNumericIdSearch = /^\d+$/.test(normalizedSearch);
+
+            if (formattedIdMatch || isNumericIdSearch) {
+                const rawId = formattedIdMatch ? formattedIdMatch[1] : normalizedSearch;
+                const bookingId = Number(rawId);
+                conditions.push(`(b.id = $${idx} OR b.booking_type ILIKE $${idx + 1} OR b.booking_status ILIKE $${idx + 1})`)
+                params.push(bookingId, `%${normalizedSearch}%`)
+                idx += 2
+            } else {
+                conditions.push(`(b.booking_type ILIKE $${idx} OR b.booking_status ILIKE $${idx})`)
+                params.push(`%${normalizedSearch}%`)
+                idx++
+            }
+        }
 
         if (fromDate) {
             conditions.push(`b.estimated_arrival >= $${idx}`)
@@ -786,6 +827,20 @@ class Booking {
         if (toDate) {
             conditions.push(`b.estimated_departure <= $${idx}`)
             params.push(`${toDate}T23:59:59.999Z`)
+            idx++
+        }
+
+        if (status) {
+            conditions.push(`b.booking_status = $${idx}`)
+            params.push(status)
+            idx++
+        }
+
+        if (scope === "upcoming" && !fromDate) {
+            conditions.push(`b.actual_departure IS NULL`)
+        } else if (scope === "past" && !fromDate) {
+            conditions.push(`b.estimated_departure < $${idx}`)
+            params.push(today)
             idx++
         }
 

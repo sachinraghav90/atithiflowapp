@@ -210,31 +210,66 @@ class LaundryOrderService {
         }
 
         if (normalizedSearch) {
-            filters.push(`(
-                lo.id::text ILIKE $${paramIndex}
-                OR CONCAT('LO', LPAD(lo.id::text, 3, '0')) ILIKE $${paramIndex}
-                OR COALESCE(lo.booking_id::text, '') ILIKE $${paramIndex}
-                OR COALESCE(lo.laundry_type, '') ILIKE $${paramIndex}
-                OR COALESCE(lo.laundry_status, '') ILIKE $${paramIndex}
-                OR COALESCE(lo.vendor_status, 'NOT_ALLOTTED') ILIKE $${paramIndex}
-                OR COALESCE(rv.name, '') ILIKE $${paramIndex}
-                OR TO_CHAR(lo.pickup_date, 'DD/MM/YYYY') ILIKE $${paramIndex}
-                OR TO_CHAR(lo.delivery_date, 'DD/MM/YYYY') ILIKE $${paramIndex}
-                OR EXISTS (
-                    SELECT 1
-                    FROM public.laundry_order_items loi_search
-                    LEFT JOIN public.laundry l_search
-                        ON l_search.id = loi_search.laundry_id
-                    WHERE loi_search.order_id = lo.id
-                      AND (
-                          COALESCE(l_search.item_name, '') ILIKE $${paramIndex}
-                          OR COALESCE(loi_search.room_no, '') ILIKE $${paramIndex}
-                          OR loi_search.item_count::text ILIKE $${paramIndex}
-                      )
-                )
-            )`);
-            values.push(`%${normalizedSearch}%`);
-            paramIndex += 1;
+            const formattedIdMatch = normalizedSearch.match(/^LO0*(\d+)$/i);
+            const isNumericIdSearch = /^\d+$/.test(normalizedSearch);
+
+            if (formattedIdMatch || isNumericIdSearch) {
+                const rawId = formattedIdMatch ? formattedIdMatch[1] : normalizedSearch;
+                const laundryOrderId = Number(rawId);
+
+                filters.push(`(
+                    lo.id = $${paramIndex}
+                    OR lo.id::text ILIKE $${paramIndex + 1}
+                    OR CONCAT('LO', LPAD(lo.id::text, 4, '0')) ILIKE $${paramIndex + 1}
+                    OR COALESCE(lo.booking_id::text, '') ILIKE $${paramIndex + 1}
+                    OR COALESCE(lo.laundry_type, '') ILIKE $${paramIndex + 1}
+                    OR COALESCE(lo.laundry_status, '') ILIKE $${paramIndex + 1}
+                    OR COALESCE(lo.vendor_status, 'NOT_ALLOTTED') ILIKE $${paramIndex + 1}
+                    OR COALESCE(rv.name, '') ILIKE $${paramIndex + 1}
+                    OR TO_CHAR(lo.pickup_date, 'DD/MM/YYYY') ILIKE $${paramIndex + 1}
+                    OR TO_CHAR(lo.delivery_date, 'DD/MM/YYYY') ILIKE $${paramIndex + 1}
+                    OR EXISTS (
+                        SELECT 1
+                        FROM public.laundry_order_items loi_search
+                        LEFT JOIN public.laundry l_search
+                            ON l_search.id = loi_search.laundry_id
+                        WHERE loi_search.order_id = lo.id
+                          AND (
+                              COALESCE(l_search.item_name, '') ILIKE $${paramIndex + 1}
+                              OR COALESCE(loi_search.room_no, '') ILIKE $${paramIndex + 1}
+                              OR loi_search.item_count::text ILIKE $${paramIndex + 1}
+                          )
+                    )
+                )`);
+                values.push(laundryOrderId, `%${normalizedSearch}%`);
+                paramIndex += 2;
+            } else {
+                filters.push(`(
+                    lo.id::text ILIKE $${paramIndex}
+                    OR CONCAT('LO', LPAD(lo.id::text, 4, '0')) ILIKE $${paramIndex}
+                    OR COALESCE(lo.booking_id::text, '') ILIKE $${paramIndex}
+                    OR COALESCE(lo.laundry_type, '') ILIKE $${paramIndex}
+                    OR COALESCE(lo.laundry_status, '') ILIKE $${paramIndex}
+                    OR COALESCE(lo.vendor_status, 'NOT_ALLOTTED') ILIKE $${paramIndex}
+                    OR COALESCE(rv.name, '') ILIKE $${paramIndex}
+                    OR TO_CHAR(lo.pickup_date, 'DD/MM/YYYY') ILIKE $${paramIndex}
+                    OR TO_CHAR(lo.delivery_date, 'DD/MM/YYYY') ILIKE $${paramIndex}
+                    OR EXISTS (
+                        SELECT 1
+                        FROM public.laundry_order_items loi_search
+                        LEFT JOIN public.laundry l_search
+                            ON l_search.id = loi_search.laundry_id
+                        WHERE loi_search.order_id = lo.id
+                          AND (
+                              COALESCE(l_search.item_name, '') ILIKE $${paramIndex}
+                              OR COALESCE(loi_search.room_no, '') ILIKE $${paramIndex}
+                              OR loi_search.item_count::text ILIKE $${paramIndex}
+                          )
+                    )
+                )`);
+                values.push(`%${normalizedSearch}%`);
+                paramIndex += 1;
+            }
         }
 
         const whereClause = filters.join(" AND ");
@@ -295,7 +330,7 @@ class LaundryOrderService {
                 total,
                 page: safePage,
                 limit: safeLimit,
-                totalPages: Math.ceil(total / safeLimit)
+                totalPages: Math.max(1, Math.ceil(total / safeLimit))
             }
         };
     }

@@ -1,9 +1,8 @@
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { User } from "lucide-react";
 import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
 import FormInput from "@/components/forms/FormInput";
-import { NativeSelect } from "@/components/ui/native-select";
+import FormSelect from "@/components/forms/FormSelect";
 import { APP_DATE_INPUT_PLACEHOLDER, parseAppDate, toISODateOnly } from "@/utils/dateFormat";
 
 type Props = {
@@ -47,9 +46,9 @@ export default function PersonalDetails({
 
             <div className="space-y-2">
 
-                <Label>Staff Photo</Label>
+                <Label className="text-sm font-medium">Staff Photo</Label>
 
-                <div className="relative h-40 rounded-[3px] border border-border overflow-hidden bg-muted">
+                <div className="relative h-40 rounded-[3px] border border-border/70 overflow-hidden bg-background">
 
                     {mode === "edit" && value.id ? (
                         staffImageExists ? (
@@ -59,7 +58,7 @@ export default function PersonalDetails({
                             />
                         ) : (
                             <div className="h-full flex items-center justify-center text-muted-foreground">
-                                <User className="h-6 w-6" />
+                                <User className="h-6 w-6 opacity-20" />
                             </div>
                         )
                     ) : (
@@ -70,7 +69,7 @@ export default function PersonalDetails({
                             />
                         ) : (
                             <div className="h-full flex items-center justify-center text-muted-foreground">
-                                <User className="h-6 w-6" />
+                                <User className="h-6 w-6 opacity-20" />
                             </div>
                         )
                     )}
@@ -95,53 +94,43 @@ export default function PersonalDetails({
 
             {/* ================= NAME ================= */}
 
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4">
 
-                <div className="flex gap-2 items-end">
+                <div className="flex gap-2 items-end lg:col-span-1">
 
                     {/* SALUTATION */}
-                    <div className="space-y-2 w-16 shrink-0">
-                        <Label>{"\u00A0"}</Label>
-                        <NativeSelect
-                            disabled={viewMode}
-                            className={`w-full h-10 rounded-[3px] border bg-background px-2 text-sm ${errors.salutation ? "border-red-500" : "border-border"
-                                }`}
-                            value={value.salutation || "Mr"}
-                            onChange={(e) => {
-                                setValue((prev: any) => ({
-                                    ...prev,
-                                    salutation: e.target.value,
-                                }));
-                                setErrors((prev: any) => {
-                                    const next = { ...prev };
-                                    delete next.salutation;
-                                    return next;
-                                });
-                            }}
+                    <div className="w-16 shrink-0">
+                        <FormSelect
+                            label={"\u00A0"}
+                            field="salutation"
+                            value={value}
+                            setValue={setValue}
+                            errors={errors}
+                            setErrors={setErrors}
+                            viewMode={viewMode}
                         >
                             <option value="Mr">Mr</option>
                             <option value="Ms">Ms</option>
                             <option value="Mrs">Mrs</option>
-                        </NativeSelect>
+                        </FormSelect>
                     </div>
 
                     {/* FIRST NAME */}
                     <div className="flex-1">
                         <FormInput
-                            label="First Name*"
+                            label="First Name"
                             field="first_name"
                             value={value}
                             setValue={setValue}
                             errors={errors}
                             setErrors={setErrors}
+                            required
                             viewMode={viewMode}
                             maxLength={100}
                         />
                     </div>
 
                 </div>
-
-
 
                 <FormInput
                     label="Middle Name"
@@ -166,31 +155,36 @@ export default function PersonalDetails({
                     maxLength={100}
                 />
 
-
-                {/* ================= GENDER + MARITAL ================= */}
-
-
-                <SelectField
+                <FormSelect
                     label="Gender"
                     field="gender"
                     value={value}
                     setValue={setValue}
-                    options={["Male", "Female", "Other"]}
                     errors={errors}
                     setErrors={setErrors}
+                    required
                     viewMode={viewMode}
-                />
+                >
+                    <option value="" disabled>-- Please Select --</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                </FormSelect>
 
-                <SelectField
+                <FormSelect
                     label="Marital Status"
                     field="marital_status"
                     value={value}
                     setValue={setValue}
-                    options={["Single", "Married"]}
                     errors={errors}
                     setErrors={setErrors}
+                    required
                     viewMode={viewMode}
-                />
+                >
+                    <option value="" disabled>-- Please Select --</option>
+                    <option value="Single">Single</option>
+                    <option value="Married">Married</option>
+                </FormSelect>
 
                 <FormInput
                     label="Blood Group"
@@ -204,26 +198,24 @@ export default function PersonalDetails({
                     maxLength={10}
                 />
 
-
-                {/* ================= NATIONALITY ================= */}
-
-                <SelectField
+                <FormSelect
                     label="Nationality"
                     field="nationality"
                     value={value}
                     setValue={setValue}
-                    options={["Indian", "NRI", "Foreigner"]}
                     errors={errors}
                     setErrors={setErrors}
+                    required
                     viewMode={viewMode}
-                />
+                >
+                    <option value="" disabled>-- Please Select --</option>
+                    <option value="Indian">Indian</option>
+                    <option value="NRI">NRI</option>
+                    <option value="Foreigner">Foreigner</option>
+                </FormSelect>
 
-                {/* ================= DOB ================= */}
-
-                <div className="space-y-2">
-
-                    <Label>Date of Birth*</Label>
-
+                <div className="space-y-1">
+                    <Label className="text-sm">Date of Birth *</Label>
                     <ResponsiveDatePicker
                         value={parseDate(value.dob)}
                         onChange={(date) =>
@@ -236,7 +228,7 @@ export default function PersonalDetails({
                         placeholder={APP_DATE_INPUT_PLACEHOLDER}
                         label="Date of Birth"
                         disabled={viewMode}
-                        className={errors.dob ? "border-red-500" : ""}
+                        className={errors.dob ? "border-red-500" : "border-border/70"}
                     />
                     {errors.dob?.type === "invalid" && (
                         <p className="text-xs text-red-500 animate-in fade-in slide-in-from-top-1">
@@ -249,56 +241,3 @@ export default function PersonalDetails({
         </div>
     );
 }
-
-
-/* ================= INTERNAL SELECT FIELD ================= */
-
-function SelectField({
-    label,
-    field,
-    value,
-    setValue,
-    options,
-    errors,
-    setErrors,
-    viewMode,
-}: any) {
-
-    return (
-        <div className="space-y-2">
-
-            <Label>{label}*</Label>
-
-            <NativeSelect
-                disabled={viewMode}
-                className={`w-full h-10 rounded-[3px] border bg-background px-3 text-sm ${errors[field] ? "border-red-500" : "border-border"
-                    }`}
-                value={value[field] || ""}
-                onChange={(e) => {
-
-                    setValue((prev: any) => ({
-                        ...prev,
-                        [field]: e.target.value,
-                    }));
-
-                    setErrors((prev: any) => {
-                        const next = { ...prev };
-                        delete next[field];
-                        return next;
-                    });
-                }}
-            >
-                <option value="" disabled>-- Please Select --</option>
-
-                {options.map((opt: string) => (
-                    <option key={opt} value={opt}>
-                        {opt}
-                    </option>
-                ))}
-
-            </NativeSelect>
-
-        </div>
-    );
-}
-

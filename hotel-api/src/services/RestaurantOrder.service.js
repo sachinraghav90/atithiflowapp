@@ -39,18 +39,36 @@ class RestaurantOrderService {
         }
 
         if (normalizedSearch) {
-            filters.push(`(
-                ro.id::text ILIKE $${i}
-                OR CONCAT('OR', LPAD(ro.id::text, 3, '0')) ILIKE $${i}
-                OR COALESCE(ro.guest_name, '') ILIKE $${i}
-                OR COALESCE(r.room_no, '') ILIKE $${i}
-                OR COALESCE(ro.table_no, '') ILIKE $${i}
-                OR COALESCE(ro.order_status, '') ILIKE $${i}
-                OR COALESCE(ro.payment_status, '') ILIKE $${i}
-                OR TO_CHAR(ro.order_date, 'DD/MM/YYYY') ILIKE $${i}
-            )`);
-            values.push(`%${normalizedSearch}%`);
-            i += 1;
+            const formattedIdMatch = normalizedSearch.match(/^OR0*(\d+)$/i);
+            const isNumericIdSearch = /^\d+$/.test(normalizedSearch);
+
+            if (formattedIdMatch || isNumericIdSearch) {
+                const rawId = formattedIdMatch ? formattedIdMatch[1] : normalizedSearch;
+                const orderId = Number(rawId);
+
+                filters.push(`(
+                    ro.id = $${i}
+                    OR COALESCE(ro.guest_name, '') ILIKE $${i + 1}
+                    OR COALESCE(r.room_no, '') ILIKE $${i + 1}
+                    OR COALESCE(ro.table_no, '') ILIKE $${i + 1}
+                    OR COALESCE(ro.order_status, '') ILIKE $${i + 1}
+                    OR COALESCE(ro.payment_status, '') ILIKE $${i + 1}
+                    OR TO_CHAR(ro.order_date, 'DD/MM/YYYY') ILIKE $${i + 1}
+                )`);
+                values.push(orderId, `%${normalizedSearch}%`);
+                i += 2;
+            } else {
+                filters.push(`(
+                    COALESCE(ro.guest_name, '') ILIKE $${i}
+                    OR COALESCE(r.room_no, '') ILIKE $${i}
+                    OR COALESCE(ro.table_no, '') ILIKE $${i}
+                    OR COALESCE(ro.order_status, '') ILIKE $${i}
+                    OR COALESCE(ro.payment_status, '') ILIKE $${i}
+                    OR TO_CHAR(ro.order_date, 'DD/MM/YYYY') ILIKE $${i}
+                )`);
+                values.push(`%${normalizedSearch}%`);
+                i += 1;
+            }
         }
 
         const whereClause = `

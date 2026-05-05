@@ -1016,7 +1016,13 @@ export default function LaundryOrdersManagement() {
                                 <GridToolbarRow className="gap-2">
                                     <GridToolbarSearch
                                         value={searchInput}
-                                        onChange={setSearchInput}
+                                        onChange={(value) => {
+                                            setSearchInput(value);
+                                            if (!value.trim()) {
+                                                setSearchQuery("");
+                                                setOrdersPage(1);
+                                            }
+                                        }}
                                         onSearch={() => {
                                             setSearchQuery(searchInput.trim());
                                             setOrdersPage(1);
@@ -1089,7 +1095,7 @@ export default function LaundryOrdersManagement() {
                                 scrollable={false}
                                 columns={laundryOrderColumns}
                                 data={filteredOrders}
-                                loading={laundryLoading || isInitializing}
+                                loading={laundryLoading || laundryFetching || isInitializing}
                                 emptyText="No laundry orders found"
                                 minWidth="1080px"
                                 actionClassName="text-center w-[60px]"

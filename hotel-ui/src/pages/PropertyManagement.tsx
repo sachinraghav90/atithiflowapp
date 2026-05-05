@@ -963,8 +963,7 @@ export default function PropertyManagement() {
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
                 <SheetContent
                     side="right"
-                    overlayClassName="bg-black/55"
-                    className="w-full lg:max-w-4xl sm:max-w-3xl overflow-y-auto bg-background app-scrollbar"
+                    className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background"
                 >
 
                     <motion.div className="space-y-5">

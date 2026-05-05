@@ -135,7 +135,7 @@ function MediaSquare({
 
             <Label className="text-xs font-medium text-muted-foreground">{label}</Label>
 
-            <div className="relative w-28 aspect-square rounded-[3px] border border-border/60 bg-muted/30 overflow-hidden">
+            <div className="relative w-28 aspect-square rounded-[3px] border border-border/60 bg-background overflow-hidden">
 
                 {src ? (
                     <img
@@ -144,7 +144,7 @@ function MediaSquare({
                         onError={onError}
                     />
                 ) : (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-muted/60 text-center">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-accent/50 text-center">
                         <ImageIcon className="h-6 w-6 mb-1" />
                         <span className="text-[10px]">Upload</span>
                     </div>

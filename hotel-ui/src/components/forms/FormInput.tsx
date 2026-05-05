@@ -56,7 +56,7 @@ export default function FormInput({
     return (
         <div className="space-y-1">
 
-            <Label className="text-xs font-medium text-muted-foreground">
+            <Label className="text-sm text-foreground">
                 {label} {required && "*"}
             </Label>
 

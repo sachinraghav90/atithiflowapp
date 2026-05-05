@@ -143,22 +143,58 @@ class PackageService {
     }
 
 
-    async getPackagesByProperty(propertyId, page = 1, limit = 10) {
+    async getPackagesByProperty(propertyId, page = 1, limit = 10, search = "", status = "", type = "") {
         const safePage = Math.max(Number(page) || 1, 1);
         const safeLimit = Math.min(Math.max(Number(limit) || 10, 1), 100);
         const offset = (safePage - 1) * safeLimit;
 
-        const [{ rows: countRows }, { rows }] = await Promise.all([
-            this.#DB.query(
-                `
-                SELECT COUNT(*)::int AS total
-                FROM public.packages
-                WHERE property_id = $1
-                `,
-                [propertyId]
-            ),
-            this.#DB.query(
-            `
+        let whereClause = "WHERE property_id = $1";
+        const values = [propertyId];
+        let i = 2;
+
+        if (status) {
+            whereClause += ` AND is_active = $${i++}`;
+            values.push(status === "true");
+        }
+
+        if (type) {
+            whereClause += ` AND system_generated = $${i++}`;
+            values.push(type === "system");
+        }
+
+        if (search) {
+            const normalizedSearch = search.trim();
+            const formattedIdMatch = normalizedSearch.match(/^PK0*(\d+)$/i);
+            const isNumericIdSearch = /^\d+$/.test(normalizedSearch);
+
+            if (formattedIdMatch || isNumericIdSearch) {
+                const rawId = formattedIdMatch ? formattedIdMatch[1] : normalizedSearch;
+                const packageId = Number(rawId);
+
+                whereClause += ` AND (
+                    id = $${i}
+                    OR package_name ILIKE $${i + 1}
+                    OR description ILIKE $${i + 1}
+                )`;
+                values.push(packageId, `%${normalizedSearch}%`);
+                i += 2;
+            } else {
+                whereClause += ` AND (
+                    package_name ILIKE $${i}
+                    OR description ILIKE $${i}
+                )`;
+                values.push(`%${normalizedSearch}%`);
+                i++;
+            }
+        }
+
+        const countQuery = `
+            SELECT COUNT(*)::int AS total
+            FROM public.packages
+            ${whereClause}
+        `;
+
+        const dataQuery = `
             SELECT
                 id,
                 package_name,
@@ -167,13 +203,15 @@ class PackageService {
                 base_price,
                 is_active
             FROM public.packages
-            WHERE property_id = $1
-            --AND is_active = true
+            ${whereClause}
             ORDER BY package_name
-            LIMIT $2 OFFSET $3
-            `,
-            [propertyId, safeLimit, offset]
-        )]);
+            LIMIT $${i++} OFFSET $${i++}
+        `;
+
+        const [{ rows: countRows }, { rows }] = await Promise.all([
+            this.#DB.query(countQuery, values),
+            this.#DB.query(dataQuery, [...values, safeLimit, offset])
+        ]);
 
         const total = countRows[0]?.total ?? 0;
 

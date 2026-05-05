@@ -86,39 +86,37 @@ class EnquiryService {
         }
 
         if (search) {
-            const cleanQuery = search.trim();
-            const searchVal = `%${cleanQuery}%`;
-            const numericOnly = cleanQuery.replace(/\D/g, "");
-            
-            let searchParts = [
-                `guest_name ILIKE $${i}`,
-                `mobile ILIKE $${i}`,
-                `email ILIKE $${i}`,
-                `city ILIKE $${i}`,
-                `nationality ILIKE $${i}`,
-                `source ILIKE $${i}`,
-                `enquiry_type ILIKE $${i}`,
-                `agent_name ILIKE $${i}`,
-                `agent_type ILIKE $${i}`,
-                `contact_method ILIKE $${i}`,
-                `plan ILIKE $${i}`,
-                `comment ILIKE $${i}`
-            ];
-            values.push(searchVal);
-            i++;
+            const normalizedSearch = search.trim();
+            const formattedIdMatch = normalizedSearch.match(/^EN0*(\d+)$/i);
+            const isNumericIdSearch = /^\d+$/.test(normalizedSearch);
 
-            if (numericOnly) {
-                const idVal = parseInt(numericOnly, 10).toString();
-                // Search numeric ID (ignoring leading zeros from 'EN007')
-                searchParts.push(`e.id::text LIKE $${i}`);
-                // Search numeric mobile (ignoring spaces/dashes in DB)
-                searchParts.push(`REPLACE(REPLACE(REPLACE(mobile, ' ', ''), '+', ''), '-', '') LIKE $${i+1}`);
-                
-                values.push(`%${idVal}%`, `%${numericOnly}%`);
+            if (formattedIdMatch || isNumericIdSearch) {
+                const rawId = formattedIdMatch ? formattedIdMatch[1] : normalizedSearch;
+                const enquiryId = Number(rawId);
+
+                whereClause += ` AND (
+                    e.id = $${i}
+                    OR guest_name ILIKE $${i + 1}
+                    OR mobile ILIKE $${i + 1}
+                    OR email ILIKE $${i + 1}
+                    OR city ILIKE $${i + 1}
+                    OR agent_name ILIKE $${i + 1}
+                )`;
+                values.push(enquiryId, `%${normalizedSearch}%`);
                 i += 2;
+            } else {
+                whereClause += ` AND (
+                    guest_name ILIKE $${i}
+                    OR mobile ILIKE $${i}
+                    OR email ILIKE $${i}
+                    OR city ILIKE $${i}
+                    OR agent_name ILIKE $${i}
+                    OR source ILIKE $${i}
+                    OR enquiry_type ILIKE $${i}
+                )`;
+                values.push(`%${normalizedSearch}%`);
+                i++;
             }
-
-            whereClause += ` AND (${searchParts.join(" OR ")})`;
         }
     
         const dataQuery = `

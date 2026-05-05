@@ -85,7 +85,7 @@ export default function RestaurantOrdersEmbedded({
             </div>
 
 
-            {!orders || orders?.length === 0 && (
+            {(!orders || orders?.length === 0) && (
                 <p className="text-sm text-muted-foreground">No Restaurant Orders</p>
             )}
 
@@ -93,7 +93,7 @@ export default function RestaurantOrdersEmbedded({
                 {orders && orders.map((order, index) => (
                     <div
                         key={order.id}
-                        className="rounded-[5px] border bg-background p-5 space-y-3"
+                        className="rounded-[5px] border-2 border-primary/50 bg-background p-5 space-y-3 shadow-sm"
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between">
@@ -115,15 +115,6 @@ export default function RestaurantOrdersEmbedded({
                                 >
                                     {order.order_status}
                                 </span>
-
-                                {/* <span
-                                    className={cn(
-                                        "text-xs font-medium px-2 py-1 rounded",
-                                        paymentColor(order.payment_status)
-                                    )}
-                                >
-                                    {order.payment_status}
-                                </span> */}
                             </div>
                         </div>
 

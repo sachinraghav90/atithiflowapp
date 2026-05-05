@@ -140,7 +140,7 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
 
             </div>
 
-            <div className="editable-grid-compact grid-header-inside-table border rounded-[5px] overflow-hidden flex flex-col shadow-sm">
+            <div className="editable-grid-compact grid-header-inside-table border-2 border-primary/50 rounded-[5px] overflow-hidden flex flex-col shadow-sm">
                 <div className="grid-scroll-x overflow-y-auto w-full flex-1 min-h-0 bg-background">
                     <div className="w-full min-w-[900px]">
                         <DataGrid>
@@ -151,7 +151,7 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
                                 <DataGridHead className="border-r border-slate-200/20">Number</DataGridHead>
                                 <DataGridHead className="border-r border-slate-200/20">Color</DataGridHead>
                                 <DataGridHead className="border-r border-slate-200/20">Room</DataGridHead>
-                                {isEditing && (
+                                {isEditing && vehicles.length > 1 && (
                                     <DataGridHead className="w-20 text-center">Action</DataGridHead>
                                 )}
                             </DataGridHeader>
@@ -257,18 +257,16 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
                                             )}
                                         </DataGridCell>
 
-                                        {isEditing && (
+                                        {isEditing && vehicles.length > 1 && (
                                             <DataGridCell className="text-center">
-                                                {vehicles.length > 1 && (
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50/50"
-                                                        onClick={() => removeVehicle(index)}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                )}
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50/50"
+                                                    onClick={() => removeVehicle(index)}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
                                             </DataGridCell>
                                         )}
                                     </DataGridRow>

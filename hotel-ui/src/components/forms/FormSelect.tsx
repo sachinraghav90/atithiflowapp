@@ -20,7 +20,7 @@ export default function FormSelect({
 
     return (
         <div
-            className="space-y-2"
+            className="space-y-1"
             title={hoverError}   // ⭐ apply tooltip here (reliable)
         >
 
@@ -31,10 +31,10 @@ export default function FormSelect({
             <NativeSelect
                 disabled={viewMode}
                 className={`
-                    w-full h-10 rounded-[3px] px-3 text-sm bg-background
+                    w-full h-11 rounded-[3px] px-3 text-sm bg-background shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0
                     ${error
                         ? "border border-red-500"
-                        : "border border-border"
+                        : "border border-border/70"
                     }
                 `}
                 value={value[field] ?? ""}

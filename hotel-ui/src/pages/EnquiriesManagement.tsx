@@ -180,25 +180,11 @@ export default function EnquiriesManagement() {
     };
     const { myProperties, isMultiProperty, isInitializing } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
 
-    const cleanSearchQuery = useMemo(() => {
-        if (!searchQuery) return "";
-        const statusLabels = ENQUIRY_STATUS_OPTIONS.map(opt => opt.label.toLowerCase());
-        const filterKeywords = [...statusLabels];
-        return filterKeywords
-            .sort((left, right) => right.length - left.length)
-            .reduce((query, keyword) => {
-                const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-                return query.replace(new RegExp(`\\b${escapedKeyword}\\b`, "gi"), " ");
-            }, searchQuery)
-            .replace(/\s+/g, " ")
-            .trim();
-    }, [searchQuery]);
-
     const { data: enquiries, isLoading: enquiryLoading, refetch } = useGetPropertyEnquiriesQuery({
         propertyId: selectedPropertyId,
         page,
         limit,
-        search: cleanSearchQuery,
+        search: searchQuery,
         status: statusFilter
     }, {
         skip: !isLoggedIn || !selectedPropertyId
@@ -226,7 +212,7 @@ export default function EnquiriesManagement() {
             const res = await getAllEnquiries({
                 propertyId: selectedPropertyId,
                 status: statusFilter,
-                search: cleanSearchQuery,
+                search: searchQuery,
             }).unwrap();
 
             if (!res?.data?.length) {
@@ -314,30 +300,7 @@ export default function EnquiriesManagement() {
         }
     };
 
-    const filteredEnquiries = useMemo(() => {
-        const rows = enquiries?.data ?? [];
-        const query = cleanSearchQuery.toLowerCase();
-
-        if (!query) return rows;
-
-        return rows.filter((enquiry: Enquiry) => {
-            const displayId = formatModuleDisplayId("enquiry", enquiry.id).toLowerCase();
-            const searchableFields = [
-                displayId,
-                enquiry.guest_name,
-                enquiry.mobile,
-                enquiry.email,
-                enquiry.city,
-                enquiry.source,
-                enquiry.enquiry_type,
-                enquiry.agent_name,
-            ];
-
-            return searchableFields.some(field => 
-                String(field ?? "").toLowerCase().includes(query)
-            );
-        });
-    }, [enquiries?.data, cleanSearchQuery]);
+    const enquiryRows = useMemo(() => enquiries?.data ?? [], [enquiries?.data]);
 
     const enquiryColumns = useMemo<ColumnDef<Enquiry>[]>(() => [
         {
@@ -512,7 +475,7 @@ export default function EnquiriesManagement() {
                         <AppDataGrid
                             density="compact"
                             columns={enquiryColumns}
-                            data={filteredEnquiries}
+                            data={enquiryRows}
                             loading={enquiryLoading || isInitializing}
                             emptyText="No enquiries found"
                             minWidth="1080px"
@@ -556,7 +519,7 @@ export default function EnquiriesManagement() {
 
             {/* Manage Sheet */}
             <Sheet open={open} onOpenChange={setOpen}>
-                <SheetContent side="right" className="w-full lg:max-w-3xl sm:max-w-2xl overflow-y-auto bg-background">
+                <SheetContent side="right" className="w-full lg:max-w-4xl sm:max-w-3xl overflow-y-auto bg-background">
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}

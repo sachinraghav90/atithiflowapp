@@ -9,6 +9,7 @@ class RoomTypeRateController {
             const category = String(req.query.category ?? "");
             const bedType = String(req.query.bedType ?? "");
             const acType = String(req.query.acType ?? "");
+            const search = String(req.query.search ?? "");
 
             const data = await RoomTypeRateService.getByProperty({
                 propertyId,
@@ -17,6 +18,7 @@ class RoomTypeRateController {
                 category,
                 bedType,
                 acType,
+                search,
             });
             res.status(200).json(data);
         } catch (err) {

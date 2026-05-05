@@ -91,11 +91,12 @@ export default function RoomTypeBasePriceManagement() {
         refetch: refetchRoomTypes
     } = useGetRoomTypesQuery({
         propertyId,
-        page: 1,
-        limit: 1000,
+        page,
+        limit,
         category: filterCategory || undefined,
         bedType: filterBedType || undefined,
         acType: filterAcType || undefined,
+        search: searchQuery
     }, {
         skip: !isLoggedIn || !propertyId
     })
@@ -207,22 +208,10 @@ export default function RoomTypeBasePriceManagement() {
     const pathname = useLocation().pathname
     const { permission } = usePermission(pathname)
 
-    const filteredRows = useMemo(() => {
-        if (!searchQuery) return rows;
-        const q = searchQuery.toLowerCase();
-        return rows.filter((r) =>
-            r.room_category_name?.toLowerCase().includes(q) ||
-            r.bed_type_name?.toLowerCase().includes(q) ||
-            r.ac_type_name?.toLowerCase().includes(q)
-        );
-    }, [rows, searchQuery]);
+    const totalRecords = roomTypesData?.pagination?.totalItems ?? roomTypesData?.pagination?.total ?? rows.length;
+    const totalPages = roomTypesData?.pagination?.totalPages ?? 1;
 
-    const totalRecords = filteredRows.length;
-    const totalPages = Math.max(1, Math.ceil(totalRecords / limit));
-    const paginatedRows = useMemo(() => {
-        const start = (page - 1) * limit;
-        return filteredRows.slice(start, start + limit);
-    }, [filteredRows, page, limit]);
+    const paginatedRows = rows;
 
     useEffect(() => {
         if (page > totalPages) {
@@ -252,7 +241,7 @@ export default function RoomTypeBasePriceManagement() {
         }
     };
 
-    const formatted = filteredRows.map((r: RateRow) => ({
+    const formatted = rows.map((r: RateRow) => ({
         // ID: r.id,
         // Property: r.property_id,
         Category: r.room_category_name,
@@ -295,7 +284,10 @@ export default function RoomTypeBasePriceManagement() {
                                 <NativeSelect
                                     className="flex-1 bg-transparent px-2 focus:outline-none focus:ring-0 text-sm h-full truncate cursor-pointer"
                                     value={propertyId ?? ""}
-                                    onChange={(e) => setPropertyId(+e.target.value)}
+                                    onChange={(e) => {
+                                        setPropertyId(+e.target.value);
+                                        resetPage();
+                                    }}
                                 >
                                     <option value="" disabled>Select Property</option>
                                     {myProperties?.properties?.map((property: { id: number; brand_name: string }) => (
@@ -370,7 +362,10 @@ export default function RoomTypeBasePriceManagement() {
                                 <GridToolbarSelect
                                     label="Category"
                                     value={filterCategory}
-                                    onChange={setFilterCategory}
+                                    onChange={(value) => {
+                                        setFilterCategory(value);
+                                        resetPage();
+                                    }}
                                     options={[
                                         { label: "All", value: "" },
                                         ...categoryOptions.map(v => ({ label: v, value: v }))
@@ -380,7 +375,10 @@ export default function RoomTypeBasePriceManagement() {
                                 <GridToolbarSelect
                                     label="BED TYPE"
                                     value={filterBedType}
-                                    onChange={setFilterBedType}
+                                    onChange={(value) => {
+                                        setFilterBedType(value);
+                                        resetPage();
+                                    }}
                                     options={[
                                         { label: "All", value: "" },
                                         ...bedOptions.map(v => ({ label: v, value: v }))
@@ -417,7 +415,10 @@ export default function RoomTypeBasePriceManagement() {
                                 <GridToolbarSelect
                                     label="AC TYPE"
                                     value={filterAcType}
-                                    onChange={setFilterAcType}
+                                    onChange={(value) => {
+                                        setFilterAcType(value);
+                                        resetPage();
+                                    }}
                                     options={[
                                         { label: "All", value: "" },
                                         ...acOptions.map(v => ({ label: v, value: v }))
@@ -488,7 +489,7 @@ export default function RoomTypeBasePriceManagement() {
                         },
                     ] as ColumnDef[]}
                     data={paginatedRows}
-                    loading={roomTypesLoading || isInitializing}
+                    loading={roomTypesLoading || roomTypesFetching || isInitializing}
                     emptyText="No room categories found"
                     minWidth="760px"
                     actionLabel=""

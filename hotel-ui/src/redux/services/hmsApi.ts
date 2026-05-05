@@ -506,9 +506,19 @@ export const hmsApi = createApi({
     }),
 
     getPackagesByProperty: builder.query({
-      query: ({ propertyId, page = 1, limit = 10 }) => {
+      query: ({ propertyId, page = 1, limit = 10, search = "", status = "", type = "" }) => {
+        const params = new URLSearchParams({
+          property_id: String(propertyId),
+          page: String(page),
+          limit: String(limit)
+        });
+
+        if (search) params.append("search", search);
+        if (status) params.append("status", status);
+        if (type) params.append("type", type);
+
         return {
-          url: `/packages?property_id=${propertyId}&page=${page}&limit=${limit}`,
+          url: `/packages?${params.toString()}`,
           method: "GET",
         }
       },
@@ -854,7 +864,7 @@ export const hmsApi = createApi({
     }),
 
     getRoomTypes: builder.query({
-      query: ({ propertyId, page = 1, limit = 10, category, bedType, acType }) => {
+      query: ({ propertyId, page = 1, limit = 10, category, bedType, acType, search }) => {
         const params = new URLSearchParams({
           page: String(page),
           limit: String(limit),
@@ -863,6 +873,7 @@ export const hmsApi = createApi({
         if (category) params.set("category", category)
         if (bedType) params.set("bedType", bedType)
         if (acType) params.set("acType", acType)
+        if (search) params.set("search", search)
 
         return {
           url: `/room-type-rates/${propertyId}?${params.toString()}`,
@@ -902,11 +913,12 @@ export const hmsApi = createApi({
     }),
 
     exportPropertyVendors: builder.query({
-      query: ({ propertyId, type = "", status = "" }) => {
+      query: ({ propertyId, search = "", type = "", status = "" }) => {
         const params = new URLSearchParams({
           export: "true",
           ts: String(Date.now())
         });
+        if (search) params.append("search", search);
         if (type) params.append("type", type);
         if (status) params.append("status", status);
 
@@ -950,9 +962,17 @@ export const hmsApi = createApi({
     }),
 
     getPropertyLaundryPricing: builder.query({
-      query: ({ propertyId, page = 1, limit = 10 }) => {
+      query: ({ propertyId, page = 1, limit = 10, search = "", status = "" }) => {
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: String(limit)
+        })
+
+        if (search) params.append("search", search)
+        if (status) params.append("status", status)
+
         return {
-          url: `/laundries/property/${propertyId}?page=${page}&limit=${limit}`,
+          url: `/laundries/property/${propertyId}?${params.toString()}`,
           method: "GET",
         }
       },

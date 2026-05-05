@@ -153,25 +153,11 @@ export default function StaffManagement() {
         isLoading: myPropertiesLoading
     } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
 
-    const cleanSearchQuery = useMemo(() => {
-        if (!searchQuery) return "";
-        const statusLabels = STAFF_STATUSES.map(s => s.toLowerCase());
-        const filterKeywords = [...statusLabels];
-        return filterKeywords
-            .sort((left, right) => right.length - left.length)
-            .reduce((query, keyword) => {
-                const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-                return query.replace(new RegExp(`\\b${escapedKeyword}\\b`, "gi"), " ");
-            }, searchQuery)
-            .replace(/\s+/g, " ")
-            .trim();
-    }, [searchQuery]);
-
     const { data: staffData, isLoading, isFetching, refetch: refetchStaff } = useGetStaffByPropertyQuery({
         property_id: selectedPropertyId,
         page,
         limit,
-        search: cleanSearchQuery,
+        search: searchQuery,
         department: "",
         status: statusFilter,
     }, {
@@ -376,6 +362,10 @@ export default function StaffManagement() {
     const location = useLocation();
     const { permission } = usePermission(location.pathname);
     const staffRows = useMemo(() => staffData?.data ?? [], [staffData?.data]);
+    const hasStaffSearchOrFilter = Boolean(searchInput.trim() || searchQuery.trim() || statusFilter);
+    const staffEmptyText = hasStaffSearchOrFilter
+        ? "No staff found for this search"
+        : "No staff added yet";
 
     const resetFiltersHandler = () => {
         setSearchInput("");
@@ -412,7 +402,7 @@ export default function StaffManagement() {
         try {
             const res = await getStaffForExport({
                 property_id: selectedPropertyId,
-                search: cleanSearchQuery,
+                search: searchQuery.trim(),
                 status: statusFilter,
                 export: true
             }).unwrap();
@@ -654,7 +644,7 @@ export default function StaffManagement() {
                             columns={staffColumns}
                             data={staffRows}
                             loading={isLoading || isFetching || isInitializing}
-                            emptyText="No staff added yet"
+                            emptyText={staffEmptyText}
                             minWidth="700px"
                             rowKey={(s: Staff, idx: number) => s.id ?? idx}
                             actionLabel=""
@@ -712,7 +702,7 @@ export default function StaffManagement() {
                 </div>
             </section>
     <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetContent side="right" className="w-full lg:max-w-3xl sm:max-w-2xl overflow-y-auto bg-background">
+                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -721,10 +711,10 @@ export default function StaffManagement() {
                         <SheetHeader className="mb-6">
                             <div className="space-y-1">
                                 <SheetTitle className="text-xl font-bold text-foreground">
-                                    {mode === "add" ? "Register New Staff" : mode === "edit" ? `Update Staff Member [${staff?.id ? `#${formatModuleDisplayId("staff", staff.id)}` : "..."}]` : `Staff Summary [${staff?.id ? `#${formatModuleDisplayId("staff", staff.id)}` : "..."}]`}
+                                    {mode === "add" ? "Register New Staff" : mode === "edit" ? `Update Staff Member [${staff?.id ? `#${formatModuleDisplayId("staff", staff.id)}` : "..."}]` : `Staff [${staff?.id ? `#${formatModuleDisplayId("staff", staff.id)}` : "..."}]`}
                                 </SheetTitle>
                                 <p className="text-xs text-muted-foreground font-medium tracking-wide">
-                                    {mode === "add" ? "Create New Profile for Hotel Personnel" : mode === "edit" ? "Modify Existing Staff Member Information" : "Detailed Profile Information of Staff Member"}
+                                    {mode === "add" ? "Create new profile for hotel personnel" : mode === "edit" ? "Modify existing staff member information" : "Detailed profile information of staff member"}
                                 </p>
                             </div>
                         </SheetHeader>
@@ -780,10 +770,16 @@ export default function StaffManagement() {
 
 
                                 <PropertyViewSection title="Property & Role" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
-                                        <ViewField label="Property" value={staff.property_id} />
+                                        <ViewField 
+                                            label="Property" 
+                                            value={myProperties?.properties?.find((p: any) => String(p.id) === String(staff.property_id))?.brand_name || staff.property_id} 
+                                        />
                                         <ViewField label="Department" value={staff.department} />
                                         <ViewField label="Designation" value={staff.designation} />
-                                        <ViewField label="Role" value={staff.role_ids?.[0]} />
+                                        <ViewField 
+                                            label="Role" 
+                                            value={formatReadableLabel(roles?.roles?.find((r: any) => String(r.id) === String(staff.role_ids?.[0]))?.name) || staff.role_ids?.[0]} 
+                                        />
                                         <ViewField label="Employment Type" value={staff.employment_type} />
                                         <ViewField label="Joining Date" value={staff.hire_date} />
                                 </PropertyViewSection>
@@ -934,7 +930,7 @@ export default function StaffManagement() {
                             <Input
                                 type="password"
                                 value={newPassword}
-                                className="h-9"
+                                className="h-11 rounded-[3px] border-border/70"
                                 onChange={(e) => setNewPassword(e.target.value)}
                             />
                         </div>
@@ -944,7 +940,7 @@ export default function StaffManagement() {
                             <Input
                                 type="password"
                                 value={confirmPassword}
-                                className="h-9"
+                                className="h-11 rounded-[3px] border-border/70"
                                 onChange={(e) => setConfirmPassword(e.target.value)}
                             />
                         </div>

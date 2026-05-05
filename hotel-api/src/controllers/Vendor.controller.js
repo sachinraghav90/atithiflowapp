@@ -5,10 +5,12 @@ class VendorController {
         try {
             const { propertyId } = req.params;
             const search = String(req.query.search ?? "");
+            const type = String(req.query.type ?? "");
+            const status = String(req.query.status ?? "");
             const page = Math.max(Number.parseInt(req.query.page ?? "1", 10) || 1, 1);
             const limit = Math.min(Math.max(Number.parseInt(req.query.limit ?? "10", 10) || 10, 1), 100);
 
-            const data = await VendorService.getByPropertyId(propertyId, page, limit, search);
+            const data = await VendorService.getByPropertyId(propertyId, page, limit, search, type, status);
             res.json(data);
         } catch (err) {
             next(err);

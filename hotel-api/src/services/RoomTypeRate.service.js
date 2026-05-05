@@ -8,32 +8,61 @@ class RoomTypeRateService {
         this.#DB = getDb();
     }
 
-    async getByProperty({ propertyId, page = 1, limit = 10, category = "", bedType = "", acType = "" }) {
+    async getByProperty({ propertyId, page = 1, limit = 10, category = "", bedType = "", acType = "", search = "" }) {
         const safePage = Math.max(Number(page) || 1, 1);
         const safeLimit = Math.min(Math.max(Number(limit) || 10, 1), 100);
         const offset = (safePage - 1) * safeLimit;
 
         const conditions = ["property_id = $1"];
         const values = [propertyId];
+        let i = 2;
 
         if (category) {
             values.push(category);
-            conditions.push(`room_category_name = $${values.length}`);
+            conditions.push(`room_category_name = $${i++}`);
         }
 
         if (bedType) {
             values.push(bedType);
-            conditions.push(`bed_type_name = $${values.length}`);
+            conditions.push(`bed_type_name = $${i++}`);
         }
 
         if (acType) {
             values.push(acType);
-            conditions.push(`ac_type_name = $${values.length}`);
+            conditions.push(`ac_type_name = $${i++}`);
+        }
+
+        if (search) {
+            const normalizedSearch = search.trim();
+            const formattedIdMatch = normalizedSearch.match(/^RM0*(\d+)$/i);
+            const isNumericIdSearch = /^\d+$/.test(normalizedSearch);
+
+            if (formattedIdMatch || isNumericIdSearch) {
+                const rawId = formattedIdMatch ? formattedIdMatch[1] : normalizedSearch;
+                const roomId = Number(rawId);
+
+                conditions.push(`(
+                    id = $${i}
+                    OR room_category_name ILIKE $${i + 1}
+                    OR bed_type_name ILIKE $${i + 1}
+                    OR ac_type_name ILIKE $${i + 1}
+                )`);
+                values.push(roomId, `%${normalizedSearch}%`);
+                i += 2;
+            } else {
+                conditions.push(`(
+                    room_category_name ILIKE $${i}
+                    OR bed_type_name ILIKE $${i}
+                    OR ac_type_name ILIKE $${i}
+                )`);
+                values.push(`%${normalizedSearch}%`);
+                i++;
+            }
         }
 
         const whereClause = conditions.join("\n            AND ");
-        const limitParam = `$${values.length + 1}`;
-        const offsetParam = `$${values.length + 2}`;
+        const limitParam = `$${i++}`;
+        const offsetParam = `$${i++}`;
 
         const [countResult, dataResult, categoryResult, bedResult, acResult] = await Promise.all([
             this.#DB.query(

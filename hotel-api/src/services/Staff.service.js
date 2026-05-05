@@ -33,13 +33,35 @@ class Staff {
         let idx = 1;
 
         if (search) {
-            where.push(`(
-                s.first_name ILIKE $${idx}
-                OR s.last_name ILIKE $${idx}
-                OR s.email ILIKE $${idx}
-            )`);
-            values.push(`%${search}%`);
-            idx++;
+            const normalizedSearch = search.trim();
+            const formattedIdMatch = normalizedSearch.match(/^ST0*(\d+)$/i);
+            const isNumericIdSearch = /^\d+$/.test(normalizedSearch);
+
+            if (formattedIdMatch || isNumericIdSearch) {
+                const rawId = formattedIdMatch ? formattedIdMatch[1] : normalizedSearch;
+                const staffId = Number(rawId);
+                where.push(`(
+                    s.id = $${idx}
+                    OR s.first_name ILIKE $${idx + 1}
+                    OR s.last_name ILIKE $${idx + 1}
+                    OR s.email ILIKE $${idx + 1}
+                    OR s.phone1 ILIKE $${idx + 1}
+                    OR s.phone2 ILIKE $${idx + 1}
+                )`);
+                values.push(staffId, `%${normalizedSearch}%`);
+                idx += 2;
+            } else {
+                const partialSearch = `%${normalizedSearch}%`;
+                where.push(`(
+                    s.first_name ILIKE $${idx}
+                    OR s.last_name ILIKE $${idx}
+                    OR s.email ILIKE $${idx}
+                    OR s.phone1 ILIKE $${idx}
+                    OR s.phone2 ILIKE $${idx}
+                )`);
+                values.push(partialSearch);
+                idx++;
+            }
         }
 
         if (department) {
@@ -481,15 +503,46 @@ class Staff {
         }
 
         if (search) {
-            where.push(`
-            (
-                s.first_name ILIKE $${idx}
-                OR s.last_name ILIKE $${idx}
-                OR s.email ILIKE $${idx}
-            )
-        `);
-            values.push(`%${search}%`);
-            idx++;
+            const normalizedSearch = search.trim();
+            const formattedIdMatch = normalizedSearch.match(/^ST0*(\d+)$/i);
+            const isNumericIdSearch = /^\d+$/.test(normalizedSearch);
+
+            if (formattedIdMatch || isNumericIdSearch) {
+                const rawId = formattedIdMatch ? formattedIdMatch[1] : normalizedSearch;
+                const staffId = Number(rawId);
+
+                where.push(`(
+                    s.id = $${idx}
+                    OR s.first_name ILIKE $${idx + 1}
+                    OR s.last_name ILIKE $${idx + 1}
+                    OR s.email ILIKE $${idx + 1}
+                    OR s.phone1 ILIKE $${idx + 1}
+                    OR s.phone2 ILIKE $${idx + 1}
+                    OR r.name ILIKE $${idx + 1}
+                    OR p.brand_name ILIKE $${idx + 1}
+                    OR s.designation ILIKE $${idx + 1}
+                    OR s.department ILIKE $${idx + 1}
+                )`);
+                values.push(staffId, `%${normalizedSearch}%`);
+                idx += 2;
+            } else {
+                const partialSearch = `%${normalizedSearch}%`;
+                where.push(`
+                (
+                    s.first_name ILIKE $${idx}
+                    OR s.last_name ILIKE $${idx}
+                    OR s.email ILIKE $${idx}
+                    OR s.phone1 ILIKE $${idx}
+                    OR s.phone2 ILIKE $${idx}
+                    OR r.name ILIKE $${idx}
+                    OR p.brand_name ILIKE $${idx}
+                    OR s.designation ILIKE $${idx}
+                    OR s.department ILIKE $${idx}
+                )
+            `);
+                values.push(partialSearch);
+                idx++;
+            }
         }
 
         if (department) {
@@ -538,6 +591,9 @@ class Staff {
                 JOIN public.roles r
                     ON r.id = pu.role_id
 
+                LEFT JOIN public.properties p
+                    ON p.id = pu.property_id
+
                 ${whereClause}
 
                 ORDER BY s.id DESC
@@ -560,6 +616,9 @@ class Staff {
 
                 JOIN public.roles r
                     ON r.id = pu.role_id
+
+                LEFT JOIN public.properties p
+                    ON p.id = pu.property_id
 
                 ${whereClause}
                 `,

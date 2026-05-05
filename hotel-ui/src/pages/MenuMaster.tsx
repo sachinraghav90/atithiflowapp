@@ -224,22 +224,7 @@ export default function MenuMaster() {
 
     const menuRows = useMemo(() => menuData?.data ?? [], [menuData?.data]);
     
-    const cleanSearchQuery = useMemo(() => {
-        if (!searchQuery) return "";
-        const groupLabels = menuGroupOptions.map(g => String(g).toLowerCase());
-        const typeLabels = ["veg", "non-veg"];
-        const statusLabels = ["active", "inactive"];
-        const filterKeywords = [...groupLabels, ...typeLabels, ...statusLabels];
-
-        return filterKeywords
-            .sort((left, right) => right.length - left.length)
-            .reduce((query, keyword) => {
-                const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-                return query.replace(new RegExp(`\\b${escapedKeyword}\\b`, "gi"), " ");
-            }, searchQuery)
-            .replace(/\s+/g, " ")
-            .trim();
-    }, [searchQuery, menuGroupOptions]);
+    const cleanSearchQuery = searchQuery.trim();
 
     const filteredMenuItems = useMemo(() => {
         const rows = menuRows;
@@ -669,7 +654,7 @@ export default function MenuMaster() {
 
             {/* VIEW / EDIT / ADD SHEET */}
             <Sheet open={!!mode} onOpenChange={() => setMode(null)}>
-                <SheetContent side="right" className="w-full lg:max-w-3xl sm:max-w-2xl overflow-y-auto bg-background">
+                <SheetContent side="right" className="w-full lg:max-w-4xl sm:max-w-3xl overflow-y-auto bg-background">
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -949,7 +934,7 @@ export default function MenuMaster() {
 
             {/* CREATE GROUP SHEET */}
             <Sheet open={createGroupOpen} onOpenChange={setCreateGroupOpen}>
-                <SheetContent side="right" className="w-full lg:max-w-3xl sm:max-w-2xl overflow-y-auto bg-background">
+                <SheetContent side="right" className="w-full lg:max-w-4xl sm:max-w-3xl overflow-y-auto bg-background">
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -1021,7 +1006,7 @@ export default function MenuMaster() {
             </Sheet>
 
             <Sheet open={viewGroupOpen} onOpenChange={setViewGroupOpen}>
-                <SheetContent side="right" className="w-full lg:max-w-3xl sm:max-w-2xl overflow-y-auto bg-background">
+                <SheetContent side="right" className="w-full lg:max-w-4xl sm:max-w-3xl overflow-y-auto bg-background">
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}

@@ -54,6 +54,7 @@ import { GridBadge } from "@/components/ui/grid-badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { formatAppDate, parseAppDate, toISODateOnly } from "@/utils/dateFormat";
+import { formatReadableLabel } from "@/utils/formatString";
 import PropertyViewSection from "@/components/PropertyViewSection";
 import ViewField from "@/components/ViewField";
 
@@ -154,20 +155,26 @@ export default function BookingsManagement() {
 
     const { myProperties, isMultiProperty, isOwner, isSuperAdmin, isInitializing } = useAutoPropertySelect(propertyId, setPropertyId);
 
-    const cleanSearchQuery = useMemo(() => {
-        if (!searchQuery) return "";
-        const statusLabels = BOOKING_STATUSES.map(s => s.toLowerCase());
-        const scopeLabels = ["upcoming", "past"];
-        const filterKeywords = [...statusLabels, ...scopeLabels];
-        return filterKeywords
-            .sort((left, right) => right.length - left.length)
-            .reduce((query, keyword) => {
-                const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-                return query.replace(new RegExp(`\\b${escapedKeyword}\\b`, "gi"), " ");
-            }, searchQuery)
-            .replace(/\s+/g, " ")
-            .trim();
-    }, [searchQuery]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     const { data: bookingsData, isLoading: bookingsLoading, isFetching: bookingsFetching, isUninitialized: bookingsUninitialized, refetch: refetchBookings } = useGetBookingsQuery({
         propertyId,
@@ -178,7 +185,7 @@ export default function BookingsManagement() {
         departureTo,
         scope,
         status: status || undefined,
-        search: cleanSearchQuery,
+        search: searchQuery,
         limit
     }, {
         skip: !isLoggedIn || !propertyId || isNaN(Number(propertyId))
@@ -240,7 +247,7 @@ export default function BookingsManagement() {
                 departureTo,
                 scope: scope || undefined,
                 status: status || undefined,
-                search: cleanSearchQuery,
+                search: searchQuery.trim(),
             }).unwrap();
 
             const rows = Array.isArray(res?.bookings) ? res.bookings : Array.isArray(res) ? res : [];
@@ -333,9 +340,12 @@ export default function BookingsManagement() {
     };
 
     const bookingRows = useMemo(() => {
-        return (!bookingsLoading && !bookingsUninitialized && bookingsData?.bookings)
-            ? bookingsData.bookings
+        const rows = (!bookingsLoading && !bookingsUninitialized && bookingsData?.bookings)
+            ? [...bookingsData.bookings]
             : [];
+        
+        // Sort by ID descending (Latest created on top)
+        return rows.sort((a, b) => Number(b.id) - Number(a.id));
     }, [bookingsData?.bookings, bookingsLoading, bookingsUninitialized]);
 
 
@@ -363,8 +373,8 @@ export default function BookingsManagement() {
                     <ViewField label="Arrival Date" value={formatToDDMMYY(booking?.estimated_arrival)} />
                     <ViewField label="Departure Date" value={formatToDDMMYY(booking?.estimated_departure)} />
                     <ViewField label="Total Nights" value={booking?.booking_nights || 0} />
-                    <ViewField label="Booking Type" value={booking?.booking_type || "—"} />
-                    <ViewField label="Status" value={booking?.booking_status ? booking.booking_status.replace("_", " ") : "—"} />
+                    <ViewField label="Booking Type" value={formatReadableLabel(booking?.booking_type) || "—"} />
+                    <ViewField label="Status" value={formatReadableLabel(booking?.booking_status) || "—"} />
                     <ViewField label="Booking Date" value={formatToDDMMYY(booking?.booking_date)} />
                 </PropertyViewSection>
 
@@ -416,7 +426,7 @@ export default function BookingsManagement() {
 
                         <div
                             key={room.room_id}
-                            className="rounded-[3px] border p-3 space-y-2 bg-card border-border transition"
+                            className="rounded-[5px] border-2 border-primary/50 bg-background p-4 shadow-sm space-y-2 transition-all hover:border-primary"
                         >
 
                             <p className="text-xs text-muted-foreground">
@@ -543,7 +553,13 @@ export default function BookingsManagement() {
                             <GridToolbarRow className="gap-2">
                                 <GridToolbarSearch
                                     value={searchInput}
-                                    onChange={setSearchInput}
+                                    onChange={(val) => {
+                                        setSearchInput(val);
+                                        if (!val.trim()) {
+                                            setSearchQuery("");
+                                            setPage(1);
+                                        }
+                                    }}
                                     onSearch={() => {
                                         setSearchQuery(searchInput.trim());
                                         setPage(1);
@@ -647,7 +663,8 @@ export default function BookingsManagement() {
                             columns={[
                                 {
                                     label: "Booking ID",
-                                    cellClassName: "font-medium",
+                                    headClassName: "text-center",
+                                    cellClassName: "text-center font-medium",
                                     render: (b: any) => (
                                         <button
                                             type="button"
@@ -747,6 +764,7 @@ export default function BookingsManagement() {
             <Sheet open={detailsOpen} onOpenChange={setDetailsOpen}>
                 <SheetContent
                     side="right"
+
                     className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background"
                 >
                     <motion.div

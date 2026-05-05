@@ -135,7 +135,13 @@ export default function LaundryPricingManagement() {
         isLoading: laundryLoading,
         isFetching: laundryFetching,
         refetch: refetchLaundryPricing
-    } = useGetPropertyLaundryPricingQuery({ propertyId: selectedPropertyId, page: 1, limit: 1000 }, {
+    } = useGetPropertyLaundryPricingQuery({ 
+        propertyId: selectedPropertyId, 
+        page, 
+        limit,
+        search: searchQuery,
+        status: statusFilter
+    }, {
         skip: !isLoggedIn || !selectedPropertyId
     })
     const allLaundryItems = data?.data?.data || [];
@@ -320,8 +326,8 @@ export default function LaundryPricingManagement() {
     };
 
     const exportPricesSheet = () => {
-        if (!filteredItems.length) return toast.info("No data to export");
-        const formatted = filteredItems.map(item => ({
+        if (!items.length) return toast.info("No data to export");
+        const formatted = items.map(item => ({
             "Laundry ID": formatModuleDisplayId("laundry_pricing", item.id),
             "Item": item.item_name,
             "Description": item.description || "-",
@@ -339,37 +345,9 @@ export default function LaundryPricingManagement() {
         resetPage();
     };
 
-    const filteredItems = useMemo(() => {
-        let filtered = items;
-        if (statusFilter) {
-            filtered = filtered.filter((item) => String(item.is_active) === statusFilter);
-        }
-
-        // Dynamically get keywords from filter options to exclude from search
-        const filterKeywords = STATUS_OPTIONS
-            .filter(opt => opt.value !== "")
-            .map(opt => opt.label.toLowerCase());
-
-        const cleanSearchQuery = searchQuery
-            .split(/\s+/)
-            .filter(word => !filterKeywords.includes(word.toLowerCase()))
-            .join(" ")
-            .trim();
-
-        return filterGridRowsByQuery(filtered, cleanSearchQuery, [
-            (item) => formatModuleDisplayId("laundry_pricing", item.id),
-            (item) => item.item_name,
-            (item) => item.description,
-            (item) => item.item_rate,
-        ]);
-    }, [items, searchQuery, statusFilter]);
-
-    const totalRecords = filteredItems.length;
-    const totalPages = Math.max(1, Math.ceil(totalRecords / limit));
-    const paginatedItems = useMemo(() => {
-        const start = (page - 1) * limit;
-        return filteredItems.slice(start, start + limit);
-    }, [filteredItems, page, limit]);
+    const totalRecords = data?.data?.pagination?.total ?? 0;
+    const totalPages = data?.data?.pagination?.totalPages ?? 1;
+    const paginatedItems = items;
 
     useEffect(() => {
         if (page > totalPages) {

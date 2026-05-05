@@ -106,7 +106,7 @@ export default function LaundryEmbedded({
                 return (
                     <div
                         key={order.id}
-                        className="rounded-[5px] border bg-card p-4"
+                        className="rounded-[5px] border-2 border-primary/50 bg-background p-4 shadow-sm"
                     >
 
                         <div className="grid sm:grid-cols-5 gap-4 text-sm">

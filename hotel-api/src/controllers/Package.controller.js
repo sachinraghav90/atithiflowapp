@@ -29,6 +29,9 @@ class PackageController {
             const propertyId = Number(req.query.property_id);
             const page = Number(req.query.page ?? 1);
             const limit = Number(req.query.limit ?? 10);
+            const search = req.query.search ?? "";
+            const status = req.query.status ?? "";
+            const type = req.query.type ?? "";
 
             if (!propertyId) {
                 return res.status(400).json({
@@ -37,7 +40,7 @@ class PackageController {
             }
 
             const packages =
-                await packageService.getPackagesByProperty(propertyId, page, limit);
+                await packageService.getPackagesByProperty(propertyId, page, limit, search, status, type);
 
             return res.json(packages);
         } catch (err) {

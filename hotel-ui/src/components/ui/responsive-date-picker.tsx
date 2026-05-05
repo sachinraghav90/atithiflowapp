@@ -2,7 +2,7 @@ import * as React from "react"
 import { Calendar } from "./calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "./popover"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./dialog"
-import { format, parse, isValid } from "date-fns"
+import { format, parse, isValid, startOfDay } from "date-fns"
 import { CalendarIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "./button"
@@ -69,6 +69,9 @@ export function ResponsiveDatePicker({
         if (val.length === formatStr.length) {
             const parsed = parse(val, formatStr, new Date())
             if (isValid(parsed)) {
+                if (minDate && startOfDay(parsed) < startOfDay(minDate)) {
+                    return
+                }
                 onChange(parsed)
             }
         } else if (val === "") {
@@ -87,7 +90,7 @@ export function ResponsiveDatePicker({
 
     const Trigger = (
         <div className={cn(
-            "flex h-10 w-full items-center rounded-md border border-input bg-background overflow-hidden focus-within:ring-1 focus-within:ring-ring transition-all group shadow-sm",
+            "flex h-11 w-full items-center rounded-[3px] border border-input bg-background overflow-hidden focus-within:ring-1 focus-within:ring-ring transition-all group shadow-sm",
             disabled && "opacity-50 cursor-not-allowed pointer-events-none",
             className
         )}>
@@ -134,7 +137,7 @@ export function ResponsiveDatePicker({
                     }
                     if (!showTime) setOpen(false)
                 }}
-                disabled={(date) => (minDate ? date < minDate : false)}
+                disabled={(date) => (minDate ? startOfDay(date) < startOfDay(minDate) : false)}
                 initialFocus
                 className="bg-background"
             />

@@ -83,7 +83,14 @@ export default function PackageManagement() {
         isFetching: packagesFetching,
         isUninitialized: packageUninitialized,
         refetch: refetchPackages
-    } = useGetPackagesByPropertyQuery({ propertyId: String(selectedPropertyId), page: 1, limit: 1000 }, {
+    } = useGetPackagesByPropertyQuery({ 
+        propertyId: String(selectedPropertyId), 
+        page, 
+        limit,
+        search: searchQuery,
+        status: statusFilter,
+        type: typeFilter
+    }, {
         skip: !isLoggedIn || !selectedPropertyId
     })
 
@@ -193,12 +200,12 @@ export default function PackageManagement() {
     };
 
     const exportPlansSheet = () => {
-        if (!filteredPackageRows.length) {
+        if (!packageRows.length) {
             toast.info("No plans available to export");
             return;
         }
 
-        const formatted = filteredPackageRows.map((pkg) => ({
+        const formatted = packageRows.map((pkg) => ({
             "Plan ID": formatModuleDisplayId("package", pkg.id),
             "Plan Name": pkg.package_name,
             "Description": pkg.description || "-",
@@ -219,31 +226,10 @@ export default function PackageManagement() {
         resetPage();
     };
 
-    const filteredPackageRows = useMemo(() => {
-        const statusFiltered = statusFilter
-            ? packageRows.filter((pkg) => String(pkg.is_active) === statusFilter)
-            : packageRows;
+    const totalRecords = packages?.pagination?.totalItems ?? packages?.pagination?.total ?? packageRows.length;
+    const totalPages = packages?.pagination?.totalPages ?? 1;
 
-        const typeFiltered = typeFilter
-            ? statusFiltered.filter((pkg) => (typeFilter === "system" ? pkg.system_generated : !pkg.system_generated))
-            : statusFiltered;
-
-        return filterGridRowsByQuery(typeFiltered, searchQuery, [
-            (pkg) => pkg.package_name,
-            (pkg) => pkg.description,
-            (pkg) => pkg.base_price,
-            (pkg) => pkg.is_active ? "Active" : "Inactive",
-            (pkg) => pkg.system_generated ? "System" : "Custom",
-        ]);
-    }, [packageRows, searchQuery, statusFilter, typeFilter]);
-
-    const totalRecords = filteredPackageRows.length;
-    const totalPages = Math.max(1, Math.ceil(totalRecords / limit));
-
-    const paginatedPackageRows = useMemo(() => {
-        const start = (page - 1) * limit;
-        return filteredPackageRows.slice(start, start + limit);
-    }, [filteredPackageRows, page, limit]);
+    const paginatedPackageRows = packageRows;
 
     useEffect(() => {
         if (page > totalPages) {
@@ -339,7 +325,10 @@ export default function PackageManagement() {
                                 <NativeSelect
                                     className="flex-1 bg-transparent px-2 focus:outline-none focus:ring-0 text-sm h-full truncate cursor-pointer"
                                     value={selectedPropertyId ?? ""}
-                                    onChange={(e) => setSelectedPropertyId(Number(e.target.value) || null)}
+                                    onChange={(e) => {
+                                        setSelectedPropertyId(Number(e.target.value) || null);
+                                        resetPage();
+                                    }}
                                 >
                                     <option value="" disabled>Select Property</option>
                                     {myProperties?.properties?.map((property: { id: number; brand_name: string }) => (
@@ -388,7 +377,10 @@ export default function PackageManagement() {
                                 <GridToolbarSelect
                                     label="Type"
                                     value={typeFilter}
-                                    onChange={setTypeFilter}
+                                    onChange={(value) => {
+                                        setTypeFilter(value);
+                                        resetPage();
+                                    }}
                                     className="min-w-[160px]"
                                     options={[
                                         { label: "All", value: "" },
@@ -400,7 +392,10 @@ export default function PackageManagement() {
                                 <GridToolbarSelect
                                     label="Status"
                                     value={statusFilter}
-                                    onChange={setStatusFilter}
+                                    onChange={(value) => {
+                                        setStatusFilter(value);
+                                        resetPage();
+                                    }}
                                     className="min-w-[180px]"
                                     options={[
                                         { label: "All", value: "" },

@@ -123,21 +123,11 @@ export default function VendorsManagement() {
         isLoading: myPropertiesLoading
     } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
 
-    const cleanSearchQuery = useMemo(() => {
-        if (!searchQuery) return "";
-        const statusLabels = VENDOR_STATUS_OPTIONS.map(opt => opt.label.toLowerCase());
-        return searchQuery
-            .split(/\s+/)
-            .filter(word => !statusLabels.includes(word.toLowerCase()))
-            .join(" ")
-            .trim();
-    }, [searchQuery]);
-
     const { data: vendors, isLoading, isFetching, isUninitialized, refetch: refetchVendors } = useGetPropertyVendorsQuery({ 
         propertyId: selectedPropertyId, 
         page, 
         limit, 
-        search: cleanSearchQuery, 
+        search: searchQuery, 
         type: typeFilter, 
         status: statusFilter 
     }, {
@@ -235,7 +225,7 @@ export default function VendorsManagement() {
         try {
             const res = await getVendorsForExport({
                 propertyId: selectedPropertyId,
-                search: cleanSearchQuery,
+                search: searchQuery.trim(),
                 type: typeFilter,
                 status: statusFilter
             }).unwrap();
@@ -375,7 +365,7 @@ export default function VendorsManagement() {
                                     value={typeFilter}
                                     onChange={(val) => {
                                         setTypeFilter(val);
-                                        setPage(1);
+                                        resetPage();
                                     }}
                                     options={[
                                         { label: "All", value: "" },
@@ -388,7 +378,7 @@ export default function VendorsManagement() {
                                     value={statusFilter}
                                     onChange={(val) => {
                                         setStatusFilter(val);
-                                        setPage(1);
+                                        resetPage();
                                     }}
                                     options={VENDOR_STATUS_OPTIONS}
                                 />
@@ -467,7 +457,7 @@ export default function VendorsManagement() {
                         },
                     ] satisfies ColumnDef[]}
                     data={vendorRows}
-                    loading={isLoading || isInitializing}
+                    loading={isLoading || isFetching || isInitializing}
                     emptyText="No vendors found"
                     minWidth="600px"
                     actionLabel=""
@@ -498,7 +488,7 @@ export default function VendorsManagement() {
                         page,
                         totalPages: vendors?.pagination?.totalPages ?? 1,
                         setPage,
-                        disabled: !vendors,
+                        disabled: isFetching || !vendors,
                         totalRecords: vendors?.pagination?.totalItems ?? vendors?.pagination?.total ?? vendors?.data?.length ?? 0,
                         limit,
                         onLimitChange: handleLimitChange
@@ -509,7 +499,7 @@ export default function VendorsManagement() {
             </section>
 
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetContent side="right" className="w-full lg:max-w-3xl sm:max-w-2xl overflow-y-auto bg-background">
+                <SheetContent side="right" className="w-full lg:max-w-4xl sm:max-w-3xl overflow-y-auto bg-background">
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -519,8 +509,8 @@ export default function VendorsManagement() {
                             <div className="space-y-1">
                                 <SheetTitle className="text-xl font-bold text-foreground">
                                     {mode === "add" || mode === "edit"
-                                        ? `Vendor [${mode === "add" ? "#NEW" : editingVendor?.id ? `#${formatModuleDisplayId("vendor", editingVendor.id)}` : "#NEW"}]`
-                                        : `Vendor Summary [${editingVendor?.id ? `#${formatModuleDisplayId("vendor", editingVendor.id)}` : "..."}]`
+                                        ? `Vendor ${mode === "add" ? "" : editingVendor?.id ? `#${formatModuleDisplayId("vendor", editingVendor.id)}` : ""}`
+                                        : `Vendor ${editingVendor?.id ? `#${formatModuleDisplayId("vendor", editingVendor.id)}` : ""}`
                                     }
                                 </SheetTitle>
                                 <p className="text-xs text-muted-foreground font-medium tracking-wide">

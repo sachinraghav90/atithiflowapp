@@ -75,7 +75,7 @@ export default function BookingLogsEmbedded({ bookingId }: Props) {
                     const detailsObj = parseDetails(log.details);
 
                     return (
-                        <Card key={log.id} className="rounded-[5px] border bg-background">
+                        <Card key={log.id} className="rounded-[5px] border-2 border-primary/50 bg-background shadow-sm">
                             <CardContent className="p-5 space-y-3">
                                 {/* Header */}
                                 <div className="flex justify-between items-start gap-4">

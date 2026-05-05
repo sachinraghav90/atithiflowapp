@@ -91,22 +91,6 @@ export function OrdersManagement() {
     /* ============================
        ORDERS QUERY (PAGINATED)
     ============================ */
-    const cleanSearchQuery = useMemo(() => {
-        if (!searchQuery) return "";
-        const statusLabels = ORDER_STATUSES.map(s => s.toLowerCase());
-        const paymentLabels = PAYMENT_STATUSES.map(s => s.toLowerCase());
-        const filterKeywords = [...statusLabels, ...paymentLabels];
-        return filterKeywords
-            .sort((left, right) => right.length - left.length)
-            .reduce((query, keyword) => {
-                const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-                return query.replace(new RegExp(`\\b${escapedKeyword}\\b`, "gi"), " ");
-            }, searchQuery)
-            .replace(/\s+/g, " ")
-            .trim();
-    }, [searchQuery]);
-
-
     const { data, isLoading, isFetching: ordersFetching, refetch } = useGetPropertyOrdersQuery(
         {
             propertyId: selectedPropertyId,
@@ -114,7 +98,7 @@ export function OrdersManagement() {
             limit,
             status: statusFilter || undefined,
             payment_status: paymentFilter || undefined,
-            search: cleanSearchQuery
+            search: searchQuery
         },
         { skip: !isLoggedIn || !selectedPropertyId }
     );
@@ -144,7 +128,7 @@ export function OrdersManagement() {
                 propertyId: selectedPropertyId,
                 status: statusFilter || undefined,
                 payment_status: paymentFilter || undefined,
-                search: cleanSearchQuery,
+                search: searchQuery,
             }).unwrap();
 
             if (!res?.data?.length) {

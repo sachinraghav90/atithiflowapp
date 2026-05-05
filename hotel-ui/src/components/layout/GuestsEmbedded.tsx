@@ -322,8 +322,6 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
 
                         <Button
                             variant="heroOutline"
-                         
-                            disabled={!remainingGuests || remainingGuests < 0}
                             onClick={() => {
                                 setRemainingGuests(remainingGuests - 1)
                                 setOriginalGuests(
@@ -374,7 +372,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                 return (
                     <div
                         key={key}
-                        className="rounded-[5px] border border-border bg-background p-6 space-y-4 shadow-sm"
+                        className="rounded-[5px] border-2 border-primary/50 bg-background p-6 space-y-4 shadow-sm"
                     >
                         <div className="flex justify-between">
                             <p className="font-medium">
@@ -804,7 +802,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
             {guests.map((g, i) => {
                 return !isEditing && (
                     <div
-                        className="overflow-hidden rounded-[5px] border border-border bg-background shadow-sm"
+                        className="overflow-hidden rounded-[5px] border-2 border-primary/50 bg-background shadow-sm"
                         key={i}
                     >
                         {/* Name */}
