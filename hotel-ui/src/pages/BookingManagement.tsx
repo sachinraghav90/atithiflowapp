@@ -21,12 +21,7 @@ import {
     SheetHeader,
     SheetTitle,
 } from "@/components/ui/sheet";
-import {
-    Tabs,
-    TabsList,
-    TabsTrigger,
-    TabsContent,
-} from "@/components/ui/tabs";
+
 
 import { toast } from "react-toastify";
 import {
@@ -92,6 +87,17 @@ const formatDate = (date: Date | null) => {
     return toISODateOnly(date);
 };
 
+const SUMMARY_TABS = [
+    { id: "summary", label: "Summary" },
+    { id: "rooms", label: "Rooms" },
+    { id: "guests", label: "Guests" },
+    { id: "vehicles", label: "Vehicles" },
+    { id: "payments", label: "Payments" },
+    { id: "laundry", label: "Laundry" },
+    { id: "orders", label: "Restaurant Orders" },
+    { id: "logs", label: "Logs" },
+];
+
 export default function BookingsManagement() {
 
     const todayISO = () => {
@@ -124,6 +130,7 @@ export default function BookingsManagement() {
 
     const [detailsOpen, setDetailsOpen] = useState(false);
     const [editMode, setEditMode] = useState(false);
+    const [activeTab, setActiveTab] = useState("summary");
 
     const [cancelFee, setCancelFee] = useState("0");
     const [cancelComment, setCancelComment] = useState("");
@@ -195,6 +202,7 @@ export default function BookingsManagement() {
         setBookingId(id)
         setEditMode(isEdit);
         setDetailsOpen(true);
+        setActiveTab("summary");
     }
 
     async function handleCancelBooking() {
@@ -482,23 +490,23 @@ export default function BookingsManagement() {
 
     return (
         <div className="flex flex-col">
-            <section className="p-6 lg:p-8">
+            <section className="p-4 lg:p-6 space-y-4">
                 {/* Header */}
-                <div className="mb-6 flex items-start justify-between gap-4">
+                <div className="flex justify-between items-center mb-2">
                     {/* Left: Title */}
                     <div>
-                        <h1 className="text-2xl font-bold">Bookings</h1>
+                        <h1 className="text-2xl font-bold text-foreground">Bookings</h1>
                         <p className="text-sm text-muted-foreground">
-                            Add, View and Manage bookings
+                            Manage bookings and reservation details
                         </p>
                     </div>
 
                     {/* Right: Actions */}
                     <div className="flex items-center gap-3 flex-shrink-0">
                         {(isSuperAdmin || isOwner) && (
-                            <div className="flex items-center h-9 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
-                                <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border uppercase">
-                                    PROPERTY
+                            <div className="flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
+                                <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border tracking-wide">
+                                    Property
                                 </span>
                                 <NativeSelect
                                     className="flex-1 bg-transparent px-2 focus:outline-none focus:ring-0 text-sm h-full truncate cursor-pointer"
@@ -746,119 +754,100 @@ export default function BookingsManagement() {
                         animate={{ opacity: 1, y: 0 }}
                         className="space-y-6"
                     >
-                        <SheetHeader>
+                        <SheetHeader className="mb-6">
                             <div className="space-y-1">
-                                <SheetTitle>
+                                <SheetTitle className="text-xl font-bold">
                                     Booking [#{formatModuleDisplayId("booking", bookingId)}]
                                 </SheetTitle>
-                                <p className="text-xs text-muted-foreground font-medium">
-                                    {editMode ? "Manage Booking" : "Booking related details"}
+                                <p className="text-xs text-muted-foreground font-medium tracking-wider">
+                                    {editMode ? "Manage Booking Details" : "Booking Related Details"}
                                 </p>
                             </div>
                         </SheetHeader>
 
                         {/* Status Update */}
                         {editMode && (
-                            <div className="space-y-2 border-b border-border pb-4">
-                                <Label className="text-sm font-semibold">Booking Status</Label>
-                                <NativeSelect
-                                    className="h-10 max-w-xs rounded-[3px] border border-border bg-background px-3 text-sm"
-                                    value={updatedStatus || selectedBooking?.booking.booking_status || ""}
-                                    onChange={(e) => setUpdatedStatus(e.target.value)}
-                                    disabled={selectedBooking?.booking.booking_status === "CANCELLED"}
-                                >
-                                    <option value={""} disabled>Select status</option>
-                                    {BOOKING_STATUSES.map((s) => (
-                                        <option key={s} value={s}>
-                                            {s.replace("_", " ")}
-                                        </option>
-                                    ))}
-                                </NativeSelect>
+                            <div className="space-y-6 rounded-[5px] border border-border/40 bg-background p-4 shadow-sm">
+                                <h3 className="text-[11px] font-semibold text-primary/90 tracking-wider border-b border-border/40 pb-2 mb-3">
+                                    UPDATE BOOKING STATUS
+                                </h3>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-bold text-muted-foreground tracking-wide">Booking Status *</Label>
+                                    <NativeSelect
+                                        className="h-11 border border-primary/20 bg-background rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary w-full shadow-none"
+                                        value={updatedStatus || selectedBooking?.booking.booking_status || ""}
+                                        onChange={(e) => setUpdatedStatus(e.target.value)}
+                                        disabled={selectedBooking?.booking.booking_status === "CANCELLED"}
+                                    >
+                                        <option value={""} disabled>Select status</option>
+                                        {BOOKING_STATUSES.map((s) => (
+                                            <option key={s} value={s}>
+                                                {s.replace("_", " ")}
+                                            </option>
+                                        ))}
+                                    </NativeSelect>
+                                </div>
                             </div>
                         )}
 
 
                     {/* Tabs */}
-                    <Tabs defaultValue="summary" className="h-full">
+                    <div className="space-y-6">
                         {/* Tabs Header */}
-                        <div className="border-b border-border px-6">
-                            <TabsList className="h-12 bg-transparent p-0 gap-6">
-                                <TabsTrigger value="summary">Summary</TabsTrigger>
-                                <TabsTrigger value="rooms">Rooms</TabsTrigger>
-                                <TabsTrigger value="guests">Guests</TabsTrigger>
-                                <TabsTrigger value="vehicles">Vehicles</TabsTrigger>
-                                <TabsTrigger value="payments">Payments</TabsTrigger>
-                                <TabsTrigger value="laundry">Laundry</TabsTrigger>
-                                <TabsTrigger value="orders">Restaurant Orders</TabsTrigger>
-                                <TabsTrigger value="logs">Logs</TabsTrigger>
-                            </TabsList>
+                        <div className="border-b border-border flex items-center">
+                            {SUMMARY_TABS.map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={cn(
+                                        "px-4 py-2 text-[11px] font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
+                                        activeTab === tab.id
+                                            ? "border-primary text-primary"
+                                            : "border-transparent text-muted-foreground hover:text-foreground"
+                                    )}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
                         </div>
 
-                        {/* Scrollable Content */}
-                        <div className="px-6 py-6">
-                            <TabsContent value="summary">
+                        {/* Content */}
+                        <div className="">
+                            {activeTab === "summary" && (
                                 <BookingSummaryTab booking={selectedBooking?.booking} />
-                            </TabsContent>
-
-                            <TabsContent value="rooms">
+                            )}
+                            {activeTab === "rooms" && (
                                 <BookingRoomsTab booking={selectedBooking?.booking} />
-                            </TabsContent>
-
-                            <TabsContent value="guests">
+                            )}
+                            {activeTab === "guests" && (
                                 <BookingGuestsTab bookingId={selectedBooking?.booking.id} guestCount={selectedBooking?.adult} />
-                            </TabsContent>
-
-                            <TabsContent value="vehicles">
+                            )}
+                            {activeTab === "vehicles" && (
                                 <BookingVehiclesTab bookingId={selectedBooking?.booking.id} rooms={selectedBooking?.booking.rooms} />
-                            </TabsContent>
-
-                            <TabsContent value="payments">
+                            )}
+                            {activeTab === "payments" && (
                                 <BookingPaymentsTab bookingId={selectedBooking?.booking.id} propertyId={selectedBooking?.booking?.property_id} />
-                            </TabsContent>
-
-                            <TabsContent value="laundry">
+                            )}
+                            {activeTab === "laundry" && (
                                 <BookingLaundryTab
                                     bookingId={selectedBooking?.booking.id}
                                     propertyId={selectedBooking?.booking?.property_id}
                                     bookingStatus={selectedBooking?.booking?.booking_status}
                                 />
-                            </TabsContent>
-
-                            <TabsContent value="orders">
+                            )}
+                            {activeTab === "orders" && (
                                 <BookingRestaurantOrderTab
                                     bookingId={selectedBooking?.booking.id}
                                     propertyId={selectedBooking?.booking?.property_id}
                                     bookingStatus={selectedBooking?.booking?.booking_status}
                                 />
-                            </TabsContent>
-
-                            <TabsContent value="logs">
+                            )}
+                            {activeTab === "logs" && (
                                 <BookingLogsTab bookingId={selectedBooking?.booking.id} />
-                            </TabsContent>
+                            )}
                         </div>
-                    </Tabs>
-
-                    <div className="flex justify-end gap-3 pt-4 border-t border-border">
-                        <Button
-                            variant="heroOutline"
-                            onClick={() => setDetailsOpen(false)}
-                        >
-                            {editMode ? "Cancel" : "Close"}
-                        </Button>
-
-                        {editMode && (
-                            <Button
-                                variant="hero"
-                                disabled={
-                                    !updatedStatus ||
-                                    updatedStatus === selectedBooking?.booking.booking_status
-                                }
-                                onClick={() => setConfirmStatusOpen(true)}
-                            >
-                                Update
-                            </Button>
-                        )}
                     </div>
+
                     </motion.div>
                 </SheetContent>
             </Sheet>

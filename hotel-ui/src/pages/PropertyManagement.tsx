@@ -963,6 +963,7 @@ export default function PropertyManagement() {
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
                 <SheetContent
                     side="right"
+                    overlayClassName="bg-black/55"
                     className="w-full lg:max-w-4xl sm:max-w-3xl overflow-y-auto bg-background app-scrollbar"
                 >
 
@@ -972,16 +973,16 @@ export default function PropertyManagement() {
                             <div className="space-y-1">
                                 <SheetTitle className="text-xl font-bold text-foreground">
                                     {mode === "add" || mode === "edit"
-                                        ? `Property [${mode === "add" ? "NEW" : newProperty.id ? `#${formatModuleDisplayId("property", newProperty.id)}` : "NEW"}]`
-                                        : `Property Summary [#${formatModuleDisplayId("property", newProperty.id)}]`
+                                        ? `Property ${mode === "add" ? "" : `[${newProperty.id ? `#${formatModuleDisplayId("property", newProperty.id)}` : ""}]`}`
+                                        : `Property [#${formatModuleDisplayId("property", newProperty.id)}]`
                                     }
                                 </SheetTitle>
                                 <p className="text-xs text-muted-foreground font-medium tracking-wide">
                                     {mode === "add"
-                                        ? "Create New Property Profile"
+                                        ? "Create New Property"
                                         : mode === "edit"
-                                            ? "Edit Property Configuration"
-                                            : "Property Information Summary"}
+                                            ? "Update Property Details"
+                                            : "Detailed Property Information"}
                                 </p>
                             </div>
                         </SheetHeader>

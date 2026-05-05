@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Trash2, PlusCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
+import { DataGrid, DataGridHeader, DataGridRow, DataGridHead, DataGridCell } from "@/components/ui/data-grid";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
     useAddVehiclesMutation,
@@ -55,7 +55,7 @@ function cloneVehicles(vehicles: VehicleForm[]) {
 
 export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
     const [vehicles, setVehicles] = useState<VehicleForm[]>([]);
-    const [isEditing, setIsEditing] = useState(false);
+    const [isEditing, setIsEditing] = useState(true);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [originalVehicles, setOriginalVehicles] = useState<VehicleForm[]>([]);
 
@@ -68,13 +68,21 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
 
     useEffect(() => {
         if (!data?.vehicles) return;
-        setVehicles(data.vehicles);
-        setOriginalVehicles(data.vehicles);
+        const fetchedVehicles = data.vehicles;
+        if (fetchedVehicles.length === 0) {
+            setVehicles([{ ...EMPTY_VEHICLE }]);
+        } else {
+            setVehicles(fetchedVehicles);
+        }
+        setOriginalVehicles(fetchedVehicles);
     }, [data]);
 
     const startEditing = () => {
         setOriginalVehicles(cloneVehicles(vehicles));
         setIsEditing(true);
+        if (vehicles.length === 0) {
+            setVehicles([{ ...EMPTY_VEHICLE }]);
+        }
     };
 
     const addVehicle = () => {
@@ -120,181 +128,196 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
         }
     };
 
-    const columns = useMemo<ColumnDef<VehicleForm>[]>(() => [
-        {
-            label: "Type",
-            className: "w-[150px]",
-            render: (vehicle, index) => (
-                isEditing ? (
-                    <NativeSelect
-                        value={vehicle.vehicle_type ?? ""}
-                        onChange={(e) =>
-                            updateVehicle(index, {
-                                vehicle_type: e.target.value as VehicleType | "",
-                            })
-                        }
-                        className="h-9 min-w-[130px] rounded-md border border-input bg-background px-3 text-sm"
-                    >
-                        <option value="CAR">Car</option>
-                        <option value="BIKE">Bike</option>
-                        <option value="OTHER">Other</option>
-                    </NativeSelect>
-                ) : (
-                    <span>{vehicle.vehicle_type || "—"}</span>
-                )
-            ),
-        },
-        {
-            label: "Name",
-            render: (vehicle, index) => (
-                isEditing ? (
-                    <Input
-                        value={vehicle.vehicle_name ?? ""}
-                        className="h-9"
-                        onChange={(e) =>
-                            updateVehicle(index, {
-                                vehicle_name: normalizeTextInput(e.target.value),
-                            })
-                        }
-                    />
-                ) : (
-                    <span>{vehicle.vehicle_name || "—"}</span>
-                )
-            ),
-        },
-        {
-            label: "Number",
-            render: (vehicle, index) => (
-                isEditing ? (
-                    <Input
-                        value={vehicle.vehicle_number ?? ""}
-                        className="h-9"
-                        onChange={(e) =>
-                            updateVehicle(index, {
-                                vehicle_number: normalizeTextInput(e.target.value),
-                            })
-                        }
-                    />
-                ) : (
-                    <span>{vehicle.vehicle_number || "—"}</span>
-                )
-            ),
-        },
-        {
-            label: "Color",
-            render: (vehicle, index) => (
-                isEditing ? (
-                    <Input
-                        value={vehicle.color ?? ""}
-                        className="h-9"
-                        onChange={(e) =>
-                            updateVehicle(index, {
-                                color: normalizeTextInput(e.target.value),
-                            })
-                        }
-                    />
-                ) : (
-                    <span>{vehicle.color || "—"}</span>
-                )
-            ),
-        },
-        {
-            label: "Room",
-            className: "w-[150px]",
-            render: (vehicle, index) => (
-                isEditing ? (
-                    <NativeSelect
-                        value={vehicle.room_no ?? ""}
-                        onChange={(e) =>
-                            updateVehicle(index, {
-                                room_no: normalizeTextInput(e.target.value),
-                            })
-                        }
-                        className="h-9 min-w-[130px] rounded-md border border-input bg-background px-3 text-sm"
-                    >
-                        {rooms.map((room) => (
-                            <option key={room.room_id} value={room.room_no}>
-                                {room.room_no}
-                            </option>
-                        ))}
-                    </NativeSelect>
-                ) : (
-                    <span>{vehicle.room_no || "—"}</span>
-                )
-            ),
-        },
-    ], [isEditing, rooms]);
-
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between gap-3">
                 <div>
-                    <h2 className="text-lg font-semibold">Vehicles</h2>
-                    <p className="text-sm text-muted-foreground">
+                    <h2 className="text-base font-semibold text-foreground">Vehicles</h2>
+                    <p className="text-[11px] text-muted-foreground/80">
                         Manage multiple vehicle entries in one save.
                     </p>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    {!isEditing && (
-                        <Button
-                            variant="heroOutline"
-                            disabled={vehicles.length === 0}
-                            onClick={startEditing}
-                        >
-                            Edit
-                        </Button>
-                    )}
+            </div>
 
-                    <Button variant="heroOutline" onClick={addVehicle}>
-                        + Add Vehicle
-                    </Button>
+            <div className="editable-grid-compact grid-header-inside-table border rounded-[5px] overflow-hidden flex flex-col shadow-sm">
+                <div className="grid-scroll-x overflow-y-auto w-full flex-1 min-h-0 bg-background">
+                    <div className="w-full min-w-[900px]">
+                        <DataGrid>
+                            {/* HEADER */}
+                            <DataGridHeader>
+                                <DataGridHead className="border-r border-slate-200/20">Type</DataGridHead>
+                                <DataGridHead className="border-r border-slate-200/20">Name</DataGridHead>
+                                <DataGridHead className="border-r border-slate-200/20">Number</DataGridHead>
+                                <DataGridHead className="border-r border-slate-200/20">Color</DataGridHead>
+                                <DataGridHead className="border-r border-slate-200/20">Room</DataGridHead>
+                                {isEditing && (
+                                    <DataGridHead className="w-20 text-center">Action</DataGridHead>
+                                )}
+                            </DataGridHeader>
 
-                    {isEditing && (
-                        <>
-                            <Button variant="heroOutline" onClick={handleCancel}>
-                                Cancel
-                            </Button>
-                            <Button
-                                variant="hero"
-                                onClick={() => setConfirmOpen(true)}
-                                disabled={isLoading}
-                            >
-                                Save Vehicles
-                            </Button>
-                        </>
-                    )}
+                            {/* BODY */}
+                            <tbody>
+                                {vehicles.map((vehicle, index) => (
+                                    <DataGridRow key={vehicle.id ?? `vehicle-${index}`}>
+                                        {/* TYPE */}
+                                        <DataGridCell className="border-r border-slate-200/40">
+                                            {isEditing ? (
+                                                <NativeSelect
+                                                    value={vehicle.vehicle_type ?? ""}
+                                                    onChange={(e) =>
+                                                        updateVehicle(index, {
+                                                            vehicle_type: e.target.value as VehicleType | "",
+                                                        })
+                                                    }
+                                                    className="h-9 w-full rounded-[3px] border border-border bg-background px-3 text-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0"
+                                                >
+                                                    <option value="" disabled>--Please Select--</option>
+                                                    <option value="CAR">Car</option>
+                                                    <option value="BIKE">Bike</option>
+                                                    <option value="OTHER">Other</option>
+                                                </NativeSelect>
+                                            ) : (
+                                                <span className="text-sm font-medium">{vehicle.vehicle_type || "—"}</span>
+                                            )}
+                                        </DataGridCell>
+
+                                        {/* NAME */}
+                                        <DataGridCell className="border-r border-slate-200/40">
+                                            {isEditing ? (
+                                                <Input
+                                                    value={vehicle.vehicle_name ?? ""}
+                                                    className="h-9 w-full rounded-[3px] border border-border bg-background px-3 text-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0"
+                                                    onChange={(e) =>
+                                                        updateVehicle(index, {
+                                                            vehicle_name: normalizeTextInput(e.target.value),
+                                                        })
+                                                    }
+                                                />
+                                            ) : (
+                                                <span className="text-sm font-medium">{vehicle.vehicle_name || "—"}</span>
+                                            )}
+                                        </DataGridCell>
+
+                                        {/* NUMBER */}
+                                        <DataGridCell className="border-r border-slate-200/40">
+                                            {isEditing ? (
+                                                <Input
+                                                    value={vehicle.vehicle_number ?? ""}
+                                                    className="h-9 w-full rounded-[3px] border border-border bg-background px-3 text-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0"
+                                                    onChange={(e) =>
+                                                        updateVehicle(index, {
+                                                            vehicle_number: normalizeTextInput(e.target.value),
+                                                        })
+                                                    }
+                                                />
+                                            ) : (
+                                                <span className="text-sm font-medium">{vehicle.vehicle_number || "—"}</span>
+                                            )}
+                                        </DataGridCell>
+
+                                        {/* COLOR */}
+                                        <DataGridCell className="border-r border-slate-200/40">
+                                            {isEditing ? (
+                                                <Input
+                                                    value={vehicle.color ?? ""}
+                                                    className="h-9 w-full rounded-[3px] border border-border bg-background px-3 text-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0"
+                                                    onChange={(e) =>
+                                                        updateVehicle(index, {
+                                                            color: normalizeTextInput(e.target.value),
+                                                        })
+                                                    }
+                                                />
+                                            ) : (
+                                                <span className="text-sm font-medium">{vehicle.color || "—"}</span>
+                                            )}
+                                        </DataGridCell>
+
+                                        {/* ROOM */}
+                                        <DataGridCell className="border-r border-slate-200/40">
+                                            {isEditing ? (
+                                                <NativeSelect
+                                                    value={vehicle.room_no ?? ""}
+                                                    onChange={(e) =>
+                                                        updateVehicle(index, {
+                                                            room_no: normalizeTextInput(e.target.value),
+                                                        })
+                                                    }
+                                                    className="h-9 w-full rounded-[3px] border border-border bg-background px-3 text-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0"
+                                                >
+                                                    <option value="" disabled>--Please Select--</option>
+                                                    {rooms.map((room) => (
+                                                        <option key={room.room_id} value={room.room_no}>
+                                                            {room.room_no}
+                                                        </option>
+                                                    ))}
+                                                </NativeSelect>
+                                            ) : (
+                                                <span className="text-sm font-medium">{vehicle.room_no || "—"}</span>
+                                            )}
+                                        </DataGridCell>
+
+                                        {isEditing && (
+                                            <DataGridCell className="text-center">
+                                                {vehicles.length > 1 && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50/50"
+                                                        onClick={() => removeVehicle(index)}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                )}
+                                            </DataGridCell>
+                                        )}
+                                    </DataGridRow>
+                                ))}
+                            </tbody>
+                        </DataGrid>
+                    </div>
+                </div>
+
+                {/* ADD BUTTON FOOTER */}
+                <div className="editable-grid-footer p-3 bg-background border-t border-border flex items-center">
+                    <button
+                        type="button"
+                        className="flex items-center gap-1.5 text-primary hover:underline text-sm font-semibold transition-colors px-1"
+                        onClick={addVehicle}
+                    >
+                        <PlusCircle className="h-4 w-4" />
+                        Add New Vehicle
+                    </button>
                 </div>
             </div>
 
-            <AppDataGrid
-                columns={columns}
-                data={vehicles}
-                minWidth="900px"
-                emptyText="No vehicles added"
-                actions={isEditing
-                    ? (_, index) => (
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Trash2
-                                    className="mx-auto h-4 w-4 cursor-pointer text-red-500 transition-colors hover:text-red-700"
-                                    aria-label="Remove vehicle row"
-                                    onClick={(event) => {
-                                        event.stopPropagation();
-                                        removeVehicle(index);
-                                    }}
-                                />
-                            </TooltipTrigger>
-                            <TooltipContent className="bg-white text-black shadow-md">
-                                Remove Vehicle
-                            </TooltipContent>
-                        </Tooltip>
-                    )
-                    : undefined}
-                actionLabel="Action"
-                actionClassName="text-center w-[90px]"
-                rowKey={(vehicle, index) => vehicle.id ?? `vehicle-${index}`}
-            />
+            <div className="flex justify-end gap-3 pt-4 border-t border-border mt-4">
+                <Button
+                    variant="heroOutline"
+                    className="min-w-[92px]"
+                    onClick={handleCancel}
+                >
+                    Cancel
+                </Button>
+                {isEditing ? (
+                    <Button
+                        variant="hero"
+                        className="min-w-[132px]"
+                        onClick={() => setConfirmOpen(true)}
+                        disabled={isLoading}
+                    >
+                        Save Vehicles
+                    </Button>
+                ) : (
+                    <Button
+                        variant="hero"
+                        className="min-w-[92px]"
+                        onClick={startEditing}
+                    >
+                        Update
+                    </Button>
+                )}
+            </div>
 
             <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
                 <DialogContent>

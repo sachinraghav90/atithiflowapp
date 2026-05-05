@@ -109,6 +109,8 @@ export default function PropertyLocation({
                     viewMode={viewMode}
                     required
                     maxLength={15}
+                    prefix="+91"
+                    transform={(val: string) => val.replace(/\D/g, "")}
                 />
 
                 <FormInput

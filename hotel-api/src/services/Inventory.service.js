@@ -1,5 +1,35 @@
 import { getDb } from "../../utils/getDb.js";
 
+const INVENTORY_UPDATE_FIELDS = [
+    { column: "property_id", aliases: ["property_id", "propertyId"] },
+    { column: "inventory_type_id", aliases: ["inventory_type_id", "inventoryTypeId"] },
+    { column: "use_type", aliases: ["use_type", "useType"] },
+    { column: "name", aliases: ["name"] },
+    { column: "unit", aliases: ["unit"] },
+    { column: "is_active", aliases: ["is_active", "isActive"] },
+];
+
+function hasOwnValue(payload, key) {
+    return Object.prototype.hasOwnProperty.call(payload, key) && payload[key] !== undefined;
+}
+
+function readPayloadValue(payload, aliases) {
+    for (const alias of aliases) {
+        if (hasOwnValue(payload, alias)) {
+            return payload[alias];
+        }
+    }
+
+    return undefined;
+}
+
+function createServiceError(message, statusCode, code) {
+    const error = new Error(message);
+    error.statusCode = statusCode;
+    if (code) error.code = code;
+    return error;
+}
+
 class InventoryService {
 
     #DB;
@@ -291,20 +321,64 @@ class InventoryService {
        UPDATE inventory
     ===================================================== */
 
-    async updateInventory(id, payload, userId) {
-        const existing = await this.#getInventoryById(id);
+    async updateInventory(id, payload = {}, userId) {
+        const requestPayload = payload && typeof payload === "object" ? payload : {};
+        const inventoryId = Number(id);
 
-        if (!existing) {
-            throw new Error("Inventory not found");
+        if (!Number.isInteger(inventoryId) || inventoryId <= 0) {
+            throw createServiceError("Invalid inventory id", 400);
         }
 
-        const effectivePropertyId = payload.property_id ?? existing.property_id;
-        const effectiveInventoryTypeId = payload.inventory_type_id ?? existing.inventory_type_id;
-        const effectiveName = payload.name ?? existing.name;
+        const existing = await this.#getInventoryById(inventoryId);
 
-        if (effectivePropertyId && effectiveInventoryTypeId && effectiveName?.trim()) {
+        if (!existing) {
+            throw createServiceError("Inventory not found", 404);
+        }
+
+        const updatePayload = {};
+
+        for (const { column, aliases } of INVENTORY_UPDATE_FIELDS) {
+            const value = readPayloadValue(requestPayload, aliases);
+            if (value !== undefined) {
+                updatePayload[column] = column === "name" && typeof value === "string"
+                    ? value.trim()
+                    : value;
+            }
+        }
+
+        if (!Object.keys(updatePayload).length) {
+            throw createServiceError("No valid fields provided for update", 400);
+        }
+
+        if (
+            updatePayload.name !== undefined &&
+            (typeof updatePayload.name !== "string" || !updatePayload.name.trim())
+        ) {
+            throw createServiceError("Inventory name is required", 400);
+        }
+
+        if (
+            updatePayload.use_type !== undefined &&
+            (typeof updatePayload.use_type !== "string" || !updatePayload.use_type.trim())
+        ) {
+            throw createServiceError("Inventory use type is required", 400);
+        }
+
+        if (updatePayload.property_id !== undefined && !Number(updatePayload.property_id)) {
+            throw createServiceError("Valid property id is required", 400);
+        }
+
+        if (updatePayload.inventory_type_id !== undefined && !Number(updatePayload.inventory_type_id)) {
+            throw createServiceError("Valid inventory type is required", 400);
+        }
+
+        const effectivePropertyId = updatePayload.property_id ?? existing.property_id;
+        const effectiveInventoryTypeId = updatePayload.inventory_type_id ?? existing.inventory_type_id;
+        const effectiveName = String(updatePayload.name ?? existing.name ?? "").trim();
+
+        if (effectivePropertyId && effectiveInventoryTypeId && effectiveName) {
             const duplicate = await this.#findDuplicateInventory({
-                id,
+                id: inventoryId,
                 property_id: effectivePropertyId,
                 inventory_type_id: effectiveInventoryTypeId,
                 name: effectiveName,
@@ -322,13 +396,11 @@ class InventoryService {
         const values = [];
         let i = 1;
 
-        for (const [key, value] of Object.entries(payload)) {
-            fields.push(`${key} = $${i++}`);
-            values.push(value);
-        }
-
-        if (!fields.length) {
-            throw new Error("No fields provided for update");
+        for (const { column } of INVENTORY_UPDATE_FIELDS) {
+            if (Object.prototype.hasOwnProperty.call(updatePayload, column)) {
+                fields.push(`${column} = $${i++}`);
+                values.push(updatePayload[column]);
+            }
         }
 
         fields.push(`updated_by = $${i++}`);
@@ -343,7 +415,7 @@ class InventoryService {
             RETURNING *;
         `;
 
-        values.push(id);
+        values.push(inventoryId);
 
         const result = await this.#DB.query(query, values);
 

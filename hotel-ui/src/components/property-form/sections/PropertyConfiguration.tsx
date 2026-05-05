@@ -64,6 +64,8 @@ export default function PropertyConfiguration({
                 acc + Number(curr.total_rooms || 0),
             0
         );
+    const floors = value.floors || [];
+    const showFloorActions = !viewMode && floors.length > 1;
 
     return (
         <div className="space-y-4 rounded-[5px] border border-border/40 bg-background p-4 shadow-sm">
@@ -80,7 +82,7 @@ export default function PropertyConfiguration({
                 <FormInput
                     label="Serial Number"
                     field="serial_number"
-                    value={value.serial_number}
+                    value={value}
                     setValue={setValue}
                     errors={errors}
                     setErrors={setErrors}
@@ -97,7 +99,7 @@ export default function PropertyConfiguration({
                         value={value.serial_suffix}
                         title={errors.serial_suffix?.message || ""}
                         className={cn(
-                            "w-full h-9 rounded-[3px] border px-3 text-sm shadow-none",
+                            "w-full h-11 rounded-[3px] border px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
                             errors.serial_suffix ? "border-red-500 bg-background" : "border-border/70 bg-background"
                         )}
                         onChange={(e) =>
@@ -137,7 +139,7 @@ export default function PropertyConfiguration({
                     <input
                         disabled
                         value={totalRooms}
-                        className="w-full h-9 rounded-[3px] border border-border/70 px-3 text-sm bg-muted/20 font-bold"
+                        className="w-full h-11 rounded-[3px] border border-border/70 px-3 text-sm bg-muted/20 font-bold"
                     />
                 </div>
 
@@ -147,29 +149,32 @@ export default function PropertyConfiguration({
             <div className="space-y-3 pt-2">
                 <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Floor Configuration</Label>
 
-                <div className="editable-grid-compact overflow-hidden rounded-[5px] border border-border/40">
-                    <div className="w-full overflow-x-auto">
-                        <DataGrid>
-                            <DataGridHeader className="bg-accent/50 border-b border-border/40">
-                                <DataGridHead className="text-[10px] font-bold uppercase tracking-wider py-2 h-auto">Floor Number</DataGridHead>
-                                <DataGridHead className="text-[10px] font-bold uppercase tracking-wider py-2 h-auto">Rooms Count *</DataGridHead>
-                                {!viewMode && <DataGridHead className="w-16 text-center text-[10px] font-bold uppercase tracking-wider py-2 h-auto">Action</DataGridHead>}
-                            </DataGridHeader>
+                <div className="editable-grid-compact border rounded-[5px] overflow-hidden flex flex-col">
+                    <div className="overflow-x-auto w-full bg-background border-b border-border">
+                        <div className="w-full min-w-[560px]">
+                            <DataGrid>
+                                <DataGridHeader>
+                                    <DataGridHead>Floor Number</DataGridHead>
+                                    <DataGridHead>Rooms Count *</DataGridHead>
+                                    {showFloorActions && (
+                                        <DataGridHead className="w-20 text-center">Action</DataGridHead>
+                                    )}
+                                </DataGridHeader>
 
                             <tbody>
-                                {value.floors?.map((floor: any, index: number) => (
-                                    <DataGridRow key={index} className="hover:bg-accent/5">
-                                        <DataGridCell className="py-2">
+                                {floors.map((floor: any, index: number) => (
+                                    <DataGridRow key={index}>
+                                        <DataGridCell>
                                             <span className="text-sm font-semibold">Floor {floor.floor_number}</span>
                                         </DataGridCell>
 
-                                        <DataGridCell className="py-2">
+                                        <DataGridCell>
                                             <input
                                                 disabled={viewMode}
                                                 value={floor.total_rooms}
                                                 maxLength={2}
                                                 placeholder="0"
-                                                className="w-full h-8 rounded-[3px] border border-border/70 px-3 text-sm bg-background focus:ring-1 focus:ring-primary outline-none font-bold"
+                                                className="w-full h-9 rounded-[3px] border border-border bg-background px-3 text-sm font-bold shadow-none outline-none focus:ring-1 focus:ring-primary"
                                                 onChange={(e) => {
                                                     const val = normalizeNumberInput(e.target.value);
                                                     setValue((prev: any) => {
@@ -184,40 +189,43 @@ export default function PropertyConfiguration({
                                             />
                                         </DataGridCell>
 
-                                        {!viewMode && (
-                                            <DataGridCell className="py-2 text-center">
+                                        {showFloorActions && (
+                                            <DataGridCell className="text-center">
                                                 <Button
+                                                    type="button"
                                                     size="icon"
                                                     variant="ghost"
-                                                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                                    className="editable-grid-remove-btn h-10 w-10 text-destructive hover:text-destructive/80 transition-colors mx-auto"
+                                                    aria-label="Remove floor row"
                                                     onClick={() =>
                                                         syncFloors(Math.max(value.total_floors - 1, 0))
                                                     }
                                                 >
-                                                    <Trash2 className="w-4 h-4" />
+                                                    <Trash2 className="w-5 h-5" />
                                                 </Button>
                                             </DataGridCell>
                                         )}
                                     </DataGridRow>
                                 ))}
                             </tbody>
-                        </DataGrid>
+                            </DataGrid>
+                        </div>
                     </div>
 
-                    {!value.floors?.length && (
+                    {!floors.length && (
                         <div className="text-xs text-muted-foreground p-8 text-center italic bg-accent/5">
                             No floors configured. Enter Total Floors to begin.
                         </div>
                     )}
 
                     {!viewMode && (
-                        <div className="p-3 bg-accent/20 border-t border-border/40">
+                        <div className="editable-grid-footer p-3 bg-muted/10">
                             <button
                                 type="button"
-                                className="flex items-center gap-1.5 text-primary hover:underline text-[11px] font-bold uppercase tracking-wider transition-colors"
+                                className="flex items-center gap-1.5 text-primary hover:underline text-sm font-semibold transition-colors"
                                 onClick={() => syncFloors((value.total_floors || 0) + 1)}
                             >
-                                <PlusCircle className="w-3.5 h-3.5" /> Add New Floor
+                                <PlusCircle className="w-4 h-4" /> Add New Floor
                             </button>
                         </div>
                     )}

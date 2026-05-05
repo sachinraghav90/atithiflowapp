@@ -116,7 +116,7 @@ export default function PropertyTax({
                         disabled={viewMode}
                         value={value.gst}
                         title={errors.gst?.message || ""}
-                        className={`w-full h-9 rounded-[3px] border px-3 text-sm ${errors.gst
+                        className={`w-full h-11 rounded-[3px] border px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 ${errors.gst
                             ? "border-red-500 bg-background"
                             : "border-border/70 bg-background"
                             }`}

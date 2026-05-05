@@ -45,6 +45,7 @@ export default function PropertyBank({
 }: Props) {
 
     const IFSC_REGEX = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+    const showBankActions = !viewMode && bankAccounts.length > 1;
 
     const updateBankField = (
         index: number,
@@ -130,8 +131,8 @@ export default function PropertyBank({
 
             </div>
             {hasBankDetails && (
-                <div className="editable-grid-compact overflow-hidden rounded-[5px] border border-border bg-background/50">
-                    <div className="grid-scroll-x w-full overflow-x-auto border-b border-border bg-background/50">
+                <div className="editable-grid-compact border rounded-[5px] overflow-hidden flex flex-col">
+                    <div className="overflow-x-auto w-full bg-background border-b border-border">
                         <div className="w-full min-w-[860px]">
                             <DataGrid>
                                 <DataGridHeader>
@@ -139,8 +140,8 @@ export default function PropertyBank({
                                     <DataGridHead>Account Holder *</DataGridHead>
                                     <DataGridHead>Account Number *</DataGridHead>
                                     <DataGridHead>IFSC Code *</DataGridHead>
-                                    {!viewMode && bankAccounts.length > 1 && (
-                                        <DataGridHead className="w-16 text-center">Action</DataGridHead>
+                                    {showBankActions && (
+                                        <DataGridHead className="w-20 text-center">Action</DataGridHead>
                                     )}
                                 </DataGridHeader>
 
@@ -196,7 +197,7 @@ export default function PropertyBank({
                                                 />
                                             </DataGridCell>
 
-                                            {!viewMode && bankAccounts.length > 1 && (
+                                            {showBankActions && (
                                                 <DataGridCell className="text-center">
                                                     <Button
                                                         type="button"
@@ -216,7 +217,7 @@ export default function PropertyBank({
                                     {!bankAccounts.length && (
                                         <DataGridRow>
                                             <DataGridCell
-                                                colSpan={!viewMode && bankAccounts.length > 1 ? 5 : 4}
+                                                colSpan={showBankActions ? 5 : 4}
                                                 className="text-center text-muted-foreground"
                                             >
                                                 No bank accounts added

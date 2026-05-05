@@ -300,29 +300,29 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
 
     /* -------- UI -------- */
     return (
-        <div className="space-y-6">
+        <div className="space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h2 className="text-[2rem] font-semibold tracking-tight text-foreground">Guests</h2>
+
                 </div>
 
                 <div className="flex flex-wrap gap-2 sm:justify-end">
                     <div className="flex flex-wrap gap-2">
                         {!isEditing && <Button
                             variant="heroOutline"
-                            className="min-w-[92px]"
+                           
                             onClick={() => {
                                 // setOriginalGuests(JSON.parse(JSON.stringify(guests)));
                                 setIsEditing(true);
                                 setIsAdding(false);
                             }}
                         >
-                            Edit
+                            Update
                         </Button>}
 
                         <Button
                             variant="heroOutline"
-                            className="min-w-[140px]"
+                         
                             disabled={!remainingGuests || remainingGuests < 0}
                             onClick={() => {
                                 setRemainingGuests(remainingGuests - 1)
@@ -374,7 +374,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                 return (
                     <div
                         key={key}
-                        className="rounded-[5px] border bg-card p-6 space-y-4"
+                        className="rounded-[5px] border border-border bg-background p-6 space-y-4 shadow-sm"
                     >
                         <div className="flex justify-between">
                             <p className="font-medium">
@@ -804,7 +804,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
             {guests.map((g, i) => {
                 return !isEditing && (
                     <div
-                        className="overflow-hidden rounded-2xl border border-sky-200/80 bg-sky-50/80 shadow-sm"
+                        className="overflow-hidden rounded-[5px] border border-border bg-background shadow-sm"
                         key={i}
                     >
                         {/* Name */}
@@ -854,7 +854,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
 
                         {/* Emergency */}
                         {(g.emergency_contact || g.emergency_contact_name) && (
-                            <div className="border-t border-sky-200/80 px-6 py-5">
+                            <div className="border-t border-border px-6 py-5">
                                 <p className="mb-2 text-sm font-medium text-foreground">
                                     Emergency Contact
                                 </p>
@@ -872,7 +872,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                         )}
 
                         {g.nationality?.toLowerCase() === "foreigner" && (
-                            <div className="border-t border-sky-200/80 px-6 py-5">
+                            <div className="border-t border-border px-6 py-5">
                                 <p className="mb-2 text-sm font-medium text-foreground">Visa Details</p>
 
                                 <div className="grid gap-6 sm:grid-cols-3">

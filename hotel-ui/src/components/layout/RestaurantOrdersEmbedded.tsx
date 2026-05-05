@@ -93,7 +93,7 @@ export default function RestaurantOrdersEmbedded({
                 {orders && orders.map((order, index) => (
                     <div
                         key={order.id}
-                        className="rounded-[5px] border bg-card p-5 space-y-3"
+                        className="rounded-[5px] border bg-background p-5 space-y-3"
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between">
