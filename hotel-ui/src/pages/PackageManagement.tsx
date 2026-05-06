@@ -173,7 +173,7 @@ export default function PackageManagement() {
 
     useEffect(() => {
         if (packageLoading) return
-        let selectedPackage = { ...selectedPackageData?.data }
+        const selectedPackage = { ...selectedPackageData?.data }
         if (selectedPackage && selectedPackage.base_price == 0.00) {
             selectedPackage.base_price = ""
         }
@@ -505,7 +505,7 @@ export default function PackageManagement() {
                                         <button
                                             onClick={() => setSheetTab("summary")}
                                             className={cn(
-                                                "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                                "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
                                                 sheetTab === "summary"
                                                     ? "border-primary text-primary"
                                                     : "border-transparent text-muted-foreground hover:text-foreground"
@@ -516,7 +516,7 @@ export default function PackageManagement() {
                                         <button
                                             onClick={() => setSheetTab("history")}
                                             className={cn(
-                                                "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                                "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
                                                 sheetTab === "history"
                                                     ? "border-primary text-primary"
                                                     : "border-transparent text-muted-foreground hover:text-foreground"
@@ -550,7 +550,7 @@ export default function PackageManagement() {
                             ) : (
                                 <div className="space-y-5 mt-6">
                                     <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-5">
-                                        <h3 className="text-[11px] font-semibold text-primary/90 uppercase tracking-[0.16em] border-b border-primary/50 pb-2">
+                                        <h3 className="text-sm font-semibold text-primary/90 mb-3">
                                             Plan Details
                                         </h3>
 

@@ -1,4 +1,5 @@
 import FormInput from "@/components/forms/FormInput";
+import PhonePrefixSelect from "@/components/forms/PhonePrefixSelect";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
@@ -49,9 +50,9 @@ export default function ContactLogin({
     };
 
     return (
-        <div className="space-y-6 border border-border rounded-[5px] p-5 bg-transparent">
+        <div className="space-y-6 border border-border rounded-[5px] p-5 bg-transparent [&>h3+*]:!mt-4">
 
-            <h3 className="font-semibold text-base">
+            <h3 className="text-sm font-semibold text-primary/90">
                 Contact & Login
             </h3>
 
@@ -79,7 +80,22 @@ export default function ContactLogin({
                     setErrors={setErrors}
                     required
                     viewMode={viewMode}
-                    prefix="+91"
+                    prefixControl={
+                        <PhonePrefixSelect
+                            value={value.phone1_country_code ?? "+91"}
+                            disabled={viewMode}
+                            onValueChange={(countryCode) =>
+                                setValue((prev: any) => ({
+                                    ...prev,
+                                    phone1_country_code: countryCode,
+                                }))
+                            }
+                            triggerClassName={cn(
+                                "h-11 w-[4.5rem] rounded-l-[3px] rounded-r-none border-border/70 border-r-0 px-3 text-sm font-semibold text-muted-foreground shadow-none hover:bg-background hover:text-foreground focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
+                                errors.phone1 && "border-red-500"
+                            )}
+                        />
+                    }
                     transform={(v) => v.replace(/\D/g, "").slice(0, 10)}
                 />
 
@@ -91,7 +107,22 @@ export default function ContactLogin({
                     errors={errors}
                     setErrors={setErrors}
                     viewMode={viewMode}
-                    prefix="+91"
+                    prefixControl={
+                        <PhonePrefixSelect
+                            value={value.phone2_country_code ?? "+91"}
+                            disabled={viewMode}
+                            onValueChange={(countryCode) =>
+                                setValue((prev: any) => ({
+                                    ...prev,
+                                    phone2_country_code: countryCode,
+                                }))
+                            }
+                            triggerClassName={cn(
+                                "h-11 w-[4.5rem] rounded-l-[3px] rounded-r-none border-border/70 border-r-0 px-3 text-sm font-semibold text-muted-foreground shadow-none hover:bg-background hover:text-foreground focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
+                                errors.phone2 && "border-red-500"
+                            )}
+                        />
+                    }
                     transform={(v) => v.replace(/\D/g, "").slice(0, 10)}
                 />
 

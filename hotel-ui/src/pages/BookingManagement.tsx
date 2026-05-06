@@ -786,8 +786,8 @@ export default function BookingsManagement() {
                         {/* Status Update */}
                         {editMode && (
                             <div className="space-y-6 rounded-[5px] border border-border/40 bg-background p-4 shadow-sm">
-                                <h3 className="text-[11px] font-semibold text-primary/90 tracking-wider border-b border-border/40 pb-2 mb-3">
-                                    UPDATE BOOKING STATUS
+                                <h3 className="text-sm font-semibold text-primary/90 mb-3">
+                                    Update Booking Status
                                 </h3>
                                 <div className="space-y-2">
                                     <Label className="text-xs font-bold text-muted-foreground tracking-wide">Booking Status *</Label>

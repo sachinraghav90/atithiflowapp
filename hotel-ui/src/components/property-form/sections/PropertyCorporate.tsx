@@ -1,6 +1,8 @@
 import FormInput from "@/components/forms/FormInput";
+import PhonePrefixSelect from "@/components/forms/PhonePrefixSelect";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 
 type Props = {
     value: any;
@@ -28,7 +30,7 @@ export default function PropertyCorporate({
     return (
         <div className="space-y-4 rounded-[5px] border border-border/40 bg-background p-4 shadow-sm">
 
-            <h3 className="text-xs font-semibold text-primary/90 uppercase tracking-[0.16em]">
+            <h3 className="text-sm font-semibold text-primary/90">
                 Corporate Office Address (Optional)
             </h3>
 
@@ -70,7 +72,22 @@ export default function PropertyCorporate({
                         viewMode={viewMode}
                         required
                         maxLength={15}
-                        prefix="+91"
+                        prefixControl={
+                            <PhonePrefixSelect
+                                value={value.phone_office_country_code ?? "+91"}
+                                disabled={viewMode}
+                                onValueChange={(countryCode) =>
+                                    setValue((prev: any) => ({
+                                        ...prev,
+                                        phone_office_country_code: countryCode,
+                                    }))
+                                }
+                                triggerClassName={cn(
+                                    "h-11 w-[4.5rem] rounded-l-[3px] rounded-r-none border-border/70 border-r-0 px-3 text-sm font-semibold text-muted-foreground shadow-none hover:bg-background hover:text-foreground focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
+                                    errors.phone_office && "border-red-500"
+                                )}
+                            />
+                        }
                         transform={(val: string) => val.replace(/\D/g, "")}
                     />
 

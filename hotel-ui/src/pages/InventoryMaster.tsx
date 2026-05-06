@@ -22,7 +22,7 @@ import { toast } from "react-toastify";
 import { useLocation } from "react-router-dom";
 import { usePermission } from "@/rbac/usePermission";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
-import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
+import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarSpacer, GridToolbarSearchSelect } from "@/components/ui/grid-toolbar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Pencil, RefreshCcw, FilterX, Download, Trash2, Plus, PlusCircle, Box, Package, Calendar, ShieldCheck, Wrench, Building2 } from "lucide-react";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
@@ -431,7 +431,7 @@ export default function InventoryMaster() {
             const res = await getAllInventory({
                 propertyId: selectedPropertyId,
                 search: searchQuery,
-                inventory_type: inventoryTypeFilter,
+                type: inventoryTypeFilter,
                 use_type: useTypeFilter,
                 status: statusFilter,
                 limit: 1000
@@ -548,11 +548,11 @@ export default function InventoryMaster() {
                                     onSearch={() => setSearchQuery(searchInput.trim())}
                                 />
 
-                                <GridToolbarSelect
+                                <GridToolbarSearchSelect
                                     label="Type"
                                     value={inventoryTypeFilter}
                                     onChange={(val) => {
-                                        setInventoryTypeFilter(val);
+                                        setInventoryTypeFilter(val as string);
                                         setPage(1);
                                     }}
                                     options={[
@@ -561,11 +561,11 @@ export default function InventoryMaster() {
                                     ]}
                                 />
 
-                                <GridToolbarSelect
+                                <GridToolbarSearchSelect
                                     label="Use"
                                     value={useTypeFilter}
                                     onChange={(val) => {
-                                        setUseTypeFilter(val);
+                                        setUseTypeFilter(val as string);
                                         setPage(1);
                                     }}
                                     options={[
@@ -610,11 +610,11 @@ export default function InventoryMaster() {
 
                             {/* Row 2 */}
                             <GridToolbarRow className="gap-2">
-                                <GridToolbarSelect
+                                <GridToolbarSearchSelect
                                     label="Status"
                                     value={statusFilter}
                                     onChange={(val) => {
-                                        setStatusFilter(val);
+                                        setStatusFilter(val as string);
                                         setPage(1);
                                     }}
                                     options={[
@@ -789,16 +789,12 @@ export default function InventoryMaster() {
 
                                                             <DataGridCell>
                                                                 <ValidationTooltip isValid={!((submittedBulk || row.touched?.use_type) && bulkErrors[index]?.use_type)} message={typeof bulkErrors[index]?.use_type === 'string' ? bulkErrors[index]?.use_type : "Required field"}>
-                                                                    <NativeSelect
-                                                                        className={cn(
-                                                                            "w-full h-9 bg-background border border-border focus:ring-1 focus:ring-primary text-sm cursor-pointer text-center px-3 rounded-[3px]",
-                                                                            (submittedBulk || row.touched?.use_type) && bulkErrors[index]?.use_type && "border-red-500"
-                                                                        )}
+                                                                    <MenuItemSelect
                                                                         value={row.use_type}
-                                                                        onChange={(e) => {
+                                                                        onSelect={(val) => {
                                                                             const nextRow = {
                                                                                 ...row,
-                                                                                use_type: e.target.value,
+                                                                                use_type: val as string,
                                                                                 touched: { ...row.touched, use_type: true }
                                                                             };
                                                                             updateBulkRow(index, nextRow);
@@ -806,10 +802,17 @@ export default function InventoryMaster() {
                                                                                 void ensureBulkDuplicateInventory([nextRow]);
                                                                             }
                                                                         }}
-                                                                    >
-                                                                        <option value="fix">Fix</option>
-                                                                        <option value="usable">Usable</option>
-                                                                    </NativeSelect>
+                                                                        items={[
+                                                                            { id: "fix", label: "Fix" },
+                                                                            { id: "usable", label: "Usable" },
+                                                                        ]}
+                                                                        itemName="label"
+                                                                        placeholder="Select Use Type"
+                                                                        extraClasses={cn(
+                                                                            "h-9 border-border",
+                                                                            (submittedBulk || row.touched?.use_type) && bulkErrors[index]?.use_type && "border-red-500"
+                                                                        )}
+                                                                    />
                                                                 </ValidationTooltip>
                                                             </DataGridCell>
 
@@ -921,7 +924,7 @@ export default function InventoryMaster() {
                                         <button
                                             onClick={() => setSheetTab("history")}
                                             className={cn(
-                                                "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                                "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
                                                 sheetTab === "history"
                                                     ? "border-primary text-primary"
                                                     : "border-transparent text-muted-foreground hover:text-foreground"
@@ -951,7 +954,7 @@ export default function InventoryMaster() {
 
                             {mode === "edit" && (
                                 <div className="space-y-6 rounded-[5px] border border-border/40 bg-background p-4 shadow-sm">
-                                    <h3 className="text-[11px] font-semibold text-primary/90 tracking-wider border-b border-border/40 pb-2 mb-3">
+                                    <h3 className="text-sm font-semibold text-primary/90 mb-3">
                                         Edit Inventory Details
                                     </h3>
                                     <div className="space-y-2">

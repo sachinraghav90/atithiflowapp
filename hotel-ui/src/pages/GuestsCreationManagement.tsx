@@ -13,10 +13,14 @@ import { normalizeNumberInput, normalizeTextInput } from "@/utils/normalizeTextI
 import { NativeSelect } from "@/components/ui/native-select";
 import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
 import { parseAppDate, toISODateOnly } from "@/utils/dateFormat";
+import FormInput from "@/components/forms/FormInput";
+import FormSelect from "@/components/forms/FormSelect";
+import PhonePrefixSelect from "@/components/forms/PhonePrefixSelect";
+import { cn } from "@/lib/utils";
 
 /* -------------------- Types -------------------- */
 type Guest = {
-    salutation?: "Mr" | "Mrs" | "Ms";
+    salutation?: "Mr." | "Mrs." | "Ms.";
     first_name: string;
     middle_name?: string;
     last_name: string;
@@ -53,9 +57,11 @@ function fileToBase64(file: File): Promise<string> {
 function createEmptyGuest(type: "ADULT" | "CHILD"): Guest {
     return {
         guest_type: type,
-        salutation: "Mr",
+        salutation: "Mr.",
         first_name: "",
         last_name: "",
+        phone: "",
+        emergency_contact: "",
     };
 }
 
@@ -227,39 +233,55 @@ export default function GuestsCreationManagement() {
                     <div className="rounded-[5px] border border-border bg-card p-4 space-y-4 mt-4">
                         <p className="font-medium">Common Information</p>
 
-                        <div className="space-y-1">
-                            <Label>Nationality</Label>
-                            <Input
-                                value={sharedNationality}
-                                onChange={(e) => setSharedNationality(normalizeTextInput(e.target.value))}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <FormInput
+                                label="Nationality"
+                                field="nationality"
+                                value={{ nationality: sharedNationality }}
+                                setValue={(fn: any) => {
+                                    const updated = fn({ nationality: sharedNationality });
+                                    setSharedNationality(updated.nationality);
+                                }}
                             />
-                        </div>
 
-                        <div className="space-y-1">
-                            <Label>Address</Label>
-                            <textarea
-                                className="w-full min-h-[80px] rounded-[3px] border px-3 py-2 text-sm"
-                                value={sharedAddress}
-                                onChange={(e) => setSharedAddress(normalizeTextInput(e.target.value))}
+                            <FormInput
+                                label="Address"
+                                field="address"
+                                value={{ address: sharedAddress }}
+                                setValue={(fn: any) => {
+                                    const updated = fn({ address: sharedAddress });
+                                    setSharedAddress(updated.address);
+                                }}
                             />
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                                <Label>Emergency Contact Name</Label>
-                                <Input
-                                    value={sharedEmergencyName}
-                                    onChange={(e) => setSharedEmergencyName(normalizeTextInput(e.target.value))}
-                                />
-                            </div>
+                            <FormInput
+                                label="Emergency Contact Name"
+                                field="emergency_contact_name"
+                                value={{ emergency_contact_name: sharedEmergencyName }}
+                                setValue={(fn: any) => {
+                                    const updated = fn({ emergency_contact_name: sharedEmergencyName });
+                                    setSharedEmergencyName(updated.emergency_contact_name);
+                                }}
+                            />
 
-                            <div className="space-y-1">
-                                <Label>Emergency Contact Number</Label>
-                                <Input
-                                    value={sharedEmergencyPhone}
-                                    onChange={(e) => setSharedEmergencyPhone(normalizeTextInput(e.target.value))}
-                                />
-                            </div>
+                            <FormInput
+                                label="Emergency Contact Number"
+                                field="emergency_contact"
+                                value={{ emergency_contact: sharedEmergencyPhone }}
+                                setValue={(fn: any) => {
+                                    const updated = fn({ emergency_contact: sharedEmergencyPhone });
+                                    setSharedEmergencyPhone(updated.emergency_contact);
+                                }}
+                                prefixControl={
+                                    <PhonePrefixSelect
+                                        value={"+91"}
+                                        onValueChange={() => { }}
+                                    />
+                                }
+                                transform={(v: string) => v.replace(/\D/g, "").slice(0, 15)}
+                            />
                         </div>
                     </div>
 
@@ -273,106 +295,108 @@ export default function GuestsCreationManagement() {
 
                             {/* Names */}
                             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                                <div className="space-y-1 w-16 shrink-0">
-                                    <Label>{"\u00A0"}</Label>
-                                    <NativeSelect
-                                        className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
-                                        value={guest.salutation ?? "Mr"}
-                                        onChange={(e) =>
-                                            updateGuest(index, {
-                                                salutation: e.target.value as any,
-                                            })
-                                        }
-                                    >
-                                        <option value="Mr">Mr</option>
-                                        <option value="Mrs">Mrs</option>
-                                        <option value="Ms">Ms</option>
-                                    </NativeSelect>
+                                <div className="flex gap-0">
+                                    <div className="w-[45px] shrink-0">
+                                        <FormSelect
+                                            label={"\u00A0"}
+                                            field="salutation"
+                                            value={guest}
+                                            setValue={(fn: any) => {
+                                                const updated = fn(guest);
+                                                updateGuest(index, { salutation: updated.salutation });
+                                            }}
+                                            className="h-11 px-0 rounded-r-none"
+                                            hideIcon={true}
+                                        >
+                                            <option value="Mr.">Mr.</option>
+                                            <option value="Mrs.">Mrs.</option>
+                                            <option value="Ms.">Ms.</option>
+                                        </FormSelect>
+                                    </div>
+
+                                    <div className="flex-1">
+                                        <FormInput
+                                            label="First Name *"
+                                            field="first_name"
+                                            value={guest}
+                                            setValue={(fn: any) => {
+                                                const updated = fn(guest);
+                                                updateGuest(index, { first_name: updated.first_name });
+                                            }}
+                                            required
+                                            className="rounded-l-none"
+                                        />
+                                    </div>
                                 </div>
 
-                                <div className="space-y-1">
-                                    <Label>First Name *</Label>
-                                    <Input
-                                        value={guest.first_name}
-                                        onChange={(e) =>
-                                            updateGuest(index, {
-                                                first_name: normalizeTextInput(e.target.value),
-                                            })
-                                        }
-                                    />
-                                </div>
+                                <FormInput
+                                    label="Middle Name"
+                                    field="middle_name"
+                                    value={guest}
+                                    setValue={(fn: any) => {
+                                        const updated = fn(guest);
+                                        updateGuest(index, { middle_name: updated.middle_name });
+                                    }}
+                                />
 
-                                <div className="space-y-1">
-                                    <Label>Middle Name</Label>
-                                    <Input
-                                        value={guest.middle_name ?? ""}
-                                        onChange={(e) =>
-                                            updateGuest(index, {
-                                                middle_name: normalizeTextInput(e.target.value),
-                                            })
-                                        }
-                                    />
-                                </div>
-
-                                <div className="space-y-1">
-                                    <Label>Last Name *</Label>
-                                    <Input
-                                        value={guest.last_name}
-                                        onChange={(e) =>
-                                            updateGuest(index, {
-                                                last_name: normalizeTextInput(e.target.value),
-                                            })
-                                        }
-                                    />
-                                </div>
+                                <FormInput
+                                    label="Last Name *"
+                                    field="last_name"
+                                    value={guest}
+                                    setValue={(fn: any) => {
+                                        const updated = fn(guest);
+                                        updateGuest(index, { last_name: updated.last_name });
+                                    }}
+                                    required
+                                />
                             </div>
 
                             {/* Contact */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <Label>Phone</Label>
-                                    <Input
-                                        value={guest.phone ?? ""}
-                                        onChange={(e) =>
-                                            updateGuest(index, {
-                                                phone: normalizeNumberInput(e.target.value).toString(),
-                                            })
-                                        }
-                                    />
-                                </div>
+                                <FormInput
+                                    label="Phone"
+                                    field="phone"
+                                    value={guest}
+                                    setValue={(fn: any) => {
+                                        const updated = fn(guest);
+                                        updateGuest(index, { phone: updated.phone });
+                                    }}
+                                    prefixControl={
+                                        <PhonePrefixSelect
+                                            value={"+91"}
+                                            onValueChange={() => {}}
+                                        />
+                                    }
+                                    transform={(v: string) => v.replace(/\D/g, "").slice(0, 15)}
+                                />
 
-                                <div className="space-y-1">
-                                    <Label>Email</Label>
-                                    <Input
-                                        value={guest.email ?? ""}
-                                        onChange={(e) =>
-                                            updateGuest(index, {
-                                                email: normalizeTextInput(e.target.value),
-                                            })
-                                        }
-                                    />
-                                </div>
+                                <FormInput
+                                    label="Email"
+                                    field="email"
+                                    value={guest}
+                                    setValue={(fn: any) => {
+                                        const updated = fn(guest);
+                                        updateGuest(index, { email: updated.email });
+                                    }}
+                                />
                             </div>
 
                             {/* Gender & DOB */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <Label>Gender</Label>
-                                    <NativeSelect
-                                        className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
-                                        value={guest.gender ?? ""}
-                                        onChange={(e) =>
-                                            updateGuest(index, {
-                                                gender: e.target.value as any,
-                                            })
-                                        }
-                                    >
-                                        <option value="">Select</option>
-                                        <option value="MALE">Male</option>
-                                        <option value="FEMALE">Female</option>
-                                        <option value="OTHER">Other</option>
-                                    </NativeSelect>
-                                </div>
+                                <FormSelect
+                                    label="Gender"
+                                    field="gender"
+                                    value={guest}
+                                    setValue={(fn: any) => {
+                                        const updated = fn(guest);
+                                        updateGuest(index, { gender: updated.gender });
+                                    }}
+                                >
+                                    <option value="">Select</option>
+                                    <option value="MALE">Male</option>
+                                    <option value="FEMALE">Female</option>
+                                    <option value="OTHER">Other</option>
+                                </FormSelect>
 
                                 <div className="space-y-1">
                                     <Label>Date of Birth</Label>
@@ -389,38 +413,35 @@ export default function GuestsCreationManagement() {
 
                             {/* ID Proof */}
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div className="space-y-1">
-                                    <Label>ID Type</Label>
-                                    <NativeSelect
-                                        className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
-                                        value={guest.id_type ?? ""}
-                                        onChange={(e) =>
-                                            updateGuest(index, {
-                                                id_type: e.target.value,
-                                            })
-                                        }
-                                    >
-                                        <option value="">Select</option>
-                                        <option value="AADHAAR">Aadhaar</option>
-                                        <option value="PASSPORT">Passport</option>
-                                    </NativeSelect>
-                                </div>
+                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <FormSelect
+                                    label="ID Type"
+                                    field="id_type"
+                                    value={guest}
+                                    setValue={(fn: any) => {
+                                        const updated = fn(guest);
+                                        updateGuest(index, { id_type: updated.id_type });
+                                    }}
+                                >
+                                    <option value="">Select</option>
+                                    <option value="AADHAAR">Aadhaar</option>
+                                    <option value="PASSPORT">Passport</option>
+                                </FormSelect>
 
-                                <div className="space-y-1">
-                                    <Label>ID Number</Label>
-                                    <Input
-                                        value={guest.id_number ?? ""}
-                                        onChange={(e) =>
-                                            updateGuest(index, {
-                                                id_number: normalizeTextInput(e.target.value),
-                                            })
-                                        }
-                                    />
-                                </div>
+                                <FormInput
+                                    label="ID Number"
+                                    field="id_number"
+                                    value={guest}
+                                    setValue={(fn: any) => {
+                                        const updated = fn(guest);
+                                        updateGuest(index, { id_number: updated.id_number });
+                                    }}
+                                />
 
                                 <div className="space-y-1">
                                     <Label>ID Proof</Label>
                                     <Input
+                                        className="h-11 bg-background"
                                         type="file"
                                         accept="image/*"
                                         onChange={(e) =>

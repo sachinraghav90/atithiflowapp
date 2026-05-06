@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -29,6 +31,8 @@ type Props = {
 
     maxLength?: number;
     prefix?: string;
+    prefixControl?: ReactNode;
+    className?: string;
 };
 
 export default function FormInput({
@@ -46,9 +50,12 @@ export default function FormInput({
     transform,
     maxLength,
     prefix,
+    prefixControl,
+    className
 }: Props) {
 
     const error = errors[field];
+    const hasPrefix = Boolean(prefix || prefixControl);
 
     const hoverError =
         error?.type === "required" ? error.message : "";
@@ -60,8 +67,8 @@ export default function FormInput({
                 {label} {required && "*"}
             </Label>
 
-            <div className="flex">
-                {prefix && (
+            <div className="flex gap-0">
+                {prefixControl || (prefix && (
                     <span
                         className={cn(
                             "inline-flex h-11 shrink-0 items-center rounded-l-[3px] border border-r-0 border-border/70 bg-muted/40 px-3 text-sm font-semibold text-muted-foreground",
@@ -70,7 +77,7 @@ export default function FormInput({
                     >
                         {prefix}
                     </span>
-                )}
+                ))}
 
                 <Input
                     disabled={viewMode}
@@ -81,7 +88,8 @@ export default function FormInput({
                     maxLength={maxLength}
                     className={cn(
                         "h-11 rounded-[3px] border-border/70 bg-background text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
-                        prefix && "rounded-l-none",
+                        hasPrefix && "rounded-l-none border-l-0",
+                        className,
                         error && "border-red-500"
                     )}
                     onChange={(e) => {

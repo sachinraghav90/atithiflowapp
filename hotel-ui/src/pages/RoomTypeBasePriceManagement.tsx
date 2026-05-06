@@ -11,7 +11,7 @@ import {
 import { NativeSelect } from "@/components/ui/native-select";
 import { useAppSelector } from "@/redux/hook";
 import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
-import { useGetMyPropertiesQuery, useGetRoomTypesQuery, useUpdateRoomTypesMutation } from "@/redux/services/hmsApi";
+import { useGetMyPropertiesQuery, useGetRoomTypesQuery, useLazyExportRoomTypesQuery, useUpdateRoomTypesMutation } from "@/redux/services/hmsApi";
 import { toast } from "react-toastify";
 import { normalizeNumberInput } from "@/utils/normalizeTextInput";
 import { useLocation } from "react-router-dom";
@@ -100,6 +100,8 @@ export default function RoomTypeBasePriceManagement() {
     }, {
         skip: !isLoggedIn || !propertyId
     })
+
+    const [getExportData, { isFetching: isExporting }] = useLazyExportRoomTypesQuery();
 
     /* ---------- Init ---------- */
     useEffect(() => {
@@ -254,9 +256,39 @@ export default function RoomTypeBasePriceManagement() {
 
     // exportToExcel(formatted, "room-categories.xlsx");
 
-    const exportDataSheet = () => {
-        if (!formatted?.length) return toast.error("No data to export");
-        exportToExcel(formatted, "room-categories.xlsx", "Room Categories");
+    const exportDataSheet = async () => {
+        if (isExporting) return;
+        const toastId = toast.loading("Preparing room categories export...");
+        try {
+            const res = await getExportData({
+                propertyId,
+                category: filterCategory || undefined,
+                bedType: filterBedType || undefined,
+                acType: filterAcType || undefined,
+                search: searchQuery
+            }).unwrap();
+
+            if (!res?.data?.length) {
+                toast.dismiss(toastId);
+                toast.info("No data to export");
+                return;
+            }
+
+            const formattedExport = res.data.map((r: RateRow) => ({
+                Category: r.room_category_name,
+                Bed: r.bed_type_name,
+                AC: r.ac_type_name,
+                Price: r.base_price,
+                CreatedAt: formatAppDate(r.created_at),
+            }));
+
+            exportToExcel(formattedExport, "room-categories.xlsx", "Room Categories");
+            toast.dismiss(toastId);
+            toast.success("Export completed");
+        } catch {
+            toast.dismiss(toastId);
+            toast.error("Failed to export room categories");
+        }
     };
 
     /* ---------- UI ---------- */
@@ -563,7 +595,7 @@ export default function RoomTypeBasePriceManagement() {
                                     <button
                                         onClick={() => setSheetTab("history")}
                                         className={cn(
-                                            "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                            "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
                                             sheetTab === "history"
                                                 ? "border-primary text-primary"
                                                 : "border-transparent text-muted-foreground hover:text-foreground"

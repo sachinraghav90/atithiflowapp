@@ -175,7 +175,7 @@ export function OrderItemsModal({
                             <button
                                 onClick={() => setSheetTab("history")}
                                 className={cn(
-                                    "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                    "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
                                     sheetTab === "history"
                                         ? "border-primary text-primary"
                                         : "border-transparent text-muted-foreground hover:text-foreground"
@@ -231,7 +231,7 @@ export function OrderItemsModal({
                                 </PropertyViewSection>
 
                                 <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-4">
-                                    <h3 className="text-[11px] font-semibold text-primary/90 uppercase tracking-[0.16em] border-b border-primary/50 pb-2 mb-1">
+                                    <h3 className="text-sm font-semibold text-primary/90 mb-1">
                                         Update Status
                                     </h3>
 

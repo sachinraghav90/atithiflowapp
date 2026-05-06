@@ -860,7 +860,7 @@ export default function KitchenInventory() {
                         {mode === "edit" && selectedItem && (
                             <div className="space-y-5">
                                 <div className="rounded-[5px] border border-primary/50 bg-background p-5 shadow-sm space-y-5">
-                                    <h3 className="text-[11px] font-semibold text-primary/90 uppercase tracking-[0.16em] border-b border-primary/50 pb-2">
+                                    <h3 className="text-sm font-semibold text-primary/90">
                                         Update Stock Levels
                                     </h3>
 
@@ -913,7 +913,7 @@ export default function KitchenInventory() {
                         {mode === "add" && (
                             <div className="space-y-4 mt-6">
                                 <div className="rounded-[5px] border border-primary/50 bg-background p-5 shadow-sm space-y-5">
-                                    <h3 className="text-[11px] font-semibold text-primary/90 uppercase tracking-[0.16em] border-b border-primary/50 pb-2">
+                                    <h3 className="text-sm font-semibold text-primary/90">
                                      Item Details
                                     </h3>
                                     <div className="space-y-4">

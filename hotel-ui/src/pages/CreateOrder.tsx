@@ -28,6 +28,7 @@ import { Trash2, PlusCircle } from "lucide-react";
 import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
 import { toast } from "react-toastify";
 import { MenuItemSelect } from "@/components/MenuItemSelect";
+import PhonePrefixSelect from "@/components/forms/PhonePrefixSelect";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
     Sheet,
@@ -60,6 +61,7 @@ export function CreateOrder() {
         table_no: "",
         guest_name: "",
         guest_mobile: "",
+        guest_mobile_prefix: "+91",
         room_id: "",
         booking_id: null as number | null,
         total_amount: 0,
@@ -163,16 +165,14 @@ export function CreateOrder() {
 
     useEffect(() => {
         if (!primaryGuest || order.order_type !== "Room Service" || !order.booking_id) {
-            setOrder(o => ({ ...o, guest_name: "", guest_mobile: "" }))
+            setOrder(o => ({ ...o, guest_name: "", guest_mobile: "", guest_mobile_prefix: "+91" }))
             return
         }
 
-        let phone = primaryGuest?.phone?.split(" ")[1]
-        if (!phone) {
-            phone = primaryGuest?.phone
-        }
+        let prefix = primaryGuest?.phone?.split(" ")[0] || "+91";
+        let phone = primaryGuest?.phone?.split(" ")[1] || primaryGuest?.phone;
 
-        setOrder(o => ({ ...o, guest_name: primaryGuest?.first_name, guest_mobile: phone }))
+        setOrder(o => ({ ...o, guest_name: primaryGuest?.first_name, guest_mobile: phone, guest_mobile_prefix: prefix }))
     }, [primaryGuest, order.order_type, order.booking_id])
 
     useEffect(() => {
@@ -247,6 +247,7 @@ export function CreateOrder() {
             table_no: "",
             guest_name: "",
             guest_mobile: "",
+            guest_mobile_prefix: "+91",
             room_id: "",
             booking_id: null,
             total_amount: 0,
@@ -459,27 +460,41 @@ export function CreateOrder() {
                     {/* Guest Mobile */}
                     <div className="flex flex-col gap-1">
                         <Label>Guest Mobile {order.order_type === "Delivery" ? "*" : ""}</Label>
-                        <Input
-                            className={formErrors.guest_mobile ? "border-red-500" : ""}
-                            placeholder="Enter mobile number"
-                            value={order.guest_mobile}
-                            onChange={(e) => {
-                                e.target.value.trim().length <= 15 &&
-                                    setOrder(o => ({
-                                        ...o,
-                                        guest_mobile: normalizeNumberInput(e.target.value.trim()).toString()
-                                    }))
-                                setFormErrors(p => {
-                                    const copy = { ...p };
-                                    delete copy.guest_mobile;
-                                    return copy;
-                                })
-                            }}
-                        />
+                        <div className="flex">
+                            <PhonePrefixSelect
+                                value={order.guest_mobile_prefix || "+91"}
+                                onValueChange={(val) => setOrder(o => ({ ...o, guest_mobile_prefix: val }))}
+                                triggerClassName={cn(
+                                    "h-10 w-[4.5rem] rounded-l-[3px] rounded-r-none border-border/70 border-r-0 px-3 text-sm font-semibold text-muted-foreground shadow-none hover:bg-background hover:text-foreground focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
+                                    formErrors.guest_mobile && "border-red-500"
+                                )}
+                            />
+                            <Input
+                                className={cn(
+                                    "h-10 rounded-l-none rounded-[3px] border-border/70 bg-background text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
+                                    formErrors.guest_mobile ? "border-red-500" : ""
+                                )}
+                                placeholder="Enter mobile number"
+                                value={order.guest_mobile}
+                                onChange={(e) => {
+                                    const val = e.target.value.trim();
+                                    if (val.length <= 15) {
+                                        setOrder(o => ({
+                                            ...o,
+                                            guest_mobile: normalizeNumberInput(val).toString()
+                                        }))
+                                    }
+                                    setFormErrors(p => {
+                                        const copy = { ...p };
+                                        delete copy.guest_mobile;
+                                        return copy;
+                                    })
+                                }}
+                            />
+                        </div>
                         <p className="min-h-[16px] text-xs text-red-500">
                             {formErrors.guest_mobile ?? ""}
                         </p>
-
                     </div>
 
                     {/* Order Type */}

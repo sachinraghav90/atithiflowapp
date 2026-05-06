@@ -544,7 +544,7 @@ export default function EnquiriesManagement() {
                                 <button
                                     onClick={() => setSheetTab("summary")}
                                     className={cn(
-                                        "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                        "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
                                         sheetTab === "summary"
                                             ? "border-primary text-primary"
                                             : "border-transparent text-muted-foreground hover:text-foreground"
@@ -555,7 +555,7 @@ export default function EnquiriesManagement() {
                                 <button
                                     onClick={() => setSheetTab("history")}
                                     className={cn(
-                                        "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                        "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
                                         sheetTab === "history"
                                             ? "border-primary text-primary"
                                             : "border-transparent text-muted-foreground hover:text-foreground"
@@ -628,7 +628,7 @@ export default function EnquiriesManagement() {
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                                 {/* Left: Status & Timing */}
                                 <div className="rounded-[5px] border-2 border-primary/50 bg-background p-4 shadow-sm space-y-6">
-                                    <h3 className="text-[11px] font-semibold text-primary/90 tracking-wider border-b border-primary/50 pb-2 mb-3">
+                                    <h3 className="text-sm font-semibold text-primary/90 mb-3">
                                         Lead Lifecycle Management
                                     </h3>
                                     <div className="space-y-4">
@@ -658,7 +658,7 @@ export default function EnquiriesManagement() {
 
                                 {/* Right: Internal Notes */}
                                 <div className="rounded-[5px] border-2 border-primary/50 bg-background p-4 shadow-sm space-y-6">
-                                    <h3 className="text-[11px] font-semibold text-primary/90 tracking-wider border-b border-primary/50 pb-2 mb-3">
+                                    <h3 className="text-sm font-semibold text-primary/90 mb-3">
                                         Internal Progress Notes
                                     </h3>
                                     <div className="space-y-2 flex-1">

@@ -10,7 +10,9 @@ export default function FormSelect({
     setErrors,
     required,
     children,
-    viewMode
+    viewMode,
+    className,
+    hideIcon
 }: any) {
 
     const error = errors?.[field];
@@ -30,8 +32,10 @@ export default function FormSelect({
 
             <NativeSelect
                 disabled={viewMode}
+                hideIcon={hideIcon}
                 className={`
                     w-full h-11 rounded-[3px] px-3 text-sm bg-background shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0
+                    ${className}
                     ${error
                         ? "border border-red-500"
                         : "border border-border/70"

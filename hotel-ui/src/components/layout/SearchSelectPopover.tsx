@@ -11,7 +11,7 @@ import {
     CommandInput,
     CommandItem,
 } from "@/components/ui/command";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Item<T> = {
@@ -56,9 +56,9 @@ export default function SearchSelectPopover<T>({
             </PopoverTrigger>
 
             <PopoverContent
-                className="w-[--radix-popover-trigger-width] p-0 overflow-hidden"
+                className="w-[--radix-popover-trigger-width] p-0 overflow-hidden bg-background border border-border shadow-md"
             >
-                <Command>
+                <Command className="bg-background">
                     <CommandInput placeholder="Search..." />
 
                     <CommandGroup
@@ -66,18 +66,26 @@ export default function SearchSelectPopover<T>({
                         onWheel={(e) => e.stopPropagation()}
                     >
 
-                        {items.map((item) => (
-                            <CommandItem
-                                key={String(item.value)}
-                                value={item.label}
-                                onSelect={() => {
-                                    onSelect(item.value);
-                                    setOpen(false);
-                                }}
-                            >
-                                {item.label}
-                            </CommandItem>
-                        ))}
+                        {items.map((item) => {
+                            const isSelected = item.value === value;
+                            return (
+                                <CommandItem
+                                    key={String(item.value)}
+                                    value={item.label}
+                                    onSelect={() => {
+                                        onSelect(item.value);
+                                        setOpen(false);
+                                    }}
+                                    className={cn(
+                                        "cursor-pointer transition-colors",
+                                        isSelected && "bg-primary text-primary-foreground font-semibold"
+                                    )}
+                                >
+                                    <Check className={cn("mr-2 h-4 w-4", isSelected ? "opacity-100" : "opacity-0")} />
+                                    {item.label}
+                                </CommandItem>
+                            );
+                        })}
                     </CommandGroup>
                 </Command>
             </PopoverContent>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Trash2, PlusCircle } from "lucide-react";
+import { Trash2, PlusCircle, Pencil, Check } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +58,7 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
     const [isEditing, setIsEditing] = useState(true);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [originalVehicles, setOriginalVehicles] = useState<VehicleForm[]>([]);
+    const [editingRowIds, setEditingRowIds] = useState<number[]>([]);
 
     const { data } = useGetVehiclesByBookingQuery(
         { bookingId },
@@ -103,9 +104,22 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
         );
     };
 
+    const toggleEditRow = (id: number) => {
+        setEditingRowIds((prev) =>
+            prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+        );
+    };
+
+    const isRowEditable = (vehicle: VehicleForm) => {
+        if (!isEditing) return false;
+        if (!vehicle.id) return true; // New row
+        return editingRowIds.includes(vehicle.id); // DB row being edited
+    };
+
     const handleCancel = () => {
         setVehicles(cloneVehicles(originalVehicles));
         setIsEditing(false);
+        setEditingRowIds([]);
     };
 
     const handleSave = async () => {
@@ -123,6 +137,7 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
             toast.success("Vehicles updated successfully");
             setOriginalVehicles(cloneVehicles(payload));
             setIsEditing(false);
+            setEditingRowIds([]);
         } catch {
             toast.error("Failed to update vehicles");
         }
@@ -151,7 +166,7 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
                                 <DataGridHead className="border-r border-slate-200/20">Number</DataGridHead>
                                 <DataGridHead className="border-r border-slate-200/20">Color</DataGridHead>
                                 <DataGridHead className="border-r border-slate-200/20">Room</DataGridHead>
-                                {isEditing && vehicles.length > 1 && (
+                                {isEditing && (
                                     <DataGridHead className="w-20 text-center">Action</DataGridHead>
                                 )}
                             </DataGridHeader>
@@ -162,7 +177,7 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
                                     <DataGridRow key={vehicle.id ?? `vehicle-${index}`}>
                                         {/* TYPE */}
                                         <DataGridCell className="border-r border-slate-200/40">
-                                            {isEditing ? (
+                                            {isRowEditable(vehicle) ? (
                                                 <NativeSelect
                                                     value={vehicle.vehicle_type ?? ""}
                                                     onChange={(e) =>
@@ -184,7 +199,7 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
 
                                         {/* NAME */}
                                         <DataGridCell className="border-r border-slate-200/40">
-                                            {isEditing ? (
+                                            {isRowEditable(vehicle) ? (
                                                 <Input
                                                     value={vehicle.vehicle_name ?? ""}
                                                     className="h-9 w-full rounded-[3px] border border-border bg-background px-3 text-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0"
@@ -201,7 +216,7 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
 
                                         {/* NUMBER */}
                                         <DataGridCell className="border-r border-slate-200/40">
-                                            {isEditing ? (
+                                            {isRowEditable(vehicle) ? (
                                                 <Input
                                                     value={vehicle.vehicle_number ?? ""}
                                                     className="h-9 w-full rounded-[3px] border border-border bg-background px-3 text-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0"
@@ -218,7 +233,7 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
 
                                         {/* COLOR */}
                                         <DataGridCell className="border-r border-slate-200/40">
-                                            {isEditing ? (
+                                            {isRowEditable(vehicle) ? (
                                                 <Input
                                                     value={vehicle.color ?? ""}
                                                     className="h-9 w-full rounded-[3px] border border-border bg-background px-3 text-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0"
@@ -235,7 +250,7 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
 
                                         {/* ROOM */}
                                         <DataGridCell className="border-r border-slate-200/40">
-                                            {isEditing ? (
+                                            {isRowEditable(vehicle) ? (
                                                 <NativeSelect
                                                     value={vehicle.room_no ?? ""}
                                                     onChange={(e) =>
@@ -257,16 +272,31 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
                                             )}
                                         </DataGridCell>
 
-                                        {isEditing && vehicles.length > 1 && (
+                                        {isEditing && (
                                             <DataGridCell className="text-center">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50/50"
-                                                    onClick={() => removeVehicle(index)}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
+                                                {vehicle.id ? (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-8 w-8 p-0 text-primary hover:text-primary/80"
+                                                        onClick={() => toggleEditRow(vehicle.id!)}
+                                                    >
+                                                        {editingRowIds.includes(vehicle.id) ? (
+                                                            <Check className="h-4 w-4" />
+                                                        ) : (
+                                                            <Pencil className="h-4 w-4" />
+                                                        )}
+                                                    </Button>
+                                                ) : (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50/50"
+                                                        onClick={() => removeVehicle(index)}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                )}
                                             </DataGridCell>
                                         )}
                                     </DataGridRow>

@@ -79,6 +79,7 @@ const EMPTY_PROPERTY = {
     serial_suffix: "",
     total_floors: 0,
     phone: "",
+    phone_country_code: "+91",
     phone2: "",
     email: "",
     total_rooms: "",
@@ -102,6 +103,7 @@ const EMPTY_PROPERTY = {
     postal_code_office: "",
     country_office: "",
     phone_office: "",
+    phone_office_country_code: "+91",
     phone2_office: "",
     email_office: "",
     status: "OWNED",
@@ -688,6 +690,8 @@ export default function PropertyManagement() {
         delete clone.id;
         delete clone.image;
         delete clone.floors;
+        delete clone.phone_country_code;
+        delete clone.phone_office_country_code;
 
         return clone;
     }
@@ -992,7 +996,7 @@ export default function PropertyManagement() {
                                     <button
                                         onClick={() => setSheetTab("summary")}
                                         className={cn(
-                                            "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                            "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
                                             sheetTab === "summary"
                                                 ? "border-primary text-primary"
                                                 : "border-transparent text-muted-foreground hover:text-foreground"
@@ -1003,7 +1007,7 @@ export default function PropertyManagement() {
                                     <button
                                         onClick={() => setSheetTab("history")}
                                         className={cn(
-                                            "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                            "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
                                             sheetTab === "history"
                                                 ? "border-primary text-primary"
                                                 : "border-transparent text-muted-foreground hover:text-foreground"

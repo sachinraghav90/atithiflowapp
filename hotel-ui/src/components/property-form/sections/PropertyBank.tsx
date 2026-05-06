@@ -115,7 +115,7 @@ export default function PropertyBank({
     return (
         <div className="space-y-4 rounded-[5px] border border-border/40 bg-background p-4 shadow-sm">
 
-            <h3 className="text-xs font-semibold text-primary/90 uppercase tracking-[0.16em]">
+            <h3 className="text-sm font-semibold text-primary/90">
                 Bank Details (Optional)
             </h3>
 

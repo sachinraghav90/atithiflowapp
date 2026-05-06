@@ -38,11 +38,13 @@ import { FilterX, Pencil, RefreshCcw, Download, Plus } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
+import PhonePrefixSelect from "@/components/forms/PhonePrefixSelect";
 import { formatReadableLabel } from "@/utils/formatString";
 import { getStatusColor } from "@/constants/statusColors";
 import { GridBadge } from "@/components/ui/grid-badge";
 import PropertyViewSection from "@/components/PropertyViewSection";
 import ViewField from "@/components/ViewField";
+import FormInput from "@/components/forms/FormInput";
 
 /* ---------------- Types ---------------- */
 type Vendor = {
@@ -529,7 +531,7 @@ export default function VendorsManagement() {
                                     <button
                                         onClick={() => setSheetTab("summary")}
                                         className={cn(
-                                            "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                            "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
                                             sheetTab === "summary"
                                                 ? "border-primary text-primary"
                                                 : "border-transparent text-muted-foreground hover:text-foreground"
@@ -540,7 +542,7 @@ export default function VendorsManagement() {
                                     <button
                                         onClick={() => setSheetTab("history")}
                                         className={cn(
-                                            "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                            "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
                                             sheetTab === "history"
                                                 ? "border-primary text-primary"
                                                 : "border-transparent text-muted-foreground hover:text-foreground"
@@ -580,113 +582,85 @@ export default function VendorsManagement() {
                         ) : (
                             <div className="space-y-5 mt-6">
                                 <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-5">
-                                    <h3 className="text-[11px] font-semibold text-primary/90 uppercase tracking-[0.16em] border-b border-primary/50 pb-2">
+                                    <h3 className="text-sm font-semibold text-primary/90">
                                         Vendor Details
                                     </h3>
                                     
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Name*</Label>
-                                            <Input
-                                                className={submitted && formErrors.name ? "border-red-500 h-10" : "h-10"}
-                                                value={form.name}
-                                                onChange={(e) => {
-                                                    setForm({
-                                                        ...form,
-                                                        name: normalizeTextInput(e.target.value),
-                                                    });
-                                                    setFormErrors((p) => ({ ...p, name: "" }));
-                                                }}
-                                            />
-                                        </div>
+                                        <FormInput
+                                            label="Name *"
+                                            field="name"
+                                            value={form}
+                                            setValue={setForm}
+                                            errors={{ name: formErrors.name }}
+                                            setErrors={() => {}}
+                                            required
+                                            className={cn(submitted && formErrors.name && "border-red-500")}
+                                        />
 
-                                        <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Vendor Type</Label>
-                                            <Input
-                                                className="h-10"
-                                                value={form.vendor_type ?? ""}
-                                                onChange={(e) =>
-                                                    e.target.value.length < 50 &&
-                                                    setForm({
-                                                        ...form,
-                                                        vendor_type: normalizeTextInput(e.target.value),
-                                                    })
-                                                }
-                                            />
-                                        </div>
+                                        <FormInput
+                                            label="Vendor Type"
+                                            field="vendor_type"
+                                            value={form}
+                                            setValue={setForm}
+                                            maxLength={50}
+                                        />
 
-                                        <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">PAN</Label>
-                                            <Input
-                                                className="h-10"
-                                                value={form.pan_no ?? ""}
-                                                onChange={(e) =>
-                                                    e.target.value.length < 20 &&
-                                                    setForm({
-                                                        ...form,
-                                                        pan_no: normalizeTextInput(e.target.value),
-                                                    })
-                                                }
-                                            />
-                                        </div>
+                                        <FormInput
+                                            label="PAN"
+                                            field="pan_no"
+                                            value={form}
+                                            setValue={setForm}
+                                            maxLength={20}
+                                        />
 
-                                        <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">GST</Label>
-                                            <Input
-                                                className="h-10"
-                                                value={form.gst_no ?? ""}
-                                                onChange={(e) =>
-                                                    e.target.value.length < 20 &&
-                                                    setForm({
-                                                        ...form,
-                                                        gst_no: normalizeTextInput(e.target.value),
-                                                    })
-                                                }
-                                            />
-                                        </div>
+                                        <FormInput
+                                            label="GST"
+                                            field="gst_no"
+                                            value={form}
+                                            setValue={setForm}
+                                            maxLength={20}
+                                        />
 
-                                        <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Contact No*</Label>
-                                            <Input
-                                                className={submitted && formErrors.contact_no ? "border-red-500 h-10" : "h-10"}
-                                                value={form.contact_no ?? ""}
-                                                onChange={(e) => {
-                                                    setForm({
-                                                        ...form,
-                                                        contact_no: normalizeTextInput(e.target.value.trim()),
-                                                    });
-                                                    setFormErrors((p) => ({ ...p, contact_no: "" }));
-                                                }}
-                                            />
-                                        </div>
+                                        <FormInput
+                                            label="Contact No *"
+                                            field="contact_no"
+                                            value={form}
+                                            setValue={setForm}
+                                            errors={{ contact_no: formErrors.contact_no }}
+                                            setErrors={() => {}}
+                                            required
+                                            prefixControl={
+                                                <PhonePrefixSelect
+                                                    value={form.contact_no_country_code ?? "+91"}
+                                                    onValueChange={(countryCode) =>
+                                                        setForm((prev) => ({
+                                                            ...prev,
+                                                            contact_no_country_code: countryCode,
+                                                        }))
+                                                    }
+                                                    error={!!(submitted && formErrors.contact_no)}
+                                                />
+                                            }
+                                        />
 
-                                        <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Email</Label>
-                                            <Input
-                                                className="h-10"
-                                                value={form.email_id ?? ""}
-                                                onChange={(e) =>
-                                                    e.target.value.length < 150 &&
-                                                    setForm({
-                                                        ...form,
-                                                        email_id: normalizeTextInput(e.target.value),
-                                                    })
-                                                }
-                                            />
-                                        </div>
+                                        <FormInput
+                                            label="Email"
+                                            field="email_id"
+                                            value={form}
+                                            setValue={setForm}
+                                            maxLength={150}
+                                        />
 
-                                        <div className="space-y-2 md:col-span-2">
-                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Address*</Label>
-                                            <Input
-                                                className={submitted && formErrors.address ? "border-red-500 h-10" : "h-10"}
-                                                value={form.address ?? ""}
-                                                onChange={(e) => {
-                                                    setForm({
-                                                        ...form,
-                                                        address: normalizeTextInput(e.target.value),
-                                                    });
-                                                    setFormErrors((p) => ({ ...p, address: "" }));
-                                                }}
+                                        <div className="md:col-span-2">
+                                            <FormInput
+                                                label="Address *"
+                                                field="address"
+                                                value={form}
+                                                setValue={setForm}
+                                                errors={{ address: formErrors.address }}
+                                                setErrors={() => {}}
+                                                required
                                             />
                                         </div>
                                     </div>

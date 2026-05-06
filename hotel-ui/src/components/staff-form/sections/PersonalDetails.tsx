@@ -36,9 +36,9 @@ export default function PersonalDetails({
     };
 
     return (
-        <div className="space-y-6 border border-border rounded-[5px] p-5 bg-transparent">
+        <div className="space-y-6 border border-border rounded-[5px] p-5 bg-transparent [&>h3+*]:!mt-4">
 
-            <h3 className="font-semibold text-base">
+            <h3 className="text-sm font-semibold text-primary/90">
                 Personal Details
             </h3>
 

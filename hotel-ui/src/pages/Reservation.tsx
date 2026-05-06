@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import { useAppSelector } from "@/redux/hook";
 import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
 import { useAddGuestsByBookingMutation, useAvailableRoomsQuery, useCreateBookingMutation, useGetMyPropertiesQuery, useGetPackageByIdQuery, useGetPackagesByPropertyQuery, useGetPropertyTaxQuery, useGetRoomTypesQuery, useUpdateEnquiryMutation } from "@/redux/services/hmsApi";
@@ -35,6 +36,7 @@ import { motion } from "framer-motion";
 import FormInput from "@/components/forms/FormInput";
 import FormDatePicker from "@/components/forms/FormDatePicker";
 import FormSelect from "@/components/forms/FormSelect";
+import PhonePrefixSelect from "@/components/forms/PhonePrefixSelect";
 import { parseAppDate, toISODateOnly } from "@/utils/dateFormat";
 
 /* -------------------- Types -------------------- */
@@ -118,7 +120,7 @@ export default function ReservationManagement() {
         email: "",
 
         gender: "",
-        salutation: "Mr",
+        salutation: "Mr.",
         age: "",
 
         nationality: "",
@@ -1064,7 +1066,7 @@ export default function ReservationManagement() {
 
                                 {/* ROOMS SELECTOR */}
 
-                                <div className="space-y-2">
+                                <div className="sm:col-span-2 lg:col-span-4 space-y-2">
 
                                     <Label
                                         title={
@@ -1076,24 +1078,14 @@ export default function ReservationManagement() {
                                         Rooms*
                                     </Label>
 
-                                    <div className="flex gap-2 items-center">
-
-                                        {/* Selected rooms text */}
-                                        <div className={`flex-1 text-sm text-muted-foreground ${selectedRoomNumbers.length > 0 ? "cursor-pointer" : ""}`}
-                                            onClick={() => {
-                                                if (selectedRoomNumbers.length > 0) {
-                                                    setRoomsModalOpen(true);
-                                                }
-                                            }}
-                                        >
-                                            {selectedRoomNumbers || "No rooms selected"}
-                                        </div>
+                                    <div className="flex gap-4 items-start">
 
                                         {/* Open popup */}
                                         <Button
                                             type="button"
                                             variant="outline"
                                             className={cn(
+                                                "h-10 px-4 shrink-0",
                                                 reservationErrors.rooms && "border-red-500"
                                             )}
                                             onClick={() => {
@@ -1110,6 +1102,37 @@ export default function ReservationManagement() {
                                             Select Rooms
                                         </Button>
 
+                                        {/* Selected rooms box */}
+                                        <div
+                                            className={cn(
+                                                "flex-1 border border-input/60 bg-background/50 rounded-[4px] p-2 min-h-[40px] flex flex-wrap gap-1.5 items-center transition-all",
+                                                selectedRooms.length > 0 ? "cursor-pointer hover:border-primary/50" : ""
+                                            )}
+                                            onClick={() => {
+                                                if (selectedRooms.length > 0) {
+                                                    setRoomsModalOpen(true);
+                                                }
+                                            }}
+                                        >
+                                            {selectedRooms.length > 0 ? (
+                                                selectedRooms.map((sr) => {
+                                                    const room = availableRooms?.rooms?.find((r) => Number(r.id) === sr.ref_room_id);
+                                                    if (!room) return null;
+                                                    return (
+                                                        <Badge
+                                                            key={room.id}
+                                                            variant="secondary"
+                                                            className="rounded-[3px] px-2.5 py-1 text-xs font-bold bg-primary/10 text-primary border-none hover:bg-primary/20 transition-colors"
+                                                        >
+                                                            {room.room_no}
+                                                        </Badge>
+                                                    );
+                                                })
+                                            ) : (
+                                                <span className="text-sm text-muted-foreground/60 italic ml-1">No rooms selected</span>
+                                            )}
+                                        </div>
+
                                     </div>
 
                                 </div>
@@ -1124,10 +1147,10 @@ export default function ReservationManagement() {
                             <Grid>
 
                                 {/* SALUTATION */}
-                                <div className="flex gap-2">
+                                <div className="flex gap-0">
 
                                     {/* SALUTATION — minimal width */}
-                                    <div className="w-16 shrink-0">
+                                    <div className="w-[45px] shrink-0">
 
                                         <FormSelect
                                             label={"\u00A0"}
@@ -1136,10 +1159,12 @@ export default function ReservationManagement() {
                                             setValue={setGuest}
                                             errors={reservationErrors}
                                             setErrors={setReservationErrors}
+                                            className="h-11 px-0 rounded-r-none"
+                                            hideIcon={true}
                                         >
-                                            <option value="Mr">Mr</option>
-                                            <option value="Mrs">Mrs</option>
-                                            <option value="Ms">Ms</option>
+                                            <option value="Mr.">Mr.</option>
+                                            <option value="Mrs.">Mrs.</option>
+                                            <option value="Ms.">Ms.</option>
                                         </FormSelect>
 
                                     </div>
@@ -1156,6 +1181,7 @@ export default function ReservationManagement() {
                                             setErrors={setReservationErrors}
                                             required
                                             maxLength={100}
+                                            className="rounded-l-none"
                                         />
 
                                     </div>
@@ -1299,7 +1325,18 @@ export default function ReservationManagement() {
                                     setValue={setGuest}
                                     errors={reservationErrors}
                                     setErrors={setReservationErrors}
-                                    prefix="+91"
+                                    prefixControl={
+                                        <PhonePrefixSelect
+                                            value={guest.country_code ?? "+91"}
+                                            onValueChange={(countryCode) =>
+                                                setGuest((prev: any) => ({
+                                                    ...prev,
+                                                    country_code: countryCode,
+                                                }))
+                                            }
+                                            error={!!reservationErrors.phone}
+                                        />
+                                    }
                                     transform={(v: string) => v.replace(/\D/g, "").slice(0, 15)}
                                 />
 
@@ -1549,6 +1586,18 @@ export default function ReservationManagement() {
                                     setValue={setGuest}
                                     errors={reservationErrors}
                                     setErrors={setReservationErrors}
+                                    prefixControl={
+                                        <PhonePrefixSelect
+                                            value={guest.emergency_contact_country_code ?? "+91"}
+                                            onValueChange={(countryCode) =>
+                                                setGuest((prev: any) => ({
+                                                    ...prev,
+                                                    emergency_contact_country_code: countryCode,
+                                                }))
+                                            }
+                                            error={!!reservationErrors.emergency_contact}
+                                        />
+                                    }
                                     transform={(v: string) => {
 
                                         // allow only numbers + max length 10

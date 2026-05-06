@@ -688,7 +688,7 @@ export default function MenuMaster() {
                                 <button
                                     onClick={() => setSheetTab("history")}
                                     className={cn(
-                                        "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                        "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
                                         sheetTab === "history"
                                             ? "border-primary text-primary"
                                             : "border-transparent text-muted-foreground hover:text-foreground"
@@ -769,148 +769,145 @@ export default function MenuMaster() {
 
                         {(mode === "add" || mode === "edit") && (
                             <div className="space-y-5">
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-4 gap-y-3">
-                                    {/* Basic Info Card */}
+                                <div className="space-y-4">
+                                    {/* Consolidated Basic Info & Pricing Card */}
                                     <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-6">
-                                        <h3 className="text-[11px] font-semibold text-primary/90 tracking-wider border-b border-primary/50 pb-2 mb-3">
-                                            Basic Information
+                                        <h3 className="text-sm font-semibold text-primary/90">
+                                            Basic Information & Pricing
                                         </h3>
-                                        <div className="space-y-4">
-                                            <div className="space-y-2">
-                                                <Label className="text-xs font-bold text-muted-foreground tracking-wide">Item Name *</Label>
-                                                <Input
-                                                    placeholder="e.g. Chocolate Brownie"
-                                                    className={cn("h-11 bg-background shadow-none", submitted && formErrors.item_name ? "border-red-500" : "border-border/60")}
-                                                    value={form.item_name}
-                                                    onChange={(e) => {
-                                                        setForm({ ...form, item_name: e.target.value });
-                                                        setFormErrors(prev => ({ ...prev, item_name: "" }));
-                                                    }}
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label className="text-xs font-bold text-muted-foreground tracking-wide">Menu Group *</Label>
-                                                <NativeSelect
-                                                    className={cn("h-11 bg-background shadow-none", submitted && formErrors.menuItemGroupId ? "border-red-500" : "border-border/60")}
-                                                    value={form.menuItemGroupId}
-                                                    onChange={(e) => setForm({ ...form, menuItemGroupId: e.target.value })}
-                                                >
-                                                    <option value="">Select Group</option>
-                                                    {menuItemGroups?.data?.map((g: any) => (
-                                                        <option key={g.id} value={g.id}>{g.name}</option>
-                                                    ))}
-                                                </NativeSelect>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Pricing Card */}
-                                    <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-6">
-                                        <h3 className="text-[11px] font-semibold text-primary/90 tracking-wider border-b border-primary/50 pb-2 mb-3">
-                                            Pricing & Status
-                                        </h3>
-                                        <div className="space-y-4">
-                                            <div className="grid grid-cols-2 gap-4">
+                                        
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                                            <div className="space-y-4">
                                                 <div className="space-y-2">
-                                                    <Label className="text-xs font-bold text-muted-foreground tracking-wide">Price (₹) *</Label>
+                                                    <Label className="text-xs font-bold text-muted-foreground tracking-wide">Item Name *</Label>
                                                     <Input
-                                                        type="number"
-                                                        placeholder="0.00"
-                                                        className={cn("h-11 bg-background shadow-none", submitted && formErrors.price ? "border-red-500" : "border-border/60")}
-                                                        value={form.price}
+                                                        placeholder="e.g. Chocolate Brownie"
+                                                        className={cn("h-11 bg-background shadow-none", submitted && formErrors.item_name ? "border-red-500" : "border-border/60")}
+                                                        value={form.item_name}
                                                         onChange={(e) => {
-                                                            setForm({ ...form, price: normalizeNumberInput(e.target.value) });
-                                                            setFormErrors(prev => ({ ...prev, price: "" }));
+                                                            setForm({ ...form, item_name: e.target.value });
+                                                            setFormErrors(prev => ({ ...prev, item_name: "" }));
                                                         }}
                                                     />
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <Label className="text-xs font-bold text-muted-foreground tracking-wide">Prep Time (mins)</Label>
+                                                    <Label className="text-xs font-bold text-muted-foreground tracking-wide">Menu Group *</Label>
+                                                    <NativeSelect
+                                                        className={cn("h-11 bg-background shadow-none", submitted && formErrors.menuItemGroupId ? "border-red-500" : "border-border/60")}
+                                                        value={form.menuItemGroupId}
+                                                        onChange={(e) => setForm({ ...form, menuItemGroupId: e.target.value })}
+                                                    >
+                                                        <option value="">Select Group</option>
+                                                        {menuItemGroups?.data?.map((g: any) => (
+                                                            <option key={g.id} value={g.id}>{g.name}</option>
+                                                        ))}
+                                                    </NativeSelect>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-2">
+                                                        <Label className="text-xs font-bold text-muted-foreground tracking-wide">Price (₹) *</Label>
+                                                        <Input
+                                                            type="number"
+                                                            placeholder="0.00"
+                                                            className={cn("h-11 bg-background shadow-none", submitted && formErrors.price ? "border-red-500" : "border-border/60")}
+                                                            value={form.price}
+                                                            onChange={(e) => {
+                                                                setForm({ ...form, price: normalizeNumberInput(e.target.value) });
+                                                                setFormErrors(prev => ({ ...prev, price: "" }));
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label className="text-xs font-bold text-muted-foreground tracking-wide">Prep Time (mins)</Label>
+                                                        <Input
+                                                            type="number"
+                                                            placeholder="e.g. 15"
+                                                            className={cn("h-11 bg-background shadow-none", submitted && formErrors.prep_time ? "border-red-500" : "border-border/60")}
+                                                            value={form.prep_time}
+                                                            onChange={(e) => setForm({ ...form, prep_time: e.target.value === "" ? "" : Number(e.target.value) })}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-8 pt-2">
+                                                    <div className="flex items-center gap-3">
+                                                        <Switch
+                                                            checked={form.is_active}
+                                                            onCheckedChange={(v) => setForm({ ...form, is_active: v })}
+                                                        />
+                                                        <Label className="text-sm font-semibold cursor-pointer">Active</Label>
+                                                    </div>
+                                                    <div className="flex items-center gap-3">
+                                                        <Switch
+                                                            checked={form.is_veg}
+                                                            onCheckedChange={(v) => setForm({ ...form, is_veg: v })}
+                                                        />
+                                                        <Label className="text-sm font-semibold cursor-pointer">Pure Veg</Label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Consolidated Description & Media Card */}
+                                    <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-6">
+                                        <h3 className="text-sm font-semibold text-primary/90">
+                                            Description & Media
+                                        </h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 items-start">
+                                            <div className="space-y-2">
+                                                <Label className="text-xs font-bold text-muted-foreground tracking-wide">Item Description</Label>
+                                                <div className="relative">
+                                                    <textarea
+                                                        className="w-full min-h-[175px] rounded-lg border border-border/60 px-3 py-2 pb-8 text-sm bg-background focus:ring-1 focus:ring-primary outline-none transition-all resize-none shadow-none"
+                                                        placeholder="Briefly describe the item's ingredients or preparation..."
+                                                        maxLength={255}
+                                                        value={form.description}
+                                                        onChange={(e) => setForm({ ...form, description: e.target.value })}
+                                                    />
+                                                    <div className="absolute bottom-2 right-3 text-[10px] font-bold text-muted-foreground/40 tracking-widest pointer-events-none">
+                                                        {form.description?.length || 0}/255
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label className="text-xs font-bold text-muted-foreground tracking-wide">Item Image</Label>
+                                                <div className="space-y-4">
                                                     <Input
-                                                        type="number"
-                                                        placeholder="e.g. 15"
-                                                        className={cn("h-11 bg-background shadow-none", submitted && formErrors.prep_time ? "border-red-500" : "border-border/60")}
-                                                        value={form.prep_time}
-                                                        onChange={(e) => setForm({ ...form, prep_time: e.target.value === "" ? "" : Number(e.target.value) })}
+                                                        type="file"
+                                                        accept="image/*"
+                                                        className="h-10 text-xs bg-background border-border/60 file:text-xs file:font-bold file:bg-primary/10 file:text-primary file:border-0 file:rounded-md file:mr-3 file:px-3 cursor-pointer"
+                                                        onChange={(e) => setForm({ ...form, image: e.target.files?.[0] ?? null })}
                                                     />
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-8 pt-2">
-                                                <div className="flex items-center gap-3">
-                                                    <Switch
-                                                        checked={form.is_active}
-                                                        onCheckedChange={(v) => setForm({ ...form, is_active: v })}
-                                                    />
-                                                    <Label className="text-sm font-semibold cursor-pointer">Active</Label>
-                                                </div>
-                                                <div className="flex items-center gap-3">
-                                                    <Switch
-                                                        checked={form.is_veg}
-                                                        onCheckedChange={(v) => setForm({ ...form, is_veg: v })}
-                                                    />
-                                                    <Label className="text-sm font-semibold cursor-pointer">Pure Veg</Label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-4 gap-y-3">
-                                    {/* Description Card */}
-                                    <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-6">
-                                        <h3 className="text-[11px] font-semibold text-primary/90 tracking-wider border-b border-primary/50 pb-2 mb-3">
-                                            Item Description
-                                        </h3>
-                                        <div className="space-y-2">
-                                            <textarea
-                                                className="w-full min-h-[140px] rounded-lg border border-border/60 px-3 py-2 text-sm bg-background focus:ring-1 focus:ring-primary outline-none transition-all resize-none shadow-none"
-                                                placeholder="Briefly describe the item's ingredients or preparation..."
-                                                maxLength={255}
-                                                value={form.description}
-                                                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                                            />
-                                            <div className="text-[10px] font-bold text-muted-foreground/60 text-right">
-                                                {form.description?.length || 0}/255
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Image Card */}
-                                    <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-6">
-                                        <h3 className="text-[11px] font-semibold text-primary/90 tracking-wider border-b border-primary/50 pb-2 mb-3">
-                                            Item Image
-                                        </h3>
-                                        <div className="space-y-4">
-                                            <Input
-                                                type="file"
-                                                accept="image/*"
-                                                className="h-10 text-xs bg-background border-border/60 file:text-xs file:font-bold file:bg-primary/10 file:text-primary file:border-0 file:rounded-md file:mr-3 file:px-3 cursor-pointer"
-                                                onChange={(e) => setForm({ ...form, image: e.target.files?.[0] ?? null })}
-                                            />
-                                            <div className="h-[120px] rounded-lg border border-dashed border-primary/50 bg-accent/10 flex items-center justify-center">
-                                                {mode === "edit" && selected && !form.image ? (
-                                                    <div className="relative h-24 w-40 rounded-lg overflow-hidden border border-primary/50 shadow-sm">
-                                                        <img
-                                                            src={`${import.meta.env.VITE_API_URL}/menu/${selected.id}/image`}
-                                                            alt="Current"
-                                                            className="h-full w-full object-cover"
-                                                            onError={(e) => { e.currentTarget.src = "https://placehold.co/150x150?text=No+Image"; }}
-                                                        />
+                                                    <div className="h-[120px] rounded-lg border border-dashed border-primary/50 bg-accent/10 flex items-center justify-center">
+                                                        {mode === "edit" && selected && !form.image ? (
+                                                            <div className="relative h-24 w-40 rounded-lg overflow-hidden border border-primary/50 shadow-sm">
+                                                                <img
+                                                                    src={`${import.meta.env.VITE_API_URL}/menu/${selected.id}/image`}
+                                                                    alt="Current"
+                                                                    className="h-full w-full object-cover"
+                                                                    onError={(e) => { e.currentTarget.src = "https://placehold.co/150x150?text=No+Image"; }}
+                                                                />
+                                                            </div>
+                                                        ) : form.image ? (
+                                                            <div className="relative h-24 w-40 rounded-lg overflow-hidden border border-primary/20 shadow-sm ring-2 ring-primary/5">
+                                                                <img
+                                                                    src={URL.createObjectURL(form.image)}
+                                                                    alt="Preview"
+                                                                    className="h-full w-full object-cover"
+                                                                />
+                                                            </div>
+                                                        ) : (
+                                                            <div className="text-muted-foreground/30 flex flex-col items-center gap-2">
+                                                                <Camera className="w-8 h-8 opacity-20" />
+                                                                <span className="text-[10px] font-bold uppercase tracking-widest">No Image Preview</span>
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                ) : form.image ? (
-                                                    <div className="relative h-24 w-40 rounded-lg overflow-hidden border border-primary/20 shadow-sm ring-2 ring-primary/5">
-                                                        <img
-                                                            src={URL.createObjectURL(form.image)}
-                                                            alt="Preview"
-                                                            className="h-full w-full object-cover"
-                                                        />
-                                                    </div>
-                                                ) : (
-                                                    <div className="text-muted-foreground/30 flex flex-col items-center gap-2">
-                                                        <Camera className="w-8 h-8 opacity-20" />
-                                                        <span className="text-[10px] font-bold uppercase tracking-widest">No Image Preview</span>
-                                                    </div>
-                                                )}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -946,7 +943,7 @@ export default function MenuMaster() {
 
                         <div className="space-y-6">
                             <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-6">
-                                <h3 className="text-[11px] font-semibold text-primary/90 uppercase tracking-[0.16em] border-b border-primary/50 pb-2 mb-3">
+                                <h3 className="text-sm font-semibold text-primary/90 mb-3">
                                     Group Details
                                 </h3>
                                 <div className="space-y-2">

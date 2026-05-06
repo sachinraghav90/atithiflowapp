@@ -12,7 +12,7 @@ import { toast } from "react-toastify";
 import { normalizeTextInput } from "@/utils/normalizeTextInput";
 import { formatAppDateTime, toDatetimeLocalValue } from "@/utils/dateFormat";
 import { DataGrid, DataGridHeader, DataGridHead, DataGridRow, DataGridCell } from "../ui/data-grid";
-import { Trash2 } from "lucide-react";
+import { Trash2, PlusCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Payment = {
@@ -47,7 +47,7 @@ export default function PaymentsEmbedded({
     bookingId,
     propertyId,
 }: Props) {
-    const [isEditing, setIsEditing] = useState(true);
+    const [isEditing, setIsEditing] = useState(false);
     const [payments, setPayments] = useState<Payment[]>([]);
     const [originalPayments, setOriginalPayments] = useState<Payment[]>([]);
 
@@ -83,6 +83,9 @@ export default function PaymentsEmbedded({
     }, [data]);
 
     const addRow = () => {
+        if (!isEditing) {
+            setIsEditing(true);
+        }
         setPayments((prev) => [...prev, { ...EMPTY_PAYMENT }]);
     };
 
@@ -97,12 +100,13 @@ export default function PaymentsEmbedded({
     };
 
     const handleCancel = () => {
-        if (originalPayments.length === 0) {
-            setPayments([{ ...EMPTY_PAYMENT }]);
-        } else {
-            setPayments(JSON.parse(JSON.stringify(originalPayments)));
-        }
+        setPayments(cloneVehicles(originalPayments));
+        setIsEditing(false);
     };
+
+    function cloneVehicles(v: Payment[]) {
+        return JSON.parse(JSON.stringify(v)) as Payment[];
+    }
 
     const handleSave = async () => {
         // Only save rows that have an amount and are new (no ID)
@@ -129,6 +133,7 @@ export default function PaymentsEmbedded({
                 await createPayment({ payload }).unwrap();
             }
             toast.success("Payments saved successfully");
+            setIsEditing(false);
         } catch (error) {
             console.error("Save failed", error);
             toast.error("Failed to save some payments");
@@ -143,182 +148,187 @@ export default function PaymentsEmbedded({
         <div className="space-y-6">
             <div className="flex flex-col">
                 <h3 className="text-base font-semibold text-foreground">Payments</h3>
-                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                <p className="text-[11px] text-muted-foreground/80">
                     Manage payment entries for this booking
                 </p>
             </div>
 
-            <div className="rounded-[5px] border-2 border-primary/50 bg-background overflow-hidden shadow-sm">
-                <DataGrid className="editable-grid-compact border-none">
-                    <DataGridHeader className="grid-header-inside-table">
-                        <DataGridHead className="w-[180px]">Date</DataGridHead>
-                        <DataGridHead className="w-[140px]">Amount</DataGridHead>
-                        <DataGridHead className="w-[130px]">Method</DataGridHead>
-                        <DataGridHead className="w-[130px]">Type</DataGridHead>
-                        <DataGridHead className="flex-1 min-w-[200px]">Comments / Details</DataGridHead>
-                        {payments.filter(x => !x.id).length > 1 && (
-                            <DataGridHead className="w-20 text-center">Action</DataGridHead>
-                        )}
-                    </DataGridHeader>
+            <div className="editable-grid-compact grid-header-inside-table border-2 border-primary/50 rounded-[5px] overflow-hidden flex flex-col shadow-sm">
+                <div className="grid-scroll-x overflow-y-auto w-full flex-1 min-h-0 bg-background">
+                    <div className="w-full min-w-[900px]">
+                        <DataGrid>
+                            <DataGridHeader>
+                                <DataGridHead className="w-[180px] border-r border-slate-200/20">Date</DataGridHead>
+                                <DataGridHead className="w-[140px] border-r border-slate-200/20">Amount</DataGridHead>
+                                <DataGridHead className="w-[130px] border-r border-slate-200/20">Method</DataGridHead>
+                                <DataGridHead className="w-[130px] border-r border-slate-200/20">Type</DataGridHead>
+                                <DataGridHead className="flex-1 min-w-[200px] border-r border-slate-200/20">Comments / Details</DataGridHead>
+                                {isEditing && (
+                                    <DataGridHead className="w-20 text-center">Action</DataGridHead>
+                                )}
+                            </DataGridHeader>
 
-                    <tbody>
-                        {payments.map((p, index) => {
-                            const isExisting = !!p.id;
-                            return (
-                                <DataGridRow key={p.id || index} className="hover:bg-muted/5 transition-colors">
+                            <tbody>
+                                {payments.map((p, index) => {
+                                    const isExisting = !!p.id;
+                                    return (
+                                        <DataGridRow key={p.id || index}>
                                     {/* DATE */}
-                                    <DataGridCell>
-                                        {isExisting ? (
-                                            <span className="text-sm font-medium text-muted-foreground">
-                                                {formatAppDateTime(p.payment_date)}
-                                            </span>
-                                        ) : (
-                                            <Input
-                                                type="datetime-local"
-                                                className="h-9 text-sm bg-background border-border/40 focus-visible:ring-primary/20"
-                                                value={p.payment_date}
-                                                onChange={(e) => updateRow(index, { payment_date: e.target.value })}
-                                            />
-                                        )}
-                                    </DataGridCell>
+                                            <DataGridCell className="border-r border-slate-200/40">
+                                                {isEditing && !isExisting ? (
+                                                    <Input
+                                                        type="datetime-local"
+                                                        className="h-9 text-sm bg-background border-border/40 focus-visible:ring-primary/20"
+                                                        value={p.payment_date}
+                                                        onChange={(e) => updateRow(index, { payment_date: e.target.value })}
+                                                    />
+                                                ) : (
+                                                    <span className="text-sm font-medium text-muted-foreground">
+                                                        {formatAppDateTime(p.payment_date)}
+                                                    </span>
+                                                )}
+                                            </DataGridCell>
 
                                     {/* AMOUNT */}
-                                    <DataGridCell>
-                                        {isExisting ? (
-                                            <span className="text-sm font-bold text-primary">
-                                                ₹ {p.paid_amount}
-                                            </span>
-                                        ) : (
-                                            <div className="relative">
-                                                <Input
-                                                    type="number"
-                                                    placeholder="0.00"
-                                                    className="h-9 text-sm bg-background border-border/40 focus-visible:ring-primary/20 font-semibold"
-                                                    value={p.paid_amount}
-                                                    onChange={(e) => updateRow(index, { paid_amount: normalizeTextInput(e.target.value) })}
-                                                />
-                                            </div>
-                                        )}
-                                    </DataGridCell>
+                                            <DataGridCell className="border-r border-slate-200/40">
+                                                {isEditing && !isExisting ? (
+                                                    <div className="relative">
+                                                        <Input
+                                                            type="number"
+                                                            placeholder="0.00"
+                                                            className="h-9 text-sm bg-background border-border/40 focus-visible:ring-primary/20 font-semibold"
+                                                            value={p.paid_amount}
+                                                            onChange={(e) => updateRow(index, { paid_amount: normalizeTextInput(e.target.value) })}
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-sm font-bold text-primary">
+                                                        ₹ {p.paid_amount}
+                                                    </span>
+                                                )}
+                                            </DataGridCell>
 
                                     {/* METHOD */}
-                                    <DataGridCell>
-                                        {isExisting ? (
-                                            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30 px-2 py-0.5 rounded">
-                                                {p.payment_method}
-                                            </span>
-                                        ) : (
-                                            <NativeSelect
-                                                className="h-9 text-sm bg-background border-border/40 focus-visible:ring-primary/20"
-                                                value={p.payment_method}
-                                                onChange={(e) => updateRow(index, { 
-                                                    payment_method: e.target.value,
-                                                    bank_name: e.target.value === "Bank" ? p.bank_name : "",
-                                                    transaction_id: e.target.value === "Cash" ? "" : p.transaction_id
-                                                })}
-                                            >
-                                                <option value="Cash">Cash</option>
-                                                <option value="UPI">UPI</option>
-                                                <option value="Card">Card</option>
-                                                <option value="Bank">Bank</option>
-                                            </NativeSelect>
-                                        )}
-                                    </DataGridCell>
+                                            <DataGridCell className="border-r border-slate-200/40">
+                                                {isEditing && !isExisting ? (
+                                                    <NativeSelect
+                                                        className="h-9 text-sm bg-background border-border/40 focus-visible:ring-primary/20"
+                                                        value={p.payment_method}
+                                                        onChange={(e) => updateRow(index, { 
+                                                            payment_method: e.target.value,
+                                                            bank_name: e.target.value === "Bank" ? p.bank_name : "",
+                                                            transaction_id: e.target.value === "Cash" ? "" : p.transaction_id
+                                                        })}
+                                                    >
+                                                        <option value="Cash">Cash</option>
+                                                        <option value="UPI">UPI</option>
+                                                        <option value="Card">Card</option>
+                                                        <option value="Bank">Bank</option>
+                                                    </NativeSelect>
+                                                ) : (
+                                                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30 px-2 py-0.5 rounded">
+                                                        {p.payment_method}
+                                                    </span>
+                                                )}
+                                            </DataGridCell>
 
                                     {/* TYPE */}
-                                    <DataGridCell>
-                                        {isExisting ? (
-                                            <span className="text-xs font-medium text-muted-foreground">
-                                                {p.payment_type}
-                                            </span>
-                                        ) : (
-                                            <NativeSelect
-                                                className="h-9 text-sm bg-background border-border/40 focus-visible:ring-primary/20"
-                                                value={p.payment_type}
-                                                onChange={(e) => updateRow(index, { payment_type: e.target.value })}
-                                            >
-                                                <option value="Advance">Advance</option>
-                                                <option value="Partial">Partial</option>
-                                                <option value="Final">Final</option>
-                                            </NativeSelect>
-                                        )}
-                                    </DataGridCell>
+                                            <DataGridCell className="border-r border-slate-200/40">
+                                                {isEditing && !isExisting ? (
+                                                    <NativeSelect
+                                                        className="h-9 text-sm bg-background border-border/40 focus-visible:ring-primary/20"
+                                                        value={p.payment_type}
+                                                        onChange={(e) => updateRow(index, { payment_type: e.target.value })}
+                                                    >
+                                                        <option value="Advance">Advance</option>
+                                                        <option value="Partial">Partial</option>
+                                                        <option value="Final">Final</option>
+                                                    </NativeSelect>
+                                                ) : (
+                                                    <span className="text-xs font-medium text-muted-foreground">
+                                                        {p.payment_type}
+                                                    </span>
+                                                )}
+                                            </DataGridCell>
 
                                     {/* DETAILS / COMMENTS */}
-                                    <DataGridCell>
-                                        {isExisting ? (
-                                            <div className="space-y-1">
-                                                {p.comments && <p className="text-xs text-foreground/80">{p.comments}</p>}
-                                                {p.transaction_id && (
-                                                    <p className="text-[10px] text-muted-foreground font-mono bg-muted/20 px-1.5 py-0.5 rounded inline-block">
-                                                        TXN: {p.transaction_id}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-2 py-1">
-                                                <Input
-                                                    placeholder="Comments..."
-                                                    className="h-8 text-[11px] bg-background border-border/20"
-                                                    value={p.comments}
-                                                    onChange={(e) => updateRow(index, { comments: e.target.value })}
-                                                />
-                                                {(p.payment_method !== "Cash") && (
-                                                    <div className="flex gap-2">
+                                            <DataGridCell className="border-r border-slate-200/40">
+                                                {isEditing && !isExisting ? (
+                                                    <div className="space-y-2 py-1">
                                                         <Input
-                                                            placeholder="TXN ID"
-                                                            className="h-7 text-[10px] bg-muted/20 border-dashed"
-                                                            value={p.transaction_id}
-                                                            onChange={(e) => updateRow(index, { transaction_id: e.target.value })}
+                                                            placeholder="Comments..."
+                                                            className="h-8 text-[11px] bg-background border-border/20"
+                                                            value={p.comments}
+                                                            onChange={(e) => updateRow(index, { comments: e.target.value })}
                                                         />
-                                                        {p.payment_method === "Bank" && (
-                                                            <NativeSelect
-                                                                className="h-7 text-[10px] bg-muted/20 border-dashed py-0"
-                                                                value={p.bank_name}
-                                                                onChange={(e) => updateRow(index, { bank_name: e.target.value })}
-                                                            >
-                                                                <option value="">Select Bank</option>
-                                                                {banks?.map((b: any, i: number) => (
-                                                                    <option key={i} value={b.bank_name}>{b.bank_name}</option>
-                                                                ))}
-                                                            </NativeSelect>
+                                                        {(p.payment_method !== "Cash") && (
+                                                            <div className="flex gap-2">
+                                                                <Input
+                                                                    placeholder="TXN ID"
+                                                                    className="h-7 text-[10px] bg-muted/20 border-dashed"
+                                                                    value={p.transaction_id}
+                                                                    onChange={(e) => updateRow(index, { transaction_id: e.target.value })}
+                                                                />
+                                                                {p.payment_method === "Bank" && (
+                                                                    <NativeSelect
+                                                                        className="h-7 text-[10px] bg-muted/20 border-dashed py-0"
+                                                                        value={p.bank_name}
+                                                                        onChange={(e) => updateRow(index, { bank_name: e.target.value })}
+                                                                    >
+                                                                        <option value="">Select Bank</option>
+                                                                        {banks?.map((b: any, i: number) => (
+                                                                            <option key={i} value={b.bank_name}>{b.bank_name}</option>
+                                                                        ))}
+                                                                    </NativeSelect>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <div className="space-y-1">
+                                                        {p.comments && <p className="text-xs text-foreground/80">{p.comments}</p>}
+                                                        {p.transaction_id && (
+                                                            <p className="text-[10px] text-muted-foreground font-mono bg-muted/20 px-1.5 py-0.5 rounded inline-block">
+                                                                TXN: {p.transaction_id}
+                                                            </p>
                                                         )}
                                                     </div>
                                                 )}
-                                            </div>
-                                        )}
-                                    </DataGridCell>
+                                            </DataGridCell>
 
                                     {/* ACTION */}
-                                    {payments.filter(x => !x.id).length > 1 && (
-                                        <DataGridCell className="text-center">
-                                            {!isExisting && (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50/50"
-                                                    onClick={() => removeRow(index)}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
+                                            {isEditing && (
+                                                <DataGridCell className="text-center">
+                                                    {!isExisting && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50/50"
+                                                            onClick={() => removeRow(index)}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    )}
+                                                </DataGridCell>
                                             )}
-                                        </DataGridCell>
-                                    )}
                                 </DataGridRow>
                             );
                         })}
                     </tbody>
                 </DataGrid>
 
-                <div className="bg-muted/5 p-3 border-t border-border/20">
-                    <button
-                        type="button"
-                        onClick={addRow}
-                        className="text-xs font-semibold text-primary hover:underline flex items-center gap-1.5 transition-all"
-                    >
-                        <PlusIcon className="w-3.5 h-3.5" />
-                        Add New Payment
-                    </button>
+                        {/* ADD BUTTON FOOTER */}
+                        <div className="editable-grid-footer p-3 bg-background border-t border-border flex items-center">
+                            <button
+                                type="button"
+                                className="flex items-center gap-1.5 text-primary hover:underline text-sm font-semibold transition-colors px-1"
+                                onClick={addRow}
+                            >
+                                <PlusCircle className="h-4 w-4" />
+                                Add New Payment
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -330,32 +340,27 @@ export default function PaymentsEmbedded({
                 >
                     Cancel
                 </Button>
-                <Button
-                    variant="hero"
-                    className="min-w-[132px]"
-                    onClick={handleSave}
-                    disabled={isSaving || payments.filter(p => !p.id && Number(p.paid_amount) > 0).length === 0}
-                >
-                    Save Payments
-                </Button>
+                {isEditing ? (
+                    <Button
+                        variant="hero"
+                        className="min-w-[132px]"
+                        onClick={handleSave}
+                        disabled={isSaving || payments.filter(p => !p.id && Number(p.paid_amount) > 0).length === 0}
+                    >
+                        Save Payments
+                    </Button>
+                ) : (
+                    <Button
+                        variant="hero"
+                        className="min-w-[92px]"
+                        onClick={() => setIsEditing(true)}
+                    >
+                        Update
+                    </Button>
+                )}
             </div>
         </div>
     );
 }
 
-function PlusIcon({ className }: { className?: string }) {
-    return (
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-            className={className}
-        >
-            <path
-                fillRule="evenodd"
-                d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"
-                clipRule="evenodd"
-            />
-        </svg>
-    );
-}
+

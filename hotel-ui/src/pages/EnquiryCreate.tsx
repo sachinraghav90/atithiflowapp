@@ -13,11 +13,6 @@ import { normalizeNumberInput } from "@/utils/normalizeTextInput";
 import { toast } from "react-toastify";
 import { usePermission } from "@/rbac/usePermission";
 import { useLocation, useNavigate } from "react-router-dom";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover";
 import { NativeSelect } from "@/components/ui/native-select";
 import {
     Sheet,
@@ -27,16 +22,9 @@ import {
 } from "@/components/ui/sheet";
 import { DataGrid, DataGridCell, DataGridHead, DataGridHeader, DataGridRow } from "@/components/ui/data-grid";
 import { ValidationTooltip } from "@/components/ui/validation-tooltip";
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-} from "@/components/ui/command";
-import { Check, ChevronDown, Delete, Trash, Trash2, PlusCircle } from "lucide-react";
+import { Delete, Trash, Trash2, PlusCircle } from "lucide-react";
 import { MenuItemSelect } from "@/components/MenuItemSelect";
-import COUNTRY_CODES from '../utils/countryCode.json'
+import PhonePrefixSelect from "@/components/forms/PhonePrefixSelect";
 import { motion } from "framer-motion";
 import { APP_DATE_INPUT_PLACEHOLDER, parseAppDate, toISODateOnly } from "@/utils/dateFormat";
 
@@ -150,7 +138,6 @@ export default function EnquiryCreate() {
     const isOwner = useAppSelector(selectIsOwner)
     const [formErrors, setFormErrors] = useState<Record<string, string>>({});
     const [submitted, setSubmitted] = useState(false);
-    const [open, setOpen] = useState(false);
     const [roomOpenId, setRoomOpenId] = useState<string | null>(null);
 
     const { data: availableRooms, isLoading: availableRoomsLoading, isUninitialized: isAvailableRoomUninitialized } = useAvailableRoomsQuery({ propertyId: selectedPropertyId, arrivalDate: form.check_in, departureDate: form.check_out }, {
@@ -493,43 +480,15 @@ return (
                                     <div className="flex gap-[2px]">
 
                                         {/* Country Code */}
-                                        <Popover open={open} onOpenChange={setOpen}>
-                                            <PopoverTrigger asChild>
-                                                <Button
-                                                    variant="outline"
-                                                    className="w-[4rem] bg-background"
-                                                >
-                                                    {form.country_code}
-                                                    <ChevronDown className="h-4 w-4 opacity-50" />
-                                                </Button>
-                                            </PopoverTrigger>
-
-                                            <PopoverContent className="w-56 p-0">
-                                                <Command>
-                                                    <CommandInput placeholder="Search country..." />
-                                                    <CommandEmpty>No country found</CommandEmpty>
-
-                                                    <CommandGroup className="max-h-60 overflow-y-auto">
-                                                        {COUNTRY_CODES.map((c) => (
-                                                            <CommandItem
-                                                                key={c.country_code}
-                                                                value={`${c.country_name_code} ${c.country_code}`}
-                                                                onSelect={() => {
-                                                                    setForm(p => ({
-                                                                        ...p,
-                                                                        country_code: c.country_code,
-                                                                    }));
-                                                                    setOpen(false);
-                                                                }}
-                                                            >
-                                                                <Check className="mr-2 h-4 w-4 opacity-0" />
-                                                                {c.country_name_code} ({c.country_code})
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </Command>
-                                            </PopoverContent>
-                                        </Popover>
+                                        <PhonePrefixSelect
+                                            value={form.country_code}
+                                            onValueChange={(countryCode) =>
+                                                setForm((p) => ({
+                                                    ...p,
+                                                    country_code: countryCode,
+                                                }))
+                                            }
+                                        />
 
                                         {/* Phone Input */}
                                         <Input
@@ -680,8 +639,16 @@ return (
                                         <ResponsiveDatePicker
                                             value={parseDate(form.check_in)}
                                             onChange={(d) => {
-                                                setForm({ ...form, check_in: formatDate(d) });
-                                                setFormErrors(p => ({ ...p, check_in: "" }));
+                                                const newCheckIn = formatDate(d);
+                                                let newCheckOut = form.check_out;
+                                                if (d && form.check_out) {
+                                                    const currentOut = parseDate(form.check_out);
+                                                    if (currentOut && d > currentOut) {
+                                                        newCheckOut = ""; 
+                                                    }
+                                                }
+                                                setForm({ ...form, check_in: newCheckIn, check_out: newCheckOut });
+                                                setFormErrors(p => ({ ...p, check_in: "", check_out: "" }));
                                             }}
                                             placeholder={APP_DATE_INPUT_PLACEHOLDER}
                                             className={cn(submitted && formErrors.check_in && "border-red-500")}
@@ -695,6 +662,7 @@ return (
                                                 setForm({ ...form, check_out: formatDate(d) });
                                                 setFormErrors(p => ({ ...p, check_out: "" }));
                                             }}
+                                            minDate={parseDate(form.check_in) || undefined}
                                             placeholder={APP_DATE_INPUT_PLACEHOLDER}
                                             className={cn(submitted && formErrors.check_out && "border-red-500")}
                                         />
@@ -921,7 +889,7 @@ function FormSection({
     return (
         <div className="bg-background border border-border rounded-[5px] p-5 space-y-4">
             <div>
-                <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+                <h3 className="text-sm font-semibold text-primary/90">{title}</h3>
                 {description && (
                     <p className="text-xs text-muted-foreground">{description}</p>
                 )}

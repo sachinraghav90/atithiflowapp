@@ -1,5 +1,6 @@
 import * as React from "react";
 import { Search, Calendar as CalendarIcon, Download, FilterX, Pencil, Plus, RefreshCcw, X } from "lucide-react";
+import { MenuItemSelect } from "@/components/MenuItemSelect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -172,7 +173,7 @@ export function GridToolbarSelect({
       {/* LABEL PREFIX */}
       <label
         htmlFor={selectId}
-        className="px-3 bg-muted/40 text-muted-foreground text-[10px] font-bold uppercase tracking-wider whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center"
+        className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center"
       >
         {label}
       </label>
@@ -196,6 +197,33 @@ export function GridToolbarSelect({
           </option>
         ))}
       </NativeSelect>
+    </div>
+  );
+}
+
+export function GridToolbarSearchSelect({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder = "All",
+  className,
+}: GridToolbarSelectProps & { placeholder?: string }) {
+  return (
+    <div className={cn("flex items-center h-10 border border-border bg-background rounded-lg text-sm overflow-hidden shadow-sm w-full", className)}>
+      <span className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center">
+        {label}
+      </span>
+      <div className="flex-1">
+        <MenuItemSelect
+          value={value}
+          items={options.map(o => ({ id: o.value, label: formatReadableLabel(o.label) }))}
+          onSelect={(val) => onChange(val as string)}
+          itemName="label"
+          placeholder={placeholder}
+          extraClasses="border-0 rounded-none h-10 shadow-none focus-visible:ring-0"
+        />
+      </div>
     </div>
   );
 }
@@ -259,7 +287,7 @@ export function GridToolbarDatePicker({
 }: GridToolbarDatePickerProps) {
   return (
     <div className={cn("flex items-center h-10 border border-border bg-background rounded-lg text-sm overflow-hidden shadow-sm w-full", className)}>
-       <span className="px-3 bg-muted/40 text-muted-foreground text-[10px] font-bold uppercase tracking-wider whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center">
+       <span className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center">
         {label}
       </span>
       <ResponsiveDatePicker

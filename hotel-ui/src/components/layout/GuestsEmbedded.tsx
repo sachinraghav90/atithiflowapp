@@ -16,23 +16,10 @@ import {
 } from "@/redux/services/hmsApi";
 import { normalizeNumberInput, normalizeTextInput } from "@/utils/normalizeTextInput";
 import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-} from "@/components/ui/command";
-import { BookType, Check, ChevronDown } from "lucide-react";
-import COUNTRY_CODES from '../../utils/countryCode.json'
 import { cn } from "@/lib/utils";
 import countries from '../../utils/countries.json'
 import SearchSelectPopover from "./SearchSelectPopover";
+import PhonePrefixSelect from "@/components/forms/PhonePrefixSelect";
 import { formatAppDate, parseAppDate, toISODateOnly } from "@/utils/dateFormat";
 
 /* ---------------- Types ---------------- */
@@ -97,7 +84,6 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
     const [isAdding, setIsAdding] = useState(false);
     const [originalGuests, setOriginalGuests] = useState<GuestForm[]>([]);
     const [errors, setErrors] = useState<Record<number, any>>({});
-    const [openCountry, setOpenCountry] = useState(false);
     const [remainingGuests, setRemainingGuests] = useState(0)
     const maxGuests = totalGuest ?? guestCount;
 
@@ -282,16 +268,23 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
             : guests
         : [];
 
-    const getCountryCode = (phone?: string) =>
-        phone?.split(" ")[0] || "+91";
+    const getCountryCode = (phone?: string) => {
+        const [countryCode] = phone?.trim().split(/\s+/) ?? [];
 
-    const getPhoneNumber = (phone?: string) =>
-        phone?.split(" ")[1] || "";
+        return countryCode?.startsWith("+") ? countryCode : "+91";
+    };
 
-    const countryCodeItems = COUNTRY_CODES.map(c => ({
-        label: `${c.country_name_code} (${c.country_code})`,
-        value: c.country_code
-    }));
+    const getPhoneNumber = (phone?: string) => {
+        const trimmedPhone = phone?.trim();
+        if (!trimmedPhone) return "";
+
+        const [countryCode, ...numberParts] = trimmedPhone.split(/\s+/);
+
+        return countryCode.startsWith("+") ? numberParts.join(" ") : trimmedPhone;
+    };
+
+    const getPhoneValue = (countryCode: string, phoneNumber: string) =>
+        `${countryCode} ${phoneNumber}`.trim();
 
     const countryItems = countries.map(c => ({
         label: c,
@@ -301,33 +294,28 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
     /* -------- UI -------- */
     return (
         <div className="space-y-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
+            <div className="flex flex-wrap items-center justify-end gap-2">
 
-                </div>
-
-                <div className="flex flex-wrap gap-2 sm:justify-end">
-                    <div className="flex flex-wrap gap-2">
-                        {!isEditing && <Button
-                            variant="heroOutline"
-                           
-                            onClick={() => {
-                                // setOriginalGuests(JSON.parse(JSON.stringify(guests)));
-                                setIsEditing(true);
-                                setIsAdding(false);
-                            }}
-                        >
-                            Update
-                        </Button>}
+                <div className="flex flex-wrap gap-2">
+                        {!isEditing && (
+                            <Button
+                                variant="heroOutline"
+                                className="h-9 px-4 text-[13px] font-semibold"
+                                onClick={() => {
+                                    setIsEditing(true);
+                                    setIsAdding(false);
+                                }}
+                            >
+                                Update
+                            </Button>
+                        )}
 
                         <Button
-                            variant="heroOutline"
+                            variant="hero"
+                            className="h-9 px-4 text-[13px] font-semibold"
                             onClick={() => {
-                                setRemainingGuests(remainingGuests - 1)
-                                setOriginalGuests(
-                                    guests.filter(g => g.id)
-                                );
-
+                                setRemainingGuests(remainingGuests - 1);
+                                setOriginalGuests(guests.filter((g) => g.id));
                                 setIsEditing(true);
                                 setIsAdding(true);
                                 addGuest();
@@ -340,17 +328,17 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                             <>
                                 <Button
                                     variant="hero"
-                                    className="min-w-[132px]"
+                                    className="h-9 px-4 text-[13px] font-semibold min-w-[120px]"
                                     onClick={() => setConfirmOpen(true)}
                                     disabled={isLoading}
                                 >
                                     Save Guests
                                 </Button>
                                 <Button
-                                    variant="hero"
-                                    className="min-w-[92px]"
+                                    variant="heroOutline"
+                                    className="h-9 px-4 text-[13px] font-semibold min-w-[90px]"
                                     onClick={() => {
-                                        setRemainingGuests(maxGuests - data?.guests?.length)
+                                        setRemainingGuests(maxGuests - data?.guests?.length);
                                         setIsEditing(false);
                                         setIsAdding(false);
                                         setGuests(originalGuests);
@@ -360,28 +348,29 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                 </Button>
                             </>
                         )}
-                    </div>
-
                 </div>
             </div>
 
+            {/* Editable Form */}
             {editableGuests.map((g) => {
-                const index = guests.findIndex(x => x === g);
+                const index = guests.findIndex((x) => x === g);
                 const key = g.id ?? g.temp_key!;
+                const currentCountryCode = getCountryCode(g.phone);
 
                 return (
                     <div
                         key={key}
-                        className="rounded-[5px] border-2 border-primary/50 bg-background p-6 space-y-4 shadow-sm"
+                        className="rounded-[5px] border-2 border-primary/50 bg-background p-4 space-y-4 shadow-sm"
                     >
-                        <div className="flex justify-between">
-                            <p className="font-medium">
+                        {/* Guest Header */}
+                        <div className="flex items-center justify-between border-b border-border/30 pb-2">
+                            <p className="text-sm font-bold text-primary tracking-tight">
                                 Guest {index + 1}
                             </p>
                             <Button
                                 size="sm"
                                 variant="ghost"
-                                className="text-destructive"
+                                className="h-7 text-xs text-destructive hover:bg-destructive/5 font-semibold px-2"
                                 disabled={index === 0}
                                 onClick={() => removeGuest(index)}
                             >
@@ -389,22 +378,14 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                             </Button>
                         </div>
 
-                        {/* Names */}
-                        <div className="grid gap-4 sm:grid-cols-[auto_1fr_1fr]">
-
-                            {/* SALUTATION */}
+                        {/* Form Grid */}
+                        <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-3">
+                            {/* Name Section */}
                             <div className="space-y-1">
-
-                                {/* SINGLE LABEL */}
-                                <Label>Guest Name *</Label>
-
+                                <Label className="text-[11px] font-semibold text-muted-foreground">Guest Name *</Label>
                                 <div className="flex gap-2">
-
-                                    {/* SALUTATION (small width) */}
                                     <NativeSelect
-                                        disabled={!isEditing}
-                                        tabIndex={isEditing ? 0 : -1}
-                                        className="h-10 w-20 rounded-[3px] border px-3 text-sm bg-background"
+                                        className="h-9 w-20 rounded-[3px] border px-3 text-sm bg-background"
                                         value={g.salutation ?? ""}
                                         onChange={(e) =>
                                             updateGuest(index, {
@@ -417,42 +398,26 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                         <option value="Mrs">Mrs</option>
                                         <option value="Ms">Ms</option>
                                     </NativeSelect>
-
-                                    {/* FIRST NAME (remaining width) */}
                                     <Input
-                                        className={`
-                                                flex-1
-                                                ${!isEditing ? "pointer-events-none select-none" : "bg-background"}
-                                                ${errors[index]?.first_name ? "border-red-500 focus-visible:ring-red-500" : ""}
-                                            `}
-                                        readOnly={!isEditing}
-                                        tabIndex={isEditing ? 0 : -1}
+                                        className={`flex-1 h-9 bg-background ${errors[index]?.first_name ? "border-red-500" : ""}`}
                                         value={g.first_name}
+                                        placeholder="First Name"
                                         onChange={(e) =>
                                             updateGuest(index, {
                                                 first_name: normalizeTextInput(e.target.value),
                                             })
                                         }
                                     />
-
                                 </div>
-
-                                {/* INLINE ERROR */}
                                 {errors[index]?.first_name && (
-                                    <p className="text-xs text-red-500">
-                                        {errors[index].first_name}
-                                    </p>
+                                    <p className="text-[10px] text-red-500 mt-0.5">{errors[index].first_name}</p>
                                 )}
-
                             </div>
 
-
                             <div className="space-y-1">
-                                <Label>Middle Name</Label>
+                                <Label className="text-[11px] font-semibold text-muted-foreground">Middle Name</Label>
                                 <Input
-                                    readOnly={!isEditing}
-                                    tabIndex={isEditing ? 0 : -1}
-                                    className={!isEditing ? "pointer-events-none select-none" : "bg-background"}
+                                    className="h-9 bg-background"
                                     value={g.middle_name ?? ""}
                                     onChange={(e) =>
                                         updateGuest(index, {
@@ -463,11 +428,9 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                             </div>
 
                             <div className="space-y-1">
-                                <Label>Last Name</Label>
+                                <Label className="text-[11px] font-semibold text-muted-foreground">Last Name</Label>
                                 <Input
-                                    readOnly={!isEditing}
-                                    tabIndex={isEditing ? 0 : -1}
-                                    className={!isEditing ? "pointer-events-none select-none" : "bg-background"}
+                                    className="h-9 bg-background"
                                     value={g.last_name ?? ""}
                                     onChange={(e) =>
                                         updateGuest(index, {
@@ -476,12 +439,12 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                     }
                                 />
                             </div>
+
+                            {/* Bio Section */}
                             <div className="space-y-1">
-                                <Label>Gender</Label>
+                                <Label className="text-[11px] font-semibold text-muted-foreground">Gender</Label>
                                 <NativeSelect
-                                    disabled={!isEditing}
-                                    tabIndex={isEditing ? 0 : -1}
-                                    className="h-10 w-full rounded-[3px] border px-3 text-sm bg-background"
+                                    className="h-9 w-full rounded-[3px] border px-3 text-sm bg-background"
                                     value={g.gender ?? ""}
                                     onChange={(e) =>
                                         updateGuest(index, {
@@ -497,12 +460,9 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                             </div>
 
                             <div className="space-y-1">
-                                <Label>Age</Label>
-
+                                <Label className="text-[11px] font-semibold text-muted-foreground">Age</Label>
                                 <Input
-                                    readOnly={!isEditing}
-                                    tabIndex={isEditing ? 0 : -1}
-                                    className={!isEditing ? "pointer-events-none select-none" : "bg-background"}
+                                    className="h-9 bg-background"
                                     value={g.age ?? ""}
                                     onChange={(e) =>
                                         updateGuest(index, {
@@ -511,116 +471,52 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                     }
                                 />
                             </div>
+
                             <div className="space-y-1">
-                                <Label>Phone</Label>
+                                <Label className="text-[11px] font-semibold text-muted-foreground">Phone</Label>
                                 <div className="flex gap-[2px]">
-
-                                    {/* Country Code */}
-                                    <Popover open={openCountry} onOpenChange={setOpenCountry}>
-                                        <PopoverTrigger asChild>
-                                            <Button
-                                                variant="outline"
-                                                className="w-[4rem] bg-background"
-                                            >
-                                                {getCountryCode(g.phone)}
-                                                <ChevronDown className="h-4 w-4 opacity-50" />
-                                            </Button>
-                                        </PopoverTrigger>
-
-                                        <PopoverContent className="w-56 p-0">
-                                            <Command>
-                                                <CommandInput placeholder="Search country..." />
-                                                <CommandEmpty>No country found</CommandEmpty>
-
-                                                <CommandGroup
-                                                    className="max-h-60 overflow-y-auto"
-                                                    onWheel={(e) => e.stopPropagation()}
-                                                >
-                                                    {COUNTRY_CODES.map((c) => (
-                                                        <CommandItem
-                                                            key={c.country_code}
-                                                            value={`${c.country_name_code} ${c.country_code}`}
-                                                            onSelect={() => {
-
-                                                                const number = getPhoneNumber(g.phone);
-
-                                                                updateGuest(index, {
-                                                                    phone: `${c.country_code} ${number}`.trim(),
-                                                                });
-
-                                                                // ✅ CLOSE popover
-                                                                setOpenCountry(false);
-                                                            }}
-                                                        >
-                                                            <Check className="mr-2 h-4 w-4 opacity-0" />
-                                                            {c.country_name_code} ({c.country_code})
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
+                                    <PhonePrefixSelect
+                                        value={currentCountryCode}
+                                        triggerClassName="h-9 px-2 text-xs"
+                                        inputClassName="h-8 text-xs"
+                                        itemClassName="text-xs"
+                                        iconClassName="ml-1 h-3 w-3"
+                                        onValueChange={(countryCode) => {
+                                            const number = getPhoneNumber(g.phone);
+                                            updateGuest(index, { phone: getPhoneValue(countryCode, number) });
+                                        }}
+                                    />
                                     <Input
-                                        className={`
-                                            ${!isEditing ? "pointer-events-none select-none" : "bg-background"}
-                                            ${errors[index]?.phone ? "border-red-500 focus-visible:ring-red-500" : ""}
-                                        `}
-                                        readOnly={!isEditing}
-                                        tabIndex={isEditing ? 0 : -1}
+                                        className={`h-9 bg-background flex-1 ${errors[index]?.phone ? "border-red-500" : ""}`}
                                         value={getPhoneNumber(g.phone)}
                                         onChange={(e) => {
                                             if (e.target.value.length <= 10) {
                                                 const number = normalizeNumberInput(e.target.value).toString();
                                                 const code = getCountryCode(g.phone);
-
-                                                updateGuest(index, {
-                                                    phone: `${code} ${number}`.trim(),
-                                                });
+                                                updateGuest(index, { phone: getPhoneValue(code, number) });
                                             }
                                         }}
                                     />
                                 </div>
-                                {errors[index]?.phone && (
-                                    <p className="text-xs text-red-500">
-                                        {errors[index].phone}
-                                    </p>
-                                )}
+                                {errors[index]?.phone && <p className="text-[10px] text-red-500 mt-0.5">{errors[index].phone}</p>}
                             </div>
 
                             <div className="space-y-1">
-                                <Label>Email</Label>
+                                <Label className="text-[11px] font-semibold text-muted-foreground">Email</Label>
                                 <Input
-                                    className={`
-                                            ${!isEditing ? "pointer-events-none select-none" : "bg-background"}
-                                            ${errors[index]?.email ? "border-red-500 focus-visible:ring-red-500" : ""}
-                                        `}
-                                    readOnly={!isEditing}
-                                    tabIndex={isEditing ? 0 : -1}
+                                    className={`h-9 bg-background ${errors[index]?.email ? "border-red-500" : ""}`}
                                     value={g.email ?? ""}
-                                    onChange={(e) =>
-                                        updateGuest(index, {
-                                            email: normalizeTextInput(e.target.value),
-                                        })
-                                    }
+                                    onChange={(e) => updateGuest(index, { email: normalizeTextInput(e.target.value) })}
                                 />
-                                {errors[index]?.email && (
-                                    <p className="text-xs text-red-500">
-                                        {errors[index].email}
-                                    </p>
-                                )}
+                                {errors[index]?.email && <p className="text-[10px] text-red-500 mt-0.5">{errors[index].email}</p>}
                             </div>
 
                             <div className="space-y-1">
-                                <Label>Nationality</Label>
+                                <Label className="text-[11px] font-semibold text-muted-foreground">Nationality</Label>
                                 <NativeSelect
-                                    className="w-full h-10 rounded-[3px] bg-background border border-border px-3 text-sm"
+                                    className="h-9 w-full rounded-[3px] border px-3 text-sm bg-background"
                                     value={g.nationality ?? ""}
-                                    onChange={(e) =>
-                                        updateGuest(index, {
-                                            nationality: normalizeTextInput(e.target.value),
-                                            // country: normalizeTextInput(e.target.value)
-                                        })
-                                    }
+                                    onChange={(e) => updateGuest(index, { nationality: e.target.value })}
                                 >
                                     <option value="">Select nationality</option>
                                     <option value="indian">Indian</option>
@@ -629,262 +525,249 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                 </NativeSelect>
                             </div>
 
-                            {g.nationality === "foreigner" && (
-
-                                <div className="space-y-2">
-
-                                    <Label>Country*</Label>
-
-                                    <SearchSelectPopover
-                                        value={g.country}
-                                        placeholder="Select country"
-                                        items={countryItems}
-                                        onSelect={(country) =>
-                                            updateGuest(index, {
-                                                country: normalizeTextInput(country),
-                                            })
-                                        }
-                                    />
-
-                                </div>
-                            )}
-
-
-                            <div className="space-y-1">
-                                <Label>Address</Label>
+                            <div className="sm:col-span-1 space-y-1">
+                                <Label className="text-[11px] font-semibold text-muted-foreground">Address</Label>
                                 <Input
-                                    className="bg-background"
-                                    readOnly={!isEditing}
+                                    className="h-9 bg-background"
                                     value={g.address ?? ""}
-                                    onChange={(e) =>
-                                        updateGuest(index, {
-                                            address: normalizeTextInput(e.target.value),
-                                        })
-                                    }
+                                    onChange={(e) => updateGuest(index, { address: normalizeTextInput(e.target.value) })}
                                 />
                             </div>
 
+                            {/* ID Section */}
                             <div className="space-y-1">
-                                <Label>ID Type</Label>
-                                {/* <Input
-                                    className="bg-background"
-                                    readOnly={!isEditing}
-                                    tabIndex={isEditing ? 0 : -1}
-                                    value={g.id_type ?? ""}
-                                    onChange={(e) =>
-                                        updateGuest(index, {
-                                            id_type: normalizeTextInput(e.target.value),
-                                        })
-                                    }
-                                /> */}
-
+                                <Label className="text-[11px] font-semibold text-muted-foreground">ID Type</Label>
                                 <NativeSelect
-                                    className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
+                                    className="h-9 w-full rounded-[3px] border px-3 text-sm bg-background"
                                     value={g.id_type ?? ""}
-                                    onChange={(e) => {
-                                        updateGuest(index, {
-                                            id_type: normalizeTextInput(e.target.value),
-                                        })
-                                    }}
+                                    onChange={(e) => updateGuest(index, { id_type: e.target.value })}
                                 >
                                     <option value="">-- Please Select --</option>
-                                    <option value="Aadhaar">Aadhaar</option>
                                     <option value="Aadhaar">Aadhaar</option>
                                     <option value="PAN">PAN</option>
                                     <option value="Passport">Passport</option>
                                     <option value="Driving License">Driving License</option>
                                     <option value="Voter ID">Voter ID</option>
                                     <option value="Apaar ID">Apaar ID</option>
-                                    <option value="Passport ID">Passport ID</option>
-                                    {/* <option value="Other">Other</option> */}
                                 </NativeSelect>
                             </div>
 
                             <div className="space-y-1">
-                                <Label>ID Number</Label>
+                                <Label className="text-[11px] font-semibold text-muted-foreground">ID Number</Label>
                                 <Input
-                                    className="bg-background"
-                                    readOnly={!isEditing}
-                                    tabIndex={isEditing ? 0 : -1}
+                                    className="h-9 bg-background"
                                     value={g.id_number ?? ""}
-                                    onChange={(e) =>
-                                        updateGuest(index, {
-                                            id_number: normalizeTextInput(e.target.value),
-                                        })
-                                    }
+                                    onChange={(e) => updateGuest(index, { id_number: normalizeTextInput(e.target.value) })}
                                 />
                             </div>
 
                             <div className="space-y-1">
-                                <Label>ID Proof</Label>
+                                <Label className="text-[11px] font-semibold text-muted-foreground">ID Proof</Label>
                                 <Input
-                                    className="bg-background"
+                                    className="h-9 bg-background px-2 py-1 text-xs"
                                     type="file"
                                     accept="image/*"
-                                    disabled={!isEditing}
-                                    tabIndex={isEditing ? 0 : -1}
-                                    onChange={(e) =>
-                                        handleFile(key, e.target.files?.[0])
-                                    }
+                                    onChange={(e) => handleFile(key, e.target.files?.[0])}
                                 />
                             </div>
 
-                            {g.nationality?.toLowerCase() === "foreigner" && (
+                            {/* Foreigner Specific */}
+                            {g.nationality === "foreigner" && (
                                 <>
                                     <div className="space-y-1">
-                                        <Label>Visa Number *</Label>
+                                        <Label className="text-[11px] font-semibold text-muted-foreground">Country *</Label>
+                                        <SearchSelectPopover
+                                            value={g.country}
+                                            placeholder="Select country"
+                                            items={countryItems}
+                                            onSelect={(country) =>
+                                                updateGuest(index, {
+                                                    country: normalizeTextInput(country),
+                                                })
+                                            }
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-[11px] font-semibold text-muted-foreground">Visa Number *</Label>
                                         <Input
-                                            className="bg-background"
-                                            readOnly={!isEditing}
+                                            className="h-9 bg-background"
                                             value={g.visa_number ?? ""}
-                                            onChange={(e) =>
-                                                updateGuest(index, {
-                                                    visa_number: normalizeTextInput(e.target.value),
-                                                })
-                                            }
+                                            onChange={(e) => updateGuest(index, { visa_number: normalizeTextInput(e.target.value) })}
                                         />
                                     </div>
-
                                     <div className="space-y-1">
-                                        <Label>Issue Date *</Label>
-                                        <ResponsiveDatePicker
-                                            value={parseDate(g.visa_issue_date)}
-                                            placeholder="DD/MM/YY"
-                                            onChange={(date) =>
-                                                updateGuest(index, {
-                                                    visa_issue_date: formatDate(date),
-                                                })
-                                            }
-                                            label="Visa Issue Date"
-                                            disabled={!isEditing}
-                                            className="bg-background"
-                                        />
-                                    </div>
-
-                                    <div className="space-y-1">
-                                        <Label>Expiry Date *</Label>
+                                        <Label className="text-[11px] font-semibold text-muted-foreground">Visa Expiry *</Label>
                                         <ResponsiveDatePicker
                                             value={parseDate(g.visa_expiry_date)}
                                             placeholder="DD/MM/YY"
-                                            onChange={(date) =>
-                                                updateGuest(index, {
-                                                    visa_expiry_date: formatDate(date),
-                                                })
-                                            }
-                                            label="Visa Expiry Date"
-                                            disabled={!isEditing}
-                                            className="bg-background"
+                                            onChange={(date) => updateGuest(index, { visa_expiry_date: formatDate(date) })}
+                                            className="h-9 bg-background"
                                         />
                                     </div>
                                 </>
                             )}
+
+                            {/* Additional Info */}
+                            <div className="space-y-1">
+                                <Label className="text-[11px] font-semibold text-muted-foreground">Coming From</Label>
+                                <Input
+                                    className="h-9 bg-background"
+                                    value={g.coming_from ?? ""}
+                                    onChange={(e) => updateGuest(index, { coming_from: normalizeTextInput(e.target.value) })}
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <Label className="text-[11px] font-semibold text-muted-foreground">Going To</Label>
+                                <Input
+                                    className="h-9 bg-background"
+                                    value={g.going_to ?? ""}
+                                    onChange={(e) => updateGuest(index, { going_to: normalizeTextInput(e.target.value) })}
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <Label className="text-[11px] font-semibold text-muted-foreground">Emergency Contact</Label>
+                                <div className="flex gap-[2px]">
+                                    <PhonePrefixSelect
+                                        value={getCountryCode(g.emergency_contact)}
+                                        triggerClassName="h-9 px-2 text-xs"
+                                        inputClassName="h-8 text-xs"
+                                        itemClassName="text-xs"
+                                        iconClassName="ml-1 h-3 w-3"
+                                        onValueChange={(countryCode) => {
+                                            const number = getPhoneNumber(g.emergency_contact);
+                                            updateGuest(index, {
+                                                emergency_contact: getPhoneValue(countryCode, number),
+                                            });
+                                        }}
+                                    />
+                                    <Input
+                                        className="h-9 bg-background flex-1"
+                                        value={getPhoneNumber(g.emergency_contact)}
+                                        onChange={(e) => {
+                                            if (e.target.value.length <= 10) {
+                                                const number = normalizeNumberInput(e.target.value).toString();
+                                                const code = getCountryCode(g.emergency_contact);
+                                                updateGuest(index, {
+                                                    emergency_contact: getPhoneValue(code, number),
+                                                });
+                                            }
+                                        }}
+                                    />
+                                </div>
+                            </div>
                         </div>
 
+                        {/* View ID Proof button (only if existing guest) */}
                         {g.has_id_proof && g.id && (
-                            <Button
-                                size="sm"
-                                variant="heroOutline"
-                                onClick={() =>
-                                    setPreviewId(
-                                        `${import.meta.env.VITE_API_URL}/guests/${g.id}/id-proof`
-                                    )
-                                }
-                            >
-                                View ID Proof
-                            </Button>
+                            <div className="mt-2">
+                                <Button
+                                    size="sm"
+                                    variant="heroOutline"
+                                    className="h-8"
+                                    onClick={() =>
+                                        setPreviewId(
+                                            `${import.meta.env.VITE_API_URL}/guests/${g.id}/id-proof`
+                                        )
+                                    }
+                                >
+                                    View ID Proof
+                                </Button>
+                            </div>
                         )}
                     </div>
                 );
             })}
 
-
-
-            {guests.map((g, i) => {
-                return !isEditing && (
+            {/* Read-Only View */}
+            {!isEditing && guests.map((g, i) => {
+                return (
                     <div
-                        className="overflow-hidden rounded-[5px] border-2 border-primary/50 bg-background shadow-sm"
+                        className="overflow-hidden rounded-[5px] border border-primary/30 bg-background shadow-sm mb-4 last:mb-0"
                         key={i}
                     >
-                        {/* Name */}
-                        <div className="flex flex-col gap-4 p-6 pb-5 sm:flex-row sm:items-start sm:justify-between">
-                            <div className="space-y-1">
-                                <p className="text-lg font-semibold text-foreground">
-                                    {g.salutation} {g.first_name} {g.middle_name} {g.last_name}
-                                </p>
-                            </div>
-
-                            {g.gender && (
-                                <span className="text-xs px-2 py-0.5 rounded bg-secondary">
-                                    {g.gender}
-                                </span>
-                            )}
-                        </div>
-
-                        {/* Info Grid */}
-                        <div className="grid gap-x-8 gap-y-7 px-6 pb-6 sm:grid-cols-2 xl:grid-cols-3">
-                            <InfoRow label="Phone" value={g?.phone?.split(" ")[1] && g.phone} />
-                            <InfoRow label="Email" value={g.email} />
-                            <InfoRow label="Age" value={g.age} />
-                            <InfoRow label="Nationality" value={g.nationality} />
-                            <InfoRow label="Address" value={g.address} />
-                            <InfoRow label="Coming From" value={g.coming_from} />
-                            <InfoRow label="Going To" value={g.going_to} />
-                            <InfoRow label="ID Type" value={g.id_type} />
-                            <InfoRow label="ID Number" value={g.id_number} />
+                        {/* Name Header */}
+                        <div className="flex items-center justify-between border-b border-border/50 bg-primary/5 px-5 py-3">
+                            <h3 className="text-sm font-bold text-foreground tracking-tight">
+                                {g.salutation} {g.first_name} {g.middle_name} {g.last_name}
+                            </h3>
 
                             {g.has_id_proof && g.id && (
-                                <div className="flex items-end">
-                                    <Button
-                                        size="sm"
-                                        variant="heroOutline"
-                                        className="w-fit"
-                                        onClick={() =>
-                                            setPreviewId(
-                                                `${import.meta.env.VITE_API_URL}/guests/${g.id}/id-proof`
-                                            )
-                                        }
-                                    >
-                                        View ID Proof
-                                    </Button>
-                                </div>
+                                <Button
+                                    size="sm"
+                                    variant="heroOutline"
+                                    className="h-7 rounded-[4px] px-3 text-[11px] font-semibold"
+                                    onClick={() =>
+                                        setPreviewId(
+                                            `${import.meta.env.VITE_API_URL}/guests/${g.id}/id-proof`
+                                        )
+                                    }
+                                >
+                                    View ID Proof
+                                </Button>
                             )}
                         </div>
 
-                        {/* Emergency */}
-                        {(g.emergency_contact || g.emergency_contact_name) && (
-                            <div className="border-t border-border px-6 py-5">
-                                <p className="mb-2 text-sm font-medium text-foreground">
-                                    Emergency Contact
+                        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px]">
+                            {/* Left Side: Guest Details */}
+                            <div className="px-5 py-3">
+                                <p className="mb-3 text-[12px] font-bold text-primary">
+                                    Guest Details
                                 </p>
-                                <div className="grid gap-6 sm:grid-cols-2">
-                                    <InfoRow
-                                        label="Name"
-                                        value={g.emergency_contact_name}
-                                    />
-                                    <InfoRow
-                                        label="Phone"
-                                        value={g.emergency_contact}
-                                    />
+
+                                <div className="grid grid-cols-1 gap-x-12 gap-y-0.5 sm:grid-cols-2">
+                                    <InfoRow label="Phone" value={g?.phone} />
+                                    <InfoRow label="Email" value={g.email} />
+                                    <InfoRow label="Gender" value={g.gender} />
+                                    <InfoRow label="Age" value={g.age} />
+                                    <InfoRow label="Nationality" value={g.nationality} />
+                                    <InfoRow label="ID Type" value={g.id_type} />
+                                    <InfoRow label="From" value={g.coming_from} />
+                                    <InfoRow label="To" value={g.going_to} />
+                                    <InfoRow label="ID Number" value={g.id_number} />
+
+                                    <div className="sm:col-span-2 border-t border-border/30 mt-2 pt-1.5">
+                                        <InfoRow label="Address" value={g.address} className="items-start" />
+                                    </div>
                                 </div>
                             </div>
-                        )}
 
-                        {g.nationality?.toLowerCase() === "foreigner" && (
-                            <div className="border-t border-border px-6 py-5">
-                                <p className="mb-2 text-sm font-medium text-foreground">Visa Details</p>
+                            {/* Right Side: Emergency Contact & Others */}
+                            <div className="px-5 py-3 border-t lg:border-t-0 lg:border-l border-border/50 bg-accent/5">
+                                <div className="space-y-6">
+                                    {/* Emergency Contact */}
+                                    <div>
+                                        <p className="mb-3 text-[12px] font-bold text-primary">
+                                            Emergency Contact
+                                        </p>
+                                        <div className="space-y-0.5">
+                                            <InfoRow
+                                                label="Name"
+                                                value={g.emergency_contact_name || "—"}
+                                            />
+                                            <InfoRow
+                                                label="Phone"
+                                                value={g.emergency_contact || "—"}
+                                            />
+                                        </div>
+                                    </div>
 
-                                <div className="grid gap-6 sm:grid-cols-3">
-                                    <InfoRow label="Visa Number" value={g.visa_number} />
-                                    <InfoRow label="Issue Date" value={formatReadableDate(g.visa_issue_date)} />
-                                    <InfoRow label="Expiry Date" value={formatReadableDate(g.visa_expiry_date)} />
+                                    {/* Visa Details */}
+                                    {g.nationality?.toLowerCase() === "foreigner" && (
+                                        <div className="pt-3 border-t border-border/30">
+                                            <p className="mb-3 text-[12px] font-bold text-primary">Visa Details</p>
+                                            <div className="space-y-0.5">
+                                                <InfoRow label="Visa No" value={g.visa_number} />
+                                                <InfoRow label="Issue" value={formatReadableDate(g.visa_issue_date)} />
+                                                <InfoRow label="Expiry" value={formatReadableDate(g.visa_expiry_date)} />
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
-                        )}
-
+                        </div>
                     </div>
-                )
-            }
-            )}
+                );
+            })}
 
             {guests.length === 0 && (
                 <p className="text-sm text-muted-foreground">
@@ -968,18 +851,18 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
 function InfoRow({
     label,
     value,
+    className,
 }: {
     label: string;
     value?: string | null;
+    className?: string;
 }) {
     if (!value) return null;
 
     return (
-        <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">{label}</p>
-            <p className="text-sm font-medium text-foreground">
-                {value}
-            </p>
+        <div className={cn("flex items-baseline gap-10 py-0", className)}>
+            <dt className="text-[11px] font-semibold text-muted-foreground w-20 shrink-0 leading-5">{label}</dt>
+            <dd className="text-[13px] font-medium text-foreground break-all leading-5">{value}</dd>
         </div>
     );
 }

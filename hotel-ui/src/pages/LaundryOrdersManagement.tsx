@@ -1576,7 +1576,7 @@ export default function LaundryOrdersManagement() {
                                             <button
                                                 onClick={() => setSheetTab("history")}
                                                 className={cn(
-                                                    "px-4 py-2 text-[11px] font-bold tracking-wide transition-all border-b-2 -mb-[2px]",
+                                                    "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
                                                     sheetTab === "history"
                                                         ? "border-primary text-primary"
                                                         : "border-transparent text-muted-foreground hover:text-foreground"
@@ -1608,7 +1608,7 @@ export default function LaundryOrdersManagement() {
                                                     <div className="h-7 w-7 rounded-lg bg-background flex items-center justify-center text-primary border border-primary/5">
                                                         <Truck className="w-3.5 h-3.5" />
                                                     </div>
-                                                    <h3 className="text-xs font-bold text-primary uppercase tracking-wider">Order Assignment</h3>
+                                                    <h3 className="text-sm font-bold text-primary">Order Assignment</h3>
                                                 </div>
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                                     <div>
@@ -1669,7 +1669,7 @@ export default function LaundryOrdersManagement() {
                                                     <div className="h-7 w-7 rounded-lg bg-background flex items-center justify-center text-primary border border-primary/5">
                                                         <ShieldCheck className="w-3.5 h-3.5" />
                                                     </div>
-                                                    <h3 className="text-xs font-bold text-primary uppercase tracking-wider">Status & Delivery</h3>
+                                                    <h3 className="text-sm font-semibold text-primary/90">Status & Delivery</h3>
                                                 </div>
                                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                                     <div>

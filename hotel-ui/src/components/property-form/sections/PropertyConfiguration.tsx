@@ -70,7 +70,7 @@ export default function PropertyConfiguration({
     return (
         <div className="space-y-4 rounded-[5px] border border-border/40 bg-background p-4 shadow-sm">
 
-            <h3 className="text-[11px] font-semibold text-primary/90 uppercase tracking-[0.16em] border-b border-border/40 pb-2 mb-3">
+            <h3 className="text-sm font-semibold text-primary/90 mb-3">
                 Property Configuration
             </h3>
 

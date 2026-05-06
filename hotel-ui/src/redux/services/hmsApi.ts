@@ -681,10 +681,13 @@ export const hmsApi = createApi({
           page: String(page),
           limit: String(limit)
         });
-        if (arrivalFrom) params.append("arrivalFrom", arrivalFrom);
-        if (arrivalTo) params.append("arrivalTo", arrivalTo);
-        if (departureFrom) params.append("departureFrom", departureFrom);
-        if (departureTo) params.append("departureTo", departureTo);
+        
+        // Map UI ranges to the backend's single fromDate/toDate pair
+        const fromDate = arrivalFrom || departureFrom;
+        const toDate = arrivalTo || departureTo;
+
+        if (fromDate) params.append("fromDate", fromDate);
+        if (toDate) params.append("toDate", toDate);
         if (scope) params.append("scope", scope);
         if (status) params.append("status", status);
         if (search) params.append("search", search);
@@ -698,18 +701,21 @@ export const hmsApi = createApi({
     }),
 
     exportBookings: builder.query({
-      query: ({ propertyId, arrivalFrom, arrivalTo, departureFrom, departureTo, scope, status }) => {
+      query: ({ propertyId, arrivalFrom, arrivalTo, departureFrom, departureTo, scope, status, search = "" }) => {
         const params = new URLSearchParams({
           propertyId: String(propertyId),
           export: "true",
           ts: String(Date.now())
         });
-        if (arrivalFrom) params.append("arrivalFrom", arrivalFrom);
-        if (arrivalTo) params.append("arrivalTo", arrivalTo);
-        if (departureFrom) params.append("departureFrom", departureFrom);
-        if (departureTo) params.append("departureTo", departureTo);
+
+        const fromDate = arrivalFrom || departureFrom;
+        const toDate = arrivalTo || departureTo;
+
+        if (fromDate) params.append("fromDate", fromDate);
+        if (toDate) params.append("toDate", toDate);
         if (scope) params.append("scope", scope);
         if (status) params.append("status", status);
+        if (search) params.append("search", search);
 
         return {
           url: `/bookings?${params.toString()}`,
@@ -881,6 +887,25 @@ export const hmsApi = createApi({
         }
       },
       providesTags: ["roomTypes"]
+    }),
+
+    exportRoomTypes: builder.query({
+      query: ({ propertyId, category, bedType, acType, search }) => {
+        const params = new URLSearchParams({
+          export: "true",
+          ts: String(Date.now())
+        })
+
+        if (category) params.set("category", category)
+        if (bedType) params.set("bedType", bedType)
+        if (acType) params.set("acType", acType)
+        if (search) params.set("search", search)
+
+        return {
+          url: `/room-type-rates/${propertyId}?${params.toString()}`,
+          method: "GET",
+        }
+      },
     }),
 
     updateRoomTypes: builder.mutation({
@@ -1661,6 +1686,8 @@ export const {
   useGetPaymentsByBookingIdQuery,
   useCreatePaymentMutation,
   useGetRoomTypesQuery,
+  useExportRoomTypesQuery,
+  useLazyExportRoomTypesQuery,
   useUpdateRoomTypesMutation,
   useLazyGetUsersByPropertyAndRoleQuery,
   useRoomsStatusQuery,
