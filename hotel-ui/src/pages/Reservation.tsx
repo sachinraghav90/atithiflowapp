@@ -1150,7 +1150,7 @@ export default function ReservationManagement() {
                                 <div className="flex gap-0">
 
                                     {/* SALUTATION — minimal width */}
-                                    <div className="w-[45px] shrink-0">
+                                    <div className="w-[44px] shrink-0">
 
                                         <FormSelect
                                             label={"\u00A0"}
@@ -1160,7 +1160,8 @@ export default function ReservationManagement() {
                                             errors={reservationErrors}
                                             setErrors={setReservationErrors}
                                             className="h-11 px-0 rounded-r-none"
-                                            hideIcon={true}
+                                            hideIcon={false}
+                                            isVertical={true}
                                         >
                                             <option value="Mr.">Mr.</option>
                                             <option value="Mrs.">Mrs.</option>
@@ -1954,7 +1955,7 @@ export default function ReservationManagement() {
 const CardSection = ({ title, subtitle, children }) => (
     <div className="rounded-[5px] border border-border bg-background p-5">
         <div className="mb-4">
-            <h3 className="text-base font-semibold text-foreground">{title}</h3>
+            <h3 className="text-sm font-semibold text-primary/90">{title}</h3>
             {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
         </div>
         {children}

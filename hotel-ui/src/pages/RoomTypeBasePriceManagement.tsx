@@ -310,7 +310,7 @@ export default function RoomTypeBasePriceManagement() {
                         {/* PROPERTY */}
                         {isMultiProperty && (
                             <div className="flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
-                                <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border uppercase">
+                                <span className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center">
                                     Property
                                 </span>
                                 <NativeSelect
@@ -405,7 +405,7 @@ export default function RoomTypeBasePriceManagement() {
                                 />
 
                                 <GridToolbarSelect
-                                    label="BED TYPE"
+                                    label="Bed Type"
                                     value={filterBedType}
                                     onChange={(value) => {
                                         setFilterBedType(value);
@@ -445,7 +445,7 @@ export default function RoomTypeBasePriceManagement() {
 
                             <GridToolbarRow className="gap-2">
                                 <GridToolbarSelect
-                                    label="AC TYPE"
+                                    label="AC Type"
                                     value={filterAcType}
                                     onChange={(value) => {
                                         setFilterAcType(value);
@@ -628,7 +628,7 @@ export default function RoomTypeBasePriceManagement() {
                         ) : (
                             <div className="space-y-5 mt-6">
                                 <div className="space-y-1.5">
-                                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Room Category Name</Label>
+                                    <Label className="text-foreground">Room Category Name</Label>
                                     {selectedRow?.system_generated ? (
                                         <p className="text-sm font-semibold text-foreground py-1 px-0.5">
                                             {selectedRow?.room_category_name || "—"}
@@ -644,7 +644,7 @@ export default function RoomTypeBasePriceManagement() {
 
                                 <div className="grid grid-cols-2 gap-6">
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">Bed Type</Label>
+                                        <Label className="text-foreground">Bed Type</Label>
                                         {selectedRow?.system_generated ? (
                                             <p className="text-sm font-semibold text-foreground py-1 px-0.5">
                                                 {selectedRow?.bed_type_name || "—"}
@@ -663,7 +663,7 @@ export default function RoomTypeBasePriceManagement() {
                                         )}
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block">AC Type</Label>
+                                        <Label className="text-foreground">AC Type</Label>
                                         {selectedRow?.system_generated ? (
                                             <p className="text-sm font-semibold text-foreground py-1 px-0.5">
                                                 {selectedRow?.ac_type_name || "—"}
@@ -684,7 +684,7 @@ export default function RoomTypeBasePriceManagement() {
                                 </div>
 
                                 <div className="space-y-2 pt-4 border-t border-border">
-                                    <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Base Price</Label>
+                                    <Label className="text-foreground">Base Price</Label>
                                     <Input
                                         type="text"
                                         className="h-10 w-full rounded focus-visible:ring-1 focus-visible:ring-primary"

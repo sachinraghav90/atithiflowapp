@@ -3,11 +3,24 @@ import { Label } from "@/components/ui/label";
 import { normalizeNumberInput } from "@/utils/normalizeTextInput";
 import { NativeSelect } from "@/components/ui/native-select";
 
+type FormError = {
+    type: "required" | "invalid";
+    message: string;
+};
+
+type PropertyTaxData = {
+    gst_no: string;
+    room_tax_rate: string | number;
+    gst: string | number;
+    pan_no?: string;
+    [key: string]: string | number | boolean | null | undefined;
+};
+
 type Props = {
-    value: any;
-    setValue: (fn: (prev: any) => any) => void;
-    errors: Record<string, any>;
-    setErrors: (fn: (prev: any) => any) => void;
+    value: PropertyTaxData;
+    setValue: (fn: (prev: PropertyTaxData) => PropertyTaxData) => void;
+    errors: Record<string, FormError | undefined>;
+    setErrors: (fn: (prev: Record<string, FormError | undefined>) => Record<string, FormError | undefined>) => void;
     viewMode: boolean;
 };
 
@@ -29,11 +42,11 @@ export default function PropertyTax({
 
     /* ================= LIVE VALIDATION ================= */
 
-    const validateGST = (val: string) => {
+    const handleGSTValidation = (val: string) => {
         if (!val) return;
 
         if (!GST_REGEX.test(val.toUpperCase())) {
-            setErrors((p: any) => ({
+            setErrors((p) => ({
                 ...p,
                 gst_no: {
                     type: "invalid",
@@ -43,11 +56,11 @@ export default function PropertyTax({
         }
     };
 
-    const validatePAN = (val: string) => {
+    const handlePANValidation = (val: string) => {
         if (!val) return;
 
         if (!PAN_REGEX.test(val.toUpperCase())) {
-            setErrors((p: any) => ({
+            setErrors((p) => ({
                 ...p,
                 pan_no: {
                     type: "invalid",
@@ -83,9 +96,9 @@ export default function PropertyTax({
                         setErrors={setErrors}
                         viewMode={viewMode}
                         required
-                        onChangeExtra={(val: string) =>
-                            validateGST(val.toUpperCase())
-                        }
+                        onChangeExtra={(val) => {
+                            handleGSTValidation(val.toUpperCase());
+                        }}
                         transform={(val: string) => val.toUpperCase()}
                     />
                 </div>
@@ -110,7 +123,7 @@ export default function PropertyTax({
                 {/* GST RATE SELECT */}
 
                 <div className="space-y-1">
-                    <Label className="text-xs font-medium text-muted-foreground">GST Rate for Rooms *</Label>
+                    <Label className="text-foreground">GST Rate for Rooms *</Label>
 
                     <NativeSelect
                         disabled={viewMode}
@@ -121,7 +134,7 @@ export default function PropertyTax({
                             : "border-border/70 bg-background"
                             }`}
                         onChange={(e) =>
-                            setValue((prev: any) => ({
+                            setValue((prev) => ({
                                 ...prev,
                                 gst: Number(e.target.value),
                             }))

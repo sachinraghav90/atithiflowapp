@@ -125,7 +125,9 @@ export default function InventoryMaster() {
     const {
         myProperties,
         isLoading: myPropertiesLoading,
-        isInitializing
+        isInitializing,
+        isSuperAdmin,
+        isOwner
     } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
 
     const { data: inventoryTypesData } = useGetInventoryTypesQuery(undefined, {
@@ -491,7 +493,7 @@ export default function InventoryMaster() {
                     <div className="flex items-center gap-3">
                         {myProperties?.properties && myProperties.properties.length > 0 && (
                             <div className="flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
-                                <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border tracking-wide">
+                                <span className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center">
                                     Property
                                 </span>
                                 <NativeSelect
@@ -734,7 +736,24 @@ export default function InventoryMaster() {
 
                         <div className="flex-1 overflow-y-auto">
                             <div className="px-6 pb-6 pt-3 space-y-6">
-                                <div className="space-y-2">
+                                { (isSuperAdmin || isOwner) && (
+                                    <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-1 -mt-1 -mb-2">
+                                        <Label>Property</Label>
+                                        <NativeSelect
+                                            className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
+                                            value={selectedPropertyId ?? ""}
+                                            onChange={(e) => setSelectedPropertyId(e.target.value)}
+                                        >
+                                            <option value="" disabled>Select Property</option>
+                                            {!myPropertiesLoading &&
+                                                myProperties?.properties?.map((property: any) => (
+                                                    <option key={property.id} value={property.id}>
+                                                        {property.brand_name}
+                                                    </option>
+                                                ))}
+                                        </NativeSelect>
+                                    </div>
+                                )}
 
 
 
@@ -883,7 +902,6 @@ export default function InventoryMaster() {
                                 </Button>
                             </div>
                         </div>
-                    </div>
                     </SheetContent>
                 </Sheet>
 
@@ -953,12 +971,12 @@ export default function InventoryMaster() {
                             )}
 
                             {mode === "edit" && (
-                                <div className="space-y-6 rounded-[5px] border border-border/40 bg-background p-4 shadow-sm">
-                                    <h3 className="text-sm font-semibold text-primary/90 mb-3">
+                                <div className="space-y-6 rounded-[5px] border border-border/40 bg-background p-4 shadow-sm [&>h3+*]:!mt-4">
+                                    <h3 className="text-sm font-semibold text-primary/90">
                                         Edit Inventory Details
                                     </h3>
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-bold text-muted-foreground tracking-wide" htmlFor="inventory-name">Item Name *</Label>
+                                        <Label className="text-foreground" htmlFor="inventory-name">Item Name *</Label>
                                         <Input
                                             id="inventory-name"
                                             name="inventory_name"
@@ -974,7 +992,7 @@ export default function InventoryMaster() {
 
                                     <div className="grid grid-cols-2 gap-6">
                                         <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-muted-foreground tracking-wide" htmlFor="inventory-type">Inventory Type *</Label>
+                                            <Label className="text-foreground" htmlFor="inventory-type">Inventory Type *</Label>
                                             <NativeSelect
                                                 id="inventory-type"
                                                 name="inventory_type_id"
@@ -995,7 +1013,7 @@ export default function InventoryMaster() {
                                         </div>
 
                                         <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-muted-foreground tracking-wide" htmlFor="inventory-use-type">Use Type *</Label>
+                                            <Label className="text-foreground" htmlFor="inventory-use-type">Use Type *</Label>
                                             <NativeSelect
                                                 id="inventory-use-type"
                                                 name="inventory_use_type"

@@ -73,7 +73,7 @@ export default function EmergencyContacts({
                                         }))
                                     }
                                     triggerClassName={cn(
-                                        "h-11 w-[4.5rem] rounded-l-[3px] rounded-r-none border-border/70 border-r-0 px-3 text-sm font-semibold text-muted-foreground shadow-none hover:bg-background hover:text-foreground focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
+                                        "h-11 rounded-l-[3px] rounded-r-none border-border/70 px-3 text-sm font-semibold text-muted-foreground shadow-none hover:bg-background hover:text-foreground focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
                                         errors.emergency_contact && "border-red-500"
                                     )}
                                 />
@@ -129,7 +129,7 @@ export default function EmergencyContacts({
                                         }))
                                     }
                                     triggerClassName={cn(
-                                        "h-11 w-[4.5rem] rounded-l-[3px] rounded-r-none border-border/70 border-r-0 px-3 text-sm font-semibold text-muted-foreground shadow-none hover:bg-background hover:text-foreground focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
+                                        "h-11 rounded-l-[3px] rounded-r-none border-border/70 px-3 text-sm font-semibold text-muted-foreground shadow-none hover:bg-background hover:text-foreground focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
                                         errors.emergency_contact_2 && "border-red-500"
                                     )}
                                 />

@@ -3,7 +3,7 @@ function isPlainObject(value) {
 }
 
 function toCamelCase(input) {
-    return input.replace(/[_-]([a-z0-9])/gi, (_, char) => char.toUpperCase());
+    return input.replace(/[_-]([a-z0-9])/gi, (_, char) => char());
 }
 
 function toSnakeCase(input) {

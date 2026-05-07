@@ -95,6 +95,8 @@ function buildPermissionState(action: "deny" | "read" | "write" | "delete") {
 
 function getPermissionLabel(action: any) {
     switch (action) {
+        case "deny":
+            return "Deny";
         case "read":
             return "Viewer";
         case "write":
@@ -352,14 +354,14 @@ export default function RoleManagement() {
                                 <SheetHeader>
                                     <div className="space-y-1">
                                         <SheetTitle>Create New Role</SheetTitle>
-                                        <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                                        <p className="text-xs text-muted-foreground font-medium tracking-wider">
                                             Define access levels and module permissions
                                         </p>
                                     </div>
                                 </SheetHeader>
                                 <div className="space-y-5 mt-6">
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-muted-foreground">Role Name</Label>
+                                        <Label className="text-foreground">Role Name</Label>
                                         <Input
                                             className="h-9"
                                             value={newRoleName}
@@ -368,7 +370,7 @@ export default function RoleManagement() {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-medium text-muted-foreground">Default Module Access</Label>
+                                        <Label className="text-foreground">Default Module Access</Label>
 
                                         <div className="space-y-1 max-h-[400px] overflow-y-auto border border-border rounded-[3px] p-2 bg-muted/10">
                                             {allSidebarLinksData?.roles.map((module) => (
@@ -472,7 +474,7 @@ export default function RoleManagement() {
 
                                 {!isEditingRoleName ? (
                                     <div className="space-y-0.5">
-                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Managing Access For</p>
+                                        <p className="text-[10px] font-bold text-muted-foreground tracking-widest">Managing Access For</p>
                                         <div className="flex items-center gap-2">
                                             <h2 className="text-xl font-bold text-primary">
                                                 {selectedRoleName}
@@ -589,7 +591,7 @@ export default function RoleManagement() {
                                                             />
                                                         </div>
                                                         <span className={cn(
-                                                            "text-[10px] font-bold uppercase tracking-tight",
+                                                            "text-[10px] font-bold tracking-tight",
                                                             isRadioSelected ? "text-primary" : "text-muted-foreground"
                                                         )}>
                                                             {getPermissionLabel(action)}

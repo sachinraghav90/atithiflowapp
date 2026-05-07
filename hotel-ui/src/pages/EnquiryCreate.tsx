@@ -388,29 +388,6 @@ return (
                         <SheetTitle>New Enquiry</SheetTitle>
                     </SheetHeader>
 
-                    <div className="flex justify-end">
-                            {(isSuperAdmin || isOwner) && (
-                                <div className="w-full sm:w-64 space-y-1">
-                                    <Label className="text-xs">Property</Label>
-                                    <NativeSelect
-                                        className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
-                                        value={selectedPropertyId ?? ""}
-                                        onChange={(e) =>
-                                            setSelectedPropertyId(Number(e.target.value) || null)
-                                        }
-                                        disabled={!(isSuperAdmin || isOwner)}
-                                    >
-                                        <option value="">All properties</option>
-                                        {!myPropertiesLoading &&
-                                            myProperties?.properties?.map((property) => (
-                                                <option key={property.id} value={property.id}>
-                                                    {property.brand_name}
-                                                </option>
-                                            ))}
-                                    </NativeSelect>
-                                </div>
-                            )}
-                    </div>
 
                     <div className="space-y-3 mt-4">
 
@@ -563,6 +540,27 @@ return (
                                         }
                                     </NativeSelect>
                                 </div>
+
+                                {(isSuperAdmin || isOwner) && (
+                                    <div>
+                                        <Label>Property</Label>
+                                        <NativeSelect
+                                            className="h-10 w-full rounded-[3px] border border-border bg-background px-3 text-sm"
+                                            value={selectedPropertyId ?? ""}
+                                            onChange={(e) =>
+                                                setSelectedPropertyId(Number(e.target.value) || null)
+                                            }
+                                        >
+                                            <option value="">All properties</option>
+                                            {!myPropertiesLoading &&
+                                                myProperties?.properties?.map((property) => (
+                                                    <option key={property.id} value={property.id}>
+                                                        {property.brand_name}
+                                                    </option>
+                                                ))}
+                                        </NativeSelect>
+                                    </div>
+                                )}
                             </div>
                         </FormSection>
 

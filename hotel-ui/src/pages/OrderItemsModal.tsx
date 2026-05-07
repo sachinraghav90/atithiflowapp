@@ -201,7 +201,7 @@ export function OrderItemsModal({
                                     <ViewField label="Order Date" value={formatAppDateTime(data.order_date)} />
                                     <ViewField label="Order Total" value={`₹${Number(data.total_amount).toFixed(2)}`} />
                                     <div>
-                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Order Status</Label>
+                                        <Label className="text-[10px] font-bold text-muted-foreground tracking-widest">Order Status</Label>
                                         <div className="mt-0.5">
                                             <GridBadge status={data.order_status} statusType="order" className="h-6 px-3 text-[10px] font-bold">
                                                 {data.order_status}
@@ -209,7 +209,7 @@ export function OrderItemsModal({
                                         </div>
                                     </div>
                                     <div>
-                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Payment Status</Label>
+                                        <Label className="text-[10px] font-bold text-muted-foreground tracking-widest">Payment Status</Label>
                                         <div className="mt-0.5">
                                             <GridBadge status={data.payment_status} statusType="payment" className="h-6 px-3 text-[10px] font-bold">
                                                 {data.payment_status}
@@ -231,13 +231,13 @@ export function OrderItemsModal({
                                 </PropertyViewSection>
 
                                 <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-4">
-                                    <h3 className="text-sm font-semibold text-primary/90 mb-1">
+                                    <h3 className="text-sm font-semibold text-primary/90">
                                         Update Status
                                     </h3>
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Order Status *</Label>
+                                            <Label className="text-foreground">Order Status *</Label>
                                             <NativeSelect
                                                 className="w-full h-10 border border-border bg-background rounded-[3px] px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary shadow-none"
                                                 value={draftOrderStatus}
@@ -249,7 +249,7 @@ export function OrderItemsModal({
                                             </NativeSelect>
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Payment Status *</Label>
+                                            <Label className="text-foreground">Payment Status *</Label>
                                             <NativeSelect
                                                 className="w-full h-10 border border-border bg-background rounded-[3px] px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary shadow-none"
                                                 value={draftPaymentStatus}
@@ -380,7 +380,7 @@ export function OrderItemsModal({
                         />
                         <div className="absolute top-4 left-4">
                             <div className="bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10">
-                                <p className="text-white text-xs font-bold uppercase tracking-widest">{previewImage?.name}</p>
+                                <p className="text-white text-xs font-bold tracking-widest">{previewImage?.name}</p>
                             </div>
                         </div>
                     </div>

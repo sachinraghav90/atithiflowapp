@@ -73,7 +73,7 @@ export default function PropertyBank({
 
         // inline validation for IFSC
         if (field === "ifsc_code" && val) {
-            if (!IFSC_REGEX.test(val.toUpperCase())) {
+            if (!IFSC_REGEX.test(val)) {
                 setErrors((p: any) => ({
                     ...p,
                     [`bank_${index}_ifsc_code`]: {
@@ -127,7 +127,7 @@ export default function PropertyBank({
                     onCheckedChange={setHasBankDetails}
                 />
 
-                <Label className="text-xs font-medium text-muted-foreground">Add Bank Details</Label>
+                <Label className="text-foreground">Add Bank Details</Label>
 
             </div>
             {hasBankDetails && (

@@ -21,7 +21,7 @@ export default function FormDatePicker({
 
     return (
         <div className="space-y-1">
-            <Label title={hoverError} className="text-sm text-foreground">
+            <Label title={hoverError} className="text-foreground">
                 {label} {required && "*"}
             </Label>
             <ResponsiveDatePicker

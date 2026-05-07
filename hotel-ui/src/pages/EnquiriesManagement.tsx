@@ -383,7 +383,7 @@ export default function EnquiriesManagement() {
                     <div className="flex items-center gap-3">
                         {isMultiProperty && (
                             <div className="flex items-center h-9 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
-                                <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border uppercase">
+                                <span className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center">
                                     Property
                                 </span>
                                 <NativeSelect
@@ -627,13 +627,13 @@ export default function EnquiriesManagement() {
                             <div className="space-y-5">
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                                 {/* Left: Status & Timing */}
-                                <div className="rounded-[5px] border-2 border-primary/50 bg-background p-4 shadow-sm space-y-6">
-                                    <h3 className="text-sm font-semibold text-primary/90 mb-3">
+                                <div className="rounded-[5px] border-2 border-primary/50 bg-background p-4 shadow-sm space-y-6 [&>h3+*]:!mt-4">
+                                    <h3 className="text-sm font-semibold text-primary/90">
                                         Lead Lifecycle Management
                                     </h3>
                                     <div className="space-y-4">
                                         <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-muted-foreground tracking-wide">Lead Status *</Label>
+                                            <Label className="text-foreground">Lead Status *</Label>
                                             <NativeSelect
                                                 className="w-full h-11 bg-background shadow-none text-sm border-border/60"
                                                 value={status}
@@ -645,7 +645,7 @@ export default function EnquiriesManagement() {
                                             </NativeSelect>
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-muted-foreground tracking-wide">Follow-up Date & Time</Label>
+                                            <Label className="text-foreground">Follow-up Date & Time</Label>
                                             <ResponsiveDatePicker
                                                 value={parseAppDate(followUpDate)}
                                                 onChange={(date) => setFollowUpDate(toDatetimeLocalValue(date))}
@@ -657,8 +657,8 @@ export default function EnquiriesManagement() {
                                 </div>
 
                                 {/* Right: Internal Notes */}
-                                <div className="rounded-[5px] border-2 border-primary/50 bg-background p-4 shadow-sm space-y-6">
-                                    <h3 className="text-sm font-semibold text-primary/90 mb-3">
+                                <div className="rounded-[5px] border-2 border-primary/50 bg-background p-4 shadow-sm space-y-6 [&>h3+*]:!mt-4">
+                                    <h3 className="text-sm font-semibold text-primary/90">
                                         Internal Progress Notes
                                     </h3>
                                     <div className="space-y-2 flex-1">

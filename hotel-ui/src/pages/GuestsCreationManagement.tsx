@@ -231,7 +231,7 @@ export default function GuestsCreationManagement() {
 
                     {/* Shared Fields */}
                     <div className="rounded-[5px] border border-border bg-card p-4 space-y-4 mt-4">
-                        <p className="font-medium">Common Information</p>
+                        <h3 className="text-sm font-semibold text-primary/90">Common Information</h3>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <FormInput
@@ -291,22 +291,24 @@ export default function GuestsCreationManagement() {
                             key={index}
                             className="rounded-[5px] border border-border bg-card p-6 space-y-4 mt-4"
                         >
-                            <p className="font-semibold">Guest {index + 1}</p>
+                            <h3 className="text-sm font-semibold text-primary/90">Guest {index + 1}</h3>
 
                             {/* Names */}
                             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                                 <div className="flex gap-0">
-                                    <div className="w-[45px] shrink-0">
+                                    <div className="w-[44px] shrink-0">
                                         <FormSelect
                                             label={"\u00A0"}
                                             field="salutation"
                                             value={guest}
                                             setValue={(fn: any) => {
                                                 const updated = fn(guest);
-                                                updateGuest(index, { salutation: updated.salutation });
+                                                setGuests(prev => prev.map((g, i) => i === index ? updated : g));
                                             }}
+                                            errors={errors?.[index]}
                                             className="h-11 px-0 rounded-r-none"
-                                            hideIcon={true}
+                                            hideIcon={false}
+                                            isVertical={true}
                                         >
                                             <option value="Mr.">Mr.</option>
                                             <option value="Mrs.">Mrs.</option>

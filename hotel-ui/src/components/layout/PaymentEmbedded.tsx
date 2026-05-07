@@ -226,7 +226,7 @@ export default function PaymentsEmbedded({
                                                         <option value="Bank">Bank</option>
                                                     </NativeSelect>
                                                 ) : (
-                                                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-muted/30 px-2 py-0.5 rounded">
+                                                    <span className="text-xs font-semibold tracking-wider text-muted-foreground bg-muted/30 px-2 py-0.5 rounded">
                                                         {p.payment_method}
                                                     </span>
                                                 )}

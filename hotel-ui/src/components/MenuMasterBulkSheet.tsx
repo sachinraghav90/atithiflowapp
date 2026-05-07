@@ -14,6 +14,9 @@ import { DataGrid, DataGridHeader, DataGridRow, DataGridHead, DataGridCell } fro
 import { Input } from "@/components/ui/input";
 import { Trash2, Plus, PlusCircle } from "lucide-react";
 import { ValidationTooltip } from "@/components/ui/validation-tooltip";
+import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
+import { NativeSelect } from "./ui/native-select";
+import { Label } from "./ui/label";
 
 const DUPLICATE_ITEMS_MESSAGE = "Duplicate Items Not Allowed";
 
@@ -38,6 +41,7 @@ type Props = {
     propertyId: number;
     menuGroups: any[];
     existingItems: any[];
+    onPropertyChange: (id: number | null) => void;
     onSubmit: (payload: any) => void;
 };
 
@@ -47,6 +51,7 @@ export default function MenuMasterBulkSheet({
     propertyId,
     menuGroups,
     existingItems,
+    onPropertyChange,
     onSubmit
 }: Props) {
 
@@ -63,6 +68,13 @@ export default function MenuMasterBulkSheet({
 
     const [rows, setRows] = useState<Row[]>([emptyRow()]);
     const [showErrors, setShowErrors] = useState(false);
+
+    const {
+        myProperties,
+        isLoading: myPropertiesLoading,
+        isSuperAdmin,
+        isOwner
+    } = useAutoPropertySelect(propertyId, onPropertyChange);
 
     useEffect(() => {
         if (!open) {
@@ -152,6 +164,24 @@ export default function MenuMasterBulkSheet({
 
                 <div className="flex-1 overflow-y-auto bg-background">
                     <div className="px-6 pb-6 pt-3 space-y-6">
+                        {(isSuperAdmin || isOwner) && (
+                            <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-1 -mt-1 -mb-2">
+                                <Label>Property</Label>
+                                <NativeSelect
+                                    className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
+                                    value={propertyId ?? ""}
+                                    onChange={(e) => onPropertyChange(Number(e.target.value) || null)}
+                                >
+                                    <option value="" disabled>Select Property</option>
+                                    {!myPropertiesLoading &&
+                                        myProperties?.properties?.map((property) => (
+                                            <option key={property.id} value={property.id}>
+                                                {property.brand_name}
+                                            </option>
+                                        ))}
+                                </NativeSelect>
+                            </div>
+                        )}
                         <div className="space-y-2">
 
 
@@ -262,7 +292,7 @@ export default function MenuMasterBulkSheet({
                                                                     onCheckedChange={(val) => updateRow(index, { isVeg: val })}
                                                                 />
                                                                 <span className={cn(
-                                                                    "text-[10px] font-bold uppercase tracking-wider",
+                                                                    "text-[10px] font-bold tracking-wider",
                                                                     row.isVeg ? "text-green-600" : "text-red-600"
                                                                 )}>
                                                                     {row.isVeg ? "Veg" : "Non-Veg"}

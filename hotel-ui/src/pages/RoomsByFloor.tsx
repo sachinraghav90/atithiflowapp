@@ -248,7 +248,7 @@ export default function RoomsByFloor() {
                     <div className="flex items-center gap-3 flex-shrink-0">
                         {isMultiProperty && (
                             <div className="flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
-                                <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border uppercase tracking-tight">
+                                <span className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center">
                                     Property
                                 </span>
                                 <NativeSelect
@@ -359,7 +359,7 @@ export default function RoomsByFloor() {
                                                         >
                                                             {/* Card Header (Room No) */}
                                                             <div className="px-3 py-1.5 bg-primary text-white border-b border-primary/20 rounded-t-lg flex justify-between items-center transition-colors">
-                                                                <span className="text-[10px] font-bold opacity-80 uppercase tracking-wider">Room</span>
+                                                                <span className="text-[10px] font-bold opacity-80 tracking-wider">Room</span>
                                                                 <span className="text-sm font-bold">
                                                                     {room.room_no}
                                                                 </span>

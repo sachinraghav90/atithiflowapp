@@ -56,7 +56,12 @@ export default function PackageManagement() {
     const [mode, setMode] = useState<"add" | "edit" | "view">("add");
     const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
     const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
-    const { myProperties, isMultiProperty, isInitializing } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
+    const { 
+        myProperties, 
+        isMultiProperty, 
+        isInitializing,
+        isLoading: myPropertiesLoading 
+    } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
 
     const [searchInput, setSearchInput] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
@@ -319,7 +324,7 @@ export default function PackageManagement() {
                     <div className="flex items-center gap-3 flex-shrink-0">
                         {isMultiProperty && (
                             <div className="flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
-                                <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border uppercase">
+                                <span className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center">
                                     Property
                                 </span>
                                 <NativeSelect
@@ -549,14 +554,33 @@ export default function PackageManagement() {
                                 </div>
                             ) : (
                                 <div className="space-y-5 mt-6">
-                                    <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-5">
-                                        <h3 className="text-sm font-semibold text-primary/90 mb-3">
+                                    {(isSuperAdmin || isOwner) && mode === "add" && (
+                                        <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-1 -mt-1 -mb-2">
+                                            <Label>Property</Label>
+                                            <NativeSelect
+                                                className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
+                                                value={selectedPropertyId ?? ""}
+                                                onChange={(e) => setSelectedPropertyId(Number(e.target.value))}
+                                            >
+                                                <option value="" disabled>Select Property</option>
+                                                {!myPropertiesLoading &&
+                                                    myProperties?.properties?.map((property: { id: number; brand_name: string }) => (
+                                                        <option key={property.id} value={property.id}>
+                                                            {property.brand_name}
+                                                        </option>
+                                                    ))}
+                                            </NativeSelect>
+                                        </div>
+                                    )}
+
+                                    <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-5 [&>h3+*]:!mt-4">
+                                        <h3 className="text-sm font-semibold text-primary/90">
                                             Plan Details
                                         </h3>
 
                                         <div className="space-y-4">
                                             <div className="space-y-2">
-                                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Plan Name*</Label>
+                                                <Label className="text-foreground">Plan Name*</Label>
                                                 {selectedPackage?.system_generated ? (
                                                     <p className="text-sm font-semibold text-foreground py-1 px-0.5">
                                                         {selectedPackage?.package_name || "—"}
@@ -582,7 +606,7 @@ export default function PackageManagement() {
                                             </div>
 
                                             <div className="space-y-2">
-                                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Description</Label>
+                                                <Label className="text-foreground">Description</Label>
                                                 {selectedPackage?.system_generated ? (
                                                     <div className="bg-muted/10 p-3 rounded-[3px] border border-border/50 min-h-[80px]">
                                                         <p className="text-sm text-muted-foreground whitespace-pre-wrap italic">
@@ -608,7 +632,7 @@ export default function PackageManagement() {
                                             </div>
 
                                             <div className="space-y-2">
-                                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Base Price (₹)*</Label>
+                                                <Label className="text-foreground">Base Price (₹)*</Label>
                                                 <div className="relative max-w-[200px]">
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">₹</span>
                                                     <Input
@@ -640,7 +664,7 @@ export default function PackageManagement() {
                                                     }
                                                 />
                                                 <span className={cn(
-                                                    "text-xs font-bold uppercase tracking-wider",
+                                                    "text-xs font-bold tracking-wider",
                                                     selectedPackage?.is_active ? "text-green-600" : "text-muted-foreground"
                                                 )}>
                                                     {selectedPackage?.is_active ? "Active" : "Inactive"}

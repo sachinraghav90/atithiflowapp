@@ -13,7 +13,8 @@ import { useAppSelector } from "@/redux/hook";
 import { apiToast } from "@/utils/apiToastPromise";
 import { usePermission } from "@/rbac/usePermission";
 import { Switch } from "@/components/ui/switch";
-
+import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
+import { NativeSelect } from "@/components/ui/native-select";
 /* ===========================
    TYPES
 =========================== */
@@ -48,7 +49,7 @@ function buildUpdatePayload(name: string, is_active: boolean) {
 =========================== */
 
 export default function DeliveryPartnerManager({
-    sheetOpen, setSheetOpen, createOpen, setCreateOpen, propertyId
+    sheetOpen, setSheetOpen, createOpen, setCreateOpen, propertyId, setSelectedPropertyId
 }) {
 
     /* ---------- STATE ---------- */
@@ -61,6 +62,12 @@ export default function DeliveryPartnerManager({
     const [editActive, setEditActive] = useState<boolean>(true);
 
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value);
+    const { 
+        myProperties, 
+        isLoading: myPropertiesLoading,
+        isSuperAdmin,
+        isOwner 
+    } = useAutoPropertySelect(propertyId, setSelectedPropertyId);
 
     const { data: partners } = useGetDeliveryPartnersQuery({ propertyId }, {
         skip: !isLoggedIn || !propertyId
@@ -150,13 +157,32 @@ export default function DeliveryPartnerManager({
             ======================== */}
 
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetContent side="right" className="w-full sm:max-w-lg">
+                <SheetContent side="right" className="w-full sm:max-w-lg flex flex-col p-0 bg-background">
 
-                    <SheetHeader>
+                    <SheetHeader className="px-6 py-4 border-b bg-background">
                         <SheetTitle>Delivery Partners</SheetTitle>
                     </SheetHeader>
 
-                    <div className="mt-6 space-y-2">
+                    <div className="flex-1 overflow-y-auto bg-background">
+                        <div className="px-6 pb-6 pt-3 space-y-4">
+                            {(isSuperAdmin || isOwner) && (
+                                <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-1 -mt-1 -mb-2">
+                                    <Label>Property</Label>
+                                    <NativeSelect
+                                        className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
+                                        value={propertyId ?? ""}
+                                        onChange={(e) => setSelectedPropertyId(Number(e.target.value) || null)}
+                                    >
+                                        <option value="" disabled>Select Property</option>
+                                        {!myPropertiesLoading &&
+                                            myProperties?.properties?.map((property) => (
+                                                <option key={property.id} value={property.id}>
+                                                    {property.brand_name}
+                                                </option>
+                                            ))}
+                                    </NativeSelect>
+                                </div>
+                            )}
 
                         {partners && partners.map(partner => {
 
@@ -254,6 +280,13 @@ export default function DeliveryPartnerManager({
                             );
                         })}
 
+                        </div>
+                    </div>
+
+                    <div className="p-6 border-t bg-background flex justify-end gap-3">
+                        <Button variant="outline" onClick={() => setSheetOpen(false)}>
+                            Cancel
+                        </Button>
                     </div>
 
                 </SheetContent>
@@ -264,13 +297,32 @@ export default function DeliveryPartnerManager({
             ======================== */}
 
             <Sheet open={createOpen} onOpenChange={setCreateOpen}>
-                <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
+                <SheetContent side="right" className="w-full sm:max-w-xl flex flex-col p-0 bg-background">
 
-                    <SheetHeader>
+                    <SheetHeader className="px-6 py-4 border-b bg-background">
                         <SheetTitle>Create delivery partner</SheetTitle>
                     </SheetHeader>
 
-                    <div className="space-y-6 mt-6">
+                    <div className="flex-1 overflow-y-auto bg-background">
+                        <div className="px-6 pb-6 pt-3 space-y-6">
+                            {(isSuperAdmin || isOwner) && (
+                                <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-1 -mt-1 -mb-2">
+                                    <Label>Property</Label>
+                                    <NativeSelect
+                                        className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
+                                        value={propertyId ?? ""}
+                                        onChange={(e) => setSelectedPropertyId(Number(e.target.value) || null)}
+                                    >
+                                        <option value="" disabled>Select Property</option>
+                                        {!myPropertiesLoading &&
+                                            myProperties?.properties?.map((property) => (
+                                                <option key={property.id} value={property.id}>
+                                                    {property.brand_name}
+                                                </option>
+                                            ))}
+                                    </NativeSelect>
+                                </div>
+                            )}
 
                         <div className="space-y-2">
                             <Label>Name *</Label>
@@ -298,22 +350,23 @@ export default function DeliveryPartnerManager({
                             )}
                         </div>
 
-                        <div className="flex justify-end gap-3 pt-4 border-t border-border">
-                            <Button
-                                variant="heroOutline"
-                                onClick={() => setCreateOpen(false)}
-                            >
-                                Cancel
-                            </Button>
-
-                            <Button
-                                variant="hero"
-                                onClick={createPartner}
-                            >
-                                Create
-                            </Button>
                         </div>
+                    </div>
 
+                    <div className="p-6 border-t bg-background flex justify-end gap-3">
+                        <Button
+                            variant="outline"
+                            onClick={() => setCreateOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+
+                        <Button
+                            variant="hero"
+                            onClick={createPartner}
+                        >
+                            Create
+                        </Button>
                     </div>
 
                 </SheetContent>

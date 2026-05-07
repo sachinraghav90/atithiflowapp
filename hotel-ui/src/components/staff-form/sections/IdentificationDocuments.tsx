@@ -151,14 +151,18 @@ export default function IdentificationDocuments({
                             </div>
                         </div>
                     ) : (
+                        !value.id_proof && (
+                            <div className="p-4 rounded-[3px] border border-dashed border-border bg-muted/10 text-center">
+                                <p className="text-xs text-muted-foreground">No ID proof uploaded</p>
+                            </div>
+                        )
+                    )
+                ) : (
+                    !value.id_proof && (
                         <div className="p-4 rounded-[3px] border border-dashed border-border bg-muted/10 text-center">
                             <p className="text-xs text-muted-foreground">No ID proof uploaded</p>
                         </div>
                     )
-                ) : (
-                    <div className="p-4 rounded-[3px] border border-dashed border-border bg-muted/10 text-center">
-                        <p className="text-xs text-muted-foreground">No ID proof uploaded</p>
-                    </div>
                 )}
             </div>
 

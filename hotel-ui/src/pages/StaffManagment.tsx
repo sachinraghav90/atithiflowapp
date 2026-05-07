@@ -47,8 +47,19 @@ import PropertyViewSection from "@/components/PropertyViewSection";
 import ViewField from "@/components/ViewField";
 
 /* -------------------- Types -------------------- */
+type Property = {
+    id: string | number;
+    brand_name: string;
+};
+
+type Role = {
+    id: string | number;
+    name: string;
+};
+
 type Staff = {
     id?: string;
+    user_id?: string;
     salutation: string;
     first_name: string;
     middle_name?: string;
@@ -58,16 +69,45 @@ type Staff = {
     phone2?: string;
     designation: string;
     department: string;
-    status: "Active" | "Inactive";
-    image?: File | null;
-    id_proof?: File | null;
+    status: string;
+    image?: File | string | null;
+    id_proof?: File | string | null;
+    role_ids: string[];
+    address?: string;
+    gender?: string;
+    marital_status?: string;
+    employment_type?: string;
+    hire_date?: string;
+    dob?: string;
+    emergency_contact?: string;
+    emergency_contact_name?: string;
+    emergency_contact_2?: string;
+    emergency_contact_name_2?: string;
+    emergency_contact_relation?: string;
+    emergency_contact_relation_2?: string;
+    leave_days?: string;
+    shift_pattern?: string;
+    blood_group?: string;
+    id_proof_type?: string;
+    id_number?: string;
+    visa_number?: string;
+    visa_issue_date?: string;
+    visa_expiry_date?: string;
+    other_id_proof?: string;
+    nationality?: string;
+    country?: string;
+    property_id?: string | number;
+    properties?: Property[];
+    roles?: Role[];
+    phone?: string;
+    password?: string;
 };
 
 const STAFF_STATUSES = ["active", "inactive"];
 
-const STAFF_INITIAL_VALUE = {
+const STAFF_INITIAL_VALUE: Staff = {
     first_name: "",
-    salutation: "Mr",
+    salutation: "Mr.",
     middle_name: "",
     last_name: "",
     password: "",
@@ -126,7 +166,7 @@ export default function StaffManagement() {
 
     const [statusFilter, setStatusFilter] = useState("");
 
-    const [staff, setStaff] = useState<typeof STAFF_INITIAL_VALUE>(STAFF_INITIAL_VALUE);
+    const [staff, setStaff] = useState<Staff>(STAFF_INITIAL_VALUE);
     const [idProofMode, setIdProofMode] = useState<"select" | "other">("select");
     const [staffImageExists, setStaffImageExists] = useState(false);
     const [staffIdProofExists, setStaffIdProofExists] = useState<boolean | null>(null);
@@ -265,9 +305,9 @@ export default function StaffManagement() {
                 }
 
                 if (Array.isArray(value)) {
-                    value.forEach((v) => fd.append(`${key}[]`, v))
+                    value.forEach((v) => fd.append(`${key}[]`, String(v)))
                 } else {
-                    fd.append(key, value)
+                    fd.append(key, String(value))
                 }
             })
 
@@ -326,8 +366,8 @@ export default function StaffManagement() {
         return `${y}-${m}-${d}`;   // local timezone safe
     };
 
-    const openPasswordModal = (staff) => {
-        setPasswordStaffId(staff.user_id);
+    const openPasswordModal = (staffMember: Staff) => {
+        setPasswordStaffId(staffMember.user_id || null);
         setPasswordModalOpen(true);
     };
 
@@ -413,7 +453,7 @@ export default function StaffManagement() {
                 return;
             }
 
-            const formatted = res.data.map((staffMember: any) => ({
+            const formatted = res.data.map((staffMember: Staff) => ({
                 "Staff ID": formatModuleDisplayId("staff", staffMember.id),
                 "Name": `${staffMember.first_name || ""} ${staffMember.last_name || ""}`.trim() || "-",
                 "Contact": staffMember.phone || staffMember.phone1 || "-",
@@ -456,7 +496,7 @@ export default function StaffManagement() {
         }
     };
 
-    const staffColumns = useMemo<ColumnDef<any>[]>(() => [
+    const staffColumns = useMemo<ColumnDef<Staff>[]>(() => [
         {
             label: "Staff ID",
             headClassName: "text-center",
@@ -478,7 +518,7 @@ export default function StaffManagement() {
             render: (s) => (
                 <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8 rounded-[3px] border border-border">
-                        <AvatarImage src={s.image || ""} />
+                        <AvatarImage src={typeof s.image === "string" ? s.image : ""} />
                         <AvatarFallback className="rounded-[3px] bg-primary/10 text-primary font-bold text-[10px]">
                             {s.first_name?.[0]}{s.last_name?.[0]}
                         </AvatarFallback>
@@ -536,7 +576,7 @@ export default function StaffManagement() {
                     <div className="flex items-center gap-3">
                         {isMultiProperty && (
                             <div className="flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
-                                <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border uppercase">
+                                <span className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center">
                                     Property
                                 </span>
                                 <NativeSelect
@@ -548,7 +588,7 @@ export default function StaffManagement() {
                                     }}
                                 >
                                     <option value="" disabled>Select Property</option>
-                                    {myProperties?.properties?.map((property: { id: string; brand_name: string }) => (
+                                    {myProperties?.properties?.map((property: Property) => (
                                         <option key={property.id} value={property.id}>
                                             {property.brand_name}
                                         </option>
@@ -564,7 +604,7 @@ export default function StaffManagement() {
                                 onClick={() => {
                                     setMode("add");
                                     setSheetTab("summary");
-                                    setStaff(STAFF_INITIAL_VALUE);
+                                    setStaff({ ...STAFF_INITIAL_VALUE, property_id: selectedPropertyId || "" });
                                     setFormErrors({});
                                     setSheetOpen(true);
                                 }}
@@ -646,7 +686,7 @@ export default function StaffManagement() {
                             loading={isLoading || isFetching || isInitializing}
                             emptyText={staffEmptyText}
                             minWidth="700px"
-                            rowKey={(s: Staff, idx: number) => s.id ?? idx}
+                            rowKey={(s: Staff) => s.id || ""}
                             actionLabel=""
                             actionClassName="text-center w-[96px]"
                              showActions={permission?.can_create}
@@ -761,10 +801,10 @@ export default function StaffManagement() {
                                 </PropertyViewSection>
 
 
-                                <PropertyViewSection title="Contact & Login" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                <PropertyViewSection title="Contact & Login" className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-4">
                                         <ViewField label="Email" value={staff.email} />
                                         <ViewField label="Phone" value={staff.phone1} />
-                                        <ViewField label="Alternate Phone" value={staff.phone2} />
+                                        <ViewField label="Alternate Phone" value={staff.phone2} />                          
                                         <ViewField label="Address" value={staff.address} />
                                 </PropertyViewSection>
 
@@ -772,13 +812,13 @@ export default function StaffManagement() {
                                 <PropertyViewSection title="Property & Role" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                         <ViewField 
                                             label="Property" 
-                                            value={myProperties?.properties?.find((p: any) => String(p.id) === String(staff.property_id))?.brand_name || staff.property_id} 
+                                            value={myProperties?.properties?.find((p: Property) => String(p.id) === String(staff.property_id))?.brand_name || staff.property_id} 
                                         />
                                         <ViewField label="Department" value={staff.department} />
                                         <ViewField label="Designation" value={staff.designation} />
                                         <ViewField 
                                             label="Role" 
-                                            value={formatReadableLabel(roles?.roles?.find((r: any) => String(r.id) === String(staff.role_ids?.[0]))?.name) || staff.role_ids?.[0]} 
+                                            value={formatReadableLabel(roles?.roles?.find((r: Role) => String(r.id) === String(staff.role_ids?.[0]))?.name) || staff.role_ids?.[0]} 
                                         />
                                         <ViewField label="Employment Type" value={staff.employment_type} />
                                         <ViewField label="Joining Date" value={staff.hire_date} />
@@ -808,10 +848,7 @@ export default function StaffManagement() {
                             </div>
 
                         ) : (
-
                             <>
-
-
                                 {/* ================= PERSONAL DETAILS ================= */}
 
                                 <PersonalDetails
@@ -926,9 +963,10 @@ export default function StaffManagement() {
                     <div className="space-y-4">
 
                         <div>
-                            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">New Password</Label>
+                            <Label className="text-foreground">New Password</Label>
                             <Input
                                 type="password"
+                                autoComplete="new-password"
                                 value={newPassword}
                                 className="h-11 rounded-[3px] border-border/70"
                                 onChange={(e) => setNewPassword(e.target.value)}
@@ -936,9 +974,10 @@ export default function StaffManagement() {
                         </div>
 
                         <div>
-                            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Confirm Password</Label>
+                            <Label className="text-foreground">Confirm Password</Label>
                             <Input
                                 type="password"
+                                autoComplete="new-password"
                                 value={confirmPassword}
                                 className="h-11 rounded-[3px] border-border/70"
                                 onChange={(e) => setConfirmPassword(e.target.value)}

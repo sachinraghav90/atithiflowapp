@@ -313,7 +313,7 @@ export default function VendorsManagement() {
                     <div className="flex items-center gap-3">
                         {isMultiProperty && (
                             <div className="flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
-                                <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border uppercase">
+                                <span className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center">
                                     Property
                                 </span>
                                 <NativeSelect
@@ -581,7 +581,26 @@ export default function VendorsManagement() {
                             </div>
                         ) : (
                             <div className="space-y-5 mt-6">
-                                <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-5">
+                                {(isSuperAdmin || isOwner) && mode === "add" && (
+                                    <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-1 -mt-1 -mb-2">
+                                        <Label>Property</Label>
+                                        <NativeSelect
+                                            className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
+                                            value={selectedPropertyId ?? ""}
+                                            onChange={(e) => setSelectedPropertyId(e.target.value)}
+                                        >
+                                            <option value="" disabled>Select Property</option>
+                                            {!myPropertiesLoading &&
+                                                myProperties?.properties?.map((property) => (
+                                                    <option key={property.id} value={property.id}>
+                                                        {property.brand_name}
+                                                    </option>
+                                                ))}
+                                        </NativeSelect>
+                                    </div>
+                                )}
+
+                                <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-5 [&>h3+*]:!mt-4">
                                     <h3 className="text-sm font-semibold text-primary/90">
                                         Vendor Details
                                     </h3>
@@ -679,7 +698,7 @@ export default function VendorsManagement() {
                                             />
 
                                             <span className={cn(
-                                                "px-3 py-1 rounded-[3px] text-xs font-bold uppercase tracking-wider",
+                                                "px-3 py-1 rounded-[3px] text-xs font-bold tracking-wider",
                                                 getStatusColor(form.is_active ? "active" : "inactive", "toggle")
                                             )}>
                                                 {form.is_active ? "Active" : "Inactive"}

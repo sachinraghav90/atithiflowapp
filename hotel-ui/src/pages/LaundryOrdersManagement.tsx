@@ -951,7 +951,7 @@ export default function LaundryOrdersManagement() {
                         <div className="flex items-center gap-3">
                             {isMultiProperty && (
                                 <div className="flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
-                                    <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border uppercase">
+                                    <span className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center">
                                         Property
                                     </span>
                                     <NativeSelect
@@ -1092,6 +1092,7 @@ export default function LaundryOrdersManagement() {
 
                         <div className="px-2 pb-2">
                             <AppDataGrid
+                                density="compact"
                                 scrollable={false}
                                 columns={laundryOrderColumns}
                                 data={filteredOrders}
@@ -1234,37 +1235,52 @@ export default function LaundryOrdersManagement() {
 
             {/* Create Order Sheet */}
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
+                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl flex flex-col p-0 bg-background">
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="space-y-1"
+                        className="flex min-h-0 flex-1 flex-col"
                     >
-                        <SheetHeader>
-                            <SheetTitle>Add Laundry Order Items</SheetTitle>
+                        <SheetHeader className="px-6 py-4 border-b">
+                            <SheetTitle className="text-[#444444]">Add Laundry Order Items</SheetTitle>
                         </SheetHeader>
 
-                        <div className="space-y-4 mt-3">
+                        <div className="flex-1 overflow-y-auto px-6 pb-6 pt-3">
+                            <div className="space-y-4">
+                                {isMultiProperty && (
+                                    <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-3">
+                                        <Label>Property</Label>
+                                        <NativeSelect
+                                            className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
+                                            value={selectedPropertyId ?? ""}
+                                            onChange={(e) => setSelectedPropertyId(e.target.value)}
+                                        >
+                                            <option value="" disabled>Select Property</option>
+                                            {myProperties?.properties?.map((property: any) => (
+                                                <option key={property.id} value={property.id}>
+                                                    {property.brand_name}
+                                                </option>
+                                            ))}
+                                        </NativeSelect>
+                                    </div>
+                                )}
 
                         {/* ================= HEADER SECTION ================= */}
 
-                        <div className="grid grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
                             {/* Vendor */}
                             <div className="space-y-1">
                                 <Label>Vendor</Label>
-                                <NativeSelect
-                                    className="w-full h-10 border rounded px-3 text-sm bg-background/50"
-                                    value={form.vendorId}
-                                    onChange={(e) =>
-                                        setForm({ ...form, vendorId: Number(e.target.value) })
+                                <MenuItemSelect
+                                    value={form.vendorId || ""}
+                                    items={(vendors || []).map(v => ({ id: v.id, label: v.name }))}
+                                    onSelect={(id) =>
+                                        setForm({ ...form, vendorId: id ? Number(id) : "" })
                                     }
-                                >
-                                    <option value="">-- Please Select --</option>
-                                    {vendors?.map(v => (
-                                        <option key={v.id} value={v.id}>{v.name}</option>
-                                    ))}
-                                </NativeSelect>
+                                    placeholder="--Please Select--"
+                                    extraClasses="h-10 bg-background/50"
+                                />
                             </div>
 
                             {/* Vendor Status */}
@@ -1312,23 +1328,24 @@ export default function LaundryOrdersManagement() {
                             {/* Booking */}
                             <div className="space-y-1">
                                 <Label>Booking ID</Label>
-                                <NativeSelect
-                                    className="w-full h-10 border rounded px-3 text-sm bg-background/50"
-                                    value={form.bookingId}
-                                    onChange={(e) =>
+                                <MenuItemSelect
+                                    value={form.bookingId || ""}
+                                    items={[
+                                        { id: "", label: "No Booking (Hotel Laundry)" },
+                                        ...(bookingIds || []).map(id => ({
+                                            id: id,
+                                            label: `#${id}`
+                                        }))
+                                    ]}
+                                    onSelect={(id) =>
                                         setForm({
                                             ...form,
-                                            bookingId: e.target.value
-                                                ? Number(e.target.value)
-                                                : ""
+                                            bookingId: id ? Number(id) : ""
                                         })
                                     }
-                                >
-                                    <option value="">No Booking (Hotel Laundry)</option>
-                                    {bookingIds?.map(id => (
-                                        <option key={id} value={id}>#{id}</option>
-                                    ))}
-                                </NativeSelect>
+                                    placeholder="--Please Select--"
+                                    extraClasses="h-10 bg-background/50"
+                                />
                             </div>
 
 
@@ -1336,158 +1353,129 @@ export default function LaundryOrdersManagement() {
 
                         {/* ================= ITEMS TABLE ================= */}
 
-                        <div className="overflow-hidden rounded-[5px] border border-border bg-background">
+                        <div className="editable-grid-compact border rounded-[5px] overflow-hidden flex flex-col">
+                            <div className="overflow-x-auto w-full bg-background border-b border-border">
+                                <div className={cn("w-full", form.bookingId ? "min-w-[820px]" : "min-w-[620px]")}>
+                                    <DataGrid>
+                                        <DataGridHeader>
+                                            <DataGridHead>Item *</DataGridHead>
+                                            {form.bookingId && (
+                                                <DataGridHead className="w-48">Room</DataGridHead>
+                                            )}
+                                            <DataGridHead className="w-48 text-center">Quantity *</DataGridHead>
+                                            {form.items.length > 1 && (
+                                                <DataGridHead className="w-20 text-center">Action</DataGridHead>
+                                            )}
+                                        </DataGridHeader>
 
-                            {/* HEADER */}
-                            <div
-                                className={cn(
-                                    "grid bg-primary text-primary-foreground font-semibold border-b border-border",
-                                    form.bookingId
-                                        ? form.items.length > 1
-                                            ? "grid-cols-[2fr_1fr_1fr_88px]"
-                                            : "grid-cols-[2fr_1fr_1fr]"
-                                        : form.items.length > 1
-                                            ? "grid-cols-[2fr_1fr_88px]"
-                                            : "grid-cols-[2fr_1fr]"
-                                )}
-                            >
-                                <div className="px-5 py-2">Item *</div>
+                                        <tbody>
+                                            {form.items.map((row, index) => {
+                                                const error = showErrors
+                                                    ? getRowError(row, form.items, form.bookingId)
+                                                    : "";
 
-                                {form.bookingId && (
-                                    <div className="px-5 py-2">Room</div>
-                                )}
+                                                return (
+                                                    <DataGridRow key={row.id}>
+                                                        <DataGridCell>
+                                                            <ValidationTooltip
+                                                                isValid={!((showErrors || row.touched?.laundryId) && (error && (!row.laundryId || error === "Duplicate item selected")))}
+                                                                message={error === "Duplicate item selected" ? "Duplicate item selected" : "Required field"}
+                                                            >
+                                                                <MenuItemSelect
+                                                                    value={row.laundryId || null}
+                                                                    items={laundryTypes?.data || []}
+                                                                    disabledIds={form.items.map(item => item.laundryId).filter(Boolean)}
+                                                                    itemName="item_name"
+                                                                    forceNative={true}
+                                                                    extraClasses={cn(
+                                                                        "h-9 w-full rounded-[3px] border border-input bg-background text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary",
+                                                                        (showErrors || row.touched?.laundryId) && (error && (!row.laundryId || error === "Duplicate item selected")) && "border-red-500"
+                                                                    )}
+                                                                    onSelect={(id) =>
+                                                                        updateItem(index, {
+                                                                            laundryId: id,
+                                                                            touched: { ...row.touched, laundryId: true }
+                                                                        })
+                                                                    }
+                                                                    placeholder="--Please Select--"
+                                                                />
+                                                            </ValidationTooltip>
+                                                        </DataGridCell>
 
-                                <div className="px-5 py-2">Quantity *</div>
+                                                        {form.bookingId && (
+                                                            <DataGridCell>
+                                                                <ValidationTooltip
+                                                                    isValid={!((showErrors || row.touched?.roomNo) && (error && !row.roomNo))}
+                                                                    message="Required field"
+                                                                >
+                                                                    <NativeSelect
+                                                                        className={cn(
+                                                                            "w-full h-9 rounded-[3px] border border-input bg-background px-3 text-sm shadow-none outline-none focus:ring-1 focus:ring-primary",
+                                                                            (showErrors || row.touched?.roomNo) && (error && !row.roomNo) && "border-red-500"
+                                                                        )}
+                                                                        value={row.roomNo || ""}
+                                                                        onChange={(e) =>
+                                                                            updateItem(index, {
+                                                                                roomNo: e.target.value,
+                                                                                touched: { ...row.touched, roomNo: true }
+                                                                            })
+                                                                        }
+                                                                    >
+                                                                        <option value="">--Please Select--</option>
 
-                                {form.items.length > 1 && (
-                                    <div className="px-3 py-2 text-center">Action</div>
-                                )}
-                            </div>
-
-                            {/* ROWS */}
-                            {form.items.map((row, index) => {
-
-                                const error = showErrors
-                                    ? getRowError(row, form.items, form.bookingId)
-                                    : "";
-
-                                return (
-                                    <div
-                                        key={row.id}
-                                        className={cn(
-                                            "grid border-b border-border last:border-b-0",
-                                            form.bookingId
-                                                ? form.items.length > 1
-                                                    ? "grid-cols-[2fr_1fr_1fr_88px]"
-                                                    : "grid-cols-[2fr_1fr_1fr]"
-                                                : form.items.length > 1
-                                                    ? "grid-cols-[2fr_1fr_88px]"
-                                                    : "grid-cols-[2fr_1fr]"
-                                        )}
-                                    >
-
-                                        {/* ITEM */}
-                                        <div className="border-r border-border p-1.5">
-                                            <ValidationTooltip
-                                                isValid={!((showErrors || row.touched?.laundryId) && (error && (!row.laundryId || error === "Duplicate item selected")))}
-                                                message={error === "Duplicate item selected" ? "Duplicate item selected" : "Required field"}
-                                            >
-                                                <MenuItemSelect
-                                                    value={row.laundryId || null}
-                                                    items={laundryTypes?.data || []}
-                                                    disabledIds={form.items.map(item => item.laundryId).filter(Boolean)}
-                                                    itemName="item_name"
-                                                    forceNative={true}
-                                                    extraClasses={cn(
-                                                        "h-9 w-full rounded-[3px] border border-input bg-background text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary",
-                                                        (showErrors || row.touched?.laundryId) && (error && (!row.laundryId || error === "Duplicate item selected")) && "border-red-500"
-                                                    )}
-                                                    onSelect={(id) =>
-                                                        updateItem(index, {
-                                                            laundryId: id,
-                                                            touched: { ...row.touched, laundryId: true }
-                                                        })
-                                                    }
-                                                    placeholder="--Please Select--"
-                                                />
-                                            </ValidationTooltip>
-                                        </div>
-
-
-                                        {/* ROOM */}
-                                        {form.bookingId && (
-                                            <div className="border-r border-border p-1.5">
-                                                <ValidationTooltip
-                                                    isValid={!((showErrors || row.touched?.roomNo) && (error && !row.roomNo))}
-                                                    message="Required field"
-                                                >
-                                                    <NativeSelect
-                                                        className={cn(
-                                                            "w-full h-9 rounded-[3px] border border-input bg-background px-3 text-sm shadow-none outline-none focus:ring-1 focus:ring-primary",
-                                                            (showErrors || row.touched?.roomNo) && (error && !row.roomNo) && "border-red-500"
+                                                                        {bookingData?.booking?.rooms?.map(room => (
+                                                                            <option key={room.room_no} value={room.room_no}>
+                                                                                {room.room_no}
+                                                                            </option>
+                                                                        ))}
+                                                                    </NativeSelect>
+                                                                </ValidationTooltip>
+                                                            </DataGridCell>
                                                         )}
-                                                        value={row.roomNo || ""}
-                                                        onChange={(e) =>
-                                                            updateItem(index, { 
-                                                                roomNo: e.target.value,
-                                                                touched: { ...row.touched, roomNo: true }
-                                                            })
-                                                        }
-                                                    >
-                                                        <option value="">--Please Select--</option>
 
-                                                        {bookingData?.booking?.rooms?.map(room => (
-                                                            <option key={room.room_no} value={room.room_no}>
-                                                                {room.room_no}
-                                                            </option>
-                                                        ))}
-                                                    </NativeSelect>
-                                                </ValidationTooltip>
-                                            </div>
-                                        )}
+                                                        <DataGridCell>
+                                                            <ValidationTooltip
+                                                                isValid={!((showErrors || row.touched?.itemCount) && (error && !row.itemCount))}
+                                                                message="Required field"
+                                                            >
+                                                                <input
+                                                                    type="text"
+                                                                    name={`laundry_item_count_${index}`}
+                                                                    className={cn(
+                                                                        "w-full h-9 rounded-[3px] border border-input bg-background px-3 text-sm shadow-none outline-none focus:ring-1 focus:ring-primary",
+                                                                        (showErrors || row.touched?.itemCount) && (error && !row.itemCount) && "border-red-500"
+                                                                    )}
+                                                                    value={row.itemCount}
+                                                                    onChange={(e) =>
+                                                                        updateItem(index, {
+                                                                            itemCount: +normalizeNumberInput(e.target.value)
+                                                                        })
+                                                                    }
+                                                                    onBlur={() => updateItem(index, { touched: { ...row.touched, itemCount: true } })}
+                                                                />
+                                                            </ValidationTooltip>
+                                                        </DataGridCell>
 
-
-                                        {/* QTY */}
-                                        <div className="border-r border-border p-1.5">
-                                            <ValidationTooltip
-                                                isValid={!((showErrors || row.touched?.itemCount) && (error && !row.itemCount))}
-                                                message="Required field"
-                                            >
-                                                <input
-                                                    type="text"
-                                                    name={`laundry_item_count_${index}`}
-                                                    className={cn(
-                                                        "w-full h-9 rounded-[3px] border border-input bg-background px-3 text-sm shadow-none outline-none focus:ring-1 focus:ring-primary",
-                                                        (showErrors || row.touched?.itemCount) && (error && !row.itemCount) && "border-red-500"
-                                                    )}
-                                                    value={row.itemCount}
-                                                    onChange={(e) =>
-                                                        updateItem(index, {
-                                                            itemCount: +normalizeNumberInput(e.target.value)
-                                                        })
-                                                    }
-                                                    onBlur={() => updateItem(index, { touched: { ...row.touched, itemCount: true } })}
-                                                />
-                                            </ValidationTooltip>
-                                        </div>
-
-                                        {/* REMOVE ACTION */}
-                                        {form.items.length > 1 && (
-                                            <div className="flex items-center justify-center px-2">
-                                                <Button
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className="h-10 w-10 text-destructive hover:text-destructive/80 transition-colors"
-                                                    onClick={() => removeRow(row.id)}
-                                                >
-                                                    <Trash2 className="w-5 h-5" />
-                                                </Button>
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                            <div className="p-3 bg-muted/10">
+                                                        {form.items.length > 1 && (
+                                                            <DataGridCell className="text-center">
+                                                                <Button
+                                                                    size="icon"
+                                                                    variant="ghost"
+                                                                    className="editable-grid-remove-btn h-10 w-10 text-destructive hover:text-destructive/80 transition-colors mx-auto"
+                                                                    onClick={() => removeRow(row.id)}
+                                                                >
+                                                                    <Trash2 className="w-5 h-5" />
+                                                                </Button>
+                                                            </DataGridCell>
+                                                        )}
+                                                    </DataGridRow>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </DataGrid>
+                                </div>
+                            </div>
+                            <div className="editable-grid-footer p-3 bg-muted/10">
                                 <button
                                     type="button"
                                     className="flex items-center gap-1.5 text-primary hover:underline text-sm font-semibold transition-colors"
@@ -1498,7 +1486,10 @@ export default function LaundryOrdersManagement() {
                             </div>
                         </div>
 
-                        <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                            </div>
+                        </div>
+
+                        <div className="p-6 border-t bg-muted/20 flex justify-end gap-3">
                             <Button
                                 variant="heroOutline"
                                 onClick={() => setSheetOpen(false)}
@@ -1513,8 +1504,6 @@ export default function LaundryOrdersManagement() {
                                 Create Order
                             </Button>
                         </div>
-
-                    </div>
                 </motion.div>
             </SheetContent>
         </Sheet>

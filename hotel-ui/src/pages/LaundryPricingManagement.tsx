@@ -128,7 +128,11 @@ export default function LaundryPricingManagement() {
     const isSuperAdmin = useAppSelector(selectIsSuperAdmin)
     const isOwner = useAppSelector(selectIsOwner)
 
-    const { myProperties, isInitializing } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
+    const { 
+        myProperties, 
+        isInitializing,
+        isLoading: myPropertiesLoading 
+    } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
 
     const {
         data,
@@ -421,7 +425,7 @@ export default function LaundryPricingManagement() {
                     <div className="flex items-center gap-3">
                         {(isSuperAdmin || isOwner) && (
                             <div className="flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
-                                <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border uppercase">
+                                <span className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center">
                                     Property
                                 </span>
                                 <NativeSelect
@@ -635,13 +639,13 @@ export default function LaundryPricingManagement() {
 
                         {mode === "edit" && (
                             <div className="space-y-4">
-                                <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-6">
-                                    <h3 className="text-sm font-semibold text-primary/90 mb-3">
+                                <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-6 [&>h3+*]:!mt-4">
+                                    <h3 className="text-sm font-semibold text-primary/90">
                                         Edit Laundry Pricing
                                     </h3>
                                     <div className="space-y-4">
                                         <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider" htmlFor="item-name">Item Name *</Label>
+                                            <Label className="text-foreground" htmlFor="item-name">Item Name *</Label>
                                             <Input
                                                 id="item-name"
                                                 placeholder="e.g. Dry Cleaning"
@@ -658,7 +662,7 @@ export default function LaundryPricingManagement() {
                                         
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
-                                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider" htmlFor="rate">Rate (₹) *</Label>
+                                                <Label className="text-foreground" htmlFor="rate">Rate (₹) *</Label>
                                                 <Input
                                                     id="rate"
                                                     placeholder="0.00"
@@ -672,7 +676,7 @@ export default function LaundryPricingManagement() {
                                                 {submitted && formErrors.item_rate && <p className="text-[10px] font-medium text-red-500 mt-0.5">{formErrors.item_rate}</p>}
                                             </div>
                                             <div className="space-y-2">
-                                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Status</Label>
+                                                <Label className="text-foreground">Status</Label>
                                                 <div className="flex items-center gap-3 h-11 px-3 bg-background border border-primary/20 rounded-md">
                                                     <Switch
                                                         id="item-active"
@@ -687,7 +691,7 @@ export default function LaundryPricingManagement() {
                                         </div>
 
                                         <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider" htmlFor="description">Description</Label>
+                                            <Label className="text-foreground" htmlFor="description">Description</Label>
                                             <textarea
                                                 id="description"
                                                 placeholder="Enter a brief description of the laundry service..."
@@ -703,6 +707,24 @@ export default function LaundryPricingManagement() {
 
                         {mode === "bulk_add" && (
                             <div className="space-y-4">
+                                {(isSuperAdmin || isOwner) && (
+                                    <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-1 -mt-1 -mb-2">
+                                        <Label>Property</Label>
+                                        <NativeSelect
+                                            className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
+                                            value={selectedPropertyId ?? ""}
+                                            onChange={(e) => setSelectedPropertyId(e.target.value)}
+                                        >
+                                            <option value="" disabled>Select Property</option>
+                                            {!myPropertiesLoading &&
+                                                myProperties?.properties?.map((property) => (
+                                                    <option key={property.id} value={property.id}>
+                                                        {property.brand_name}
+                                                    </option>
+                                                ))}
+                                        </NativeSelect>
+                                    </div>
+                                )}
                                 <div className="editable-grid-compact overflow-hidden rounded-[5px] border border-border bg-background/50">
                                     <div className="grid-scroll-x w-full border-b border-border bg-background/50">
                                         <div className="w-full min-w-[720px]">

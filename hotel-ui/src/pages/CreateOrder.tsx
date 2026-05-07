@@ -398,22 +398,22 @@ export function CreateOrder() {
     ============================ */
     return (
         <Sheet open onOpenChange={(nextOpen) => !nextOpen && navigate("/orders")}>
-            <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
+            <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl flex flex-col p-0 bg-background">
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="space-y-1"
+                    className="flex min-h-0 flex-1 flex-col"
                 >
-                    <SheetHeader>
-                        <SheetTitle>Create Order</SheetTitle>
+                    <SheetHeader className="px-6 py-4 border-b">
+                        <SheetTitle className="text-[#444444]">Create Order</SheetTitle>
                     </SheetHeader>
 
-            <section className="flex min-h-0 flex-col gap-6">
+            <section className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 pb-6 pt-3">
 
                 {/* Property */}
                 {(isSuperAdmin || isOwner) && (
-                    <div className="w-full sm:w-64 space-y-1">
-                        <Label className="text-xs">Property</Label>
+                    <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-1 -mt-1 -mb-2">
+                        <Label>Property</Label>
                         <NativeSelect
                             className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
                             value={selectedPropertyId ?? ""}

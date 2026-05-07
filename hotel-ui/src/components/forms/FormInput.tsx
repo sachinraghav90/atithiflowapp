@@ -13,18 +13,19 @@ type FieldError = {
 type Props = {
     label: string;
     field: string;
-    value: any;
+    value: Record<string, any>;
 
-    setValue: (fn: (prev: any) => any) => void;
+    setValue: (fn: (prev: Record<string, any>) => Record<string, any>) => void;
 
-    errors?: Record<string, FieldError>;
-    setErrors?: (fn: (prev: any) => any) => void;
+    errors?: Record<string, FieldError | undefined>;
+    setErrors?: (fn: (prev: Record<string, any>) => Record<string, any>) => void;
 
     viewMode?: boolean;
     required?: boolean;
 
     placeholder?: string;
     type?: string;
+    autoComplete?: string;
 
     transform?: (val: string) => any;
     onChangeExtra?: (val: string) => void;
@@ -46,6 +47,7 @@ export default function FormInput({
     required = false,
     placeholder,
     type = "text",
+    autoComplete,
     onChangeExtra,
     transform,
     maxLength,
@@ -63,9 +65,11 @@ export default function FormInput({
     return (
         <div className="space-y-1">
 
-            <Label className="text-sm text-foreground">
-                {label} {required && "*"}
-            </Label>
+            {label && (
+                <Label className="text-foreground">
+                    {label} {required && "*"}
+                </Label>
+            )}
 
             <div className="flex gap-0">
                 {prefixControl || (prefix && (
@@ -82,6 +86,7 @@ export default function FormInput({
                 <Input
                     disabled={viewMode}
                     type={type}
+                    autoComplete={autoComplete ?? (type === "password" ? "new-password" : "off")}
                     value={value[field] ?? ""}
                     placeholder={placeholder}
                     title={hoverError}
@@ -101,12 +106,12 @@ export default function FormInput({
                             newValue = normalizeTextInput(newValue);
                         }
 
-                        setValue((prev: any) => ({
+                        setValue((prev) => ({
                             ...prev,
                             [field]: newValue,
                         }));
 
-                        setErrors?.((prev: any) => {
+                        setErrors?.((prev) => {
                             const next = { ...prev };
                             delete next[field];
                             return next;

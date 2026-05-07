@@ -42,7 +42,7 @@ export default function PropertyCorporate({
                     onCheckedChange={setShowOfficeFields}
                 />
 
-                <Label className="text-xs font-medium text-muted-foreground">Add Corporate Office Details</Label>
+                <Label className="text-foreground">Add Corporate Office Details</Label>
 
             </div>
 

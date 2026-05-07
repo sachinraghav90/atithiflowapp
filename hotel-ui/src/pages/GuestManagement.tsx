@@ -55,7 +55,7 @@ type VehicleForm = {
 
 export default function BookingGuestsManagement() {
     const navigate = useNavigate();
-    const { state } = useLocation() as any;
+    const { state } = useLocation() as { state: { bookingId?: string; guestCount?: number } };
     const { bookingId, guestCount } = state || {};
     const [collapsed, setCollapsed] = useState(false);
 
@@ -90,7 +90,7 @@ export default function BookingGuestsManagement() {
 
         if (!data?.guests) return;
 
-        const existing: GuestForm[] = data.guests.map((g: any) => ({
+        const existing: GuestForm[] = data.guests.map((g: GuestForm) => ({
             ...g,
         }));
 
@@ -254,7 +254,7 @@ export default function BookingGuestsManagement() {
                                 className="rounded-[5px] border border-border bg-card p-4 space-y-4 shadow-sm"
                             >
                                 <div className="flex justify-between items-center border-b border-border/50 pb-3">
-                                    <p className="text-xs font-bold text-primary uppercase tracking-wider">
+                                    <p className="text-sm font-semibold text-primary/90">
                                         Guest {index + 1} Profile
                                     </p>
 
@@ -273,7 +273,7 @@ export default function BookingGuestsManagement() {
 
                                 <div className="grid sm:grid-cols-3 gap-4">
                                     <div className="space-y-1">
-                                        <Label className="text-xs font-medium text-muted-foreground">First Name *</Label>
+                                        <Label className="text-foreground">First Name *</Label>
                                         <Input
                                             className="h-9"
                                             value={g.first_name}
@@ -287,7 +287,7 @@ export default function BookingGuestsManagement() {
                                     </div>
 
                                     <div className="space-y-1">
-                                        <Label className="text-xs font-medium text-muted-foreground">Middle Name</Label>
+                                        <Label className="text-foreground">Middle Name</Label>
                                         <Input
                                             className="h-9"
                                             value={g.middle_name ?? ""}
@@ -301,7 +301,7 @@ export default function BookingGuestsManagement() {
                                     </div>
 
                                     <div className="space-y-1">
-                                        <Label className="text-xs font-medium text-muted-foreground">Last Name</Label>
+                                        <Label className="text-foreground">Last Name</Label>
                                         <Input
                                             className="h-9"
                                             value={g.last_name ?? ""}
@@ -317,7 +317,7 @@ export default function BookingGuestsManagement() {
 
                                 <div className="grid sm:grid-cols-3 gap-4">
                                     <div className="space-y-1">
-                                        <Label className="text-xs font-medium text-muted-foreground">Phone Number</Label>
+                                        <Label className="text-foreground">Phone Number</Label>
                                         <Input
                                             className="h-9"
                                             placeholder="Enter mobile number"
@@ -330,7 +330,7 @@ export default function BookingGuestsManagement() {
                                         />
                                     </div>
                                     <div className="space-y-1">
-                                        <Label className="text-xs font-medium text-muted-foreground">Email Address</Label>
+                                        <Label className="text-foreground">Email Address</Label>
                                         <Input
                                             className="h-9"
                                             placeholder="Enter email"
@@ -343,7 +343,7 @@ export default function BookingGuestsManagement() {
                                         />
                                     </div>
                                     <div className="space-y-1">
-                                        <Label className="text-xs font-medium text-muted-foreground">ID Proof Photo</Label>
+                                        <Label className="text-foreground">ID Proof Photo</Label>
                                         <Input
                                             className="h-9 py-1 px-2 text-xs"
                                             type="file"
@@ -379,11 +379,11 @@ export default function BookingGuestsManagement() {
                                 {index === 0 && (
                                     <div className="mt-6 rounded-[5px] border border-border bg-muted/20 p-4 space-y-4">
                                         <div className="flex items-center justify-between border-b border-border/50 pb-3">
-                                            <p className="text-xs font-bold text-primary uppercase tracking-wider">Vehicle Details</p>
+                                            <p className="text-sm font-semibold text-primary/90">Vehicle Details</p>
 
                                             <button
                                                 type="button"
-                                                className="flex items-center gap-1.5 text-primary hover:underline text-xs font-bold transition-colors uppercase tracking-tight"
+                                                className="flex items-center gap-1.5 text-primary hover:underline text-xs font-bold transition-colors tracking-tight"
                                                 onClick={addVehicle}
                                             >
                                                 <PlusCircle className="w-4 h-4" /> Add Vehicle
@@ -402,14 +402,14 @@ export default function BookingGuestsManagement() {
                                                 className="rounded-[3px] border border-border bg-card p-3 space-y-4 shadow-sm"
                                             >
                                                 <div className="flex justify-between items-center border-b border-border/50 pb-2">
-                                                    <p className="text-[11px] font-bold text-muted-foreground uppercase">
+                                                    <p className="text-[11px] font-bold text-muted-foreground">
                                                         Vehicle #{vIndex + 1}
                                                     </p>
 
                                                     <Button
-                                                        size="xs"
+                                                        size="sm"
                                                         variant="ghost"
-                                                        className="text-destructive h-6 px-2 text-[10px] uppercase font-bold"
+                                                        className="text-destructive h-6 px-2 text-[10px] font-bold"
                                                         onClick={() => removeVehicle(vIndex)}
                                                     >
                                                         Remove
@@ -418,13 +418,13 @@ export default function BookingGuestsManagement() {
 
                                                 <div className="grid sm:grid-cols-4 gap-3">
                                                     <div className="space-y-1">
-                                                        <Label className="text-xs font-medium text-muted-foreground">Vehicle Type</Label>
+                                                        <Label className="text-foreground">Vehicle Type</Label>
                                                         <NativeSelect
                                                             className="w-full h-8 rounded-[3px] border px-2 text-sm"
                                                             value={v.vehicle_type}
                                                             onChange={(e) =>
                                                                 updateVehicle(vIndex, {
-                                                                    vehicle_type: e.target.value as any,
+                                                                    vehicle_type: e.target.value as "CAR" | "BIKE" | "OTHER",
                                                                 })
                                                             }
                                                         >
@@ -435,7 +435,7 @@ export default function BookingGuestsManagement() {
                                                     </div>
 
                                                     <div className="space-y-1">
-                                                        <Label className="text-xs font-medium text-muted-foreground">Vehicle Name</Label>
+                                                        <Label className="text-foreground">Vehicle Name</Label>
                                                         <Input
                                                             className="h-8 text-sm px-2"
                                                             value={v.vehicle_name ?? ""}
@@ -448,7 +448,7 @@ export default function BookingGuestsManagement() {
                                                     </div>
 
                                                     <div className="space-y-1">
-                                                        <Label className="text-xs font-medium text-muted-foreground">Vehicle Number</Label>
+                                                        <Label className="text-foreground">Vehicle Number</Label>
                                                         <Input
                                                             className="h-8 text-sm px-2"
                                                             value={v.vehicle_number ?? ""}
@@ -461,7 +461,7 @@ export default function BookingGuestsManagement() {
                                                     </div>
 
                                                     <div className="space-y-1">
-                                                        <Label className="text-xs font-medium text-muted-foreground">Room No</Label>
+                                                        <Label className="text-foreground">Room No</Label>
                                                         <Input
                                                             className="h-8 text-sm px-2"
                                                             value={v.room_no ?? ""}

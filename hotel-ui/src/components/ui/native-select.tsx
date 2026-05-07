@@ -7,6 +7,8 @@ const DEFAULT_SELECT_PLACEHOLDER = "--Please Select--";
 type NativeSelectProps = React.ComponentPropsWithoutRef<"select"> & {
   placeholder?: string;
   placeholderDisabled?: boolean;
+  hideIcon?: boolean;
+  isVertical?: boolean;
 };
 
 /**
@@ -23,6 +25,7 @@ const NativeSelect = React.forwardRef<HTMLSelectElement, NativeSelectProps>(
       onChange,
       disabled,
       hideIcon,
+      isVertical,
       ...props
     },
     ref,
@@ -75,6 +78,7 @@ const NativeSelect = React.forwardRef<HTMLSelectElement, NativeSelectProps>(
           placeholder={placeholder}
           disabled={disabled}
           hideIcon={hideIcon}
+          isVertical={isVertical}
           extraClasses={className} // Pass original classes to let MenuItemSelect handle borders if needed, or stick to standard
         />
         <select

@@ -45,7 +45,7 @@ export default function FormDateRangePicker({
         <div className={cn("space-y-4", className)}>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                  <div className="space-y-2">
-                    <Label title={startError?.type === "required" ? startError.message : ""} className="text-sm font-semibold">
+                    <Label title={startError?.type === "required" ? startError.message : ""} className="text-foreground">
                         {startLabel} {required && "*"}
                     </Label>
                     {startError?.type === "invalid" && (
@@ -53,7 +53,7 @@ export default function FormDateRangePicker({
                     )}
                 </div>
                 <div className="space-y-2">
-                    <Label title={endError?.type === "required" ? endError.message : ""} className="text-sm font-semibold">
+                    <Label title={endError?.type === "required" ? endError.message : ""} className="text-foreground">
                         {endLabel} {required && "*"}
                     </Label>
                     {endError?.type === "invalid" && (

@@ -133,7 +133,7 @@ function MediaSquare({
     return (
         <div className="space-y-1">
 
-            <Label className="text-xs font-medium text-muted-foreground">{label}</Label>
+            <Label className="text-foreground">{label}</Label>
 
             <div className="relative w-28 aspect-square rounded-[3px] border border-border/60 bg-background overflow-hidden">
 

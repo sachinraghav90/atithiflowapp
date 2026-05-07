@@ -114,9 +114,8 @@ export function ResponsiveDateRangePicker({
                 className
             )}
         >
-            {/* Label Block */}
             {startLabel && (
-                <div className="bg-muted/40 text-muted-foreground text-[10px] font-bold uppercase tracking-wider whitespace-nowrap flex items-center border-r border-border h-full w-[82px] justify-center select-none flex-shrink-0">
+                <div className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center select-none flex-shrink-0">
                     {startLabel}
                 </div>
             )}
@@ -192,7 +191,7 @@ export function ResponsiveDateRangePicker({
                 <Dialog open={open} onOpenChange={setOpen}>
                     <DialogContent className="max-w-[340px] p-0 overflow-hidden rounded-xl border-none shadow-2xl bg-background">
                         <DialogHeader className="p-4 border-b bg-muted/30 text-left">
-                            <DialogTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                            <DialogTitle className="text-sm font-bold tracking-wider text-muted-foreground">
                                 Select Range
                             </DialogTitle>
                         </DialogHeader>

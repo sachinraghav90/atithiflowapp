@@ -515,7 +515,7 @@ export default function BookingsManagement() {
                     <div className="flex items-center gap-3 flex-shrink-0">
                         {(isSuperAdmin || isOwner) && (
                             <div className="flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
-                                <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border tracking-wide">
+                                <span className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center">
                                     Property
                                 </span>
                                 <NativeSelect
@@ -785,12 +785,12 @@ export default function BookingsManagement() {
 
                         {/* Status Update */}
                         {editMode && (
-                            <div className="space-y-6 rounded-[5px] border border-border/40 bg-background p-4 shadow-sm">
-                                <h3 className="text-sm font-semibold text-primary/90 mb-3">
+                            <div className="space-y-6 rounded-[5px] border border-border/40 bg-background p-4 shadow-sm [&>h3+*]:!mt-4">
+                                <h3 className="text-sm font-semibold text-primary/90">
                                     Update Booking Status
                                 </h3>
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-muted-foreground tracking-wide">Booking Status *</Label>
+                                    <Label className="text-foreground">Booking Status *</Label>
                                     <NativeSelect
                                         className="h-11 border border-primary/20 bg-background rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary w-full shadow-none"
                                         value={updatedStatus || selectedBooking?.booking.booking_status || ""}

@@ -21,6 +21,7 @@ type Props = {
     itemName?: string
     placeholder?: string
     hideIcon?: boolean
+    isVertical?: boolean
 };
 
 export function MenuItemSelect({
@@ -33,6 +34,7 @@ export function MenuItemSelect({
     extraClasses = "",
     placeholder = "--Please Select--",
     hideIcon = false,
+    isVertical = false,
 }: Props) {
     const [open, setOpen] = useState(false);
 
@@ -71,19 +73,27 @@ export function MenuItemSelect({
                     disabled={disabled}
                     className={cn(
                         "flex h-9 w-full items-center rounded-[3px] border border-input bg-background px-2 py-1 text-sm font-normal shadow-none hover:bg-background transition-colors duration-150",
-                        hideIcon ? "justify-center text-center" : "justify-between text-left",
+                        isVertical ? "relative justify-center px-0 text-center" : (hideIcon ? "justify-center text-center" : "justify-between text-center"),
                         (value === "" || value === undefined || value === null) && "text-muted-foreground",
                         extraClasses
                     )}
                 >
-                    <span className={cn("truncate flex-1", hideIcon && "text-center")}>
+                    <span className={cn(
+                        "truncate text-center", 
+                        !isVertical && "flex-1"
+                    )}>
                         {selectedItem ? getLabel(selectedItem) : placeholder}
                     </span>
-                    {!hideIcon && <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />}
+                    {!hideIcon && (
+                        <ChevronDown className={cn(
+                            "shrink-0 opacity-50",
+                            isVertical ? "absolute bottom-0 h-1.5 w-1.5" : "h-4 w-4"
+                        )} />
+                    )}
                 </Button>
             </PopoverTrigger>
             <PopoverContent 
-                className="p-0 w-[var(--radix-popover-trigger-width)] min-w-[100px] shadow-2xl border-border bg-background" 
+                className="p-0 w-[var(--radix-popover-trigger-width)] min-w-0 shadow-2xl border-border bg-background" 
                 align="start"
                 side="bottom"
                 sideOffset={4}
@@ -114,17 +124,11 @@ export function MenuItemSelect({
                                             setOpen(false);
                                         }}
                                         className={cn(
-                                            "flex items-center justify-between cursor-pointer py-2 px-3 text-sm rounded-sm transition-all",
-                                            String(value) === itemId ? "bg-primary/10 text-primary font-bold" : "hover:bg-primary/5 hover:text-primary"
+                                            "flex items-center cursor-pointer py-1.5 px-2 text-sm rounded-sm transition-all",
+                                            String(value) === itemId ? "bg-primary/10 text-primary" : "hover:bg-primary/5 hover:text-primary"
                                         )}
                                     >
                                         <span className="truncate">{itemLabel}</span>
-                                        <Check
-                                            className={cn(
-                                                "ml-auto h-4 w-4",
-                                                String(value) === itemId ? "text-primary opacity-100" : "opacity-0"
-                                            )}
-                                        />
                                     </CommandItem>
                                 );
                             })}

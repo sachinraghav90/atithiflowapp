@@ -390,7 +390,7 @@ export default function MenuMaster() {
 
                         {(isSuperAdmin || isOwner) && (
                             <div className="flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
-                                <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border uppercase">
+                                <span className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center">
                                     Property
                                 </span>
                                 <NativeSelect
@@ -727,7 +727,7 @@ export default function MenuMaster() {
                                                         <div className="px-3 pb-2 bg-gradient-to-t from-accent/30 to-transparent pt-4 -mt-4">
                                                             <button 
                                                                 onClick={() => setIsDescExpanded(!isDescExpanded)}
-                                                                className="text-[10px] font-bold text-primary hover:underline uppercase tracking-wider"
+                                                                className="text-[10px] font-bold text-primary hover:underline tracking-wider"
                                                             >
                                                                 {isDescExpanded ? "Show Less" : "Show More"}
                                                             </button>
@@ -769,9 +769,28 @@ export default function MenuMaster() {
 
                         {(mode === "add" || mode === "edit") && (
                             <div className="space-y-5">
+                                {(isSuperAdmin || isOwner) && mode === "add" && (
+                                    <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-1 -mt-1 -mb-2">
+                                        <Label>Property</Label>
+                                        <NativeSelect
+                                            className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
+                                            value={selectedPropertyId ?? ""}
+                                            onChange={(e) => setSelectedPropertyId(Number(e.target.value) || null)}
+                                        >
+                                            <option value="" disabled>Select Property</option>
+                                            {!myPropertiesLoading &&
+                                                myProperties?.properties?.map((property) => (
+                                                    <option key={property.id} value={property.id}>
+                                                        {property.brand_name}
+                                                    </option>
+                                                ))}
+                                        </NativeSelect>
+                                    </div>
+                                )}
+
                                 <div className="space-y-4">
                                     {/* Consolidated Basic Info & Pricing Card */}
-                                    <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-6">
+                                    <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-6 [&>h3+*]:!mt-4">
                                         <h3 className="text-sm font-semibold text-primary/90">
                                             Basic Information & Pricing
                                         </h3>
@@ -779,7 +798,7 @@ export default function MenuMaster() {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                                             <div className="space-y-4">
                                                 <div className="space-y-2">
-                                                    <Label className="text-xs font-bold text-muted-foreground tracking-wide">Item Name *</Label>
+                                                    <Label className="text-foreground">Item Name *</Label>
                                                     <Input
                                                         placeholder="e.g. Chocolate Brownie"
                                                         className={cn("h-11 bg-background shadow-none", submitted && formErrors.item_name ? "border-red-500" : "border-border/60")}
@@ -791,7 +810,7 @@ export default function MenuMaster() {
                                                     />
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <Label className="text-xs font-bold text-muted-foreground tracking-wide">Menu Group *</Label>
+                                                    <Label className="text-foreground">Menu Group *</Label>
                                                     <NativeSelect
                                                         className={cn("h-11 bg-background shadow-none", submitted && formErrors.menuItemGroupId ? "border-red-500" : "border-border/60")}
                                                         value={form.menuItemGroupId}
@@ -808,7 +827,7 @@ export default function MenuMaster() {
                                             <div className="space-y-4">
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <div className="space-y-2">
-                                                        <Label className="text-xs font-bold text-muted-foreground tracking-wide">Price (₹) *</Label>
+                                                        <Label className="text-foreground">Price (₹) *</Label>
                                                         <Input
                                                             type="number"
                                                             placeholder="0.00"
@@ -821,7 +840,7 @@ export default function MenuMaster() {
                                                         />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <Label className="text-xs font-bold text-muted-foreground tracking-wide">Prep Time (mins)</Label>
+                                                        <Label className="text-foreground">Prep Time (mins)</Label>
                                                         <Input
                                                             type="number"
                                                             placeholder="e.g. 15"
@@ -852,13 +871,13 @@ export default function MenuMaster() {
                                     </div>
 
                                     {/* Consolidated Description & Media Card */}
-                                    <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-6">
+                                    <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-6 [&>h3+*]:!mt-4">
                                         <h3 className="text-sm font-semibold text-primary/90">
                                             Description & Media
                                         </h3>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 items-start">
                                             <div className="space-y-2">
-                                                <Label className="text-xs font-bold text-muted-foreground tracking-wide">Item Description</Label>
+                                                <Label className="text-foreground">Item Description</Label>
                                                 <div className="relative">
                                                     <textarea
                                                         className="w-full min-h-[175px] rounded-lg border border-border/60 px-3 py-2 pb-8 text-sm bg-background focus:ring-1 focus:ring-primary outline-none transition-all resize-none shadow-none"
@@ -874,7 +893,7 @@ export default function MenuMaster() {
                                             </div>
 
                                             <div className="space-y-2">
-                                                <Label className="text-xs font-bold text-muted-foreground tracking-wide">Item Image</Label>
+                                                <Label className="text-foreground">Item Image</Label>
                                                 <div className="space-y-4">
                                                     <Input
                                                         type="file"
@@ -903,7 +922,7 @@ export default function MenuMaster() {
                                                         ) : (
                                                             <div className="text-muted-foreground/30 flex flex-col items-center gap-2">
                                                                 <Camera className="w-8 h-8 opacity-20" />
-                                                                <span className="text-[10px] font-bold uppercase tracking-widest">No Image Preview</span>
+                                                                <span className="text-[10px] font-bold tracking-widest">No Image Preview</span>
                                                             </div>
                                                         )}
                                                     </div>
@@ -942,12 +961,31 @@ export default function MenuMaster() {
                         </SheetHeader>
 
                         <div className="space-y-6">
-                            <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-6">
-                                <h3 className="text-sm font-semibold text-primary/90 mb-3">
+                            {(isSuperAdmin || isOwner) && (
+                                <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-1 -mt-1 -mb-2">
+                                    <Label>Property</Label>
+                                    <NativeSelect
+                                        className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
+                                        value={selectedPropertyId ?? ""}
+                                        onChange={(e) => setSelectedPropertyId(Number(e.target.value) || null)}
+                                    >
+                                        <option value="" disabled>Select Property</option>
+                                        {!myPropertiesLoading &&
+                                            myProperties?.properties?.map((property) => (
+                                                <option key={property.id} value={property.id}>
+                                                    {property.brand_name}
+                                                </option>
+                                            ))}
+                                    </NativeSelect>
+                                </div>
+                            )}
+
+                            <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-6 [&>h3+*]:!mt-4">
+                                <h3 className="text-sm font-semibold text-primary/90">
                                     Group Details
                                 </h3>
                                 <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Group Name *</Label>
+                                    <Label className="text-foreground">Group Name *</Label>
                                     <Input
                                         className={cn("h-11 bg-background shadow-none", groupErrors.groupName ? "border-red-500" : "border-border/60")}
                                         value={groupName}
@@ -1012,6 +1050,25 @@ export default function MenuMaster() {
                         <SheetHeader className="border-b border-border/50 pb-4 mb-4">
                             <SheetTitle className="text-xl font-bold">Menu Item Groups</SheetTitle>
                         </SheetHeader>
+
+                        {(isSuperAdmin || isOwner) && (
+                            <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-1 -mt-1 -mb-2">
+                                <Label>Property</Label>
+                                <NativeSelect
+                                    className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
+                                    value={selectedPropertyId ?? ""}
+                                    onChange={(e) => setSelectedPropertyId(Number(e.target.value) || null)}
+                                >
+                                    <option value="" disabled>Select Property</option>
+                                    {!myPropertiesLoading &&
+                                        myProperties?.properties?.map((property) => (
+                                            <option key={property.id} value={property.id}>
+                                                {property.brand_name}
+                                            </option>
+                                        ))}
+                                </NativeSelect>
+                            </div>
+                        )}
 
                     <div className="space-y-3">
                         {menuItemGroups && menuItemGroups?.data.map(group => {
@@ -1143,6 +1200,7 @@ export default function MenuMaster() {
                 open={bulkOpen}
                 onOpenChange={setBulkOpen}
                 propertyId={Number(selectedPropertyId)}
+                onPropertyChange={setSelectedPropertyId}
                 menuGroups={menuGroupsLight || []}
                 existingItems={menuLight || []}
                 onSubmit={async (payload) => {
@@ -1169,7 +1227,7 @@ export default function MenuMaster() {
                         />
                         <div className="absolute top-4 left-4">
                             <div className="bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10">
-                                <p className="text-white text-xs font-bold uppercase tracking-widest">{selected?.item_name}</p>
+                                <p className="text-white text-xs font-bold tracking-widest">{selected?.item_name}</p>
                             </div>
                         </div>
                     </div>

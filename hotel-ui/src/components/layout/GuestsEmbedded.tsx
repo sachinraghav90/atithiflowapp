@@ -364,7 +364,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                     >
                         {/* Guest Header */}
                         <div className="flex items-center justify-between border-b border-border/30 pb-2">
-                            <p className="text-sm font-bold text-primary tracking-tight">
+                            <p className="text-sm font-semibold text-primary/90">
                                 Guest {index + 1}
                             </p>
                             <Button
@@ -382,26 +382,28 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                         <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-3">
                             {/* Name Section */}
                             <div className="space-y-1">
-                                <Label className="text-[11px] font-semibold text-muted-foreground">Guest Name *</Label>
-                                <div className="flex gap-2">
+                                <Label className="text-foreground">Guest Name *</Label>
+                                <div className="flex gap-0">
                                     <NativeSelect
-                                        className="h-9 w-20 rounded-[3px] border px-3 text-sm bg-background"
+                                        className="h-9 w-[44px] rounded-l-[3px] rounded-r-none px-0 text-sm bg-background"
                                         value={g.salutation ?? ""}
                                         onChange={(e) =>
                                             updateGuest(index, {
                                                 salutation: e.target.value as any,
                                             })
                                         }
+                                        hideIcon={false}
+                                        isVertical={true}
                                     >
                                         <option value="" disabled>--</option>
-                                        <option value="Mr">Mr</option>
-                                        <option value="Mrs">Mrs</option>
-                                        <option value="Ms">Ms</option>
+                                        <option value="Mr.">Mr.</option>
+                                        <option value="Ms.">Ms.</option>
+                                        <option value="Mrs.">Mrs.</option>
                                     </NativeSelect>
                                     <Input
-                                        className={`flex-1 h-9 bg-background ${errors[index]?.first_name ? "border-red-500" : ""}`}
+                                        className="h-9 flex-1 rounded-l-none border-l-0 rounded-r-[3px] bg-background px-3 text-sm"
+                                        placeholder="First Name *"
                                         value={g.first_name}
-                                        placeholder="First Name"
                                         onChange={(e) =>
                                             updateGuest(index, {
                                                 first_name: normalizeTextInput(e.target.value),
@@ -415,7 +417,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                             </div>
 
                             <div className="space-y-1">
-                                <Label className="text-[11px] font-semibold text-muted-foreground">Middle Name</Label>
+                                <Label className="text-foreground">Middle Name</Label>
                                 <Input
                                     className="h-9 bg-background"
                                     value={g.middle_name ?? ""}
@@ -428,7 +430,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                             </div>
 
                             <div className="space-y-1">
-                                <Label className="text-[11px] font-semibold text-muted-foreground">Last Name</Label>
+                                <Label className="text-foreground">Last Name</Label>
                                 <Input
                                     className="h-9 bg-background"
                                     value={g.last_name ?? ""}
@@ -442,7 +444,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
 
                             {/* Bio Section */}
                             <div className="space-y-1">
-                                <Label className="text-[11px] font-semibold text-muted-foreground">Gender</Label>
+                                <Label className="text-foreground">Gender</Label>
                                 <NativeSelect
                                     className="h-9 w-full rounded-[3px] border px-3 text-sm bg-background"
                                     value={g.gender ?? ""}
@@ -460,7 +462,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                             </div>
 
                             <div className="space-y-1">
-                                <Label className="text-[11px] font-semibold text-muted-foreground">Age</Label>
+                                <Label className="text-foreground">Age</Label>
                                 <Input
                                     className="h-9 bg-background"
                                     value={g.age ?? ""}
@@ -473,7 +475,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                             </div>
 
                             <div className="space-y-1">
-                                <Label className="text-[11px] font-semibold text-muted-foreground">Phone</Label>
+                                <Label className="text-foreground">Phone</Label>
                                 <div className="flex gap-[2px]">
                                     <PhonePrefixSelect
                                         value={currentCountryCode}
@@ -502,7 +504,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                             </div>
 
                             <div className="space-y-1">
-                                <Label className="text-[11px] font-semibold text-muted-foreground">Email</Label>
+                                <Label className="text-foreground">Email</Label>
                                 <Input
                                     className={`h-9 bg-background ${errors[index]?.email ? "border-red-500" : ""}`}
                                     value={g.email ?? ""}
@@ -512,7 +514,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                             </div>
 
                             <div className="space-y-1">
-                                <Label className="text-[11px] font-semibold text-muted-foreground">Nationality</Label>
+                                <Label className="text-foreground">Nationality</Label>
                                 <NativeSelect
                                     className="h-9 w-full rounded-[3px] border px-3 text-sm bg-background"
                                     value={g.nationality ?? ""}
@@ -526,7 +528,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                             </div>
 
                             <div className="sm:col-span-1 space-y-1">
-                                <Label className="text-[11px] font-semibold text-muted-foreground">Address</Label>
+                                <Label className="text-foreground">Address</Label>
                                 <Input
                                     className="h-9 bg-background"
                                     value={g.address ?? ""}
@@ -536,7 +538,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
 
                             {/* ID Section */}
                             <div className="space-y-1">
-                                <Label className="text-[11px] font-semibold text-muted-foreground">ID Type</Label>
+                                <Label className="text-foreground">ID Type</Label>
                                 <NativeSelect
                                     className="h-9 w-full rounded-[3px] border px-3 text-sm bg-background"
                                     value={g.id_type ?? ""}
@@ -553,7 +555,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                             </div>
 
                             <div className="space-y-1">
-                                <Label className="text-[11px] font-semibold text-muted-foreground">ID Number</Label>
+                                <Label className="text-foreground">ID Number</Label>
                                 <Input
                                     className="h-9 bg-background"
                                     value={g.id_number ?? ""}
@@ -562,7 +564,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                             </div>
 
                             <div className="space-y-1">
-                                <Label className="text-[11px] font-semibold text-muted-foreground">ID Proof</Label>
+                                <Label className="text-foreground">ID Proof</Label>
                                 <Input
                                     className="h-9 bg-background px-2 py-1 text-xs"
                                     type="file"
@@ -575,7 +577,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                             {g.nationality === "foreigner" && (
                                 <>
                                     <div className="space-y-1">
-                                        <Label className="text-[11px] font-semibold text-muted-foreground">Country *</Label>
+                                        <Label className="text-foreground">Country *</Label>
                                         <SearchSelectPopover
                                             value={g.country}
                                             placeholder="Select country"
@@ -588,7 +590,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                         />
                                     </div>
                                     <div className="space-y-1">
-                                        <Label className="text-[11px] font-semibold text-muted-foreground">Visa Number *</Label>
+                                        <Label className="text-foreground">Visa Number *</Label>
                                         <Input
                                             className="h-9 bg-background"
                                             value={g.visa_number ?? ""}
@@ -596,7 +598,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                         />
                                     </div>
                                     <div className="space-y-1">
-                                        <Label className="text-[11px] font-semibold text-muted-foreground">Visa Expiry *</Label>
+                                        <Label className="text-foreground">Visa Expiry *</Label>
                                         <ResponsiveDatePicker
                                             value={parseDate(g.visa_expiry_date)}
                                             placeholder="DD/MM/YY"
@@ -609,7 +611,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
 
                             {/* Additional Info */}
                             <div className="space-y-1">
-                                <Label className="text-[11px] font-semibold text-muted-foreground">Coming From</Label>
+                                <Label className="text-foreground">Coming From</Label>
                                 <Input
                                     className="h-9 bg-background"
                                     value={g.coming_from ?? ""}
@@ -617,7 +619,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                 />
                             </div>
                             <div className="space-y-1">
-                                <Label className="text-[11px] font-semibold text-muted-foreground">Going To</Label>
+                                <Label className="text-foreground">Going To</Label>
                                 <Input
                                     className="h-9 bg-background"
                                     value={g.going_to ?? ""}
@@ -625,7 +627,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                 />
                             </div>
                             <div className="space-y-1">
-                                <Label className="text-[11px] font-semibold text-muted-foreground">Emergency Contact</Label>
+                                <Label className="text-foreground">Emergency Contact</Label>
                                 <div className="flex gap-[2px]">
                                     <PhonePrefixSelect
                                         value={getCountryCode(g.emergency_contact)}

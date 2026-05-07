@@ -165,7 +165,7 @@ export default function InventoryBulkSheet({
                     <div className="px-6 pb-6 pt-3 space-y-6">
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
-                                <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Inventory Details</h3>
+                                <h3 className="text-sm font-semibold text-primary/90">Inventory Details</h3>
                                 <p className="text-[10px] text-muted-foreground italic">*Define required fields for new inventory items</p>
                             </div>
 

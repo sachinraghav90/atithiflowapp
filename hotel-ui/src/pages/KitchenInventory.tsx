@@ -96,7 +96,13 @@ const getAuditChangeText = (details: any) => {
 /* ---------------- Component ---------------- */
 export default function KitchenInventory() {
     const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
-    const { myProperties, isInitializing, isLoading: myPropertiesLoading } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
+    const { 
+        myProperties, 
+        isInitializing, 
+        isLoading: myPropertiesLoading,
+        isSuperAdmin,
+        isOwner 
+    } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
 
     const [activeTab, setActiveTab] = useState<"inventory" | "audit">("inventory");
     const [inventoryPage, setInventoryPage] = useState(1);
@@ -133,8 +139,6 @@ export default function KitchenInventory() {
     const [createErrors, setCreateErrors] = useState<any>({});
 
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
-    const isSuperAdmin = useAppSelector(selectIsSuperAdmin)
-    const isOwner = useAppSelector(selectIsOwner)
 
     const pathname = useLocation().pathname;
     const { permission } = usePermission(pathname);
@@ -404,7 +408,7 @@ export default function KitchenInventory() {
                     <div className="flex items-center gap-3">
                         {(isSuperAdmin || isOwner) && (
                             <div className="flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
-                                <span className="px-3 bg-muted/50 text-muted-foreground whitespace-nowrap text-xs font-semibold h-full flex items-center border-r border-border uppercase">
+                                <span className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center">
                                     Property
                                 </span>
                                 <NativeSelect
@@ -699,7 +703,7 @@ export default function KitchenInventory() {
                                             headClassName: "text-center w-[140px]",
                                             cellClassName: "text-center font-medium min-w-[140px]",
                                             render: (audit: any) => (
-                                                <span className="text-[10px] font-bold uppercase tracking-tight px-2 py-0.5 rounded bg-primary/10 text-primary">
+                                                <span className="text-[10px] font-bold tracking-tight px-2 py-0.5 rounded bg-primary/10 text-primary">
                                                     {getAuditActionLabel(audit)}
                                                 </span>
                                             ),
@@ -746,15 +750,15 @@ export default function KitchenInventory() {
 
             {/* SIDE SHEET */}
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto bg-background">
+                <SheetContent side="right" className="w-full sm:max-w-xl flex flex-col p-0 bg-background">
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="space-y-1"
+                        className="flex min-h-0 flex-1 flex-col"
                     >
-                        <SheetHeader className="mb-6">
+                        <SheetHeader className="px-6 py-4 border-b">
                             <div className="space-y-1">
-                                <SheetTitle className="text-xl font-bold">
+                                <SheetTitle className="text-[#444444]">
                                     {mode === "view" ? `Kitchen Inventory [${selectedItem?.id ? `#${formatModuleDisplayId("kitchen", selectedItem.id)}` : "..."}]` : mode === "edit" ? `Update Kitchen Inventory [${selectedItem?.id ? `#${formatModuleDisplayId("kitchen", selectedItem.id)}` : "..."}]` : "Add Item"}
                                 </SheetTitle>
                                 <p className="text-xs text-muted-foreground font-medium  tracking-wider">
@@ -763,8 +767,9 @@ export default function KitchenInventory() {
                             </div>
                         </SheetHeader>
 
-                        {mode === "view" && selectedItem && (
-                            <div className="space-y-6">
+                        <div className="flex-1 overflow-y-auto px-6 pb-6 pt-3">
+                            {mode === "view" && selectedItem && (
+                                <div className="space-y-6">
                                 {/* Sheet Tabs */}
                                 <div className="border-b border-border flex">
                                     <button
@@ -816,7 +821,7 @@ export default function KitchenInventory() {
                                                         { 
                                                             label: "Action", 
                                                             render: (log: any) => (
-                                                                <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                                                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary">
                                                                     {getAuditActionLabel(log)}
                                                                 </span>
                                                             ) 
@@ -854,19 +859,19 @@ export default function KitchenInventory() {
                                 <div className="flex justify-end gap-3 pt-6 border-t border-border">
                                     <Button variant="heroOutline" onClick={() => setSheetOpen(false)}>Close</Button>
                                 </div>
-                            </div>
-                        )}
+                                </div>
+                            )}
 
-                        {mode === "edit" && selectedItem && (
-                            <div className="space-y-5">
-                                <div className="rounded-[5px] border border-primary/50 bg-background p-5 shadow-sm space-y-5">
+                            {mode === "edit" && selectedItem && (
+                                <div className="space-y-5">
+                                <div className="rounded-[5px] border border-primary/50 bg-background p-5 shadow-sm space-y-5 [&>h3+*]:!mt-4">
                                     <h3 className="text-sm font-semibold text-primary/90">
                                         Update Stock Levels
                                     </h3>
 
-                                    <div className="space-y-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Target Quantity *</Label>
+                                            <Label className="text-foreground">Target Quantity *</Label>
                                             <Input
                                                 type="text"
                                                 className="h-10 focus-visible:ring-1 focus-visible:ring-primary font-semibold"
@@ -876,7 +881,7 @@ export default function KitchenInventory() {
                                         </div>
                                         
                                         <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Stock Unit *</Label>
+                                            <Label className="text-foreground">Stock Unit *</Label>
                                             <NativeSelect
                                                 className="w-full h-10 border border-border bg-background rounded-[3px] px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                                                 value={editForm.unit}
@@ -889,8 +894,8 @@ export default function KitchenInventory() {
                                             </NativeSelect>
                                         </div>
 
-                                        <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Audit Comments</Label>
+                                        <div className="space-y-2 sm:col-span-2">
+                                            <Label className="text-foreground">Audit Comments</Label>
                                             <textarea
                                                 className="w-full min-h-[100px] border border-border bg-background rounded-[3px] p-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary resize-none"
                                                 placeholder="Explain the reason for this manual update..."
@@ -907,18 +912,37 @@ export default function KitchenInventory() {
                                     <Button variant="heroOutline" onClick={() => setSheetOpen(false)}>Cancel</Button>
                                     <Button variant="hero" onClick={saveEdit}>Update</Button>
                                 </div>
-                            </div>
-                        )}
+                                </div>
+                            )}
 
-                        {mode === "add" && (
-                            <div className="space-y-4 mt-6">
-                                <div className="rounded-[5px] border border-primary/50 bg-background p-5 shadow-sm space-y-5">
+                            {mode === "add" && (
+                                <div className="space-y-4">
+                                {(isSuperAdmin || isOwner) && (
+                                    <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-1 -mt-1 -mb-2">
+                                        <Label>Property</Label>
+                                        <NativeSelect
+                                            className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
+                                            value={selectedPropertyId ?? ""}
+                                            onChange={(e) => setSelectedPropertyId(Number(e.target.value) || null)}
+                                        >
+                                            <option value="" disabled>Select Property</option>
+                                            {!myPropertiesLoading &&
+                                                myProperties?.properties?.map((property) => (
+                                                    <option key={property.id} value={property.id}>
+                                                        {property.brand_name}
+                                                    </option>
+                                                ))}
+                                        </NativeSelect>
+                                    </div>
+                                )}
+
+                                <div className="rounded-[5px] border border-primary/50 bg-background p-5 shadow-sm space-y-5 [&>h3+*]:!mt-4">
                                     <h3 className="text-sm font-semibold text-primary/90">
                                      Item Details
                                     </h3>
                                     <div className="space-y-4">
                                         <div>
-                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Inventory Item *</Label>
+                                            <Label className="text-foreground">Inventory Item *</Label>
                                             <NativeSelect
                                                 className={`w-full h-10 rounded-[3px] px-3 border bg-background mt-1 ${createErrors.inventory_master_id ? "border-red-500" : "border-border"}`}
                                                 value={createForm.inventory_master_id ?? ""}
@@ -934,7 +958,7 @@ export default function KitchenInventory() {
 
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Quantity *</Label>
+                                                <Label className="text-foreground">Quantity *</Label>
                                                 <Input
                                                     className={`bg-background mt-1 ${createErrors.quantity ? "border-red-500" : ""}`}
                                                     value={createForm.quantity}
@@ -944,7 +968,7 @@ export default function KitchenInventory() {
                                             </div>
                                             {isItemUsable && (
                                                 <div>
-                                                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Unit *</Label>
+                                                    <Label className="text-foreground">Unit *</Label>
                                                     <NativeSelect
                                                         className={`w-full h-10 rounded-[3px] px-3 border bg-background mt-1 ${createErrors.unit ? "border-red-500" : "border-border"}`}
                                                         value={createForm.unit ?? ""}
@@ -966,8 +990,9 @@ export default function KitchenInventory() {
                                     <Button variant="heroOutline" onClick={() => setSheetOpen(false)}>Cancel</Button>
                                     <Button variant="hero" onClick={createItem}>Create Item</Button>
                                 </div>
-                            </div>
-                        )}
+                                </div>
+                            )}
+                        </div>
                     </motion.div>
                 </SheetContent>
             </Sheet>

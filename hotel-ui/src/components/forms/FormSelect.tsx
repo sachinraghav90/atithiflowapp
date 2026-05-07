@@ -12,7 +12,8 @@ export default function FormSelect({
     children,
     viewMode,
     className,
-    hideIcon
+    hideIcon,
+    isVertical
 }: any) {
 
     const error = errors?.[field];
@@ -26,13 +27,16 @@ export default function FormSelect({
             title={hoverError}   // ⭐ apply tooltip here (reliable)
         >
 
-            <Label>
-                {label} {required && "*"}
-            </Label>
+            {label && (
+                <Label>
+                    {label} {required && "*"}
+                </Label>
+            )}
 
             <NativeSelect
                 disabled={viewMode}
                 hideIcon={hideIcon}
+                isVertical={isVertical}
                 className={`
                     w-full h-11 rounded-[3px] px-3 text-sm bg-background shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0
                     ${className}

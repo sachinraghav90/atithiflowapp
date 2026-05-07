@@ -70,7 +70,7 @@ export default function PropertyConfiguration({
     return (
         <div className="space-y-4 rounded-[5px] border border-border/40 bg-background p-4 shadow-sm">
 
-            <h3 className="text-sm font-semibold text-primary/90 mb-3">
+            <h3 className="text-sm font-semibold text-primary/90">
                 Property Configuration
             </h3>
 
@@ -93,7 +93,7 @@ export default function PropertyConfiguration({
 
                 {/* Serial Suffix */}
                 <div className="space-y-1">
-                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Serial Suffix *</Label>
+                    <Label className="text-foreground">Serial Suffix *</Label>
                     <NativeSelect
                         disabled={viewMode}
                         value={value.serial_suffix}
@@ -135,7 +135,7 @@ export default function PropertyConfiguration({
 
                 {/* TOTAL ROOMS AUTO */}
                 <div className="space-y-1">
-                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Rooms</Label>
+                    <Label className="text-foreground">Total Rooms</Label>
                     <input
                         disabled
                         value={totalRooms}
@@ -147,7 +147,7 @@ export default function PropertyConfiguration({
 
             {/* FLOOR CONFIGURATION TABLE - Standardized Editable Grid */}
             <div className="space-y-3 pt-2">
-                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Floor Configuration</Label>
+                <Label className="text-foreground">Floor Configuration</Label>
 
                 <div className="editable-grid-compact border rounded-[5px] overflow-hidden flex flex-col">
                     <div className="overflow-x-auto w-full bg-background border-b border-border">

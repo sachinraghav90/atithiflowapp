@@ -143,7 +143,7 @@ export function ResponsiveDatePicker({
             />
             {showTime && value && (
                 <div className="p-3 border-t bg-muted/20 flex items-center justify-between gap-4">
-                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Time</span>
+                    <span className="text-xs font-bold text-muted-foreground tracking-wider">Time</span>
                     <input
                         type="time"
                         className="bg-transparent border-none focus:ring-0 text-sm font-semibold"
@@ -173,7 +173,7 @@ export function ResponsiveDatePicker({
                 <Dialog open={open} onOpenChange={setOpen}>
                     <DialogContent className="max-w-[340px] p-0 overflow-hidden rounded-xl border-none shadow-2xl bg-background">
                         <DialogHeader className="p-4 border-b bg-muted/30 text-left">
-                            <DialogTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                            <DialogTitle className="text-sm font-bold tracking-wider text-muted-foreground">
                                 {label}
                             </DialogTitle>
                         </DialogHeader>

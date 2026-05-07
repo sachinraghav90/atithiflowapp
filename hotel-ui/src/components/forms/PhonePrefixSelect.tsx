@@ -39,7 +39,7 @@ export default function PhonePrefixSelect({
     itemClassName,
     iconClassName,
     disabled = false,
-    hideIcon = true,
+    hideIcon = false,
     error = false,
 }: PhonePrefixSelectProps) {
     const [open, setOpen] = useState(false);
@@ -52,27 +52,27 @@ export default function PhonePrefixSelect({
                     variant="outline"
                     disabled={disabled}
                     className={cn(
-                        "flex items-center w-[40px] h-11 bg-background text-foreground rounded-l-[3px] rounded-r-none border-border/70",
-                        hideIcon ? "justify-center text-center px-0" : "justify-between px-3",
+                        "flex items-center justify-center relative w-[44px] h-11 bg-background text-foreground rounded-l-[3px] rounded-r-none border-border/70",
+                        hideIcon ? "px-0" : "px-0",
                         error && "border-red-500",
                         triggerClassName
                     )}
                 >
-                    {value}
-                    {!hideIcon && <ChevronDown className={cn("h-4 w-4 opacity-50", iconClassName)} />}
+                    <span className="text-sm font-semibold text-muted-foreground">{value}</span>
+                    {!hideIcon && <ChevronDown className={cn("absolute bottom-0 h-1.5 w-1.5 opacity-50", iconClassName)} />}
                 </Button>
             </PopoverTrigger>
 
             <PopoverContent
                 className={cn(
-                    "w-56 overflow-hidden border border-border bg-background p-0 text-foreground shadow-lg",
+                    "w-fit min-w-0 max-w-[100px] overflow-hidden border border-border bg-background p-0 text-foreground shadow-lg",
                     contentClassName
                 )}
             >
-                <Command className="bg-background text-foreground [&_[cmdk-input-wrapper]]:bg-background/50 [&_[cmdk-input-wrapper]]:border-b [&_[cmdk-input-wrapper]]:border-border/50 [&_[cmdk-input]]:text-sm [&_[cmdk-input]]:text-foreground [&_[cmdk-input]]:placeholder:text-muted-foreground/60">
+                <Command className="bg-background text-foreground [&_[cmdk-input-wrapper]]:bg-background/50 [&_[cmdk-input-wrapper]]:border-b [&_[cmdk-input-wrapper]]:border-border/50 [&_[cmdk-input]]:text-sm [&_[cmdk-input]]:text-foreground [&_[cmdk-input]]:placeholder:text-muted-foreground/60 w-fit [&_[cmdk-input-wrapper]]:w-fit [&_[cmdk-input-wrapper]_svg]:hidden [&_[cmdk-input-wrapper]]:px-1 [&_[cmdk-list]]:w-fit [&_[cmdk-group]]:w-fit [&_[cmdk-item]]:w-fit [&_[cmdk-input]]:w-fit [&_[cmdk-input]]:min-w-0 [&_[cmdk-input]]:max-w-[90px]">
                     <CommandInput
-                        placeholder="Search country..."
-                        className={cn("bg-transparent h-10", inputClassName)}
+                        placeholder="Search"
+                        className={cn("bg-transparent h-9", inputClassName)}
                     />
                     <CommandEmpty className="py-6 text-center text-xs text-muted-foreground italic">
                         No country found
@@ -94,7 +94,7 @@ export default function PhonePrefixSelect({
                                         setOpen(false);
                                     }}
                                     className={cn(
-                                        "cursor-pointer rounded-[3px] px-3 py-2.5 text-[13px] font-medium text-foreground/80 transition-all mb-0.5",
+                                        "cursor-pointer rounded-[3px] px-0.5 py-1.5 text-[13px] font-medium text-foreground/80 transition-all mb-0.5",
                                         "hover:bg-primary/10 hover:text-primary",
                                         isSelected && "bg-primary/10 text-primary font-bold",
                                         itemClassName
