@@ -1,1 +1,9 @@
 .vscode/ 
+.tools/ 
+Common 
+*.log 
+restore_delivery.js 
+update_delivery_sheet.js 
+update_kitchen.js 
+update_kitchen_regex.js 
+update_property_margins.js 
