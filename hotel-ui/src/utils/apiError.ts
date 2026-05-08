@@ -61,8 +61,16 @@ export function extractApiErrorMessage(
         return "You do not have permission to perform this action.";
     }
 
-    if (effectiveStatus === 404) {
-        return "The requested record could not be found.";
+    if (effectiveStatus === 500) {
+        return "The server encountered an error. This might be due to a service outage (e.g., Supabase maintenance). Please check the status page or try again in a few minutes.";
+    }
+
+    if (effectiveStatus === 503) {
+        return "The service is temporarily unavailable due to a database outage (Supabase). We are working to restore access. Please try again later.";
+    }
+
+    if (error?.status === "FETCH_ERROR") {
+        return "Connection failed. Please ensure the backend server is running and your internet is active.";
     }
 
     return fallback;

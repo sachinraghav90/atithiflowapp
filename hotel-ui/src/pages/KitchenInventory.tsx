@@ -9,6 +9,7 @@ import {
     SheetTitle,
 } from "@/components/ui/sheet";
 import { NativeSelect } from "@/components/ui/native-select";
+import { MenuItemSelect } from "@/components/MenuItemSelect";
 import { useAppSelector } from "@/redux/hook";
 import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
 import { 
@@ -135,6 +136,7 @@ export default function KitchenInventory() {
         inventory_master_id: null as number | null,
         quantity: 0,
         unit: "",
+        comments: "",
     });
     const [createErrors, setCreateErrors] = useState<any>({});
 
@@ -199,7 +201,7 @@ export default function KitchenInventory() {
         return Array.from(new Set(units));
     }, [kitchenInventory]);
 
-    const historyActionOptions = ["CREATE", "UPDATE", "ADJUST"];
+    const historyActionOptions = ["CREATE", "UPDATE"];
 
     const filteredKitchenInventory = useMemo(() => {
         let rows = kitchenInventory?.data ?? [];
@@ -243,8 +245,12 @@ export default function KitchenInventory() {
                 );
             });
         }
+        if (historyActionFilter) {
+            rows = rows.filter((audit: any) => audit.event_type === historyActionFilter);
+        }
+
         return rows;
-    }, [inventoryAuditLogs, historySearchQuery]);
+    }, [inventoryAuditLogs, historySearchQuery, historyActionFilter]);
 
     const historyTotalRecords = inventoryAuditLogs?.pagination?.totalItems ?? filteredHistoryLogs.length;
     const historyTotalPages = inventoryAuditLogs?.pagination?.totalPages ?? 1;
@@ -304,7 +310,7 @@ export default function KitchenInventory() {
         const errors: any = {};
         if (!createForm.inventory_master_id) errors.inventory_master_id = "Please select an item";
         if (!createForm.quantity || createForm.quantity <= 0) errors.quantity = "Enter a valid quantity";
-        if (isItemUsable && !createForm.unit) errors.unit = "Please select a unit";
+        if (!createForm.unit) errors.unit = "Please select a unit";
 
         if (Object.keys(errors).length > 0) {
             setCreateErrors(errors);
@@ -325,7 +331,7 @@ export default function KitchenInventory() {
 
         await promise;
         setSheetOpen(false);
-        setCreateForm({ inventory_master_id: null, quantity: 0, unit: "" });
+        setCreateForm({ inventory_master_id: null, quantity: 0, unit: "", comments: "" });
         setCreateErrors({});
     };
 
@@ -411,19 +417,16 @@ export default function KitchenInventory() {
                                 <span className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center">
                                     Property
                                 </span>
-                                <NativeSelect
-                                    className="flex-1 bg-transparent px-2 focus:outline-none focus:ring-0 text-sm h-full truncate cursor-pointer"
-                                    value={selectedPropertyId ?? ""}
-                                    onChange={(e) => setSelectedPropertyId(Number(e.target.value) || null)}
-                                >
-                                    <option value="" disabled>Select Property</option>
-                                    {!myPropertiesLoading &&
-                                        myProperties?.properties?.map((property) => (
-                                            <option key={property.id} value={property.id}>
-                                                {property.brand_name}
-                                            </option>
-                                        ))}
-                                </NativeSelect>
+                                <div className="flex-1 min-w-0 h-full">
+                                    <MenuItemSelect
+                                        value={selectedPropertyId ?? ""}
+                                        items={myProperties?.properties?.map((p) => ({ id: p.id, label: p.brand_name })) || []}
+                                        onSelect={(val) => setSelectedPropertyId(Number(val) || null)}
+                                        itemName="label"
+                                        placeholder="Select Property"
+                                        extraClasses="border-0 rounded-none h-full shadow-none focus-visible:ring-0 bg-transparent px-2"
+                                    />
+                                </div>
                             </div>
                         )}
 
@@ -466,7 +469,7 @@ export default function KitchenInventory() {
 
                 {activeTab === "inventory" && (
                     <div className="flex-1">
-                        <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
+                        <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
                             <div className="w-full">
                                 <GridToolbar className="border-b-0">
                                     <GridToolbarRow className="gap-2">
@@ -618,7 +621,7 @@ export default function KitchenInventory() {
 
                 {activeTab === "audit" && (
                     <div className="flex-1">
-                        <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
+                        <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
                             <div className="w-full">
                                 <GridToolbar className="border-b-0">
                                     <GridToolbarRow className="gap-2">
@@ -750,11 +753,11 @@ export default function KitchenInventory() {
 
             {/* SIDE SHEET */}
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetContent side="right" className="w-full sm:max-w-xl flex flex-col p-0 bg-background">
+                <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto bg-background p-0">
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="flex min-h-0 flex-1 flex-col"
+                        className="flex flex-col"
                     >
                         <SheetHeader className="px-6 py-4 border-b">
                             <div className="space-y-1">
@@ -767,7 +770,7 @@ export default function KitchenInventory() {
                             </div>
                         </SheetHeader>
 
-                        <div className="flex-1 overflow-y-auto px-6 pb-6 pt-3">
+                        <div className="px-6 pb-6 pt-3">
                             {mode === "view" && selectedItem && (
                                 <div className="space-y-6">
                                 {/* Sheet Tabs */}
@@ -870,6 +873,10 @@ export default function KitchenInventory() {
                                     </h3>
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="space-y-1 sm:col-span-2 mb-2">
+                                            <Label className="text-foreground">Item Name</Label>
+                                            <div className="text-sm font-semibold text-foreground/90">{selectedItem.name}</div>
+                                        </div>
                                         <div className="space-y-2">
                                             <Label className="text-foreground">Target Quantity *</Label>
                                             <Input
@@ -938,7 +945,7 @@ export default function KitchenInventory() {
 
                                 <div className="rounded-[5px] border border-primary/50 bg-background p-5 shadow-sm space-y-5 [&>h3+*]:!mt-4">
                                     <h3 className="text-sm font-semibold text-primary/90">
-                                     Item Details
+                                     Stock Details
                                     </h3>
                                     <div className="space-y-4">
                                         <div>
@@ -956,32 +963,43 @@ export default function KitchenInventory() {
                                             {createErrors.inventory_master_id && <p className="text-xs text-red-500 mt-1">{createErrors.inventory_master_id}</p>}
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <Label className="text-foreground">Quantity *</Label>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-foreground">Target Quantity *</Label>
                                                 <Input
-                                                    className={`bg-background mt-1 ${createErrors.quantity ? "border-red-500" : ""}`}
+                                                    className={`h-10 focus-visible:ring-1 focus-visible:ring-primary font-semibold ${createErrors.quantity ? "border-red-500" : ""}`}
                                                     value={createForm.quantity}
                                                     onChange={(e) => setCreateForm(f => ({ ...f, quantity: +normalizeNumberInput(e.target.value) }))}
                                                 />
                                                 {createErrors.quantity && <p className="text-xs text-red-500 mt-1">{createErrors.quantity}</p>}
                                             </div>
-                                            {isItemUsable && (
-                                                <div>
-                                                    <Label className="text-foreground">Unit *</Label>
-                                                    <NativeSelect
-                                                        className={`w-full h-10 rounded-[3px] px-3 border bg-background mt-1 ${createErrors.unit ? "border-red-500" : "border-border"}`}
-                                                        value={createForm.unit ?? ""}
-                                                        onChange={(e) => setCreateForm(f => ({ ...f, unit: e.target.value }))}
-                                                    >
-                                                        <option value="" disabled>Select unit</option>
-                                                        {availableUnits.map(u => (
-                                                            <option key={u.id} value={u.id}>{u.label}</option>
-                                                        ))}
-                                                    </NativeSelect>
-                                                    {createErrors.unit && <p className="text-xs text-red-500 mt-1">{createErrors.unit}</p>}
-                                                </div>
-                                            )}
+
+                                            <div className="space-y-2">
+                                                <Label className="text-foreground">Stock Unit *</Label>
+                                                <NativeSelect
+                                                    className={`w-full h-10 rounded-[3px] px-2 border bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary ${createErrors.unit ? "border-red-500" : "border-border"}`}
+                                                    value={createForm.unit ?? ""}
+                                                    onChange={(e) => setCreateForm(f => ({ ...f, unit: e.target.value }))}
+                                                >
+                                                    <option value="" disabled>Select unit</option>
+                                                    {availableUnits.map(u => (
+                                                        <option key={u.id} value={u.id}>{u.label}</option>
+                                                    ))}
+                                                </NativeSelect>
+                                                {createErrors.unit && <p className="text-xs text-red-500 mt-1">{createErrors.unit}</p>}
+                                            </div>
+
+                                            <div className="space-y-2 sm:col-span-2">
+                                                <Label className="text-foreground">Comments</Label>
+                                                <textarea
+                                                    className="w-full min-h-[100px] border border-border bg-background rounded-[3px] p-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                                                    placeholder="Add any additional comments here..."
+                                                    value={createForm.comments}
+                                                    onChange={(e) => setCreateForm(f => ({ ...f, comments: e.target.value }))}
+                                                    maxLength={255}
+                                                />
+                                                <div className="text-[10px] text-right text-muted-foreground font-bold">{createForm.comments.length}/255</div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

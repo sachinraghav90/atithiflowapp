@@ -25,7 +25,7 @@ import {
     CommandInput,
     CommandItem,
 } from "@/components/ui/command";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronUp, RotateCcw, Check } from "lucide-react";
 import {
     Sheet,
     SheetContent,
@@ -174,15 +174,33 @@ export default function ReservationManagement() {
     const [idProofFiles, setIdProofFiles] = useState<Record<string, File>>({});
     const [availableRoomCategory, setAvailableRoomCategory] = useState([])
     const [availableBedType, setAvailableBedType] = useState([])
+    const [availableAcType, setAvailableAcType] = useState([])
     const [roomFilters, setRoomFilters] = useState({
         roomCategory: "",
         bedType: "",
-        acType: "AC",
+        acType: "",
         floor: ""
     })
     const [floors, setFloors] = useState([])
     const [reservationErrors, setReservationErrors] = useState<Record<string, FieldError>>({});
     const [roomsModalOpen, setRoomsModalOpen] = useState(false);
+    const [tempSelectedRooms, setTempSelectedRooms] = useState<SelectedRoom[]>([]);
+    const [collapsedFloors, setCollapsedFloors] = useState<Set<number>>(new Set());
+
+    const toggleFloor = (floor: number) => {
+        setCollapsedFloors((prev) => {
+            const next = new Set(prev);
+            if (next.has(floor)) next.delete(floor);
+            else next.add(floor);
+            return next;
+        });
+    };
+
+    useEffect(() => {
+        if (roomsModalOpen) {
+            setTempSelectedRooms([...selectedRooms]);
+        }
+    }, [roomsModalOpen]);
     const [open, setOpen] = useState(false);
 
     const enquiryPrefilled = useRef(false);
@@ -514,9 +532,11 @@ export default function ReservationManagement() {
 
         const availableRoomCategory = availableRooms.rooms.map((room) => room.room_category_name)
         const availableBedType = availableRooms.rooms.map((room) => room.bed_type_name)
+        const availableAcType = availableRooms.rooms.map((room) => room.ac_type_name)
         const availableFloors = availableRooms.rooms.map((room) => room.floor_number)
         setAvailableBedType(() => Array.from(new Set(availableBedType)))
         setAvailableRoomCategory(() => Array.from(new Set(availableRoomCategory)))
+        setAvailableAcType(() => Array.from(new Set(availableAcType)))
         setFloors(() => Array.from(new Set(availableFloors)))
     }, [availableRooms])
 
@@ -1129,7 +1149,7 @@ export default function ReservationManagement() {
                                                     );
                                                 })
                                             ) : (
-                                                <span className="text-sm text-muted-foreground/60 italic ml-1">No rooms selected</span>
+                                                <span className="text-sm text-muted-foreground/60 ml-1">No rooms selected</span>
                                             )}
                                         </div>
 
@@ -1144,53 +1164,47 @@ export default function ReservationManagement() {
 
 
                         <CardSection title="Guest Personal Information" subtitle="Primary guest identity">
-                            <Grid>
+                            <Grid cols={3}>
 
-                                {/* SALUTATION */}
-                                <div className="flex gap-0">
+                                {/* SALUTATION + FIRST NAME */}
+                                <div className="space-y-1">
+                                    <Label className="text-foreground font-bold px-0.5">First Name *</Label>
+                                    <div className="flex -space-x-px">
+                                        {/* SALUTATION */}
+                                        <div className="w-[64px] shrink-0">
+                                            <FormSelect
+                                                label=""
+                                                field="salutation"
+                                                value={guest}
+                                                setValue={setGuest}
+                                                errors={reservationErrors}
+                                                setErrors={setReservationErrors}
+                                                className="h-11 rounded-r-none border-r-0 justify-center gap-0 !px-0 !bg-background !shadow-none"
+                                                hideIcon={false}
+                                                isVertical={false}
+                                            >
+                                                <option value="Mr.">Mr.</option>
+                                                <option value="Ms.">Ms.</option>
+                                                <option value="Mrs.">Mrs.</option>
+                                            </FormSelect>
+                                        </div>
 
-                                    {/* SALUTATION — minimal width */}
-                                    <div className="w-[44px] shrink-0">
-
-                                        <FormSelect
-                                            label={"\u00A0"}
-                                            field="salutation"
-                                            value={guest}
-                                            setValue={setGuest}
-                                            errors={reservationErrors}
-                                            setErrors={setReservationErrors}
-                                            className="h-11 px-0 rounded-r-none"
-                                            hideIcon={false}
-                                            isVertical={true}
-                                        >
-                                            <option value="Mr.">Mr.</option>
-                                            <option value="Mrs.">Mrs.</option>
-                                            <option value="Ms.">Ms.</option>
-                                        </FormSelect>
-
+                                        {/* FIRST NAME */}
+                                        <div className="flex-1">
+                                            <FormInput
+                                                label=""
+                                                field="first_name"
+                                                value={guest}
+                                                setValue={setGuest}
+                                                errors={reservationErrors}
+                                                setErrors={setReservationErrors}
+                                                required
+                                                maxLength={100}
+                                                className="rounded-l-none"
+                                            />
+                                        </div>
                                     </div>
-
-                                    {/* FIRST NAME — remaining width */}
-                                    <div className="flex-1">
-
-                                        <FormInput
-                                            label="First Name"
-                                            field="first_name"
-                                            value={guest}
-                                            setValue={setGuest}
-                                            errors={reservationErrors}
-                                            setErrors={setReservationErrors}
-                                            required
-                                            maxLength={100}
-                                            className="rounded-l-none"
-                                        />
-
-                                    </div>
-
                                 </div>
-
-
-                                {/* MIDDLE NAME */}
 
                                 <FormInput
                                     label="Middle Name"
@@ -1201,9 +1215,6 @@ export default function ReservationManagement() {
                                     setErrors={setReservationErrors}
                                     maxLength={100}
                                 />
-
-
-                                {/* LAST NAME */}
 
                                 <FormInput
                                     label="Last Name"
@@ -1216,9 +1227,7 @@ export default function ReservationManagement() {
                                     maxLength={100}
                                 />
 
-
-                                {/* GENDER */}
-
+                                {/* SECOND ROW: GENDER, AGE, NATIONALITY */}
                                 <FormSelect
                                     label="Gender"
                                     field="gender"
@@ -1233,9 +1242,6 @@ export default function ReservationManagement() {
                                     <option value="FEMALE">Female</option>
                                 </FormSelect>
 
-
-                                {/* AGE */}
-
                                 <FormInput
                                     label="Age"
                                     field="age"
@@ -1247,9 +1253,6 @@ export default function ReservationManagement() {
                                     transform={(v) => normalizeNumberInput(v).toString()}
                                     maxLength={3}
                                 />
-
-
-                                {/* NATIONALITY */}
 
                                 <FormSelect
                                     label="Nationality"
@@ -1266,9 +1269,7 @@ export default function ReservationManagement() {
                                     <option value="foreigner">Foreigner</option>
                                 </FormSelect>
 
-
-                                {/* COUNTRY (popover stays custom) */}
-
+                                {/* THIRD ROW: PHONE, EMAIL, COMING FROM */}
                                 {guest.nationality === "foreigner" && (
                                     <div className="space-y-2">
                                         <Label title={reservationErrors.country?.type === "required"
@@ -1281,7 +1282,7 @@ export default function ReservationManagement() {
                                                 <Button
                                                     variant="outline"
                                                     className={cn(
-                                                        "w-full h-10 justify-between bg-background",
+                                                        "w-full h-10 justify-between bg-background text-sm",
                                                         reservationErrors.country && "border-red-500"
                                                     )}
                                                 >
@@ -1318,7 +1319,6 @@ export default function ReservationManagement() {
                                     </div>
                                 )}
 
-
                                 <FormInput
                                     label="Phone"
                                     field="phone"
@@ -1341,9 +1341,6 @@ export default function ReservationManagement() {
                                     transform={(v: string) => v.replace(/\D/g, "").slice(0, 15)}
                                 />
 
-
-                                {/* EMAIL */}
-
                                 <FormInput
                                     label="Email"
                                     field="email"
@@ -1352,9 +1349,6 @@ export default function ReservationManagement() {
                                     errors={reservationErrors}
                                     setErrors={setReservationErrors}
                                 />
-
-
-                                {/* COMING FROM */}
 
                                 <FormInput
                                     label="Coming from"
@@ -1365,9 +1359,7 @@ export default function ReservationManagement() {
                                     setErrors={setReservationErrors}
                                 />
 
-
-                                {/* GOING TO */}
-
+                                {/* FOURTH ROW: GOING TO */}
                                 <FormInput
                                     label="Going to"
                                     field="going_to"
@@ -1803,12 +1795,12 @@ export default function ReservationManagement() {
                 <Sheet open={roomsModalOpen} onOpenChange={setRoomsModalOpen}>
                     <SheetContent
                         side="right"
-                        className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background p-0 flex flex-col"
+                        className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background p-0"
                     >
                         <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="flex-1 flex flex-col"
+                            className="flex flex-col"
                         >
                             <SheetHeader className="px-6 py-4 border-b">
                                 <SheetTitle className="text-lg font-semibold">
@@ -1816,16 +1808,15 @@ export default function ReservationManagement() {
                                 </SheetTitle>
                             </SheetHeader>
 
-                        <section className="flex-1 overflow-y-auto p-6 lg:p-3 bg-muted/20">
+                        <section className="p-6 lg:p-3 bg-muted/20">
 
-                            <h2 className="text-lg font-semibold text-foreground mb-4">
-                                Available Rooms
-                            </h2>
 
-                            <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-3 gap-3">
-                                <div className="space-y-1 mb-4">
+
+                            <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-end rounded-xl border border-primary/10 bg-background/70 p-3 mb-4 shadow-sm">
+                                <div className="space-y-1">
+                                    <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Bed Type</Label>
                                     <NativeSelect
-                                        className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
+                                        className="w-full h-10 rounded-[3px] border border-primary/20 bg-background px-3 text-sm text-foreground shadow-none hover:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary"
                                         value={roomFilters.bedType}
                                         onChange={(e) => {
                                             setRoomFilters({ ...roomFilters, bedType: e.target.value })
@@ -1839,9 +1830,10 @@ export default function ReservationManagement() {
                                         })}
                                     </NativeSelect>
                                 </div>
-                                <div className="space-y-1 mb-4">
+                                <div className="space-y-1">
+                                    <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Category</Label>
                                     <NativeSelect
-                                        className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
+                                        className="w-full h-10 rounded-[3px] border border-primary/20 bg-background px-3 text-sm text-foreground shadow-none hover:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary"
                                         value={roomFilters.roomCategory}
                                         onChange={(e) => {
                                             setRoomFilters({ ...roomFilters, roomCategory: e.target.value })
@@ -1855,9 +1847,26 @@ export default function ReservationManagement() {
                                         })}
                                     </NativeSelect>
                                 </div>
-                                <div className="space-y-1 mb-4">
+                                <div className="space-y-1">
+                                    <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">AC Type</Label>
                                     <NativeSelect
-                                        className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
+                                        className="w-full h-10 rounded-[3px] border border-primary/20 bg-background px-3 text-sm text-foreground shadow-none hover:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary"
+                                        value={roomFilters.acType}
+                                        onChange={(e) => {
+                                            setRoomFilters({ ...roomFilters, acType: e.target.value })
+                                        }}
+                                        disabled={allAvailableRoomIds.length === 0}
+                                    >
+                                        <option value="">Select AC type</option>
+                                        {availableAcType.map((type, i) => {
+                                            return <option value={type} key={i}>{type}</option>
+                                        })}
+                                    </NativeSelect>
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Floor</Label>
+                                    <NativeSelect
+                                        className="w-full h-10 rounded-[3px] border border-primary/20 bg-background px-3 text-sm text-foreground shadow-none hover:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary"
                                         value={roomFilters.floor}
                                         onChange={(e) => {
                                             setRoomFilters({ ...roomFilters, floor: e.target.value })
@@ -1871,6 +1880,28 @@ export default function ReservationManagement() {
                                         })}
                                     </NativeSelect>
                                 </div>
+                                <div className="flex gap-1.5">
+                                    <Button 
+                                        variant="heroOutline" 
+                                        className="h-10 px-2 flex items-center gap-1.5 text-xs font-bold"
+                                        onClick={() => setRoomFilters({ bedType: "", roomCategory: "", floor: "", acType: "" })}
+                                        title="Reset Filters"
+                                    >
+                                        <RotateCcw className="w-3.5 h-3.5" />
+                                        Reset
+                                    </Button>
+                                    <Button 
+                                        variant="hero" 
+                                        className="h-10 px-3 text-xs font-bold flex-1"
+                                        onClick={() => {
+                                            setSelectedRooms(tempSelectedRooms);
+                                            setRoomCount(tempSelectedRooms.length || "");
+                                            setRoomsModalOpen(false);
+                                        }}
+                                    >
+                                        Save Rooms
+                                    </Button>
+                                </div>
                             </div>
 
 
@@ -1882,65 +1913,112 @@ export default function ReservationManagement() {
 
                             <div className="space-y-3">
                                 {roomsByFloor.map(({ floor, rooms }) => (
-                                    (roomFilters.floor === "" || roomFilters.floor == floor.toString()) && <div key={floor}>
-                                        <h3 className="text-sm font-medium text-muted-foreground mb-3">
-                                            Floor {floor}
-                                        </h3>
-
-                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                                    (roomFilters.floor === "" || roomFilters.floor == floor.toString()) && <div key={floor} className="mb-6">
+                                        <div 
+                                            className="flex items-center justify-between p-3 bg-primary/[0.05] rounded-lg border border-primary/10 mb-4 cursor-pointer hover:bg-primary/[0.08] transition-colors"
+                                            onClick={() => toggleFloor(floor)}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <h3 className="text-sm font-bold text-primary">
+                                                    Floor {floor}
+                                                </h3>
+                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                                                    {rooms.length} {rooms.length === 1 ? "room" : "rooms"}
+                                                </span>
+                                            </div>
+                                            <div className={cn(
+                                                "h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-primary transition-transform duration-200",
+                                                collapsedFloors.has(floor) ? "rotate-180" : "rotate-0"
+                                            )}>
+                                                <ChevronUp className="w-3.5 h-3.5" />
+                                            </div>
+                                        </div>
+                                        
+                                        {!collapsedFloors.has(floor) && (
+                                            <div className="grid grid-cols-1 min-[520px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                                             {rooms.map((room) => {
-                                                const isSelected = selectedRooms.some(
+                                                const isSelected = tempSelectedRooms.some(
                                                     (r) => r.ref_room_id === Number(room.id)
                                                 );
 
                                                 return (
                                                     (isSelected ||
                                                         ((!roomFilters.bedType || room.bed_type_name === roomFilters.bedType) &&
-                                                            (!roomFilters.roomCategory || room.room_category_name === roomFilters.roomCategory))) &&
+                                                            (!roomFilters.roomCategory || room.room_category_name === roomFilters.roomCategory) &&
+                                                            (!roomFilters.acType || room.ac_type_name === roomFilters.acType))) &&
                                                     <button
                                                         key={room.id}
-                                                        onClick={() => toggleRoom(Number(room.id))}
+                                                        onClick={() => {
+                                                            const roomId = Number(room.id);
+                                                            setTempSelectedRooms((prev) => {
+                                                                if (prev.some((r) => r.ref_room_id === roomId)) {
+                                                                    return prev.filter((r) => r.ref_room_id !== roomId);
+                                                                } else {
+                                                                    return [...prev, { ref_room_id: roomId }];
+                                                                }
+                                                            });
+                                                        }}
                                                         className={cn(
-                                                            "h-[110px] rounded-[3px] border p-3 text-sm font-semibold transition",
+                                                            "group h-[120px] overflow-hidden rounded-lg border text-left transition-all duration-200",
                                                             isSelected
-                                                                ? "bg-primary text-primary-foreground border-primary"
-                                                                : "bg-card border-border hover:bg-muted"
+                                                                ? "border-primary bg-primary/[0.12] ring-2 ring-primary shadow-lg scale-[1.02] z-10"
+                                                                : "border-primary/20 bg-primary/[0.04] hover:border-primary/40 hover:shadow-md hover:scale-[1.01]"
                                                         )}
                                                     >
-                                                        <div className="flex flex-col h-full">
-
-                                                            {/* Top - Left */}
-                                                            <span className="text-xs opacity-70 mb-4 text-left">
-                                                                {getFloorName(room.floor_number)}
-                                                            </span>
-
-                                                            {/* Middle - Center */}
-                                                            <div className="flex-1 flex items-center justify-center">
-                                                                <span className="text-[2rem] font-semibold">
-                                                                    {room.room_no}
+                                                        <div className="flex h-full flex-col">
+                                                            <div className={cn(
+                                                                "flex items-center justify-between border-b px-3 py-2 text-primary-foreground transition-colors",
+                                                                isSelected ? "bg-primary border-primary" : "bg-primary border-primary/20"
+                                                            )}>
+                                                                <span className="text-[11px] font-bold tracking-[0.1em] uppercase opacity-90">
+                                                                    Room | {room.ac_type_name}
                                                                 </span>
+                                                                {isSelected && (
+                                                                    <div className="bg-secondary rounded-full p-1 shadow-sm ring-1 ring-white/20">
+                                                                        <Check className="w-3 h-3 text-secondary-foreground stroke-[4px]" />
+                                                                    </div>
+                                                                )}
                                                             </div>
 
-                                                            {/* Bottom - Left */}
-                                                            <span className="text-xs opacity-70 mt-4 text-left">
-                                                                {room.bed_type_name.split(" ")[0]}|{room.room_category_name}
-                                                            </span>
-
+                                                            <div className={cn(
+                                                                "relative flex flex-1 flex-col items-center justify-center p-3 transition-colors",
+                                                                isSelected ? "bg-primary/[0.08]" : "bg-background"
+                                                            )}>
+                                                                <span className="absolute top-2 left-3 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
+                                                                    {getFloorName(room.floor_number)}
+                                                                </span>
+                                                                
+                                                                <span className={cn(
+                                                                    "text-3xl font-black tracking-tight mb-0.5",
+                                                                    isSelected ? "text-primary" : "text-primary/90"
+                                                                )}>
+                                                                    {room.room_no}
+                                                                </span>
+                                                                
+                                                                <span className="truncate text-[10px] font-semibold text-muted-foreground/60">
+                                                                    {room.bed_type_name} • {room.room_category_name}
+                                                                </span>
+                                                            </div>
                                                         </div>
                                                     </button>
                                                 );
                                             })}
                                         </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>
                         </section>
 
-                        {/* <div className="border-t px-6 py-4 flex justify-end gap-2">
-                            <Button variant="outline" onClick={() => setRoomsModalOpen(false)}>
+                        <div className="border-t border-border px-6 py-4 flex justify-end bg-background shrink-0">
+                            <Button 
+                                variant="heroOutline" 
+                                className="px-8"
+                                onClick={() => setRoomsModalOpen(false)}
+                            >
                                 Close
                             </Button>
-                        </div> */}
+                        </div>
                         </motion.div>
                     </SheetContent>
                 </Sheet>

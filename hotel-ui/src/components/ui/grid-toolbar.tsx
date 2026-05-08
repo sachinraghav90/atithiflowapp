@@ -136,14 +136,14 @@ export function GridToolbarSearch({
               }
             }}
             placeholder={placeholder}
-            className="pl-9 h-full text-sm rounded-lg border border-border bg-background shadow-sm w-full focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-border"
+            className="pl-9 h-full text-sm rounded-[3px] border border-border bg-background shadow-sm w-full focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-border"
           />
         </div>
 
         {/* BUTTON */}
         <Button
           onClick={onSearch}
-          className="h-full rounded-lg px-4 text-sm font-semibold whitespace-nowrap bg-background text-primary border border-primary/30 hover:bg-primary/5 transition-all shadow-sm"
+          className="h-full rounded-[3px] px-4 text-sm font-semibold whitespace-nowrap bg-background text-primary border border-primary/30 hover:bg-primary/5 transition-all shadow-sm"
           variant="outline"
         >
           Search
@@ -164,39 +164,26 @@ export function GridToolbarSelect({
   options,
   className,
 }: GridToolbarSelectProps) {
-  const generatedId = useId();
-  const normalizedLabel = label.trim().toLowerCase().replace(/\s+/g, "-");
-  const selectId = `${normalizedLabel}-${generatedId}`;
-
   return (
-    <div className={cn("flex items-center h-10 border border-border bg-background rounded-lg text-sm overflow-hidden shadow-sm w-full", className)}>
+    <div className={cn("flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm w-full", className)}>
       {/* LABEL PREFIX */}
-      <label
-        htmlFor={selectId}
+      <span
         className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center"
       >
         {label}
-      </label>
+      </span>
 
-      {/* NATIVE SELECT */}
-      <NativeSelect
-        id={selectId}
-        name={selectId}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="flex-1 bg-transparent px-2 text-sm h-full truncate cursor-pointer focus:outline-none"
-      >
-        {options.map((option) => (
-          <option
-            key={`${label}-${option.value}`}
-            value={option.value}
-            disabled={option.disabled}
-            className="bg-background"
-          >
-            {formatReadableLabel(option.label)}
-          </option>
-        ))}
-      </NativeSelect>
+      {/* PREMIUM SELECT */}
+      <div className="flex-1 min-w-0 h-full">
+        <MenuItemSelect
+          value={value}
+          items={options.map(o => ({ id: o.value, label: formatReadableLabel(o.label) }))}
+          onSelect={(val) => onChange(val as string)}
+          itemName="label"
+          placeholder="All"
+          extraClasses="border-0 rounded-none h-full shadow-none focus-visible:ring-0 bg-transparent px-2"
+        />
+      </div>
     </div>
   );
 }
@@ -210,7 +197,7 @@ export function GridToolbarSearchSelect({
   className,
 }: GridToolbarSelectProps & { placeholder?: string }) {
   return (
-    <div className={cn("flex items-center h-10 border border-border bg-background rounded-lg text-sm overflow-hidden shadow-sm w-full", className)}>
+    <div className={cn("flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm w-full", className)}>
       <span className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center">
         {label}
       </span>
@@ -221,7 +208,7 @@ export function GridToolbarSearchSelect({
           onSelect={(val) => onChange(val as string)}
           itemName="label"
           placeholder={placeholder}
-          extraClasses="border-0 rounded-none h-10 shadow-none focus-visible:ring-0"
+          extraClasses="border-0 rounded-none h-full shadow-none focus-visible:ring-0 bg-transparent px-2"
         />
       </div>
     </div>
@@ -243,7 +230,7 @@ export function GridToolbarActions({
               variant="outline"
               size="icon"
               className={cn(
-                "h-10 w-10 rounded-lg hover:bg-muted/50 transition-colors bg-background shadow-sm",
+                "h-10 w-10 rounded-[3px] hover:bg-muted/50 transition-colors bg-background shadow-sm",
                 action.buttonClassName
               )}
               onClick={action.onClick}
@@ -286,7 +273,7 @@ export function GridToolbarDatePicker({
   displayFormat
 }: GridToolbarDatePickerProps) {
   return (
-    <div className={cn("flex items-center h-10 border border-border bg-background rounded-lg text-sm overflow-hidden shadow-sm w-full", className)}>
+    <div className={cn("flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm w-full", className)}>
        <span className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center">
         {label}
       </span>

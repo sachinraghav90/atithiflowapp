@@ -430,7 +430,7 @@ export default function RoleManagement() {
                     </Sheet>
                 </div>
 
-                <div className="bg-card rounded-[5px] border border-border shadow-sm overflow-hidden">
+                <div className="bg-primary/[0.03] rounded-[5px] border border-border/60 shadow-sm overflow-hidden">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -440,8 +440,8 @@ export default function RoleManagement() {
                         </TableHeader>
                         <TableBody>
                             {!allRolesLoading && !allRolesUninitialized && !allRolesError && allRolesData?.roles.map((role: any) => (
-                                <TableRow key={role.id}>
-                                    <TableCell className="font-medium">{role.name}</TableCell>
+                                <TableRow key={role.id} className="hover:bg-primary/[0.05] border-border/40 transition-colors">
+                                    <TableCell className="font-medium text-foreground">{role.name}</TableCell>
                                     <TableCell className="text-right">
                                         <Button
                                             size="sm"
@@ -467,7 +467,7 @@ export default function RoleManagement() {
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-card rounded-[5px] border border-border shadow-sm p-6"
+                        className="bg-primary/[0.03] rounded-[5px] border border-border/60 shadow-sm p-6"
                     >
                         <div className="flex items-center justify-between mb-6 border-b border-border/50 pb-4">
                             <div className="flex items-center gap-3">
@@ -546,7 +546,7 @@ export default function RoleManagement() {
                                 allSidebarLinksData.roles.map((module) => (
                                     <div
                                         key={module.id}
-                                        className="flex items-center justify-between border border-border/50 rounded-[3px] p-3 bg-muted/5 hover:bg-muted/10 transition-colors"
+                                        className="flex items-center justify-between border border-border/40 rounded-[3px] p-3 bg-primary/[0.05] hover:bg-primary/[0.08] transition-colors"
                                     >
                                         <span className="font-semibold text-sm text-foreground">
                                             {module.link_name}
@@ -583,7 +583,7 @@ export default function RoleManagement() {
                                                                 disabled={!permission?.can_create || (module.link_name === "Roles" && selectedRoleName === "SUPER_ADMIN") || (module.link_name === "Roles" && (action === "delete" || action === "write"))}
                                                                 type="radio"
                                                                 name={`perm-${module.id}`}
-                                                                className="w-3.5 h-3.5 cursor-pointer appearance-none rounded-full border border-primary/30 checked:border-primary checked:border-[4px] bg-background transition-all"
+                                                                className="w-3.5 h-3.5 cursor-pointer appearance-none rounded-full border border-primary/30 checked:border-primary checked:border-[4px] bg-transparent transition-all"
                                                                 checked={isRadioSelected}
                                                                 onChange={() => permission?.can_create &&
                                                                     onPermissionRadioChange(module.id, action as any)

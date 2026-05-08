@@ -155,9 +155,22 @@ export const hmsApi = createApi({
     }),
 
     getProperties: builder.query<any, any>({
-      query: ({ page = 1, limit = 10, search = "", city = "", state = "", country = "" }) => {
+      query: ({ page = 1, limit = 10, search = "", city = "", state = "", country = "", is_active }) => {
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: String(limit),
+          search,
+          city,
+          state,
+          country,
+        });
+
+        if (is_active !== undefined && is_active !== null && is_active !== "") {
+          params.append("is_active", String(is_active));
+        }
+
         return {
-          url: `/properties?page=${page}&limit=${limit}&city=${city}&state=${state}&country=${country}&search=${search}`,
+          url: `/properties?${params.toString()}`,
           method: "GET",
         }
       },

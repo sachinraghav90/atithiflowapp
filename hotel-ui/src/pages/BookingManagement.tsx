@@ -15,12 +15,14 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { NativeSelect } from "@/components/ui/native-select";
+import { MenuItemSelect } from "@/components/MenuItemSelect";
 import {
     Sheet,
     SheetContent,
     SheetHeader,
     SheetTitle,
 } from "@/components/ui/sheet";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 
 import { toast } from "react-toastify";
@@ -51,7 +53,6 @@ import { Download, Eye, FilterX, Pencil, Plus, RefreshCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getStatusColor } from "@/constants/statusColors";
 import { GridBadge } from "@/components/ui/grid-badge";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { formatAppDate, parseAppDate, toISODateOnly } from "@/utils/dateFormat";
 import { formatReadableLabel } from "@/utils/formatString";
@@ -139,6 +140,8 @@ export default function BookingsManagement() {
     const [bookingId, setBookingId] = useState("");
 
     const [updatedStatus, setUpdatedStatus] = useState<string>("");
+    const [statusSelectOpen, setStatusSelectOpen] = useState(false);
+    const [statusTooltipOpen, setStatusTooltipOpen] = useState(false);
 
     const memoizedArrivalFrom = useMemo(() => (arrivalFrom ? new Date(arrivalFrom) : null), [arrivalFrom]);
     const memoizedArrivalTo = useMemo(() => (arrivalTo ? new Date(arrivalTo) : null), [arrivalTo]);
@@ -154,25 +157,6 @@ export default function BookingsManagement() {
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
 
     const { myProperties, isMultiProperty, isOwner, isSuperAdmin, isInitializing } = useAutoPropertySelect(propertyId, setPropertyId);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -282,18 +266,22 @@ export default function BookingsManagement() {
 
         const promise = updateBooking({ booking_id: selectedBooking?.booking?.id, status: updatedStatus }).unwrap();
 
-        await toast.promise(promise, {
-            pending: "Updating booking...",
-            success: "Booking updated successfully",
-            error: {
-                render({ data }: { data: any }) {
-                    return data?.data?.message || data?.message || "Failed to update booking";
-                }
-            }
-        });
-
         setConfirmStatusOpen(false);
-        setDetailsOpen(false);
+        setUpdatedStatus("");
+
+        try {
+            await toast.promise(promise, {
+                pending: "Updating booking...",
+                success: "Booking updated successfully",
+                error: {
+                    render({ data }: { data: any }) {
+                        return data?.data?.message || data?.message || "Failed to update booking";
+                    }
+                }
+            });
+        } catch {
+            // Error feedback is handled by toast.promise.
+        }
 
     }
 
@@ -350,6 +338,8 @@ export default function BookingsManagement() {
 
 
     function BookingSummaryTab({ booking }: any) {
+        if (!booking) return null;
+
         const finalAmt = +(booking?.final_amount || 0);
         const restTotal = +(booking?.restaurant_total_amount || 0);
         const totalAmt = finalAmt + restTotal;
@@ -369,35 +359,33 @@ export default function BookingsManagement() {
                     <ViewField label="Discount" value={`₹ ${booking?.discount_amount || 0}`} />
                 </PropertyViewSection>
 
-                <PropertyViewSection title="Booking Information" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                <PropertyViewSection title="Booking Information" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                    <ViewField label="Guest Name" value={booking?.guest_name || "—"} />
+                    <ViewField label="Booking Source" value={booking?.booking_source || "—"} />
+                    <ViewField label="Adults / Children" value={`${booking?.adult || 0} A / ${booking?.child || 0} C`} />
                     <ViewField label="Arrival Date" value={formatToDDMMYY(booking?.estimated_arrival)} />
                     <ViewField label="Departure Date" value={formatToDDMMYY(booking?.estimated_departure)} />
                     <ViewField label="Total Nights" value={booking?.booking_nights || 0} />
-                    <ViewField label="Booking Type" value={formatReadableLabel(booking?.booking_type) || "—"} />
                     <ViewField label="Status" value={formatReadableLabel(booking?.booking_status) || "—"} />
                     <ViewField label="Booking Date" value={formatToDDMMYY(booking?.booking_date)} />
-                </PropertyViewSection>
-
-                <PropertyViewSection title="Guest Details" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
-                    <ViewField label="Total Guests" value={`${(booking?.adult || 0) + (booking?.child || 0)} Guests (${booking?.adult || 0}A, ${booking?.child || 0}C)`} />
                     <ViewField label="Rooms Booked" value={booking?.rooms?.length || 0} />
-                </PropertyViewSection>
-
-                <PropertyViewSection title="Additional Notes" className="grid grid-cols-1 gap-y-4">
-                    <ViewField label="Comments" value={booking?.comments || "No comments"} />
+                    <ViewField label="Arrival Time" value={booking?.estimated_arrival_time || "—"} />
+                    <ViewField label="Checked In At" value={booking?.checked_in_date ? formatToDDMMYY(booking.checked_in_date) : "—"} />
+                    <ViewField label="Comments" value={booking?.comments || "No comments"} className="sm:col-span-2 lg:col-span-3" />
                 </PropertyViewSection>
             </div>
         );
     }
 
     function getRoomDisplayData(roomNo: any) {
+        if (!allRoomsMeta) return { roomNo: "-", floorName: "Floor 1", bedType: "King", category: "Deluxe" };
 
-        const room = allRoomsMeta.find(r => r.room_no === roomNo)
+        const room = allRoomsMeta.find((r: any) => r.room_no === roomNo)
 
         return {
-            roomNo: room.room_no ?? "-",
+            roomNo: room?.room_no ?? "-",
 
-            floorName: room.floor_number
+            floorName: room?.floor_number
                 ? `Floor ${room.floor_number}`
                 : "Floor 1",
 
@@ -484,7 +472,7 @@ export default function BookingsManagement() {
     }
 
     function BookingLogsTab({ bookingId, propertyId }: any) {
-        return <BookingLogsEmbedded bookingId={bookingId} />;
+        return <BookingLogsEmbedded bookingId={bookingId} propertyId={propertyId} />;
     }
 
     function ComingSoon({ label }: { label: string }) {
@@ -518,21 +506,19 @@ export default function BookingsManagement() {
                                 <span className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center">
                                     Property
                                 </span>
-                                <NativeSelect
-                                    className="flex-1 bg-transparent px-2 focus:outline-none focus:ring-0 text-sm h-full truncate cursor-pointer"
-                                    value={propertyId ?? ""}
-                                    onChange={(e) => {
-                                        setPropertyId(e.target.value ? Number(e.target.value) : undefined);
-                                        setPage(1);
-                                    }}
-                                >
-                                    <option value="" disabled>Select Property</option>
-                                    {myProperties?.properties?.map((p: any) => (
-                                        <option key={p.id} value={p.id}>
-                                            {p.brand_name}
-                                        </option>
-                                    ))}
-                                </NativeSelect>
+                                <div className="flex-1 min-w-0 h-full">
+                                    <MenuItemSelect
+                                        value={propertyId ?? ""}
+                                        items={myProperties?.properties?.map((p: any) => ({ id: p.id, label: p.brand_name })) || []}
+                                        onSelect={(val) => {
+                                            setPropertyId(val ? Number(val) : undefined);
+                                            setPage(1);
+                                        }}
+                                        itemName="label"
+                                        placeholder="Select Property"
+                                        extraClasses="border-0 rounded-none h-full shadow-none focus-visible:ring-0 bg-transparent px-2"
+                                    />
+                                </div>
                             </div>
                         )}
 
@@ -546,7 +532,7 @@ export default function BookingsManagement() {
                     </div>
                 </div>
 
-                <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
+                <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
                     <div className="w-full">
                         <GridToolbar className="flex flex-col border-b-0">
                             {/* Row 1 */}
@@ -770,9 +756,9 @@ export default function BookingsManagement() {
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="space-y-6"
+                        className="space-y-1"
                     >
-                        <SheetHeader className="mb-6">
+                        <SheetHeader className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                             <div className="space-y-1">
                                 <SheetTitle className="text-xl font-bold">
                                     Booking [#{formatModuleDisplayId("booking", bookingId)}]
@@ -781,44 +767,59 @@ export default function BookingsManagement() {
                                     {editMode ? "Manage Booking Details" : "Booking Related Details"}
                                 </p>
                             </div>
+                            
+                            {/* Status Update at Top Right - Visible in both View & Manage modes */}
+                            <TooltipProvider delayDuration={0}>
+                                <Tooltip
+                                    open={statusTooltipOpen && !statusSelectOpen}
+                                >
+                                    <TooltipTrigger asChild>
+                                        <div
+                                            className="flex flex-col items-end mr-8 space-y-0.5 cursor-help"
+                                            onMouseEnter={() => setStatusTooltipOpen(!statusSelectOpen)}
+                                            onMouseLeave={() => setStatusTooltipOpen(false)}
+                                        >
+                                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80">Update Booking Status</Label>
+                                            <NativeSelect
+                                                className="h-8 border-primary/30 bg-primary/5 rounded-[4px] px-3 py-0 text-xs font-bold text-primary focus:ring-1 focus:ring-primary w-[160px] shadow-sm cursor-pointer transition-all hover:bg-primary/10"
+                                                value={updatedStatus || selectedBooking?.booking.booking_status || ""}
+                                                onOpenChange={(open) => {
+                                                    setStatusSelectOpen(open);
+                                                    if (open) setStatusTooltipOpen(false);
+                                                }}
+                                                onChange={(e) => {
+                                                    setUpdatedStatus(e.target.value);
+                                                    setConfirmStatusOpen(true);
+                                                }}
+                                                disabled={selectedBooking?.booking.booking_status === "CANCELLED"}
+                                            >
+                                                <option value={""} disabled>Select status</option>
+                                                {BOOKING_STATUSES.map((s) => (
+                                                    <option key={s} value={s}>
+                                                        {formatReadableLabel(s)}
+                                                    </option>
+                                                ))}
+                                            </NativeSelect>
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" align="center" sideOffset={6} className="bg-white text-black border-border shadow-md px-3 py-1.5 text-xs font-medium z-[200]">
+                                        Click to update booking status
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+
                         </SheetHeader>
-
-                        {/* Status Update */}
-                        {editMode && (
-                            <div className="space-y-6 rounded-[5px] border border-border/40 bg-background p-4 shadow-sm [&>h3+*]:!mt-4">
-                                <h3 className="text-sm font-semibold text-primary/90">
-                                    Update Booking Status
-                                </h3>
-                                <div className="space-y-2">
-                                    <Label className="text-foreground">Booking Status *</Label>
-                                    <NativeSelect
-                                        className="h-11 border border-primary/20 bg-background rounded-md px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary w-full shadow-none"
-                                        value={updatedStatus || selectedBooking?.booking.booking_status || ""}
-                                        onChange={(e) => setUpdatedStatus(e.target.value)}
-                                        disabled={selectedBooking?.booking.booking_status === "CANCELLED"}
-                                    >
-                                        <option value={""} disabled>Select status</option>
-                                        {BOOKING_STATUSES.map((s) => (
-                                            <option key={s} value={s}>
-                                                {s.replace("_", " ")}
-                                            </option>
-                                        ))}
-                                    </NativeSelect>
-                                </div>
-                            </div>
-                        )}
-
 
                     {/* Tabs */}
                     <div className="space-y-6">
                         {/* Tabs Header */}
-                        <div className="border-b border-border flex items-center">
+                        <div className="border-b border-border flex overflow-x-auto overflow-y-hidden scrollbar-hide">
                             {SUMMARY_TABS.map((tab) => (
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
                                     className={cn(
-                                        "px-4 py-2 text-[11px] font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
+                                        "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px] whitespace-nowrap",
                                         activeTab === tab.id
                                             ? "border-primary text-primary"
                                             : "border-transparent text-muted-foreground hover:text-foreground"
@@ -866,11 +867,23 @@ export default function BookingsManagement() {
                         </div>
                     </div>
 
+                    <div className="border-t border-border pt-6 flex justify-end">
+                        <Button variant="heroOutline" onClick={() => setDetailsOpen(false)}>
+                            Close
+                        </Button>
+                    </div>
+
                     </motion.div>
                 </SheetContent>
             </Sheet>
 
-            <Dialog open={confirmStatusOpen} onOpenChange={setConfirmStatusOpen}>
+            <Dialog 
+                open={confirmStatusOpen} 
+                onOpenChange={(open) => {
+                    setConfirmStatusOpen(open);
+                    if (!open) setUpdatedStatus(""); // Reset on close
+                }}
+            >
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Confirm Status Change</DialogTitle>
@@ -890,7 +903,10 @@ export default function BookingsManagement() {
                         <div className="flex justify-end gap-3 pt-2">
                             <Button
                                 variant="heroOutline"
-                                onClick={() => setConfirmStatusOpen(false)}
+                                onClick={() => {
+                                    setConfirmStatusOpen(false);
+                                    setUpdatedStatus("");
+                                }}
                             >
                                 Cancel
                             </Button>

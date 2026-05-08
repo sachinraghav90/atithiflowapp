@@ -385,7 +385,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                 <Label className="text-foreground">Guest Name *</Label>
                                 <div className="flex gap-0">
                                     <NativeSelect
-                                        className="h-9 w-[44px] rounded-l-[3px] rounded-r-none px-0 text-sm bg-background"
+                                        className="h-9 w-[64px] rounded-l-[3px] rounded-r-none justify-center gap-1 px-1 text-sm bg-background"
                                         value={g.salutation ?? ""}
                                         onChange={(e) =>
                                             updateGuest(index, {
@@ -393,7 +393,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                             })
                                         }
                                         hideIcon={false}
-                                        isVertical={true}
+                                        isVertical={false}
                                     >
                                         <option value="" disabled>--</option>
                                         <option value="Mr.">Mr.</option>

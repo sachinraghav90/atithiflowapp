@@ -135,7 +135,9 @@ export default function PropertyManagement() {
     const [limit, setLimit] = useState(10);
 
     // filters
-    const [search, setSearch] = useState("");
+    const [searchInput, setSearchInput] = useState("");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [statusFilter, setStatusFilter] = useState<string>("");
     const [city, setCity] = useState("");
     const [stateFilter, setStateFilter] = useState("");
     const [country, setCountry] = useState("");
@@ -164,7 +166,7 @@ export default function PropertyManagement() {
     const [originalHasBankDetails, setOriginalHasBankDetails] = useState(false);
     const [propertyErrors, setPropertyErrors] = useState<Record<string, FieldError>>({});
 
-    const debouncedSearch = useDebounce(search, 500)
+    const debouncedSearch = useDebounce(searchQuery, 500)
     // const isLoggedIn = useSelector((state: any) => state.isLoggedIn.value);
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
 
@@ -173,6 +175,7 @@ export default function PropertyManagement() {
     const [addProperty] = useAddPropertyMutation()
     const [addPropertySuperAdmin] = useAddPropertyBySuperAdminMutation()
     const [updateProperty] = useUpdatePropertiesMutation()
+    
     const {
         data: properties,
         isLoading: propertiesLoading,
@@ -184,6 +187,7 @@ export default function PropertyManagement() {
         page,
         limit,
         search: debouncedSearch || undefined,
+        is_active: statusFilter === "active" ? "true" : statusFilter === "inactive" ? "false" : undefined,
         city: city || undefined,
         state: stateFilter || undefined,
         country: country || undefined,
@@ -231,7 +235,7 @@ export default function PropertyManagement() {
 
     useEffect(() => {
         setPage(1);
-    }, [debouncedSearch, city, stateFilter, country]);
+    }, [debouncedSearch, statusFilter, city, stateFilter, country]);
 
     useEffect(() => {
         if (mode === "add" && newProperty.floors.length !== newProperty.total_floors) {
@@ -770,7 +774,9 @@ export default function PropertyManagement() {
     const { permission } = usePermission(pathname)
 
     const resetFiltersHandler = () => {
-        setSearch("");
+        setSearchInput("");
+        setSearchQuery("");
+        setStatusFilter("");
         setCity("");
         setStateFilter("");
         setCountry("");
@@ -816,22 +822,29 @@ export default function PropertyManagement() {
                     </Button>}
 
                 </div>
-                <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
+                <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
                     <div className="w-full">
                         <GridToolbar className="border-b-0">
                             <GridToolbarRow className="gap-2">
                                 <GridToolbarSearch
-                                    value={search}
-                                    onChange={setSearch}
-                                    onSearch={() => setPage(1)}
+                                    value={searchInput}
+                                    onChange={setSearchInput}
+                                    onSearch={() => setSearchQuery(searchInput)}
                                     placeholder="Search property name, city, state..."
                                 />
 
                                 <GridToolbarSelect
                                     label="Status"
-                                    value="all"
-                                    onChange={() => { }}
-                                    options={[{ label: "All Status", value: "all" }]}
+                                    value={statusFilter}
+                                    onChange={(val) => {
+                                        setStatusFilter(val);
+                                        setPage(1);
+                                    }}
+                                    options={[
+                                        { label: "All", value: "" },
+                                        { label: "Active", value: "active" },
+                                        { label: "Inactive", value: "inactive" },
+                                    ]}
                                 />
 
                                 <GridToolbarSpacer />

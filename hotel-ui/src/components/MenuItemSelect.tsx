@@ -22,6 +22,8 @@ type Props = {
     placeholder?: string
     hideIcon?: boolean
     isVertical?: boolean
+    showFullText?: boolean
+    onOpenChange?: (open: boolean) => void
 };
 
 export function MenuItemSelect({
@@ -35,6 +37,8 @@ export function MenuItemSelect({
     placeholder = "--Please Select--",
     hideIcon = false,
     isVertical = false,
+    showFullText = false,
+    onOpenChange,
 }: Props) {
     const [open, setOpen] = useState(false);
 
@@ -62,9 +66,24 @@ export function MenuItemSelect({
     }, [normalizedItems, value]);
 
     const getLabel = (item: any) => String(item[itemName] ?? item.label ?? item.id);
+    const maxLabelLength = filteredItems.reduce(
+        (max, item) => Math.max(max, getLabel(item).length),
+        placeholder.length
+    );
+    const fullTextContentWidthCh = Math.min(Math.max(maxLabelLength + 4, 18), 56);
+    const fullTextPopoverStyle: React.CSSProperties | undefined = showFullText
+        ? {
+            width: `min(max(var(--radix-popover-trigger-width), ${fullTextContentWidthCh}ch), calc(100vw - 2rem))`,
+            maxWidth: "calc(100vw - 2rem)",
+        }
+        : undefined;
+    const handleOpenChange = (nextOpen: boolean) => {
+        setOpen(nextOpen);
+        onOpenChange?.(nextOpen);
+    };
 
     return (
-        <Popover open={open} onOpenChange={setOpen}>
+        <Popover open={open} onOpenChange={handleOpenChange}>
             <PopoverTrigger asChild disabled={disabled}>
                 <Button
                     variant="outline"
@@ -75,12 +94,13 @@ export function MenuItemSelect({
                         "flex h-9 w-full items-center rounded-[3px] border border-input bg-background px-2 py-1 text-sm font-normal shadow-none hover:bg-background transition-colors duration-150",
                         isVertical ? "relative justify-center px-0 text-center" : (hideIcon ? "justify-center text-center" : "justify-between text-center"),
                         (value === "" || value === undefined || value === null) && "text-muted-foreground",
-                        extraClasses
+                        extraClasses,
+                        showFullText && "h-auto min-h-10 whitespace-normal text-left"
                     )}
                 >
                     <span className={cn(
-                        "truncate text-center", 
-                        !isVertical && "flex-1"
+                        showFullText ? "min-w-0 whitespace-normal break-words text-left leading-snug" : "truncate text-center",
+                        !isVertical && !extraClasses.includes("justify-center") && "flex-1"
                     )}>
                         {selectedItem ? getLabel(selectedItem) : placeholder}
                     </span>
@@ -93,7 +113,11 @@ export function MenuItemSelect({
                 </Button>
             </PopoverTrigger>
             <PopoverContent 
-                className="p-0 w-[var(--radix-popover-trigger-width)] min-w-0 shadow-2xl border-border bg-background" 
+                className={cn(
+                    "p-0 w-[var(--radix-popover-trigger-width)] min-w-0 shadow-2xl border-border bg-background",
+                    showFullText && "min-w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)]"
+                )}
+                style={fullTextPopoverStyle}
                 align="start"
                 side="bottom"
                 sideOffset={4}
@@ -121,14 +145,15 @@ export function MenuItemSelect({
                                         onSelect={() => {
                                             const finalValue = (itemId !== "" && !isNaN(Number(itemId))) ? Number(itemId) : itemId;
                                             onSelect(finalValue);
-                                            setOpen(false);
+                                            handleOpenChange(false);
                                         }}
                                         className={cn(
                                             "flex items-center cursor-pointer py-1.5 px-2 text-sm rounded-sm transition-all",
+                                            showFullText && "items-start whitespace-normal",
                                             String(value) === itemId ? "bg-primary/10 text-primary" : "hover:bg-primary/5 hover:text-primary"
                                         )}
                                     >
-                                        <span className="truncate">{itemLabel}</span>
+                                        <span className={cn(showFullText ? "whitespace-normal break-words leading-snug" : "truncate")}>{itemLabel}</span>
                                     </CommandItem>
                                 );
                             })}

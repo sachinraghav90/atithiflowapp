@@ -454,11 +454,13 @@ return (
                                             setFormErrors(p => ({ ...p, mobile: "" }));
                                         }}
                                     /> */}
-                                    <div className="flex gap-[2px]">
-
-                                        {/* Country Code */}
+                                    <div className={cn(
+                                        "flex h-10 w-full items-center rounded-[3px] border border-border bg-background transition-all focus-within:ring-1 focus-within:ring-primary overflow-hidden",
+                                        submitted && formErrors.mobile && "border-red-500"
+                                    )}>
                                         <PhonePrefixSelect
                                             value={form.country_code}
+                                            triggerClassName="border-0 bg-transparent h-full w-[60px] rounded-none focus:ring-0 shadow-none px-2"
                                             onValueChange={(countryCode) =>
                                                 setForm((p) => ({
                                                     ...p,
@@ -466,14 +468,10 @@ return (
                                                 }))
                                             }
                                         />
-
-                                        {/* Phone Input */}
+                                        <div className="h-full w-[1px] bg-border" />
                                         <Input
                                             value={form.mobile}
-                                            className={cn(
-                                                "bg-background flex-1",
-                                                formErrors.mobile && "border-red-500"
-                                            )}
+                                            className="border-0 bg-transparent h-full flex-1 focus-visible:ring-0 shadow-none px-3"
                                             onChange={(e) => {
                                                 if (/^\d*$/.test(e.target.value) && e.target.value.length <= 10) {
                                                     setForm(p => ({ ...p, mobile: e.target.value }));

@@ -191,7 +191,7 @@ export default function DeliveryPartnerManager({
                             return (
                                 <div
                                     key={partner.id}
-                                    className="flex justify-between items-center border rounded-[4px] px-4 py-3 bg-card"
+                                    className="flex justify-between items-center border rounded-[4px] px-4 py-3 bg-background"
                                 >
 
                                     {/* NAME / INPUT */}

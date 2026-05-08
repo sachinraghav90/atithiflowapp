@@ -278,33 +278,14 @@ export function OrderItemsModal({
                                             headClassName: "w-[280px]",
                                             cellClassName: "font-medium min-w-[280px]",
                                             render: (item: any) => (
-                                                <div className="flex items-center gap-3">
-                                                    <div 
-                                                        className="h-14 w-14 rounded-lg overflow-hidden border border-primary/10 bg-background shrink-0 shadow-sm cursor-zoom-in group relative"
-                                                        onClick={() => setPreviewImage({ 
-                                                            url: `${import.meta.env.VITE_API_URL}/menu/${item.menu_item_id}/image`,
-                                                            name: item.item_name 
-                                                        })}
-                                                    >
-                                                        <img 
-                                                            src={`${import.meta.env.VITE_API_URL}/menu/${item.menu_item_id}/image`}
-                                                            alt={item.item_name}
-                                                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
-                                                            onError={(e) => { e.currentTarget.src = "https://placehold.co/150x150?text=Food"; }}
-                                                        />
-                                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                                            <Plus className="w-4 h-4 text-white drop-shadow-md" />
-                                                        </div>
-                                                    </div>
-                                                    <div className="space-y-0.5">
-                                                        <p className="text-sm font-bold text-foreground">{item.item_name}</p>
-                                                        {item.notes && (
-                                                            <p className="text-[10px] font-normal text-muted-foreground italic flex items-center gap-1">
-                                                                <InfoIcon className="w-3 h-3" />
-                                                                Note: {item.notes}
-                                                            </p>
-                                                        )}
-                                                    </div>
+                                                <div className="space-y-0.5 py-1">
+                                                    <p className="text-sm font-bold text-foreground">{item.item_name}</p>
+                                                    {item.notes && (
+                                                        <p className="text-[10px] font-normal text-muted-foreground italic flex items-center gap-1">
+                                                            <InfoIcon className="w-3 h-3" />
+                                                            Note: {item.notes}
+                                                        </p>
+                                                    )}
                                                 </div>
                                             ),
                                         },

@@ -69,7 +69,29 @@ app.use("/kitchen", kitchenInventoryRoutes)
 app.use("/audits", auditRoutes)
 app.use("/inventory", inventoryRoutes)
 app.use("/menu-item-groups", menuItemGroupRoutes)
-app.use("/delivery-partners", deliveryPartnersRoutes)
+app.use("/delivery-partners", deliveryPartnersRoutes);
+
+// Global error handler
+app.use((err, req, res, next) => {
+    console.error("Internal Server Error:", err);
+
+    const isDatabaseError = err.message?.includes("ECONNREFUSED") ||
+        err.message?.includes("ETIMEDOUT") ||
+        err.stack?.includes("pg-pool") ||
+        err.message?.includes("Supabase");
+
+    if (isDatabaseError) {
+        return res.status(503).json({
+            error: "Service Unavailable",
+            message: "Database connection failed. This is likely due to a Supabase service outage. Please try again later."
+        });
+    }
+
+    res.status(500).json({
+        error: "Internal Server Error",
+        message: "An unexpected error occurred on the server."
+    });
+});
 
 app.listen(process.env.PORT || 3000, () => {
   console.log(`server is running on: ${process.env.PORT || "Either ENV not loaded or PORT is not defined default port is 3000"}`);

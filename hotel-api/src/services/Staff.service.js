@@ -561,7 +561,7 @@ class Staff {
 
             this.#DB.query(
                 `
-                SELECT DISTINCT
+                SELECT 
                     s.id,
                     s.salutation,
                     s.first_name,
@@ -577,8 +577,16 @@ class Staff {
                     s.shift_pattern,
                     s.hire_date,
                     s.leave_days,
+                    s.nationality,
+                    s.country,
                     u.id AS user_id,
-                    pu.property_id
+                    pu.property_id,
+                    jsonb_agg(
+                        DISTINCT jsonb_build_object(
+                            'id', r.id,
+                            'name', r.name
+                        )
+                    ) FILTER (WHERE r.id IS NOT NULL) AS roles
 
                 FROM public.staff s
 
@@ -595,6 +603,8 @@ class Staff {
                     ON p.id = pu.property_id
 
                 ${whereClause}
+
+                GROUP BY s.id, u.id, pu.property_id
 
                 ORDER BY s.id DESC
                 LIMIT $${idx} OFFSET $${idx + 1}

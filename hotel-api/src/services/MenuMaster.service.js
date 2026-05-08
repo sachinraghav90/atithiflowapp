@@ -352,7 +352,7 @@ class MenuMasterService {
                 } = item;
 
                 if (!itemName) {
-                    throw new Error("Item name required");
+                    throw new Error("Package, Stay Duration and Guests required");
                 }
 
                 const { rows } = await client.query(

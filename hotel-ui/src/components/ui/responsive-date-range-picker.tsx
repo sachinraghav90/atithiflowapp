@@ -109,7 +109,7 @@ export function ResponsiveDateRangePicker({
     const Trigger = (
         <div
             className={cn(
-                "flex h-10 w-full items-center rounded-lg border border-input bg-background overflow-hidden focus-within:ring-1 focus-within:ring-ring transition-all group shadow-sm",
+                "flex h-10 w-full items-center rounded-[3px] border border-input bg-background overflow-hidden focus-within:ring-1 focus-within:ring-ring transition-all group shadow-sm",
                 disabled && "opacity-50 cursor-not-allowed pointer-events-none",
                 className
             )}

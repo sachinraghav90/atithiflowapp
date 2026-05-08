@@ -1,8 +1,10 @@
+import { useRef } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import FormInput from "@/components/forms/FormInput";
 import FormSelect from "@/components/forms/FormSelect";
 import { cn } from "@/lib/utils";
+import { XCircle } from "lucide-react";
 
 type Props = {
     value: any;
@@ -34,6 +36,7 @@ export default function IdentificationDocuments({
     staffIdProofExists,
     downloadImage,
 }: Props) {
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const updateField = (field: string, val: any) => {
 
@@ -169,21 +172,71 @@ export default function IdentificationDocuments({
             {/* ================= UPLOAD ================= */}
 
             {!viewMode && (
-                <div className="space-y-1">
-                    <Input
-                        type="file"
-                        onChange={(e) =>
-                            setValue((prev: any) => ({
-                                ...prev,
-                                id_proof: e.target.files?.[0],
-                            }))
-                        }
+                <div className="space-y-1.5">
+                    <div 
                         className={cn(
-                            "h-11 rounded-[3px] border-border/70 bg-background text-sm file:mr-4 file:py-2 file:px-4 file:rounded-none file:border-0 file:text-xs file:font-bold file:bg-background file:text-muted-foreground hover:file:bg-accent",
-                            errors.id_proof && "border-red-500"
+                            "relative flex items-center h-11 rounded-[3px] border border-border/70 bg-background overflow-hidden cursor-pointer group hover:border-primary/30 transition-all",
+                            errors.id_proof && "border-red-500",
+                            value.id_proof && "border-primary/40 bg-primary/5"
                         )}
-                    />
-                    <p className="text-[10px] text-muted-foreground">Upload JPG or PNG. Max size 2MB.</p>
+                        onClick={() => fileInputRef.current?.click()}
+                    >
+                        {/* THE ACTUAL HIDDEN INPUT */}
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            className="hidden"
+                            accept="image/*,.pdf"
+                            onChange={(e) =>
+                                setValue((prev: any) => ({
+                                    ...prev,
+                                    id_proof: e.target.files?.[0],
+                                }))
+                            }
+                        />
+
+                        {/* CUSTOM UI */}
+                        <div className="flex items-center w-full px-0.5">
+                            <div className="h-10 px-5 flex items-center justify-center bg-primary/10 text-primary text-[11px] font-bold uppercase tracking-wider rounded-[2px] transition-colors group-hover:bg-primary/20">
+                                Choose File
+                            </div>
+                            
+                            <div className="flex-1 px-4 truncate">
+                                <span className={cn(
+                                    "text-sm transition-colors",
+                                    value.id_proof ? "text-primary font-medium" : "text-muted-foreground/60"
+                                )}>
+                                    {value.id_proof ? value.id_proof.name : "No file chosen"}
+                                </span>
+                            </div>
+
+                            {value.id_proof && (
+                                <button
+                                    type="button"
+                                    className="px-4 h-full flex items-center text-muted-foreground/40 hover:text-destructive transition-colors"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setValue((prev: any) => ({
+                                            ...prev,
+                                            id_proof: null,
+                                        }));
+                                        if (fileInputRef.current) {
+                                            fileInputRef.current.value = "";
+                                        }
+                                    }}
+                                >
+                                    <XCircle className="h-4 w-4" />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                    <div className="flex justify-between items-center px-0.5">
+                        <p className="text-[10px] text-muted-foreground/70 tracking-tight">JPG, PNG or PDF. Max 2MB.</p>
+                        {value.id_proof && (
+                            <p className="text-[10px] font-medium text-primary uppercase tracking-widest">Selected</p>
+                        )}
+                    </div>
                 </div>
             )}
 

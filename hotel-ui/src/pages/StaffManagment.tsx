@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { NativeSelect } from "@/components/ui/native-select";
+import { MenuItemSelect } from "@/components/MenuItemSelect";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -45,6 +46,7 @@ import { exportToExcel } from "@/utils/exportToExcel";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import PropertyViewSection from "@/components/PropertyViewSection";
 import ViewField from "@/components/ViewField";
+import { formatAppDate } from "@/utils/dateFormat";
 
 /* -------------------- Types -------------------- */
 type Property = {
@@ -186,6 +188,7 @@ export default function StaffManagement() {
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
     const { 
         myProperties, 
+        staffProperty,
         isMultiProperty, 
         isSuperAdmin, 
         isOwner,
@@ -457,8 +460,19 @@ export default function StaffManagement() {
                 "Staff ID": formatModuleDisplayId("staff", staffMember.id),
                 "Name": `${staffMember.first_name || ""} ${staffMember.last_name || ""}`.trim() || "-",
                 "Contact": staffMember.phone || staffMember.phone1 || "-",
-                "Property": staffMember.properties?.[0]?.brand_name || "-",
-                "Role": staffMember.roles?.[0]?.name || "-",
+                "Role": (function () {
+                    if (Array.isArray(staffMember.roles) && staffMember.roles.length > 0) {
+                        return staffMember.roles.map((r: any) => typeof r === "string" ? r : r.name).filter(Boolean).join(", ");
+                    }
+                    if (Array.isArray(staffMember.role_ids) && staffMember.role_ids.length > 0 && Array.isArray(roles?.roles)) {
+                        return staffMember.role_ids.map(id => roles.roles.find((r: any) => String(r.id) === String(id))?.name).filter(Boolean).join(", ") || "-";
+                    }
+                    if ((staffMember as any).role_id && Array.isArray(roles?.roles)) {
+                        return roles.roles.find((r: any) => String(r.id) === String((staffMember as any).role_id))?.name || "-";
+                    }
+                    return "-";
+                })(),
+                "Joining Date": formatAppDate(staffMember.hire_date),
                 "Status": staffMember.status || "-",
             }));
 
@@ -541,14 +555,41 @@ export default function StaffManagement() {
             ),
         },
         {
-            label: "Property",
-            cellClassName: "text-muted-foreground text-sm",
-            render: (s) => s.properties?.[0]?.brand_name || "-",
-        },
-        {
             label: "Role",
             cellClassName: "text-muted-foreground text-sm",
-            render: (s) => formatReadableLabel(s.roles?.[0]?.name) || "-",
+            render: (s) => {
+                // 1. Try s.roles (array of objects)
+                if (Array.isArray(s.roles) && s.roles.length > 0) {
+                    return s.roles
+                        .map((r: any) => typeof r === "string" ? formatReadableLabel(r) : formatReadableLabel(r.name))
+                        .filter(Boolean)
+                        .join(", ");
+                }
+
+                // 2. Try s.role_ids (array of IDs) mapping against master roles
+                if (Array.isArray(s.role_ids) && s.role_ids.length > 0 && Array.isArray(roles?.roles)) {
+                    return s.role_ids
+                        .map(id => {
+                            const found = roles.roles.find((r: any) => String(r.id) === String(id));
+                            return found ? formatReadableLabel(found.name) : null;
+                        })
+                        .filter(Boolean)
+                        .join(", ") || "-";
+                }
+
+                // 3. Fallback to s.role_id (singular)
+                if ((s as any).role_id && Array.isArray(roles?.roles)) {
+                    const found = roles.roles.find((r: any) => String(r.id) === String((s as any).role_id));
+                    if (found) return formatReadableLabel(found.name);
+                }
+
+                return "-";
+            },
+        },
+        {
+            label: "Joining Date",
+            cellClassName: "text-muted-foreground text-sm",
+            render: (s) => formatAppDate(s.hire_date),
         },
         {
             label: "Status",
@@ -579,21 +620,19 @@ export default function StaffManagement() {
                                 <span className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center">
                                     Property
                                 </span>
-                                <NativeSelect
-                                    className="flex-1 bg-transparent px-2 focus:outline-none focus:ring-0 text-sm h-full truncate cursor-pointer"
-                                    value={selectedPropertyId}
-                                    onChange={(e) => {
-                                        setSelectedPropertyId(e.target.value);
-                                        resetPage();
-                                    }}
-                                >
-                                    <option value="" disabled>Select Property</option>
-                                    {myProperties?.properties?.map((property: Property) => (
-                                        <option key={property.id} value={property.id}>
-                                            {property.brand_name}
-                                        </option>
-                                    ))}
-                                </NativeSelect>
+                                <div className="flex-1 min-w-0 h-full">
+                                    <MenuItemSelect
+                                        value={selectedPropertyId}
+                                        items={myProperties?.properties?.map((p: Property) => ({ id: p.id, label: p.brand_name })) || []}
+                                        onSelect={(val) => {
+                                            setSelectedPropertyId(val as string);
+                                            resetPage();
+                                        }}
+                                        itemName="label"
+                                        placeholder="Select Property"
+                                        extraClasses="border-0 rounded-none h-full shadow-none focus-visible:ring-0 bg-transparent px-2"
+                                    />
+                                </div>
                             </div>
                         )}
 
@@ -615,7 +654,7 @@ export default function StaffManagement() {
                     </div>
                 </div>
 
-                <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
+                <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
                     <div className="w-full">
                         <GridToolbar className="border-b-0">
                             <GridToolbarRow className="gap-2">
@@ -789,54 +828,82 @@ export default function StaffManagement() {
 
                                 {sheetTab === "summary" && (
                                     <div className="space-y-4">
-                                        <PropertyViewSection title="Personal Details" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
-                                        <ViewField label="First Name" value={staff.first_name} />
-                                        <ViewField label="Middle Name" value={staff.middle_name} />
-                                        <ViewField label="Last Name" value={staff.last_name} />
-                                        <ViewField label="Gender" value={staff.gender} />
-                                        <ViewField label="Marital Status" value={staff.marital_status} />
-                                        <ViewField label="DOB" value={staff.dob} />
-                                        <ViewField label="Nationality" value={staff.nationality} />
-                                        <ViewField label="Blood Group" value={staff.blood_group} />
-                                </PropertyViewSection>
+                                        <PropertyViewSection title="Personal Details" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                                            <ViewField label="First Name" value={staff.first_name} />
+                                            <ViewField label="Middle Name" value={staff.middle_name} />
+                                            <ViewField label="Last Name" value={staff.last_name} />
+                                            <ViewField label="Gender" value={staff.gender} />
+                                            <ViewField label="Marital Status" value={staff.marital_status} />
+                                            <ViewField 
+                                                label="DOB" 
+                                                value={formatAppDate(staff.dob)} 
+                                            />
+                                            <ViewField label="Nationality" value={staff.nationality} />
+                                            <ViewField label="Blood Group" value={staff.blood_group} />
+                                        </PropertyViewSection>
 
+                                        <PropertyViewSection title="Contact & Login" className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-4">
+                                            <ViewField label="Email" value={staff.email} />
+                                            <ViewField label="Phone" value={staff.phone1} />
+                                            <ViewField label="Alternate Phone" value={staff.phone2} />                          
+                                            <ViewField label="Address" value={staff.address} className="sm:col-span-2" />
+                                            <ViewField label="Country" value={staff.country} />
+                                        </PropertyViewSection>
 
-                                <PropertyViewSection title="Contact & Login" className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-4">
-                                        <ViewField label="Email" value={staff.email} />
-                                        <ViewField label="Phone" value={staff.phone1} />
-                                        <ViewField label="Alternate Phone" value={staff.phone2} />                          
-                                        <ViewField label="Address" value={staff.address} />
-                                </PropertyViewSection>
+                                        <PropertyViewSection title="Property & Role" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                                            <ViewField 
+                                                label="Property" 
+                                                value={
+                                                    (myProperties?.properties?.find((p: Property) => String(p.id) === String(staff.property_id))?.brand_name) || 
+                                                    (String(staffProperty?.id) === String(staff.property_id) ? staffProperty?.brand_name : null) || 
+                                                    staff.property_id
+                                                } 
+                                            />
+                                            <ViewField label="Department" value={staff.department} />
+                                            <ViewField label="Designation" value={staff.designation} />
+                                            <ViewField 
+                                                label="Role" 
+                                                value={
+                                                    staff.roles?.length 
+                                                        ? staff.roles.map(r => formatReadableLabel(r.name)).join(", ") 
+                                                        : (formatReadableLabel(roles?.roles?.find((r: Role) => String(r.id) === String(staff.role_ids?.[0]))?.name) || staff.role_ids?.[0])
+                                                } 
+                                            />
+                                            <ViewField label="Status" value={formatReadableLabel(staff.status)} />
+                                            <ViewField label="Shift Pattern" value={staff.shift_pattern || "General"} />
+                                            <ViewField label="Employment Type" value={staff.employment_type} />
+                                            <ViewField label="Joining Date" value={formatAppDate(staff.hire_date)} />
+                                        </PropertyViewSection>
 
+                                        <PropertyViewSection title="Emergency Contacts" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                                            <div className="space-y-4 p-3 bg-background rounded-[3px] border border-border/50">
+                                                <p className="text-[10px] font-bold text-primary tracking-widest uppercase">Primary Contact</p>
+                                                <ViewField label="Name" value={staff.emergency_contact_name} />
+                                                <ViewField label="Relation" value={staff.emergency_contact_relation} />
+                                                <ViewField label="Phone" value={staff.emergency_contact} />
+                                            </div>
+                                            <div className="space-y-4 p-3 bg-background rounded-[3px] border border-border/50">
+                                                <p className="text-[10px] font-bold text-primary tracking-widest uppercase">Secondary Contact</p>
+                                                <ViewField label="Name" value={staff.emergency_contact_name_2} />
+                                                <ViewField label="Relation" value={staff.emergency_contact_relation_2} />
+                                                <ViewField label="Phone" value={staff.emergency_contact_2} />
+                                            </div>
+                                        </PropertyViewSection>
 
-                                <PropertyViewSection title="Property & Role" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
-                                        <ViewField 
-                                            label="Property" 
-                                            value={myProperties?.properties?.find((p: Property) => String(p.id) === String(staff.property_id))?.brand_name || staff.property_id} 
-                                        />
-                                        <ViewField label="Department" value={staff.department} />
-                                        <ViewField label="Designation" value={staff.designation} />
-                                        <ViewField 
-                                            label="Role" 
-                                            value={formatReadableLabel(roles?.roles?.find((r: Role) => String(r.id) === String(staff.role_ids?.[0]))?.name) || staff.role_ids?.[0]} 
-                                        />
-                                        <ViewField label="Employment Type" value={staff.employment_type} />
-                                        <ViewField label="Joining Date" value={staff.hire_date} />
-                                </PropertyViewSection>
-
-
-                                <PropertyViewSection title="Emergency Contacts" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
-                                        <ViewField label="Primary Contact" value={staff.emergency_contact} />
-                                        <ViewField label="Contact Name" value={staff.emergency_contact_name} />
-                                        <ViewField label="Relation" value={staff.emergency_contact_relation} />
-                                        <ViewField label="Secondary Contact" value={staff.emergency_contact_2} />
-                                </PropertyViewSection>
-
-
-                                <PropertyViewSection title="Identification" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
-                                        <ViewField label="ID Proof Type" value={staff.id_proof_type} />
-                                        <ViewField label="ID Number" value={staff.id_number} />
-                                </PropertyViewSection>
+                                        <PropertyViewSection title="Identification" className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-4 items-end">
+                                            <ViewField label="ID Proof Type" value={staff.id_proof_type} />
+                                            <ViewField label="ID Number" value={staff.id_number} />
+                                            {staffIdProofExists && (
+                                                <Button 
+                                                    variant="heroOutline" 
+                                                    size="sm" 
+                                                    className="h-8 text-[10px]"
+                                                    onClick={() => downloadImage(staff.id!, "id-proof")}
+                                                >
+                                                    Download ID Proof
+                                                </Button>
+                                            )}
+                                        </PropertyViewSection>
                                     </div>
                                 )}
 

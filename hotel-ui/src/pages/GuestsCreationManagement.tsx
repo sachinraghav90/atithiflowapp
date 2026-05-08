@@ -17,6 +17,7 @@ import FormInput from "@/components/forms/FormInput";
 import FormSelect from "@/components/forms/FormSelect";
 import PhonePrefixSelect from "@/components/forms/PhonePrefixSelect";
 import { cn } from "@/lib/utils";
+import { XCircle } from "lucide-react";
 
 /* -------------------- Types -------------------- */
 type Guest = {
@@ -295,39 +296,44 @@ export default function GuestsCreationManagement() {
 
                             {/* Names */}
                             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                                <div className="flex gap-0">
-                                    <div className="w-[44px] shrink-0">
-                                        <FormSelect
-                                            label={"\u00A0"}
-                                            field="salutation"
-                                            value={guest}
-                                            setValue={(fn: any) => {
-                                                const updated = fn(guest);
-                                                setGuests(prev => prev.map((g, i) => i === index ? updated : g));
-                                            }}
-                                            errors={errors?.[index]}
-                                            className="h-11 px-0 rounded-r-none"
-                                            hideIcon={false}
-                                            isVertical={true}
-                                        >
-                                            <option value="Mr.">Mr.</option>
-                                            <option value="Mrs.">Mrs.</option>
-                                            <option value="Ms.">Ms.</option>
-                                        </FormSelect>
-                                    </div>
+                                {/* COMBINED SALUTATION + FIRST NAME */}
+                                <div className="space-y-1">
+                                    <Label className="text-foreground font-bold px-0.5">First Name *</Label>
+                                    <div className="flex -space-x-px">
+                                        {/* SALUTATION */}
+                                        <div className="w-[64px] shrink-0">
+                                            <FormSelect
+                                                label=""
+                                                field="salutation"
+                                                value={guest}
+                                                setValue={(fn: any) => {
+                                                    const updated = fn(guest);
+                                                    setGuests(prev => prev.map((g, i) => i === index ? updated : g));
+                                                }}
+                                                className="h-11 rounded-r-none border-r-0 justify-center gap-0 !px-0 !bg-background !shadow-none"
+                                                hideIcon={false}
+                                                isVertical={false}
+                                            >
+                                                <option value="Mr.">Mr.</option>
+                                                <option value="Mrs.">Mrs.</option>
+                                                <option value="Ms.">Ms.</option>
+                                            </FormSelect>
+                                        </div>
 
-                                    <div className="flex-1">
-                                        <FormInput
-                                            label="First Name *"
-                                            field="first_name"
-                                            value={guest}
-                                            setValue={(fn: any) => {
-                                                const updated = fn(guest);
-                                                updateGuest(index, { first_name: updated.first_name });
-                                            }}
-                                            required
-                                            className="rounded-l-none"
-                                        />
+                                        {/* FIRST NAME */}
+                                        <div className="flex-1">
+                                            <FormInput
+                                                label=""
+                                                field="first_name"
+                                                value={guest}
+                                                setValue={(fn: any) => {
+                                                    const updated = fn(guest);
+                                                    updateGuest(index, { first_name: updated.first_name });
+                                                }}
+                                                required
+                                                className="rounded-l-none"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
 
@@ -342,7 +348,7 @@ export default function GuestsCreationManagement() {
                                 />
 
                                 <FormInput
-                                    label="Last Name *"
+                                    label="Last Name"
                                     field="last_name"
                                     value={guest}
                                     setValue={(fn: any) => {
@@ -415,7 +421,6 @@ export default function GuestsCreationManagement() {
 
                             {/* ID Proof */}
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <FormSelect
                                     label="ID Type"
                                     field="id_type"
@@ -442,14 +447,38 @@ export default function GuestsCreationManagement() {
 
                                 <div className="space-y-1">
                                     <Label>ID Proof</Label>
-                                    <Input
-                                        className="h-11 bg-background"
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={(e) =>
-                                            handleIdUpload(index, e.target.files?.[0])
-                                        }
-                                    />
+                                    <div className="relative group">
+                                        <Input
+                                            className={cn(
+                                                "h-11 bg-background pr-10",
+                                                !idProofFiles[index] && "file:text-muted-foreground"
+                                            )}
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) =>
+                                                handleIdUpload(index, e.target.files?.[0])
+                                            }
+                                        />
+                                        {idProofFiles[index] && (
+                                            <button
+                                                type="button"
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/30 hover:text-destructive transition-colors"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    setIdProofFiles((prev) => {
+                                                        const copy = [...prev];
+                                                        copy[index] = null;
+                                                        return copy;
+                                                    });
+                                                    const input = e.currentTarget.parentElement?.querySelector('input[type="file"]') as HTMLInputElement;
+                                                    if (input) input.value = "";
+                                                }}
+                                            >
+                                                <XCircle className="h-3.5 w-3.5" />
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 

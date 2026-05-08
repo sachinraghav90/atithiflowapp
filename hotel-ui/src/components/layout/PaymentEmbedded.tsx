@@ -154,7 +154,7 @@ export default function PaymentsEmbedded({
             </div>
 
             <div className="editable-grid-compact grid-header-inside-table border-2 border-primary/50 rounded-[5px] overflow-hidden flex flex-col shadow-sm">
-                <div className="grid-scroll-x overflow-y-auto w-full flex-1 min-h-0 bg-background">
+                <div className="grid-scroll-x w-full bg-background">
                     <div className="w-full min-w-[900px]">
                         <DataGrid>
                             <DataGridHeader>

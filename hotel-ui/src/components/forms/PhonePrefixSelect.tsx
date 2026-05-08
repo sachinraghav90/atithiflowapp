@@ -52,14 +52,14 @@ export default function PhonePrefixSelect({
                     variant="outline"
                     disabled={disabled}
                     className={cn(
-                        "flex items-center justify-center relative w-[44px] h-11 bg-background text-foreground rounded-l-[3px] rounded-r-none border-border/70",
-                        hideIcon ? "px-0" : "px-0",
+                        "flex items-center justify-center gap-1 w-[60px] h-11 bg-background text-foreground rounded-l-[3px] rounded-r-none border-border/70 px-1",
+                        hideIcon ? "px-0" : "px-1",
                         error && "border-red-500",
                         triggerClassName
                     )}
                 >
                     <span className="text-sm font-semibold text-muted-foreground">{value}</span>
-                    {!hideIcon && <ChevronDown className={cn("absolute bottom-0 h-1.5 w-1.5 opacity-50", iconClassName)} />}
+                    {!hideIcon && <ChevronDown className={cn("h-4 w-4 shrink-0 opacity-50", iconClassName)} />}
                 </Button>
             </PopoverTrigger>
 

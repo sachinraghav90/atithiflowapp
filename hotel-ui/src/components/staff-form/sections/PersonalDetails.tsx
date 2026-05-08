@@ -48,10 +48,10 @@ export default function PersonalDetails({
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                         {/* COMBINED SALUTATION + FIRST NAME */}
                         <div className="space-y-1">
-                            <Label className="text-foreground">First Name *</Label>
-                            <div className="flex gap-0">
+                            <Label className="text-foreground font-bold px-0.5">First Name *</Label>
+                            <div className="flex -space-x-px">
                                 {/* SALUTATION */}
-                                <div className="w-[64px] shrink-0">
+                                <div className="w-[60px] shrink-0">
                                     <FormSelect
                                         label=""
                                         field="salutation"
@@ -60,12 +60,12 @@ export default function PersonalDetails({
                                         errors={errors}
                                         setErrors={setErrors}
                                         viewMode={viewMode}
-                                        className="h-11 px-0 rounded-r-none border-r-0"
+                                        className="h-11 rounded-r-none border-r-0 justify-center gap-0 !px-0"
                                         hideIcon={false}
                                     >
-                                        <option value="Mr.">Mr.</option>
-                                        <option value="Ms.">Ms.</option>
-                                        <option value="Mrs.">Mrs.</option>
+                                        <option value="Mr">Mr.</option>
+                                        <option value="Ms">Ms.</option>
+                                        <option value="Mrs">Mrs.</option>
                                     </FormSelect>
                                 </div>
 

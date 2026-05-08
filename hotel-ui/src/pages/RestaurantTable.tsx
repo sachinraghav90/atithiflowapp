@@ -296,7 +296,7 @@ export function RestaurantTables() {
                     </div>
                 </div>
 
-                <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
+                <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
                     <div className="w-full">
                         <GridToolbar className="border-b-0">
                             <GridToolbarRow className="gap-2">

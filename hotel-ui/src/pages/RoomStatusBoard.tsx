@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import Sidebar from "@/components/layout/Sidebar";
 import AppHeader from "@/components/layout/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -108,6 +108,15 @@ export default function RoomStatusBoard() {
     const { data: myProperties, isLoading: myPropertiesLoading } = useGetMyPropertiesQuery(undefined, {
         skip: !isLoggedIn
     })
+
+    const propertySelectWidthCh = useMemo(() => {
+        const maxPropertyNameLength = Math.max(
+            "Select property".length,
+            ...(myProperties?.properties?.map((property) => String(property.brand_name ?? "").length) ?? [])
+        );
+
+        return Math.min(Math.max(maxPropertyNameLength + 4, 18), 56);
+    }, [myProperties?.properties]);
 
     const { data } = useRoomsStatusQuery({ propertyId, date: selectedDate }, {
         skip: !isLoggedIn || !propertyId
@@ -220,12 +229,16 @@ export default function RoomStatusBoard() {
                         {/* RIGHT — Controls */}
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                             {(isSuperAdmin || isOwner) && (
-                                <div className="w-full sm:w-48">
+                                <div
+                                    className="w-full sm:w-[var(--property-select-width)] sm:min-w-48 sm:max-w-[min(36rem,calc(100vw-14rem))]"
+                                    style={{ "--property-select-width": `${propertySelectWidthCh}ch` } as CSSProperties}
+                                >
                                     <Label>Property</Label>
                                     <NativeSelect
                                         className="w-full h-10 rounded-[3px] border bg-background px-3 text-sm"
                                         value={propertyId}
                                         onChange={(e) => setPropertyId(e.target.value)}
+                                        showFullText
                                     >
                                         <option value="" disabled>Select property</option>
                                         {myProperties?.properties?.map((p) => (

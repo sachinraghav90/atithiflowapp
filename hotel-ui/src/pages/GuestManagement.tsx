@@ -20,7 +20,8 @@ import {
     useAddVehiclesMutation,
 } from "@/redux/services/hmsApi";
 import { useAppSelector } from "@/redux/hook";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, XCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 /* ---------------- Types ---------------- */
 type GuestForm = {
@@ -344,17 +345,41 @@ export default function BookingGuestsManagement() {
                                     </div>
                                     <div className="space-y-1">
                                         <Label className="text-foreground">ID Proof Photo</Label>
-                                        <Input
-                                            className="h-9 py-1 px-2 text-xs"
-                                            type="file"
-                                            accept="image/*"
-                                            onChange={(e) =>
-                                                handleFile(
-                                                    key,
-                                                    e.target.files?.[0]
-                                                )
-                                            }
-                                        />
+                                        <div className="relative group">
+                                            <Input
+                                                className={cn(
+                                                    "h-9 py-1 px-2 text-xs pr-10",
+                                                    !idProofFiles[key] && "file:text-muted-foreground"
+                                                )}
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={(e) =>
+                                                    handleFile(
+                                                        key,
+                                                        e.target.files?.[0]
+                                                    )
+                                                }
+                                            />
+                                            {idProofFiles[key] && (
+                                                <button
+                                                    type="button"
+                                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/30 hover:text-destructive transition-colors"
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        setIdProofFiles((p) => {
+                                                            const copy = { ...p };
+                                                            delete copy[key];
+                                                            return copy;
+                                                        });
+                                                        const input = e.currentTarget.parentElement?.querySelector('input[type="file"]') as HTMLInputElement;
+                                                        if (input) input.value = "";
+                                                    }}
+                                                >
+                                                    <XCircle className="h-3 w-3" />
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
 

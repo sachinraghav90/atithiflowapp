@@ -372,7 +372,7 @@ export default function RoomTypeBasePriceManagement() {
                     </div>
                 </div>
 
-                <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
+                <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
                     <div className="w-full">
                         <GridToolbar className="flex flex-col border-b-0">
                             <GridToolbarRow className="gap-2">

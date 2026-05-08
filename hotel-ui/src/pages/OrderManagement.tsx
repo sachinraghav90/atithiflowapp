@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { getStatusColor } from "@/constants/statusColors";
 import { useGridPagination } from "@/hooks/useGridPagination";
 import { NativeSelect } from "@/components/ui/native-select";
+import { MenuItemSelect } from "@/components/MenuItemSelect";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { GridBadge } from "@/components/ui/grid-badge";
 import { formatAppDateTime } from "@/utils/dateFormat";
@@ -264,18 +265,19 @@ export function OrdersManagement() {
                                 <span className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center">
                                     Property
                                 </span>
-                                <NativeSelect
-                                    className="flex-1 bg-transparent px-2 focus:outline-none focus:ring-0 text-sm h-full truncate cursor-pointer"
-                                    value={selectedPropertyId ?? ""}
-                                    onChange={(e) => setSelectedPropertyId(Number(e.target.value) || null)}
-                                >
-                                    <option value="" disabled>Select Property</option>
-                                    {myProperties?.properties?.map((property: { id: number; brand_name: string }) => (
-                                        <option key={property.id} value={property.id}>
-                                            {property.brand_name}
-                                        </option>
-                                    ))}
-                                </NativeSelect>
+                                <div className="flex-1 min-w-0 h-full">
+                                    <MenuItemSelect
+                                        value={selectedPropertyId ?? ""}
+                                        items={myProperties?.properties?.map((p: any) => ({ id: p.id, label: p.brand_name })) || []}
+                                        onSelect={(val) => {
+                                            setSelectedPropertyId(Number(val) || null);
+                                            resetPage();
+                                        }}
+                                        itemName="label"
+                                        placeholder="Select Property"
+                                        extraClasses="border-0 rounded-none h-full shadow-none focus-visible:ring-0 bg-transparent px-2"
+                                    />
+                                </div>
                             </div>
                         )}
 
@@ -313,7 +315,7 @@ export function OrdersManagement() {
                     </div>
                 </div>
 
-                <div className="grid-header border border-border rounded-lg overflow-x-auto bg-background flex flex-col min-h-0">
+                <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
                     <div className="w-full">
                         <GridToolbar className="border-b-0">
                             <GridToolbarRow className="gap-2">

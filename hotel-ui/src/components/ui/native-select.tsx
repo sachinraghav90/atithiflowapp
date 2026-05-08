@@ -9,6 +9,8 @@ type NativeSelectProps = React.ComponentPropsWithoutRef<"select"> & {
   placeholderDisabled?: boolean;
   hideIcon?: boolean;
   isVertical?: boolean;
+  showFullText?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 /**
@@ -26,6 +28,8 @@ const NativeSelect = React.forwardRef<HTMLSelectElement, NativeSelectProps>(
       disabled,
       hideIcon,
       isVertical,
+      showFullText,
+      onOpenChange,
       ...props
     },
     ref,
@@ -79,6 +83,8 @@ const NativeSelect = React.forwardRef<HTMLSelectElement, NativeSelectProps>(
           disabled={disabled}
           hideIcon={hideIcon}
           isVertical={isVertical}
+          showFullText={showFullText}
+          onOpenChange={onOpenChange}
           extraClasses={className} // Pass original classes to let MenuItemSelect handle borders if needed, or stick to standard
         />
         <select
