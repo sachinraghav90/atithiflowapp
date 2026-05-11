@@ -582,74 +582,63 @@ class RoomService {
         limit = 50,
         offset = 0,
     }) {
-        const params = [
-            propertyId,
-            arrivalDate,
-            departureDate,
-        ];
-
+        const baseParams = [propertyId, arrivalDate, departureDate];
         let roomTypeFilter = "";
         if (roomTypeId) {
-            params.push(roomTypeId);
-            roomTypeFilter = `AND r.room_type_id = $${params.length}`;
+            baseParams.push(roomTypeId);
+            roomTypeFilter = `AND r.room_type_id = $${baseParams.length}`;
         }
 
-        params.push(limit, offset);
-
-        const { rows } = await this.#DB.query(
-            `
-            SELECT
-                r.id,
-                r.room_no,
-                r.floor_number,
-
-                -- room type breakdown
-                rtr.room_category_name,
-                rtr.bed_type_name,
-                rtr.ac_type_name,
-                rtr.base_price
-
+        const availabilityQuery = `
+            SELECT r.id
             FROM public.ref_rooms r
-            JOIN public.room_type_rates rtr
-                ON rtr.id = r.room_type_id
-            AND rtr.property_id = r.property_id
-
             WHERE r.property_id = $1
             AND r.is_active = true
             ${roomTypeFilter}
-
             AND NOT EXISTS (
                 SELECT 1
                 FROM public.room_details rd
-                JOIN public.bookings b
-                ON b.id = rd.booking_id
-
+                JOIN public.bookings b ON b.id = rd.booking_id
                 WHERE rd.ref_room_id = r.id
                 AND rd.is_cancelled = false
-
-                AND b.booking_status IN (
-                        'CONFIRMED',
-                        'CHECKED_IN',
-                        'NO_SHOW'
-                )
-
-                AND (
-                        b.estimated_arrival < $3
-                    AND COALESCE(
-                            b.actual_departure,
-                            b.estimated_departure
-                        ) > $2
-                )
+                AND b.booking_status IN ('CONFIRMED', 'CHECKED_IN', 'NO_SHOW')
+                AND (b.estimated_arrival < $3 AND COALESCE(b.actual_departure, b.estimated_departure) > $2)
             )
+        `;
 
-            ORDER BY rtr.base_price, r.room_no
-            LIMIT $${params.length - 1}
-            OFFSET $${params.length}
-            `,
-            params
-        );
+        const [roomsResult, filterResult] = await Promise.all([
+            this.#DB.query(`
+                SELECT
+                    r.id, r.room_no, r.floor_number,
+                    rtr.room_category_name, rtr.bed_type_name, rtr.ac_type_name, rtr.base_price
+                FROM public.ref_rooms r
+                JOIN public.room_type_rates rtr ON rtr.id = r.room_type_id AND rtr.property_id = r.property_id
+                WHERE r.id IN (${availabilityQuery})
+                ORDER BY rtr.base_price, r.room_no
+                LIMIT $${baseParams.length + 1} OFFSET $${baseParams.length + 2}
+            `, [...baseParams, limit, offset]),
 
-        return rows;
+            this.#DB.query(`
+                SELECT 
+                    array_agg(DISTINCT rtr.room_category_name) AS categories,
+                    array_agg(DISTINCT rtr.bed_type_name) AS bed_types,
+                    array_agg(DISTINCT rtr.ac_type_name) AS ac_types,
+                    array_agg(DISTINCT r.floor_number) AS floors
+                FROM public.ref_rooms r
+                JOIN public.room_type_rates rtr ON rtr.id = r.room_type_id AND rtr.property_id = r.property_id
+                WHERE r.id IN (${availabilityQuery})
+            `, baseParams)
+        ]);
+
+        return {
+            rooms: roomsResult.rows,
+            filters: {
+                categories: filterResult.rows[0]?.categories?.filter(Boolean) || [],
+                bedTypes: filterResult.rows[0]?.bed_types?.filter(Boolean) || [],
+                acTypes: filterResult.rows[0]?.ac_types?.filter(Boolean) || [],
+                floors: filterResult.rows[0]?.floors?.sort((a, b) => a - b) || []
+            }
+        };
     }
 
     async checkRoomAvailability({

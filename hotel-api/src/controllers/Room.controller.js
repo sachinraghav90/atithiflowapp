@@ -62,8 +62,8 @@ class RoomController {
     async getAvailableRooms(req, res) {
         try {
             const { propertyId, arrivalDate, departureDate, roomType, limit = 50, offset = 0, } = req.query
-            const rooms = await RoomService.getAvailableRooms({ arrivalDate, departureDate, propertyId, roomType, limit, offset })
-            return res.json({ message: "Success", rooms })
+            const result = await RoomService.getAvailableRooms({ arrivalDate, departureDate, propertyId, roomType, limit, offset })
+            return res.json({ message: "Success", ...result })
         } catch (error) {
             console.log("🚀 ~ RoomController ~ getAvailableRooms ~ error:", error)
             return res.status(500).json({ message: "Error getting available rooms" })

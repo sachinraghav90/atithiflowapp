@@ -524,20 +524,19 @@ export default function ReservationManagement() {
     }, [availableRooms]);
 
     useEffect(() => {
-        if (!availableRooms || !availableRooms.rooms) {
+        if (!availableRooms || !availableRooms.filters) {
             setAvailableBedType([])
             setAvailableRoomCategory([])
+            setAvailableAcType([])
+            setFloors([])
             return
         }
 
-        const availableRoomCategory = availableRooms.rooms.map((room) => room.room_category_name)
-        const availableBedType = availableRooms.rooms.map((room) => room.bed_type_name)
-        const availableAcType = availableRooms.rooms.map((room) => room.ac_type_name)
-        const availableFloors = availableRooms.rooms.map((room) => room.floor_number)
-        setAvailableBedType(() => Array.from(new Set(availableBedType)))
-        setAvailableRoomCategory(() => Array.from(new Set(availableRoomCategory)))
-        setAvailableAcType(() => Array.from(new Set(availableAcType)))
-        setFloors(() => Array.from(new Set(availableFloors)))
+        const { categories, bedTypes, acTypes, floors } = availableRooms.filters;
+        setAvailableRoomCategory(categories || []);
+        setAvailableBedType(bedTypes || []);
+        setAvailableAcType(acTypes || []);
+        setFloors(floors || []);
     }, [availableRooms])
 
     useEffect(() => {
