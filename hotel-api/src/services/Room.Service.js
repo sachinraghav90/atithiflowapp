@@ -1050,7 +1050,7 @@ class RoomService {
                             WHERE id = $1
                             `;
 
-                const result = await db.query(query, [bookingId]);
+                const result = await this.#DB.query(query, [bookingId]);
                 const propertyId = result.rows[0]?.property_id;
 
                 await AuditService.log({

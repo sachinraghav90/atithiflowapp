@@ -118,9 +118,7 @@ class MenuMasterService {
         image,
         imageMime,
         prepTime,
-        userId
     }) {
-
         const { rows } = await this.#DB.query(
             `
             INSERT INTO public.menu_master (
@@ -137,7 +135,7 @@ class MenuMasterService {
                 created_by
             )
             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-            RETURNING *
+            RETURNING id, property_id, item_name, menu_item_group_id, price, is_active, is_veg, description, prep_time, created_on, updated_on
             `,
             [
                 propertyId,
@@ -154,18 +152,20 @@ class MenuMasterService {
             ]
         );
 
+        const created = rows[0];
+
         await AuditService.log({
             property_id: propertyId,
-            event_id: rows[0].id,
+            event_id: created.id,
             table_name: "menu_master",
             event_type: "CREATE",
             task_name: "Create Menu Item",
             comments: "Menu item created",
-            details: JSON.stringify(rows[0]),
+            details: JSON.stringify(created),
             user_id: userId
         });
 
-        return rows[0];
+        return created;
     }
 
     /* ===============================
@@ -184,9 +184,7 @@ class MenuMasterService {
         imageMime,
         prepTime,
         userId
-
     }) {
-
         const { rows } = await this.#DB.query(
             `
             UPDATE public.menu_master
@@ -203,7 +201,7 @@ class MenuMasterService {
                 updated_by = $10,
                 updated_on = NOW()
             WHERE id = $11
-            RETURNING *
+            RETURNING id, property_id, item_name, menu_item_group_id, price, is_active, is_veg, description, prep_time, created_on, updated_on
             `,
             [
                 itemName,
@@ -222,18 +220,20 @@ class MenuMasterService {
 
         if (!rows[0]) return null;
 
+        const updated = rows[0];
+
         await AuditService.log({
-            property_id: rows[0].property_id,
-            event_id: rows[0].id,
+            property_id: updated.property_id,
+            event_id: updated.id,
             table_name: "menu_master",
             event_type: "UPDATE",
             task_name: "Update Menu Item",
             comments: "Menu item updated",
-            details: JSON.stringify(rows[0]),
+            details: JSON.stringify(updated),
             user_id: userId
         });
 
-        return rows[0];
+        return updated;
     }
 
     /* ===============================
@@ -371,7 +371,7 @@ class MenuMasterService {
                         created_by
                     )
                     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-                    RETURNING *
+                    RETURNING id, property_id, item_name, menu_item_group_id, price, is_active, is_veg, description, prep_time, created_on, updated_on
                     `,
                     [
                         propertyId,

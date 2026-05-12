@@ -1,5 +1,6 @@
 import { getDb } from "../../utils/getDb.js"
 import AuditService from "./Audit.service.js"
+import GuestsService from "./Guests.service.js"
 
 class Booking {
 
@@ -100,7 +101,7 @@ class Booking {
             ) AS room_numbers
 
             FROM public.bookings b
-            JOIN public.room_details rd
+            LEFT JOIN public.room_details rd
                 ON rd.booking_id = b.id
                 AND rd.is_cancelled = false
 
@@ -240,7 +241,7 @@ class Booking {
         ) ro ON ro.booking_id = b.id
 
         /* -------- ROOMS -------- */
-        JOIN public.room_details rd
+        LEFT JOIN public.room_details rd
             ON rd.booking_id = b.id
             AND rd.is_cancelled = false
 
@@ -257,7 +258,15 @@ class Booking {
             [Number(bookingId)]
         );
 
-        return rows[0] ?? null;
+        if (!rows.length) return null;
+
+        const booking = rows[0];
+
+        /* -------- PRIMARY GUEST -------- */
+        const primaryGuest = await GuestsService.getPrimaryGuestByBookingId(bookingId);
+        booking.primary_guest = primaryGuest;
+
+        return booking;
     }
 
     async createBooking({

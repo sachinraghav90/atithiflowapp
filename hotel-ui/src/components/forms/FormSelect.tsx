@@ -53,7 +53,7 @@ export default function FormSelect({
                         [field]: e.target.value
                     }));
 
-                    setErrors((prev: any) => {
+                    setErrors?.((prev: any) => {
                         const next = { ...prev };
                         delete next[field];
                         return next;

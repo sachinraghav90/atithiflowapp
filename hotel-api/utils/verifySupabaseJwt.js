@@ -20,8 +20,10 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const client = jwksClient({
     jwksUri: `${SUPABASE_URL}/auth/v1/.well-known/jwks.json`,
     cache: true,
+    cacheMaxEntries: 5, // Default is 5
+    cacheMaxAge: 1000 * 60 * 60 * 24, // Cache for 24 hours
     rateLimit: true,
-    jwksRequestsPerMinute: 10
+    jwksRequestsPerMinute: 100 // Increased from 10 to 100
 });
 
 function getKey(header, callback) {

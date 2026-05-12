@@ -891,8 +891,7 @@ export default function BookingsManagement() {
 
                     <div className="space-y-4 text-sm">
                         <p>
-                            You are about to change booking status from{" "}
-                            <strong>{selectedBooking?.booking.booking_status}</strong> to{" "}
+                            You are about to change booking status to{" "}
                             <strong>{updatedStatus}</strong>.
                         </p>
 

@@ -4,6 +4,19 @@ import { getDb } from "../utils/getDb.js";
 (async function seedMasterData() {
     const db = getDb();
 
+    // Helper for robust queries during seeding
+    const safeQuery = async (text, params) => {
+        try {
+            return await db.query(text, params);
+        } catch (err) {
+            if (err.message?.includes("terminating connection") || err.code === '57P01') {
+                console.warn("🔄 Connection lost during seed, retrying query...");
+                return await db.query(text, params);
+            }
+            throw err;
+        }
+    };
+
     try {
         const ROLES = [
             "SUPER_ADMIN",
@@ -14,7 +27,7 @@ import { getDb } from "../utils/getDb.js";
         ];
 
         for (const name of ROLES) {
-            await db.query(
+            await safeQuery(
                 `
                 INSERT INTO public.roles (name)
                 VALUES ($1)
@@ -134,7 +147,7 @@ import { getDb } from "../utils/getDb.js";
         ];
 
         for (const parent of SIDEBAR_LINKS) {
-            const parentRes = await db.query(
+            const parentRes = await safeQuery(
                 `
                 INSERT INTO public.sidebar_links (link_name, endpoint, sort_order)
                 VALUES ($1, $2, $3)
@@ -147,7 +160,7 @@ import { getDb } from "../utils/getDb.js";
             let parentId = parentRes.rows[0]?.id;
 
             if (!parentId) {
-                const existing = await db.query(
+                const existing = await safeQuery(
                     `SELECT id FROM public.sidebar_links WHERE endpoint = $1`,
                     [parent.endpoint]
                 );
@@ -155,7 +168,7 @@ import { getDb } from "../utils/getDb.js";
             }
 
             for (const child of parent.children ?? []) {
-                await db.query(
+                await safeQuery(
                     `
                     INSERT INTO public.sidebar_links
                         (link_name, endpoint, parent_id, sort_order)
@@ -168,7 +181,7 @@ import { getDb } from "../utils/getDb.js";
         }
         console.log("sidebar_links seeded");
 
-        await db.query(`
+        await safeQuery(`
                     INSERT INTO public.role_sidebar_links (
                         role_id,
                         sidebar_link_id,
@@ -220,7 +233,7 @@ import { getDb } from "../utils/getDb.js";
         ];
 
         for (const pkg of REF_PACKAGES) {
-            await db.query(
+            await safeQuery(
                 `
                 INSERT INTO public.ref_packages (package_name, description)
                 VALUES ($1, $2)
@@ -239,7 +252,7 @@ import { getDb } from "../utils/getDb.js";
         ];
 
         for (const name of BED_TYPES) {
-            await db.query(
+            await safeQuery(
                 `
                 INSERT INTO public.bed_types (name)
                 VALUES ($1)
@@ -256,7 +269,7 @@ import { getDb } from "../utils/getDb.js";
         ];
 
         for (const name of AC_TYPES) {
-            await db.query(
+            await safeQuery(
                 `
                 INSERT INTO public.ac_types (name)
                 VALUES ($1)
@@ -291,7 +304,7 @@ import { getDb } from "../utils/getDb.js";
         ];
 
         for (const cat of ROOM_CATEGORIES) {
-            await db.query(
+            await safeQuery(
                 `
                 INSERT INTO public.room_categories (name, description)
                 VALUES ($1, $2)
@@ -328,7 +341,7 @@ import { getDb } from "../utils/getDb.js";
         ];
 
         for (const itemName of REF_LAUNDRY_ITEMS) {
-            await db.query(
+            await safeQuery(
                 `
                 INSERT INTO public.ref_laundry (item_name)
                 VALUES ($1)
@@ -349,7 +362,7 @@ import { getDb } from "../utils/getDb.js";
         ];
 
         for (const type of INVENTORY_TYPES) {
-            await db.query(
+            await safeQuery(
                 `
                 INSERT INTO public.inventory_types (type)
                 VALUES ($1)

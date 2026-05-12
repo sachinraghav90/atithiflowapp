@@ -1,5 +1,11 @@
 import { verifySupabaseJwt } from "../../utils/verifySupabaseJwt.js";
 import user from "../services/user.service.js";
+import { LRUCache } from 'lru-cache';
+
+const userCache = new LRUCache({
+    max: 500,
+    ttl: 1000 * 60, // 1 minute
+});
 
 export async function supabaseAuth(req, res, next) {
     try {
@@ -24,16 +30,26 @@ export async function supabaseAuth(req, res, next) {
             return res.status(403).json({ error: "Forbidden" });
         }
 
-        const { rows } = await user.getUser({ authUserId });
+        // Check cache first
+        let dbUser = userCache.get(authUserId);
 
-        if (!rows.length || !rows[0].is_active) {
+        if (!dbUser) {
+            const { rows } = await user.getUser({ authUserId });
+            if (!rows.length) {
+                return res.status(403).json({ error: "User not found" });
+            }
+            dbUser = rows[0];
+            userCache.set(authUserId, dbUser);
+        }
+
+        if (!dbUser.is_active) {
             return res.status(403).json({ error: "User blocked" });
         }
 
         req.user = {
             user_id: authUserId,
             email: decoded.email,
-            property_id: rows[0].property_id
+            property_id: dbUser.property_id
         };
 
         next();

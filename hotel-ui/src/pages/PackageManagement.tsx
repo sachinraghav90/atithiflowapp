@@ -274,7 +274,7 @@ export default function PackageManagement() {
             cellClassName: "text-center",
             render: (pkg) => (
                 <GridBadge
-                    tone={pkg.system_generated ? "neutral" : "info"}
+                    tone={pkg.system_generated ? "accent" : "info"}
                     className="min-w-[84px]"
                 >
                     {pkg.system_generated ? "System" : "Custom"}

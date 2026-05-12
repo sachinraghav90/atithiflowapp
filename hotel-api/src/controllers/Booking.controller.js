@@ -7,7 +7,7 @@ class Booking {
             const bookings = await BookingService.getBookings({ fromDate, propertyId, toDate, limit, page, status, scope, search });
             return res.json({ message: "Success", ...bookings })
         } catch (error) {
-            console.log("🚀 ~ Booking ~ getBookings ~ error:", error)
+            console.error("Booking Controller Error [getBookings]:", error)
             return res.status(500).json({ message: "Error fetching bookings" })
         }
     }
@@ -18,7 +18,7 @@ class Booking {
             const bookings = await BookingService.getTodayInHouseBookingIdsByProperty(propertyId)
             return res.json(bookings)
         } catch (error) {
-            console.log("🚀 ~ Booking ~ getTodayInHouseBookingIdsByProperty ~ error:", error)
+            console.error("Booking Controller Error [getTodayInHouseBookingIdsByProperty]:", error)
             return res.status(500).json({ message: "Error fetching bookings" })
         }
     }
@@ -29,7 +29,7 @@ class Booking {
             const bookings = await BookingService.getTodayInHouseRoomsByProperty(propertyId)
             return res.json(bookings)
         } catch (error) {
-            console.log("🚀 ~ Booking ~ getTodayInHouseRoomsByProperty ~ error:", error)
+            console.error("Booking Controller Error [getTodayInHouseRoomsByProperty]:", error)
             return res.status(500).json({ message: "Error fetching bookings" })
         }
     }
@@ -40,7 +40,7 @@ class Booking {
             const booking = await BookingService.getBookingById(id)
             return res.json({ message: "Success", booking })
         } catch (error) {
-            console.log("🚀 ~ Booking ~ getBookingById ~ error:", error)
+            console.error("Booking Controller Error [getBookingById]:", error)
             return res.status(500).json({ message: "Error getting booking" })
         }
     }

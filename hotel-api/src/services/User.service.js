@@ -152,6 +152,7 @@ class User {
             SELECT
                 u.id AS user_id,
                 u.email,
+                u.property_id,
                 u.is_active,
                 u.created_on,
 
