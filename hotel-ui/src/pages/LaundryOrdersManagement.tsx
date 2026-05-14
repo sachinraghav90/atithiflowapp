@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useAppSelector } from "@/redux/hook";
-import { useCreateLaundryOrderMutation, useGetAllPropertyVendorsQuery, useGetBookingByIdQuery, useGetLogsByTableQuery, useGetLogsQuery, useGetPropertyLaundryOrdersQuery, useGetPropertyLaundryPricingQuery, useLazyExportPropertyLaundryOrdersQuery, useTodayInHouseBookingIdsQuery, useUpdateLaundryOrderMutation } from "@/redux/services/hmsApi";
+import { useCreateLaundryOrderMutation, useGetAllPropertyVendorsQuery, useGetLogsByTableQuery, useGetLogsQuery, useGetPropertyLaundryOrdersQuery, useGetPropertyLaundryPricingQuery, useLazyExportPropertyLaundryOrdersQuery, useTodayInHouseBookingRoomsQuery, useUpdateLaundryOrderMutation } from "@/redux/services/hmsApi";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -34,7 +34,8 @@ import "react-datepicker/dist/react-datepicker.css";
 
 import { toast } from "react-toastify";
 import { normalizeNumberInput } from "@/utils/normalizeTextInput";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+
 import { usePermission } from "@/rbac/usePermission";
 import { extractApiErrorMessage } from "@/utils/apiError";
 import { apiToast } from "@/utils/apiToastPromise";
@@ -110,6 +111,7 @@ type LaundryItemRow = {
 
 type CreateLaundryOrderForm = {
     bookingId?: number | "";
+    roomNo?: string;
     vendorId: number | "";
     pickupDate: string | Date;
     vendorStatus: VendorStatus;
@@ -133,7 +135,7 @@ function buildCreateLaundryOrderPayload(
         items: form.items.map(i => ({
             laundry_id: Number(i.laundryId),
             item_count: Number(i.itemCount),
-            room_no: i.roomNo || null
+            room_no: i.roomNo || form.roomNo || null
         }))
     };
 }
@@ -298,6 +300,7 @@ function getLaundryAuditDisplay(audit: any) {
 /* ---------------- Component ---------------- */
 export default function LaundryOrdersManagement() {
     const location = useLocation();
+    const navigate = useNavigate();
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
     const [sheetOpen, setSheetOpen] = useState(false);
     const [showErrors, setShowErrors] = useState(false);
@@ -326,8 +329,10 @@ export default function LaundryOrdersManagement() {
 
     const [form, setForm] = useState<CreateLaundryOrderForm>({
         vendorId: "",
-        pickupDate: new Date(),
+        pickupDate: new Date(), // Will be updated by useEffect on open
         vendorStatus: "NOT_ALLOTTED",
+        bookingId: "",
+        roomNo: "",
         items: [
             {
                 id: crypto.randomUUID(),
@@ -386,12 +391,8 @@ export default function LaundryOrdersManagement() {
         skip: !isLoggedIn || !selectedPropertyId
     })
 
-    const { data: bookingIds } = useTodayInHouseBookingIdsQuery({ propertyId: selectedPropertyId }, {
+    const { data: todayInHouseRooms } = useTodayInHouseBookingRoomsQuery({ propertyId: selectedPropertyId }, {
         skip: !isLoggedIn || !selectedPropertyId
-    })
-
-    const { data: bookingData } = useGetBookingByIdQuery(form.bookingId, {
-        skip: !isLoggedIn || !form.bookingId
     })
 
     const { data: logs, isFetching: logsFetching, refetch: refetchLogs } = useGetLogsByTableQuery({ tableName: "laundry_orders", propertyId: selectedPropertyId, page: 1, limit: 1000 }, {
@@ -402,6 +403,13 @@ export default function LaundryOrdersManagement() {
     })
     const [createLaundryOrder] = useCreateLaundryOrderMutation()
     const [updateLaundryOrder] = useUpdateLaundryOrderMutation()
+    const confirmedBookingRoomOptions = useMemo(() => {
+        return (todayInHouseRooms || []).map((room: any) => ({
+            value: `${room.booking_id}:${room.room_no}`,
+            bookingId: Number(room.booking_id),
+            roomNo: String(room.room_no),
+        }));
+    }, [todayInHouseRooms]);
 
     useEffect(() => {
         if (selectedPropertyId) {
@@ -435,6 +443,38 @@ export default function LaundryOrdersManagement() {
         }));
         setSheetOpen(true);
     }, [prefillApplied, prefilledBookingId, prefilledPropertyId, prefilledBookingStatus]);
+
+    useEffect(() => {
+        if (sheetOpen) {
+            setForm(prev => ({
+                ...prev,
+                pickupDate: (() => {
+                    const d = new Date();
+                    d.setMinutes(d.getMinutes() + 30);
+                    return d;
+                })(),
+            }));
+        }
+    }, [sheetOpen]);
+
+    useEffect(() => {
+        if (!form.bookingId || form.roomNo || !confirmedBookingRoomOptions.length) return;
+
+        const roomOption = confirmedBookingRoomOptions.find(
+            (option) => option.bookingId === Number(form.bookingId)
+        );
+
+        if (!roomOption) return;
+
+        setForm((prev) => ({
+            ...prev,
+            roomNo: roomOption.roomNo,
+            items: prev.items.map((item) => ({
+                ...item,
+                roomNo: roomOption.roomNo,
+            })),
+        }));
+    }, [form.bookingId, form.roomNo, confirmedBookingRoomOptions]);
 
     // Hook handles all initialization logic now
 
@@ -498,14 +538,31 @@ export default function LaundryOrdersManagement() {
 
             await promise;
 
+
+
             setSheetOpen(false);
+
+            if (location.state?.source === "booking-module" && form.bookingId) {
+                navigate("/bookings", {
+                    state: {
+                        openBookingId: String(form.bookingId),
+                        tab: "laundry"
+                    }
+                });
+                return;
+            }
 
             /* ✅ RESET FORM — NEW STRUCTURE */
             setForm({
                 vendorId: "",
-                pickupDate: new Date(),
+                pickupDate: (() => {
+                    const d = new Date();
+                    d.setMinutes(d.getMinutes() + 30);
+                    return d;
+                })(),
                 vendorStatus: "NOT_ALLOTTED",
                 bookingId: "",
+                roomNo: "",
                 items: [
                     {
                         id: crypto.randomUUID(),
@@ -595,7 +652,7 @@ export default function LaundryOrdersManagement() {
                 {
                     id: crypto.randomUUID(),
                     laundryId: "",
-                    roomNo: "",
+                    roomNo: prev.roomNo || "",
                     itemCount: "",
                     touched: {}
                 }
@@ -1323,24 +1380,33 @@ export default function LaundryOrdersManagement() {
                                 </div>
                             </div>
 
-                            {/* Booking */}
+                            {/* Room */}
                             <div className="space-y-1">
-                                <Label>Booking ID</Label>
+                                <Label>Room Number</Label>
                                 <MenuItemSelect
-                                    value={form.bookingId || ""}
+                                    value={form.bookingId && form.roomNo ? `${form.bookingId}:${form.roomNo}` : ""}
                                     items={[
-                                        { id: "", label: "No Booking (Hotel Laundry)" },
-                                        ...(bookingIds || []).map(id => ({
-                                            id: id,
-                                            label: `#${id}`
+                                        { id: "", label: "No Room (Hotel Laundry)" },
+                                        ...confirmedBookingRoomOptions.map((option) => ({
+                                            id: option.value,
+                                            label: option.roomNo
                                         }))
                                     ]}
-                                    onSelect={(id) =>
-                                        setForm({
-                                            ...form,
-                                            bookingId: id ? Number(id) : ""
-                                        })
-                                    }
+                                    onSelect={(value) => {
+                                        const selectedOption = confirmedBookingRoomOptions.find(
+                                            (option) => option.value === value
+                                        );
+
+                                        setForm((prev) => ({
+                                            ...prev,
+                                            bookingId: selectedOption?.bookingId || "",
+                                            roomNo: selectedOption?.roomNo || "",
+                                            items: prev.items.map((item) => ({
+                                                ...item,
+                                                roomNo: selectedOption?.roomNo || "",
+                                            })),
+                                        }));
+                                    }}
                                     placeholder="--Please Select--"
                                     extraClasses="h-10 bg-background/50"
                                 />
@@ -1358,7 +1424,7 @@ export default function LaundryOrdersManagement() {
                                         <DataGridHeader>
                                             <DataGridHead>Item *</DataGridHead>
                                             {form.bookingId && (
-                                                <DataGridHead className="w-48">Room</DataGridHead>
+                                                <DataGridHead className="w-48">Booking ID</DataGridHead>
                                             )}
                                             <DataGridHead className="w-48 text-center">Quantity *</DataGridHead>
                                             {form.items.length > 1 && (
@@ -1402,32 +1468,9 @@ export default function LaundryOrdersManagement() {
 
                                                         {form.bookingId && (
                                                             <DataGridCell>
-                                                                <ValidationTooltip
-                                                                    isValid={!((showErrors || row.touched?.roomNo) && (error && !row.roomNo))}
-                                                                    message="Required field"
-                                                                >
-                                                                    <NativeSelect
-                                                                        className={cn(
-                                                                            "w-full h-9 rounded-[3px] border border-input bg-background px-3 text-sm shadow-none outline-none focus:ring-1 focus:ring-primary",
-                                                                            (showErrors || row.touched?.roomNo) && (error && !row.roomNo) && "border-red-500"
-                                                                        )}
-                                                                        value={row.roomNo || ""}
-                                                                        onChange={(e) =>
-                                                                            updateItem(index, {
-                                                                                roomNo: e.target.value,
-                                                                                touched: { ...row.touched, roomNo: true }
-                                                                            })
-                                                                        }
-                                                                    >
-                                                                        <option value="">--Please Select--</option>
-
-                                                                        {bookingData?.booking?.rooms?.map(room => (
-                                                                            <option key={room.room_no} value={room.room_no}>
-                                                                                {room.room_no}
-                                                                            </option>
-                                                                        ))}
-                                                                    </NativeSelect>
-                                                                </ValidationTooltip>
+                                                                <div className="flex h-9 items-center rounded-[3px] border border-input bg-background px-3 text-sm">
+                                                                    {formatModuleDisplayId("booking", form.bookingId)}
+                                                                </div>
                                                             </DataGridCell>
                                                         )}
 

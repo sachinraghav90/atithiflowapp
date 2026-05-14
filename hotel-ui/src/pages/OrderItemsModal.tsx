@@ -191,15 +191,28 @@ export function OrderItemsModal({
                         {!editMode ? (
                             <div className="space-y-4">
                                 <PropertyViewSection title="Order Details" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-2.5">
+                                    <ViewField label="Order ID" value={`#${formatOrderDisplayId(data.id)}`} />
                                     <ViewField label="Guest Name" value={data.guest_name || "Guest Order"} />
                                     <ViewField label="Mobile Number" value={data.guest_mobile} />
                                     <ViewField label="Order Type" value={data.order_type || "Restaurant"} />
-                                    <ViewField label="Room" value={data.room_no} />
-                                    <ViewField label="Table" value={data.table_no} />
-                                    <ViewField label="Delivery Partner" value={data.delivery_partner_name} />
+                                    {data.order_type === "Room Service" && (
+                                        <>
+                                            <ViewField label="Booking ID" value={formatModuleDisplayId("booking", data.booking_id)} />
+                                            <ViewField label="Room" value={data.room_no || "—"} />
+                                        </>
+                                    )}
+                                    {(data.order_type || "Restaurant") === "Restaurant" && (
+                                        <ViewField label="Table" value={data.table_no || "—"} />
+                                    )}
+                                    {data.order_type === "Delivery" && (
+                                        <ViewField label="Delivery Partner" value={data.delivery_partner_name || "—"} />
+                                    )}
                                     <ViewField label="Expected Delivery" value={data.expected_delivery_time ? formatAppDateTime(data.expected_delivery_time) : "—"} />
                                     <ViewField label="Order Date" value={formatAppDateTime(data.order_date)} />
                                     <ViewField label="Order Total" value={`₹${Number(data.total_amount).toFixed(2)}`} />
+                                    {data.notes && (
+                                        <ViewField label="Order Notes" value={data.notes} className="sm:col-span-2 lg:col-span-3" />
+                                    )}
                                     <div>
                                         <Label className="text-[10px] font-bold text-muted-foreground tracking-widest">Order Status</Label>
                                         <div className="mt-0.5">
@@ -221,12 +234,22 @@ export function OrderItemsModal({
                         ) : (
                             <div className="space-y-5">
                                 <PropertyViewSection title="Order Details" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-2.5">
+                                    <ViewField label="Order ID" value={`#${formatOrderDisplayId(data.id)}`} />
                                     <ViewField label="Guest Name" value={data.guest_name || "Guest Order"} />
                                     <ViewField label="Mobile Number" value={data.guest_mobile} />
                                     <ViewField label="Order Type" value={data.order_type || "Restaurant"} />
-                                    <ViewField label="Room" value={data.room_no} />
-                                    <ViewField label="Table" value={data.table_no} />
-                                    <ViewField label="Delivery Partner" value={data.delivery_partner_name} />
+                                    {data.order_type === "Room Service" && (
+                                        <>
+                                            <ViewField label="Booking ID" value={formatModuleDisplayId("booking", data.booking_id)} />
+                                            <ViewField label="Room" value={data.room_no || "—"} />
+                                        </>
+                                    )}
+                                    {(data.order_type || "Restaurant") === "Restaurant" && (
+                                        <ViewField label="Table" value={data.table_no || "—"} />
+                                    )}
+                                    {data.order_type === "Delivery" && (
+                                        <ViewField label="Delivery Partner" value={data.delivery_partner_name || "—"} />
+                                    )}
                                     <ViewField label="Expected Delivery" value={data.expected_delivery_time ? formatAppDateTime(data.expected_delivery_time) : "—"} />
                                 </PropertyViewSection>
 

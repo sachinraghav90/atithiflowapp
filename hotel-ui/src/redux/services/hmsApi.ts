@@ -695,12 +695,10 @@ export const hmsApi = createApi({
           limit: String(limit)
         });
         
-        // Map UI ranges to the backend's single fromDate/toDate pair
-        const fromDate = arrivalFrom || departureFrom;
-        const toDate = arrivalTo || departureTo;
-
-        if (fromDate) params.append("fromDate", fromDate);
-        if (toDate) params.append("toDate", toDate);
+        if (arrivalFrom) params.append("arrivalFrom", arrivalFrom);
+        if (arrivalTo) params.append("arrivalTo", arrivalTo);
+        if (departureFrom) params.append("departureFrom", departureFrom);
+        if (departureTo) params.append("departureTo", departureTo);
         if (scope) params.append("scope", scope);
         if (status) params.append("status", status);
         if (search) params.append("search", search);
@@ -721,17 +719,16 @@ export const hmsApi = createApi({
           ts: String(Date.now())
         });
 
-        const fromDate = arrivalFrom || departureFrom;
-        const toDate = arrivalTo || departureTo;
-
-        if (fromDate) params.append("fromDate", fromDate);
-        if (toDate) params.append("toDate", toDate);
+        if (arrivalFrom) params.append("arrivalFrom", arrivalFrom);
+        if (arrivalTo) params.append("arrivalTo", arrivalTo);
+        if (departureFrom) params.append("departureFrom", departureFrom);
+        if (departureTo) params.append("departureTo", departureTo);
         if (scope) params.append("scope", scope);
         if (status) params.append("status", status);
         if (search) params.append("search", search);
 
         return {
-          url: `/bookings?${params.toString()}`,
+          url: `/bookings/export?${params.toString()}`,
           method: "GET",
         }
       },
@@ -876,6 +873,17 @@ export const hmsApi = createApi({
         return {
           url: `/payments`,
           method: "POST",
+          body: payload,
+        }
+      },
+      invalidatesTags: ["Payments", "Bookings"]
+    }),
+
+    updatePayment: builder.mutation({
+      query: ({ paymentId, payload }) => {
+        return {
+          url: `/payments/${paymentId}`,
+          method: "PUT",
           body: payload,
         }
       },
@@ -1698,6 +1706,7 @@ export const {
   useGetPaymentsByIdQuery,
   useGetPaymentsByBookingIdQuery,
   useCreatePaymentMutation,
+  useUpdatePaymentMutation,
   useGetRoomTypesQuery,
   useExportRoomTypesQuery,
   useLazyExportRoomTypesQuery,

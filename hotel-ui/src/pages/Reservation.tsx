@@ -204,6 +204,7 @@ export default function ReservationManagement() {
     const [open, setOpen] = useState(false);
 
     const enquiryPrefilled = useRef(false);
+    const duplicatePrefilled = useRef(false);
 
     const navigate = useNavigate()
     const location = useLocation();
@@ -857,6 +858,70 @@ export default function ReservationManagement() {
         );
 
     }, [fromEnquiry, enquiry]);
+
+    const duplicateBooking = location.state?.duplicateBooking;
+
+    useEffect(() => {
+        if (!duplicateBooking || duplicatePrefilled.current) return;
+        duplicatePrefilled.current = true;
+
+        const b = duplicateBooking;
+        const g = b.primary_guest;
+
+        if (b.property_id) setSelectedPropertyId(Number(b.property_id));
+        if (b.package_id) setPackageId(Number(b.package_id));
+        if (b.booking_type) setBookingType(b.booking_type);
+
+        if (b.adult) setBookingNumbers(prev => ({ ...prev, adult: Number(b.adult) }));
+        if (b.child !== undefined) setBookingNumbers(prev => ({ ...prev, child: b.child !== null ? Number(b.child) : "" }));
+
+        if (b.discount !== undefined && b.discount !== null) setDiscount(Number(b.discount));
+        if (b.discount_type) setDiscountType(b.discount_type);
+
+        if (b.comments) setComments(b.comments);
+        if (b.pickup !== undefined) setPickup(!!b.pickup);
+        if (b.drop !== undefined) setDrop(!!b.drop);
+
+        if (g) {
+            setGuest(prev => ({
+                ...prev,
+                salutation: g.salutation || prev.salutation,
+                first_name: g.first_name || "",
+                middle_name: g.middle_name || "",
+                last_name: g.last_name || "",
+                phone: g.phone?.replace(g.country_code, "").trim() || "",
+                country_code: g.country_code || prev.country_code,
+                email: g.email || "",
+                gender: g.gender || "",
+                age: g.age || "",
+                nationality: g.nationality || "",
+                country: g.country || "",
+                coming_from: g.coming_from || "",
+                going_to: g.going_to || "",
+                address: g.address || "",
+                id_type: g.id_type || "",
+                id_number: g.id_number || "",
+                other_id_type: g.other_id_type || "",
+                visa_number: g.visa_number || "",
+                visa_issue_date: g.visa_issue_date || "",
+                visa_expiry_date: g.visa_expiry_date || "",
+                emergency_contact: g.emergency_contact || "",
+                emergency_contact_name: g.emergency_contact_name || "",
+            }));
+        }
+
+        if (b.rooms && b.rooms.length > 0) {
+            setRoomCount(b.rooms.length);
+        }
+
+        // Mark as duplicated
+        setComments(prev =>
+            prev
+                ? `${prev}\n(Duplicated from booking #${b.id})`
+                : `Duplicated from booking #${b.id}`
+        );
+
+    }, [duplicateBooking]);
 
     const handleFile = (key: string, file?: File) => {
         if (!file) return;

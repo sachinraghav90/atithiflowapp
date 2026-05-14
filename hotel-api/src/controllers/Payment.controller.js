@@ -75,6 +75,7 @@ class PaymentsController {
     async update(req, res, next) {
         try {
             const { id } = req.params;
+            req.body.updated_by = req.user.user_id;
             const payment = await PaymentService.update(id, req.body);
             res.json(payment);
         } catch (err) {

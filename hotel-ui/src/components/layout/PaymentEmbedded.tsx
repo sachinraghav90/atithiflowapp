@@ -6,14 +6,14 @@ import {
     useCreatePaymentMutation,
     useGetPaymentsByBookingIdQuery,
     useGetPropertyBanksQuery,
+    useUpdatePaymentMutation,
 } from "@/redux/services/hmsApi";
 import { useAppSelector } from "@/redux/hook";
 import { toast } from "react-toastify";
 import { normalizeTextInput } from "@/utils/normalizeTextInput";
 import { formatAppDateTime, toDatetimeLocalValue } from "@/utils/dateFormat";
 import { DataGrid, DataGridHeader, DataGridHead, DataGridRow, DataGridCell } from "../ui/data-grid";
-import { Trash2, PlusCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Trash2, PlusCircle, Pencil, Check } from "lucide-react";
 
 type Payment = {
     id?: string;
@@ -43,13 +43,35 @@ const EMPTY_PAYMENT: Payment = {
     comments: "",
 };
 
+function createEmptyPayment(): Payment {
+    return {
+        ...EMPTY_PAYMENT,
+        payment_date: toDatetimeLocalValue(new Date()),
+    };
+}
+
+function clonePayments(payments: Payment[]) {
+    return JSON.parse(JSON.stringify(payments)) as Payment[];
+}
+
+function withDefaultDraftPayment(payments: Payment[]) {
+    return [...clonePayments(payments), createEmptyPayment()];
+}
+
+function toPaymentDateInput(value: string | undefined) {
+    if (!value) return toDatetimeLocalValue(new Date());
+
+    const parsed = new Date(value);
+    return toDatetimeLocalValue(parsed) || value;
+}
+
 export default function PaymentsEmbedded({
     bookingId,
     propertyId,
 }: Props) {
-    const [isEditing, setIsEditing] = useState(false);
     const [payments, setPayments] = useState<Payment[]>([]);
     const [originalPayments, setOriginalPayments] = useState<Payment[]>([]);
+    const [editingRowIds, setEditingRowIds] = useState<string[]>([]);
 
     const isLoggedIn = useAppSelector((state) => state.isLoggedIn.value);
 
@@ -66,31 +88,31 @@ export default function PaymentsEmbedded({
     });
 
     const [createPayment, { isLoading: isSaving }] = useCreatePaymentMutation();
+    const [updatePayment, { isLoading: isUpdating }] = useUpdatePaymentMutation();
 
     useEffect(() => {
         if (!data?.data) return;
         const fetched = data.data.map((p: any) => ({
             ...p,
+            payment_date: toPaymentDateInput(p.payment_date),
             paid_amount: String(p.paid_amount)
         }));
-        
-        if (fetched.length === 0) {
-            setPayments([{ ...EMPTY_PAYMENT }]);
-        } else {
-            setPayments(fetched);
-        }
+
+        setPayments(withDefaultDraftPayment(fetched));
         setOriginalPayments(fetched);
+        setEditingRowIds([]);
     }, [data]);
 
     const addRow = () => {
-        if (!isEditing) {
-            setIsEditing(true);
-        }
-        setPayments((prev) => [...prev, { ...EMPTY_PAYMENT }]);
+        setPayments((prev) => [...prev, createEmptyPayment()]);
     };
 
     const removeRow = (index: number) => {
-        setPayments((prev) => prev.filter((_, i) => i !== index));
+        setPayments((prev) => {
+            const draftCount = prev.filter((payment) => !payment.id).length;
+            if (prev[index]?.id || draftCount <= 1) return prev;
+            return prev.filter((_, i) => i !== index);
+        });
     };
 
     const updateRow = (index: number, patch: Partial<Payment>) => {
@@ -99,41 +121,77 @@ export default function PaymentsEmbedded({
         );
     };
 
-    const handleCancel = () => {
-        setPayments(cloneVehicles(originalPayments));
-        setIsEditing(false);
+    const toggleEditRow = (id: string) => {
+        setEditingRowIds((prev) =>
+            prev.includes(id) ? prev.filter((rowId) => rowId !== id) : [...prev, id]
+        );
     };
 
-    function cloneVehicles(v: Payment[]) {
-        return JSON.parse(JSON.stringify(v)) as Payment[];
-    }
+    const isRowEditable = (payment: Payment) => {
+        return !payment.id || editingRowIds.includes(payment.id);
+    };
+
+    const handleCancel = () => {
+        setPayments(withDefaultDraftPayment(originalPayments));
+        setEditingRowIds([]);
+    };
+
+    const buildPaymentPayload = (payment: Payment) => ({
+        payment_date: payment.payment_date,
+        paid_amount: Number(payment.paid_amount),
+        payment_method: payment.payment_method,
+        payment_type: payment.payment_type,
+        bank_name: payment.bank_name ?? "",
+        transaction_id: payment.transaction_id ?? "",
+        comments: payment.comments ?? ""
+    });
+
+    const isExistingPaymentChanged = (payment: Payment) => {
+        if (!payment.id) return false;
+
+        const original = originalPayments.find((item) => item.id === payment.id);
+        if (!original) return true;
+
+        const currentPayload = buildPaymentPayload(payment);
+        const originalPayload = buildPaymentPayload(original);
+
+        return Object.keys(currentPayload).some((key) => {
+            const field = key as keyof typeof currentPayload;
+            return String(currentPayload[field] ?? "") !== String(originalPayload[field] ?? "");
+        });
+    };
+
+    const draftPaymentCount = payments.filter((payment) => !payment.id).length;
+    const hasExistingPayments = payments.some((payment) => !!payment.id);
+    const showPaymentActions = hasExistingPayments || draftPaymentCount > 1;
+    const newPaymentsToSave = payments.filter(p => !p.id && Number(p.paid_amount) > 0);
+    const existingPaymentsToSave = payments.filter(isExistingPaymentChanged);
+    const hasSavablePaymentChanges = newPaymentsToSave.length > 0 || existingPaymentsToSave.length > 0;
 
     const handleSave = async () => {
-        // Only save rows that have an amount and are new (no ID)
-        const newPayments = payments.filter(p => !p.id && Number(p.paid_amount) > 0);
-        
-        if (newPayments.length === 0) {
-            toast.info("No new payments to save");
+        if (!hasSavablePaymentChanges) {
+            toast.info("No payment changes to save");
             return;
         }
 
         try {
-            for (const p of newPayments) {
+            for (const p of existingPaymentsToSave) {
+                await updatePayment({
+                    paymentId: p.id!,
+                    payload: buildPaymentPayload(p),
+                }).unwrap();
+            }
+
+            for (const p of newPaymentsToSave) {
                 const payload = {
                     booking_id: bookingId,
                     property_id: propertyId,
-                    payment_date: p.payment_date,
-                    paid_amount: Number(p.paid_amount),
-                    payment_method: p.payment_method,
-                    payment_type: p.payment_type,
-                    bank_name: p.bank_name,
-                    transaction_id: p.transaction_id,
-                    comments: p.comments
+                    ...buildPaymentPayload(p),
                 };
                 await createPayment({ payload }).unwrap();
             }
             toast.success("Payments saved successfully");
-            setIsEditing(false);
+            setEditingRowIds([]);
         } catch (error) {
             console.error("Save failed", error);
             toast.error("Failed to save some payments");
@@ -163,7 +221,7 @@ export default function PaymentsEmbedded({
                                 <DataGridHead className="w-[130px] border-r border-slate-200/20">Method</DataGridHead>
                                 <DataGridHead className="w-[130px] border-r border-slate-200/20">Type</DataGridHead>
                                 <DataGridHead className="flex-1 min-w-[200px] border-r border-slate-200/20">Comments / Details</DataGridHead>
-                                {isEditing && (
+                                {showPaymentActions && (
                                     <DataGridHead className="w-20 text-center">Action</DataGridHead>
                                 )}
                             </DataGridHeader>
@@ -171,11 +229,12 @@ export default function PaymentsEmbedded({
                             <tbody>
                                 {payments.map((p, index) => {
                                     const isExisting = !!p.id;
+                                    const isEditable = isRowEditable(p);
                                     return (
-                                        <DataGridRow key={p.id || index}>
+                                        <DataGridRow key={p.id || `payment-${index}`}>
                                     {/* DATE */}
                                             <DataGridCell className="border-r border-slate-200/40">
-                                                {isEditing && !isExisting ? (
+                                                {isEditable ? (
                                                     <Input
                                                         type="datetime-local"
                                                         className="h-9 text-sm bg-background border-border/40 focus-visible:ring-primary/20"
@@ -191,13 +250,13 @@ export default function PaymentsEmbedded({
 
                                     {/* AMOUNT */}
                                             <DataGridCell className="border-r border-slate-200/40">
-                                                {isEditing && !isExisting ? (
+                                                {isEditable ? (
                                                     <div className="relative">
                                                         <Input
                                                             type="number"
                                                             placeholder="0.00"
                                                             className="h-9 text-sm bg-background border-border/40 focus-visible:ring-primary/20 font-semibold"
-                                                            value={p.paid_amount}
+                                                            value={p.paid_amount ?? ""}
                                                             onChange={(e) => updateRow(index, { paid_amount: normalizeTextInput(e.target.value) })}
                                                         />
                                                     </div>
@@ -210,7 +269,7 @@ export default function PaymentsEmbedded({
 
                                     {/* METHOD */}
                                             <DataGridCell className="border-r border-slate-200/40">
-                                                {isEditing && !isExisting ? (
+                                                {isEditable ? (
                                                     <NativeSelect
                                                         className="h-9 text-sm bg-background border-border/40 focus-visible:ring-primary/20"
                                                         value={p.payment_method}
@@ -234,7 +293,7 @@ export default function PaymentsEmbedded({
 
                                     {/* TYPE */}
                                             <DataGridCell className="border-r border-slate-200/40">
-                                                {isEditing && !isExisting ? (
+                                                {isEditable ? (
                                                     <NativeSelect
                                                         className="h-9 text-sm bg-background border-border/40 focus-visible:ring-primary/20"
                                                         value={p.payment_type}
@@ -253,12 +312,12 @@ export default function PaymentsEmbedded({
 
                                     {/* DETAILS / COMMENTS */}
                                             <DataGridCell className="border-r border-slate-200/40">
-                                                {isEditing && !isExisting ? (
+                                                {isEditable ? (
                                                     <div className="space-y-2 py-1">
                                                         <Input
                                                             placeholder="Comments..."
                                                             className="h-8 text-[11px] bg-background border-border/20"
-                                                            value={p.comments}
+                                                            value={p.comments ?? ""}
                                                             onChange={(e) => updateRow(index, { comments: e.target.value })}
                                                         />
                                                         {(p.payment_method !== "Cash") && (
@@ -266,13 +325,13 @@ export default function PaymentsEmbedded({
                                                                 <Input
                                                                     placeholder="TXN ID"
                                                                     className="h-7 text-[10px] bg-muted/20 border-dashed"
-                                                                    value={p.transaction_id}
+                                                                    value={p.transaction_id ?? ""}
                                                                     onChange={(e) => updateRow(index, { transaction_id: e.target.value })}
                                                                 />
                                                                 {p.payment_method === "Bank" && (
                                                                     <NativeSelect
                                                                         className="h-7 text-[10px] bg-muted/20 border-dashed py-0"
-                                                                        value={p.bank_name}
+                                                                        value={p.bank_name ?? ""}
                                                                         onChange={(e) => updateRow(index, { bank_name: e.target.value })}
                                                                     >
                                                                         <option value="">Select Bank</option>
@@ -297,17 +356,34 @@ export default function PaymentsEmbedded({
                                             </DataGridCell>
 
                                     {/* ACTION */}
-                                            {isEditing && (
+                                            {showPaymentActions && (
                                                 <DataGridCell className="text-center">
-                                                    {!isExisting && (
+                                                    {isExisting ? (
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
-                                                            className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50/50"
+                                                            className="h-8 w-8 p-0 text-primary hover:text-primary/80 transition-colors"
+                                                            onClick={() => toggleEditRow(p.id!)}
+                                                            aria-label={isEditable ? "Stop editing payment row" : "Edit payment row"}
+                                                        >
+                                                            {isEditable ? (
+                                                                <Check className="h-4 w-4" />
+                                                            ) : (
+                                                                <Pencil className="h-4 w-4" />
+                                                            )}
+                                                        </Button>
+                                                    ) : draftPaymentCount > 1 ? (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50/50 transition-colors"
                                                             onClick={() => removeRow(index)}
+                                                            aria-label="Remove payment row"
                                                         >
                                                             <Trash2 className="h-4 w-4" />
                                                         </Button>
+                                                    ) : (
+                                                        null
                                                     )}
                                                 </DataGridCell>
                                             )}
@@ -340,24 +416,14 @@ export default function PaymentsEmbedded({
                 >
                     Cancel
                 </Button>
-                {isEditing ? (
-                    <Button
-                        variant="hero"
-                        className="min-w-[132px]"
-                        onClick={handleSave}
-                        disabled={isSaving || payments.filter(p => !p.id && Number(p.paid_amount) > 0).length === 0}
-                    >
-                        Save Payments
-                    </Button>
-                ) : (
-                    <Button
-                        variant="hero"
-                        className="min-w-[92px]"
-                        onClick={() => setIsEditing(true)}
-                    >
-                        Update
-                    </Button>
-                )}
+                <Button
+                    variant="hero"
+                    className="min-w-[132px]"
+                    onClick={handleSave}
+                    disabled={isSaving || isUpdating || !hasSavablePaymentChanges}
+                >
+                    Save Payments
+                </Button>
             </div>
         </div>
     );

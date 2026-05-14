@@ -92,14 +92,14 @@ export function MenuItemSelect({
                     disabled={disabled}
                     className={cn(
                         "flex h-9 w-full items-center rounded-[3px] border border-input bg-background px-2 py-1 text-sm font-normal shadow-none hover:bg-background transition-colors duration-150",
-                        isVertical ? "relative justify-center px-0 text-center" : (hideIcon ? "justify-center text-center" : "justify-between text-center"),
+                        isVertical ? "relative justify-center px-0 text-center" : (hideIcon ? "justify-start text-left" : "justify-between text-left"),
                         (value === "" || value === undefined || value === null) && "text-muted-foreground",
                         extraClasses,
                         showFullText && "h-auto min-h-10 whitespace-normal text-left"
                     )}
                 >
                     <span className={cn(
-                        showFullText ? "min-w-0 whitespace-normal break-words text-left leading-snug" : "truncate text-center",
+                        showFullText ? "min-w-0 whitespace-normal break-words text-left leading-snug" : "truncate text-left",
                         !isVertical && !extraClasses.includes("justify-center") && "flex-1"
                     )}>
                         {selectedItem ? getLabel(selectedItem) : placeholder}

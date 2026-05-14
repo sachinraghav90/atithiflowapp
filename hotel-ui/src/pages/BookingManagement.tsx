@@ -49,7 +49,7 @@ import LaundryEmbedded from "@/components/layout/LaundryEmbedded";
 import BookingLogsEmbedded from "@/components/layout/BookingLogsEmbedded";
 import RestaurantOrdersEmbedded from "@/components/layout/RestaurantOrdersEmbedded";
 import { exportToExcel } from "@/utils/exportToExcel";
-import { Download, Eye, FilterX, Pencil, Plus, RefreshCcw } from "lucide-react";
+import { Copy, Download, Eye, FilterX, Plus, RefreshCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getStatusColor } from "@/constants/statusColors";
 import { GridBadge } from "@/components/ui/grid-badge";
@@ -711,24 +711,6 @@ export default function BookingsManagement() {
                             loading={bookingsLoading || isInitializing}
                             emptyText="No bookings found"
                             minWidth="800px"
-                            actionLabel=""
-                            actionClassName="text-center w-[60px]"
-                            actions={(b: any) => (
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            size="icon"
-                                            variant="ghost"
-                                            className="h-7 w-7 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
-                                            onClick={() => handleManage(b.id, true)}
-                                            aria-label={`Manage booking ${b.id}`}
-                                        >
-                                            <Pencil className="w-3.5 h-3.5 mx-auto" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Manage Booking</TooltipContent>
-                                </Tooltip>
-                            )}
                             enablePagination={!!bookingsData?.pagination}
                             paginationProps={{
                                 page,
@@ -768,18 +750,32 @@ export default function BookingsManagement() {
                                 </p>
                             </div>
                             
-                            {/* Status Update at Top Right - Visible in both View & Manage modes */}
-                            <TooltipProvider delayDuration={0}>
+                            <div className="flex items-end gap-3">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 w-[160px] border-primary text-primary hover:bg-primary/10 font-bold text-[10px] tracking-widest shadow-sm"
+                                    onClick={() => {
+                                        navigate("/reservation", {
+                                            state: { duplicateBooking: selectedBooking?.booking }
+                                        });
+                                    }}
+                                >
+                                    <Copy className="w-3 h-3 mr-2" />
+                                    Duplicate Booking
+                                </Button>
+
+                                <TooltipProvider delayDuration={0}>
                                 <Tooltip
                                     open={statusTooltipOpen && !statusSelectOpen}
                                 >
                                     <TooltipTrigger asChild>
                                         <div
-                                            className="flex flex-col items-end mr-8 space-y-0.5 cursor-help"
+                                            className="flex flex-col items-start space-y-0.5 cursor-help"
                                             onMouseEnter={() => setStatusTooltipOpen(!statusSelectOpen)}
                                             onMouseLeave={() => setStatusTooltipOpen(false)}
                                         >
-                                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/80">Update Booking Status</Label>
+                                            <Label className="text-[10px] font-bold tracking-widest text-muted-foreground/80">Update Booking Status</Label>
                                             <NativeSelect
                                                 className="h-8 border-primary/30 bg-primary/5 rounded-[4px] px-3 py-0 text-xs font-bold text-primary focus:ring-1 focus:ring-primary w-[160px] shadow-sm cursor-pointer transition-all hover:bg-primary/10"
                                                 value={updatedStatus || selectedBooking?.booking.booking_status || ""}
@@ -807,6 +803,7 @@ export default function BookingsManagement() {
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
+                        </div>
 
                         </SheetHeader>
 
@@ -862,7 +859,7 @@ export default function BookingsManagement() {
                                 />
                             )}
                             {activeTab === "logs" && (
-                                <BookingLogsTab bookingId={selectedBooking?.booking.id} />
+                                <BookingLogsTab bookingId={selectedBooking?.booking.id} propertyId={selectedBooking?.booking?.property_id} />
                             )}
                         </div>
                     </div>

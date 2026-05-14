@@ -8,6 +8,7 @@ import AppHeader from "@/components/layout/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useAppSelector } from "@/redux/hook";
 import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
 import {
@@ -70,7 +71,8 @@ export function CreateOrder() {
         waiter_staff_id: 1,
         expected_delivery_time: "",
         order_type: "",
-        delivery_partner_id: ""
+        delivery_partner_id: "",
+        notes: ""
     });
 
     const [items, setItems] = useState<OrderItemForm[]>([]);
@@ -256,7 +258,8 @@ export function CreateOrder() {
             waiter_staff_id: 1,
             expected_delivery_time: "",
             order_type: "",
-            delivery_partner_id: ""
+            delivery_partner_id: "",
+            notes: ""
         });
         setItems([{ menu_item_id: null, item_name: "", quantity: 1, unit_price: 0, item_total: 0, notes: "", touched: {} }]);
         setSelectedMenuGroups({});
@@ -872,6 +875,15 @@ export function CreateOrder() {
                             </div>
 
                             <div className="flex items-center gap-6">
+                                <div className="flex flex-col gap-1.5 min-w-[300px]">
+                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Order Notes</Label>
+                                    <Textarea
+                                        placeholder="Special instructions (e.g. no onion, spicy)..."
+                                        className="h-10 min-h-[40px] py-2 resize-none text-xs border-slate-200 focus-visible:ring-primary/20"
+                                        value={order.notes || ""}
+                                        onChange={(e) => setOrder(o => ({ ...o, notes: e.target.value }))}
+                                    />
+                                </div>
                                 {isTotalManual && (
                                     <Button
                                         size="sm"

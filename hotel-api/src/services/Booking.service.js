@@ -12,9 +12,11 @@ class Booking {
 
     async getBookings({
         propertyId,
-        fromDate,
-        toDate,
-        scope = "upcoming",
+        arrivalFrom,
+        arrivalTo,
+        departureFrom,
+        departureTo,
+        scope = "",
         status,
         search,
         page = 1,
@@ -46,24 +48,34 @@ class Booking {
             }
         }
 
-        if ((fromDate && fromDate.length === 10) || (toDate && toDate.length === 10)) {
-            if (fromDate && fromDate.length === 10) {
-                conditions.push(`b.estimated_departure >= $${idx}`)
-                params.push(`${fromDate}T00:00:00.000Z`)
-                idx++
-            }
-            if (toDate && toDate.length === 10) {
-                conditions.push(`b.estimated_arrival <= $${idx}`)
-                params.push(`${toDate}T23:59:59.999Z`)
-                idx++
-            }
-        } else {
+        // --- Arrival Date Filter ---
+        if (arrivalFrom && arrivalFrom.length === 10) {
+            conditions.push(`b.estimated_arrival >= $${idx}`)
+            params.push(`${arrivalFrom}T00:00:00.000Z`)
+            idx++
+        }
+        if (arrivalTo && arrivalTo.length === 10) {
+            conditions.push(`b.estimated_arrival <= $${idx}`)
+            params.push(`${arrivalTo}T23:59:59.999Z`)
+            idx++
+        }
+
+        // --- Departure Date Filter ---
+        if (departureFrom && departureFrom.length === 10) {
+            conditions.push(`b.estimated_departure >= $${idx}`)
+            params.push(`${departureFrom}T00:00:00.000Z`)
+            idx++
+        }
+        if (departureTo && departureTo.length === 10) {
+            conditions.push(`b.estimated_departure <= $${idx}`)
+            params.push(`${departureTo}T23:59:59.999Z`)
+            idx++
+        }
+
+        // --- Legacy Scope Fallback ---
+        if (!arrivalFrom && !arrivalTo && !departureFrom && !departureTo) {
             if (scope === "upcoming") {
-                // conditions.push(`b.estimated_departure >= $${idx}`)
-                // params.push(today)
                 conditions.push(`b.actual_departure IS NULL`)
-                // params.push("null")
-                // idx++
             } else if (scope === "past") {
                 conditions.push(`b.estimated_departure < $${idx}`)
                 params.push(today)
@@ -796,8 +808,10 @@ class Booking {
 
     async exportBookings({
         propertyId,
-        fromDate,
-        toDate,
+        arrivalFrom,
+        arrivalTo,
+        departureFrom,
+        departureTo,
         scope,
         status,
         search
@@ -827,15 +841,27 @@ class Booking {
             }
         }
 
-        if (fromDate) {
+        // --- Arrival Date Filter ---
+        if (arrivalFrom && arrivalFrom.length === 10) {
             conditions.push(`b.estimated_arrival >= $${idx}`)
-            params.push(`${fromDate}T00:00:00.000Z`)
+            params.push(`${arrivalFrom}T00:00:00.000Z`)
+            idx++
+        }
+        if (arrivalTo && arrivalTo.length === 10) {
+            conditions.push(`b.estimated_arrival <= $${idx}`)
+            params.push(`${arrivalTo}T23:59:59.999Z`)
             idx++
         }
 
-        if (toDate) {
+        // --- Departure Date Filter ---
+        if (departureFrom && departureFrom.length === 10) {
+            conditions.push(`b.estimated_departure >= $${idx}`)
+            params.push(`${departureFrom}T00:00:00.000Z`)
+            idx++
+        }
+        if (departureTo && departureTo.length === 10) {
             conditions.push(`b.estimated_departure <= $${idx}`)
-            params.push(`${toDate}T23:59:59.999Z`)
+            params.push(`${departureTo}T23:59:59.999Z`)
             idx++
         }
 
@@ -845,9 +871,9 @@ class Booking {
             idx++
         }
 
-        if (scope === "upcoming" && !fromDate) {
+        if (scope === "upcoming" && !arrivalFrom && !arrivalTo && !departureFrom && !departureTo) {
             conditions.push(`b.actual_departure IS NULL`)
-        } else if (scope === "past" && !fromDate) {
+        } else if (scope === "past" && !arrivalFrom && !arrivalTo && !departureFrom && !departureTo) {
             conditions.push(`b.estimated_departure < $${idx}`)
             params.push(today)
             idx++

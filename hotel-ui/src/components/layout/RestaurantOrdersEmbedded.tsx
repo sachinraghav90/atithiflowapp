@@ -5,6 +5,11 @@ import { useNavigate } from "react-router-dom";
 import { getStatusColor } from "@/constants/statusColors";
 import { toast } from "react-toastify";
 import { formatAppDateTime } from "@/utils/dateFormat";
+import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
+import PropertyViewSection from "@/components/PropertyViewSection";
+import ViewField from "@/components/ViewField";
+import { GridBadge } from "../ui/grid-badge";
+import { Label } from "../ui/label";
 
 /* ---------------- Types ---------------- */
 type RestaurantOrder = {
@@ -22,6 +27,8 @@ type RestaurantOrder = {
     expected_delivery_time: string | null;
     room_no?: string;
     guest_name?: string;
+    guest_mobile?: string;
+    notes?: string;
 };
 
 type Props = {
@@ -89,80 +96,39 @@ export default function RestaurantOrdersEmbedded({
                 <p className="text-sm text-muted-foreground">No Restaurant Orders</p>
             )}
 
-            <div className="space-y-3">
-                {orders && orders.map((order, index) => (
-                    <div
+            <div className="space-y-6">
+                {orders && orders.map((order) => (
+                    <PropertyViewSection
                         key={order.id}
-                        className="rounded-[5px] border-2 border-primary/50 bg-background p-5 space-y-3 shadow-sm"
+                        title={`Order #${formatModuleDisplayId("order", order.id)} — ${formatDateTime(order.order_date)}`}
+                        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4"
                     >
-                        {/* Header */}
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-0.5">
-                                <p className="font-semibold">
-                                    Order #{order.id}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                    {formatDateTime(order.order_date)}
-                                </p>
-                            </div>
+                        <ViewField label="Room" value={order.room_no} />
+                        <ViewField label="Guest" value={order.guest_name} />
+                        <ViewField label="Mobile" value={order.guest_mobile} />
+                        <ViewField label="Table" value={order.table_no || "Room Service"} />
+                        <ViewField label="Expected Delivery" value={formatDateTime(order.expected_delivery_time)} />
+                        <ViewField label="Amount" value={`₹${order.total_amount}`} />
+                        {order.notes && <ViewField label="Notes" value={order.notes} className="sm:col-span-2 lg:col-span-3 text-amber-600 font-medium" />}
 
-                            <div className="flex gap-2">
-                                <span
-                                    className={cn(
-                                        "text-xs font-medium px-2 py-1 rounded",
-                                        getStatusColor(order.order_status, "order")
-                                    )}
-                                >
+                        <div>
+                            <Label className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase">Order Status</Label>
+                            <div className="mt-0.5">
+                                <GridBadge status={order.order_status} statusType="order" className="h-6 px-3 text-[10px] font-bold">
                                     {order.order_status}
-                                </span>
+                                </GridBadge>
                             </div>
                         </div>
 
-                        {/* Body */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                            <div className="space-y-1">
-                                <p className="text-muted-foreground text-xs">Room</p>
-                                <p className="font-medium">
-                                    {order.room_no || "—"}
-                                </p>
-                            </div>
-
-                            <div className="space-y-1">
-                                <p className="text-muted-foreground text-xs">Guest</p>
-                                <p className="font-medium">
-                                    {order.guest_name || "—"}
-                                </p>
-                            </div>
-
-                            <div className="space-y-1">
-                                <p className="text-muted-foreground text-xs">Mobile</p>
-                                <p className="font-medium">
-                                    {order.guest_mobile || "—"}
-                                </p>
-                            </div>
-
-                            <div className="space-y-1">
-                                <p className="text-muted-foreground text-xs">Table</p>
-                                <p className="font-medium">
-                                    {order.table_no || "Room Service"}
-                                </p>
-                            </div>
-
-                            <div className="space-y-1">
-                                <p className="text-muted-foreground text-xs">Expected Delivery</p>
-                                <p className="font-medium">
-                                    {formatDateTime(order.expected_delivery_time)}
-                                </p>
-                            </div>
-
-                            <div className="space-y-1">
-                                <p className="text-muted-foreground text-xs">Amount</p>
-                                <p className="font-semibold text-primary">
-                                    ₹{order.total_amount}
-                                </p>
+                        <div>
+                            <Label className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase">Payment Status</Label>
+                            <div className="mt-0.5">
+                                <GridBadge status={order.payment_status} statusType="payment" className="h-6 px-3 text-[10px] font-bold">
+                                    {order.payment_status}
+                                </GridBadge>
                             </div>
                         </div>
-                    </div>
+                    </PropertyViewSection>
                 ))}
             </div>
         </div>

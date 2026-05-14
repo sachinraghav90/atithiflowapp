@@ -150,7 +150,7 @@ class RestaurantOrderService {
             dp.name AS delivery_partner_name
 
         FROM public.restaurant_orders ro
-        LEFT JOIN public.ref_rooms r 
+        LEFT JOIN public.ref_rooms r
             ON r.id = ro.room_id
         LEFT JOIN public.delivery_partners dp
             ON dp.id = ro.delivery_partner_id
@@ -198,9 +198,10 @@ class RestaurantOrderService {
                     expected_delivery_time,
                     created_by,
                     delivery_partner_id,
-                    order_type
+                    order_type,
+                    notes
                 )
-                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
                 RETURNING *
                 `,
                 [
@@ -217,7 +218,8 @@ class RestaurantOrderService {
                     order.expected_delivery_time,
                     userId,
                     order.delivery_partner_id || null,
-                    order.order_type
+                    order.order_type,
+                    order.notes || null
                 ]
             );
 
@@ -271,7 +273,8 @@ class RestaurantOrderService {
                     guest_name: order.guest_name,
                     guest_mobile: order.guest_mobile,
                     delivery_partner_id: order.delivery_partner_id,
-                    order_type: order.order_type
+                    order_type: order.order_type,
+                    notes: order.notes
                 }),
                 user_id: userId
             });
@@ -294,9 +297,12 @@ class RestaurantOrderService {
             `
             SELECT
                 ro.*,
+                r.room_no,
                 dp.name AS delivery_partner_name
             FROM restaurant_orders ro
-            LEFT JOIN delivery_partners dp
+            LEFT JOIN public.ref_rooms r
+                ON r.id = ro.room_id
+            LEFT JOIN public.delivery_partners dp
                 ON dp.id = ro.delivery_partner_id
             WHERE ro.id = $1
             `,
@@ -307,11 +313,11 @@ class RestaurantOrderService {
 
         const { rows: items } = await this.#DB.query(
             `
-            SELECT 
-                roi.*, 
+            SELECT
+                roi.*,
                 mm.item_name
             FROM restaurant_order_items roi
-            JOIN menu_master mm 
+            JOIN menu_master mm
                 ON mm.id = roi.menu_item_id
             WHERE roi.order_id = $1
             `,

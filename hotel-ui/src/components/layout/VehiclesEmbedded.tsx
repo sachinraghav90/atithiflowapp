@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Trash2, PlusCircle, Pencil, Check } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,6 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { DataGrid, DataGridHeader, DataGridRow, DataGridHead, DataGridCell } from "@/components/ui/data-grid";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
     useAddVehiclesMutation,
     useGetVehiclesByBookingQuery,
@@ -49,13 +48,30 @@ const EMPTY_VEHICLE: VehicleForm = {
     is_active: true,
 };
 
+function createEmptyVehicle(): VehicleForm {
+    return { ...EMPTY_VEHICLE };
+}
+
 function cloneVehicles(vehicles: VehicleForm[]) {
     return JSON.parse(JSON.stringify(vehicles)) as VehicleForm[];
 }
 
+function withDefaultDraftVehicle(vehicles: VehicleForm[]) {
+    return [...cloneVehicles(vehicles), createEmptyVehicle()];
+}
+
+function isDraftVehiclePopulated(vehicle: VehicleForm) {
+    return Boolean(
+        vehicle.vehicle_type ||
+        vehicle.vehicle_name?.trim() ||
+        vehicle.vehicle_number?.trim() ||
+        vehicle.color?.trim() ||
+        vehicle.room_no?.trim()
+    );
+}
+
 export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
     const [vehicles, setVehicles] = useState<VehicleForm[]>([]);
-    const [isEditing, setIsEditing] = useState(true);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [originalVehicles, setOriginalVehicles] = useState<VehicleForm[]>([]);
     const [editingRowIds, setEditingRowIds] = useState<number[]>([]);
@@ -70,32 +86,21 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
     useEffect(() => {
         if (!data?.vehicles) return;
         const fetchedVehicles = data.vehicles;
-        if (fetchedVehicles.length === 0) {
-            setVehicles([{ ...EMPTY_VEHICLE }]);
-        } else {
-            setVehicles(fetchedVehicles);
-        }
+        setVehicles(withDefaultDraftVehicle(fetchedVehicles));
         setOriginalVehicles(fetchedVehicles);
+        setEditingRowIds([]);
     }, [data]);
 
-    const startEditing = () => {
-        setOriginalVehicles(cloneVehicles(vehicles));
-        setIsEditing(true);
-        if (vehicles.length === 0) {
-            setVehicles([{ ...EMPTY_VEHICLE }]);
-        }
-    };
-
     const addVehicle = () => {
-        if (!isEditing) {
-            startEditing();
-        }
-
-        setVehicles((prev) => [...prev, { ...EMPTY_VEHICLE }]);
+        setVehicles((prev) => [...prev, createEmptyVehicle()]);
     };
 
     const removeVehicle = (index: number) => {
-        setVehicles((prev) => prev.filter((_, i) => i !== index));
+        setVehicles((prev) => {
+            const draftCount = prev.filter((vehicle) => !vehicle.id).length;
+            if (prev[index]?.id || draftCount <= 1) return prev;
+            return prev.filter((_, i) => i !== index);
+        });
     };
 
     const updateVehicle = (index: number, patch: Partial<VehicleForm>) => {
@@ -111,32 +116,64 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
     };
 
     const isRowEditable = (vehicle: VehicleForm) => {
-        if (!isEditing) return false;
-        if (!vehicle.id) return true; // New row
-        return editingRowIds.includes(vehicle.id); // DB row being edited
+        if (!vehicle.id) return true;
+        return editingRowIds.includes(vehicle.id);
     };
 
     const handleCancel = () => {
-        setVehicles(cloneVehicles(originalVehicles));
-        setIsEditing(false);
+        setVehicles(withDefaultDraftVehicle(originalVehicles));
         setEditingRowIds([]);
     };
 
+    const normalizeVehicleForSave = (vehicle: VehicleForm) => ({
+        ...vehicle,
+        vehicle_type: vehicle.vehicle_type || null,
+        vehicle_name: vehicle.vehicle_name?.trim() || "",
+        vehicle_number: vehicle.vehicle_number?.trim() || "",
+        color: vehicle.color?.trim() || "",
+        room_no: vehicle.room_no?.trim() || "",
+    });
+
+    const isExistingVehicleChanged = (vehicle: VehicleForm) => {
+        if (!vehicle.id) return false;
+
+        const original = originalVehicles.find((item) => item.id === vehicle.id);
+        if (!original) return true;
+
+        const currentPayload = normalizeVehicleForSave(vehicle);
+        const originalPayload = normalizeVehicleForSave(original);
+
+        return (
+            String(currentPayload.vehicle_type ?? "") !== String(originalPayload.vehicle_type ?? "") ||
+            currentPayload.vehicle_name !== originalPayload.vehicle_name ||
+            currentPayload.vehicle_number !== originalPayload.vehicle_number ||
+            currentPayload.color !== originalPayload.color ||
+            currentPayload.room_no !== originalPayload.room_no ||
+            Boolean(currentPayload.is_active) !== Boolean(originalPayload.is_active)
+        );
+    };
+
+    const draftVehicleCount = vehicles.filter((vehicle) => !vehicle.id).length;
+    const hasExistingVehicles = vehicles.some((vehicle) => !!vehicle.id);
+    const showVehicleActions = hasExistingVehicles || draftVehicleCount > 1;
+    const newVehiclesToSave = vehicles.filter((vehicle) => !vehicle.id && isDraftVehiclePopulated(vehicle));
+    const existingVehiclesToSave = vehicles.filter(isExistingVehicleChanged);
+    const hasSavableVehicleChanges = newVehiclesToSave.length > 0 || existingVehiclesToSave.length > 0;
+
     const handleSave = async () => {
-        const payload = vehicles.map((vehicle) => ({
-            ...vehicle,
-            vehicle_type: vehicle.vehicle_type || null,
-            vehicle_name: vehicle.vehicle_name?.trim() || "",
-            vehicle_number: vehicle.vehicle_number?.trim() || "",
-            color: vehicle.color?.trim() || "",
-            room_no: vehicle.room_no?.trim() || "",
-        }));
+        if (!hasSavableVehicleChanges) {
+            toast.info("No vehicle changes to save");
+            return;
+        }
+
+        const payload = [
+            ...existingVehiclesToSave,
+            ...newVehiclesToSave,
+        ].map(normalizeVehicleForSave);
 
         try {
             await upsertVehicles({ bookingId, vehicles: payload }).unwrap();
             toast.success("Vehicles updated successfully");
-            setOriginalVehicles(cloneVehicles(payload));
-            setIsEditing(false);
             setEditingRowIds([]);
         } catch {
             toast.error("Failed to update vehicles");
@@ -166,7 +203,7 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
                                 <DataGridHead className="border-r border-slate-200/20">Number</DataGridHead>
                                 <DataGridHead className="border-r border-slate-200/20">Color</DataGridHead>
                                 <DataGridHead className="border-r border-slate-200/20">Room</DataGridHead>
-                                {isEditing && (
+                                {showVehicleActions && (
                                     <DataGridHead className="w-20 text-center">Action</DataGridHead>
                                 )}
                             </DataGridHeader>
@@ -272,14 +309,15 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
                                             )}
                                         </DataGridCell>
 
-                                        {isEditing && (
+                                        {showVehicleActions && (
                                             <DataGridCell className="text-center">
                                                 {vehicle.id ? (
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
-                                                        className="h-8 w-8 p-0 text-primary hover:text-primary/80"
+                                                        className="h-8 w-8 p-0 text-primary hover:text-primary/80 transition-colors"
                                                         onClick={() => toggleEditRow(vehicle.id!)}
+                                                        aria-label={editingRowIds.includes(vehicle.id) ? "Stop editing vehicle row" : "Edit vehicle row"}
                                                     >
                                                         {editingRowIds.includes(vehicle.id) ? (
                                                             <Check className="h-4 w-4" />
@@ -287,15 +325,18 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
                                                             <Pencil className="h-4 w-4" />
                                                         )}
                                                     </Button>
-                                                ) : (
+                                                ) : draftVehicleCount > 1 ? (
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
-                                                        className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50/50"
+                                                        className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50/50 transition-colors"
                                                         onClick={() => removeVehicle(index)}
+                                                        aria-label="Remove vehicle row"
                                                     >
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
+                                                ) : (
+                                                    null
                                                 )}
                                             </DataGridCell>
                                         )}
@@ -327,24 +368,14 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
                 >
                     Cancel
                 </Button>
-                {isEditing ? (
-                    <Button
-                        variant="hero"
-                        className="min-w-[132px]"
-                        onClick={() => setConfirmOpen(true)}
-                        disabled={isLoading}
-                    >
-                        Save Vehicles
-                    </Button>
-                ) : (
-                    <Button
-                        variant="hero"
-                        className="min-w-[92px]"
-                        onClick={startEditing}
-                    >
-                        Update
-                    </Button>
-                )}
+                <Button
+                    variant="hero"
+                    className="min-w-[132px]"
+                    onClick={() => setConfirmOpen(true)}
+                    disabled={isLoading || !hasSavableVehicleChanges}
+                >
+                    Save Vehicles
+                </Button>
             </div>
 
             <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
