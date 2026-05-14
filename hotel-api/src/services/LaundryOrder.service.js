@@ -25,7 +25,8 @@ class LaundryOrderService {
         comments,
         guestName,
         guestMobile,
-        totalAmount
+        totalAmount,
+        roomNo
     }) {
 
         if (!items.length) {
@@ -56,12 +57,13 @@ class LaundryOrderService {
                 comments,
                 guest_name,
                 guest_mobile,
-                total_amount
+                total_amount,
+                room_no
             )
             VALUES (
                 $1,$2,$3,$4,
                 'PENDING',
-                $5,$6,$7,$8,$9,$10,$11,$12
+                $5,$6,$7,$8,$9,$10,$11,$12,$13
             )
             RETURNING *;
         `;
@@ -78,7 +80,8 @@ class LaundryOrderService {
                 comments,
                 guestName,
                 guestMobile,
-                totalAmount
+                totalAmount,
+                roomNo
             ]);
 
             const order = orderRes.rows[0];
@@ -127,8 +130,10 @@ class LaundryOrderService {
                     throw new Error("Invalid laundry item");
                 }
 
+                const itemAmount = qty * rate;
+
                 placeholders.push(
-                    `($${paramIndex++},$${paramIndex++},$${paramIndex++},$${paramIndex++},$${paramIndex++},$${paramIndex++},$${paramIndex++})`
+                    `($${paramIndex++},$${paramIndex++},$${paramIndex++},$${paramIndex++},$${paramIndex++},$${paramIndex++},$${paramIndex++},$${paramIndex++})`
                 );
 
                 values.push(
@@ -136,6 +141,7 @@ class LaundryOrderService {
                     item.laundryId,
                     qty,
                     rate,
+                    itemAmount,
                     item.roomNo ?? item.room_no ?? null,
                     userId,
                     item.notes ?? null
@@ -148,6 +154,7 @@ class LaundryOrderService {
                 laundry_id,
                 item_count,
                 item_rate,
+                amount,
                 room_no,
                 created_by,
                 notes

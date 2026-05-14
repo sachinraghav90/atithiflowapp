@@ -31,7 +31,9 @@ class LaundryOrderController {
                 guestMobile,
                 guest_mobile,
                 totalAmount,
-                total_amount
+                total_amount,
+                room_no,
+                roomNo
             } = req.body;
 
             const userId = req.user?.user_id;
@@ -48,7 +50,8 @@ class LaundryOrderController {
                 comments,
                 guestName: guest_name ?? guestName,
                 guestMobile: guest_mobile ?? guestMobile,
-                totalAmount: total_amount ?? totalAmount
+                totalAmount: total_amount ?? totalAmount,
+                roomNo: room_no ?? roomNo
             });
 
             return res.status(201).json({

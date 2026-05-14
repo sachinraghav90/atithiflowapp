@@ -934,58 +934,63 @@ export function CreateOrder() {
                         </div>
 
                         {/* PILOT ADD ROW + TOTAL FOOTER */}
-                        <div className="editable-grid-footer p-3 bg-background border-slate-200 flex items-center justify-between min-w-[800px]">
-                            <div className="flex items-center gap-4">
-                                <button
-                                    type="button"
-                                    className="flex items-center gap-1.5 text-primary hover:underline text-sm font-semibold transition-colors disabled:opacity-50 disabled:no-underline px-1"
-                                    onClick={addRow}
-                                    disabled={availableMenuCount === 0}
-                                >
-                                    <PlusCircle className="w-4 h-4" /> Add New Order Item(s)
-                                </button>
+                        <div className="editable-grid-footer p-4 bg-background border-slate-200 flex flex-col gap-4 min-w-[800px]">
+                            {/* Top Row: Add Row & Total */}
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <button
+                                        type="button"
+                                        className="flex items-center gap-1.5 text-primary hover:underline text-sm font-semibold transition-colors disabled:opacity-50 disabled:no-underline px-1"
+                                        onClick={addRow}
+                                        disabled={availableMenuCount === 0}
+                                    >
+                                        <PlusCircle className="w-4 h-4" /> Add New Order Item(s)
+                                    </button>
 
-                                {availableMenuCount === 0 && (
-                                    <p className="text-[10px] text-muted-foreground italic">
-                                        All menu items added
-                                    </p>
-                                )}
+                                    {availableMenuCount === 0 && (
+                                        <p className="text-[10px] text-muted-foreground italic">
+                                            All menu items added
+                                        </p>
+                                    )}
 
-                                {formErrors.items && (
-                                    <p className="text-[11px] text-red-500 font-medium">{formErrors.items}</p>
-                                )}
+                                    {formErrors.items && (
+                                        <p className="text-[11px] text-red-500 font-medium">{formErrors.items}</p>
+                                    )}
+                                </div>
+
+                                <div className="flex items-center gap-6">
+                                    {isTotalManual && (
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="h-7 text-[10px] px-2 border-slate-300 text-slate-600"
+                                            onClick={() => {
+                                                const total = items.reduce((s, i) => s + i.item_total, 0);
+                                                setOrder(o => ({ ...o, total_amount: total }));
+                                                setIsTotalManual(false);
+                                            }}
+                                        >
+                                            Recalculate
+                                        </Button>
+                                    )}
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-sm font-medium text-slate-500">Total Amount : </span>
+                                        <span className="text-lg font-bold text-slate-900 pr-2">
+                                            ₹ {order.total_amount || 0}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
 
-                            <div className="flex items-center gap-6">
-                                <div className="flex flex-col gap-1.5 min-w-[300px]">
-                                    <Label className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Order Notes</Label>
-                                    <Textarea
-                                        placeholder="Special instructions (e.g. no onion, spicy)..."
-                                        className="h-10 min-h-[40px] py-2 resize-none text-xs border-slate-200 focus-visible:ring-primary/20"
-                                        value={order.notes || ""}
-                                        onChange={(e) => setOrder(o => ({ ...o, notes: e.target.value }))}
-                                    />
-                                </div>
-                                {isTotalManual && (
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="h-7 text-[10px] px-2 border-slate-300 text-slate-600"
-                                        onClick={() => {
-                                            const total = items.reduce((s, i) => s + i.item_total, 0);
-                                            setOrder(o => ({ ...o, total_amount: total }));
-                                            setIsTotalManual(false);
-                                        }}
-                                    >
-                                        Recalculate
-                                    </Button>
-                                )}
-                                <div className="flex items-center gap-3">
-                                    <span className="text-sm font-medium text-slate-500">Total Amount : </span>
-                                    <span className="text-lg font-bold text-slate-900 pr-2">
-                                        ₹ {order.total_amount || 0}
-                                    </span>
-                                </div>
+                            {/* Bottom Row: Order Notes */}
+                            <div className="flex flex-col gap-1.5">
+                                <Label>Order Notes</Label>
+                                <textarea
+                                    className="w-full h-16 min-h-[60px] rounded-[3px] border border-input bg-background/50 px-3 py-2 text-sm shadow-none outline-none focus:ring-1 focus:ring-primary resize-none placeholder:text-muted-foreground/60 transition-all"
+                                    placeholder="Special instructions (e.g. no onion, spicy)..."
+                                    value={order.notes || ""}
+                                    onChange={(e) => setOrder(o => ({ ...o, notes: e.target.value }))}
+                                />
                             </div>
                         </div>
                     </div>

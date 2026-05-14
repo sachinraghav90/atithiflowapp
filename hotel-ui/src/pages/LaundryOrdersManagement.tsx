@@ -85,17 +85,18 @@ const AUDIT_ACTIONS = ["CREATE", "UPDATE", "DELETE"];
 
 type LaundryOrder = {
     id: string;
-    // item_name: string;
-    // item_count: number;
-    // item_rate: string;
     amount: string;
     laundry_status: LaundryStatus;
     vendor_id?: string;
     pickup_date: string;
     delivery_date?: string | null;
     vendor_status?: VendorStatus;
-    vendorStatus?: VendorStatus; // Handle both cases for safety
-    items?: any[]
+    vendorStatus?: VendorStatus;
+    room_no?: string;
+    guest_name?: string;
+    guest_mobile?: string;
+    total_amount?: number;
+    items?: any[];
 };
 
 type LaundryItemRow = {
@@ -119,7 +120,6 @@ type CreateLaundryOrderForm = {
     deliveryDate: string | Date;
     vendorStatus: VendorStatus;
     comments?: string;
-
     items: LaundryItemRow[];
 };
 
@@ -132,7 +132,7 @@ function buildCreateLaundryOrderPayload(
 ) {
     // Calculate total amount
     const totalAmount = form.items.reduce((sum, item) => {
-        const pricing = laundryPricing?.find(p => p.id === Number(item.laundryId));
+        const pricing = laundryPricing.find(p => p.id === Number(item.laundryId));
         const rate = Number(pricing?.item_rate) || 0;
         const qty = Number(item.itemCount) || 0;
         return sum + (rate * qty);
@@ -154,6 +154,7 @@ function buildCreateLaundryOrderPayload(
         guest_name: guestName,
         guest_mobile: guestMobile,
         total_amount: totalAmount,
+        room_no: form.roomNo || null,
         items: form.items.map(i => ({
             laundry_id: Number(i.laundryId),
             item_count: Number(i.itemCount),
@@ -222,19 +223,17 @@ function formatLaundryAmount(value?: string | number | null) {
 }
 
 function getLaundryOrderTotalAmount(order: LaundryOrder) {
-    if (order.total_amount) {
-        return Number(order.total_amount);
+    const headerTotal = parseLaundryAmount(order.total_amount ?? order.amount);
+    
+    if (headerTotal && headerTotal > 0) {
+        return headerTotal;
     }
 
     const itemTotal = order.items?.reduce((sum, item) => {
-        return sum + (parseLaundryAmount(item?.amount) ?? 0);
+        return sum + (parseLaundryAmount(item?.amount) ?? (Number(item.item_count) * Number(item.item_rate)) ?? 0);
     }, 0);
 
-    if (itemTotal) {
-        return itemTotal;
-    }
-
-    return parseLaundryAmount(order.amount) ?? 0;
+    return itemTotal || 0;
 }
 
 function getLaundryVendorStatus(order: LaundryOrder) {
@@ -416,6 +415,17 @@ export default function LaundryOrdersManagement() {
     const { data: laundryTypes } = useGetPropertyLaundryPricingQuery({ propertyId: selectedPropertyId }, {
         skip: !isLoggedIn || !selectedPropertyId
     })
+    const laundryPricingItems = useMemo(() => {
+        if (Array.isArray(laundryTypes?.data?.data)) {
+            return laundryTypes.data.data;
+        }
+
+        if (Array.isArray(laundryTypes?.data)) {
+            return laundryTypes.data;
+        }
+
+        return [];
+    }, [laundryTypes]);
 
     const { data: vendors } = useGetAllPropertyVendorsQuery({ propertyId: selectedPropertyId }, {
         skip: !isLoggedIn || !selectedPropertyId
@@ -561,7 +571,7 @@ export default function LaundryOrdersManagement() {
         const payload = buildCreateLaundryOrderPayload(
             Number(selectedPropertyId),
             form,
-            laundryTypes?.data || [],
+            laundryPricingItems,
             primaryGuest
         );
 
@@ -1563,7 +1573,7 @@ export default function LaundryOrdersManagement() {
                                                             >
                                                                 <MenuItemSelect
                                                                     value={row.laundryId || null}
-                                                                    items={laundryTypes?.data || []}
+                                                                    items={laundryPricingItems}
                                                                     disabledIds={form.items.map(item => item.laundryId).filter(Boolean)}
                                                                     itemName="item_name"
                                                                     forceNative={true}
