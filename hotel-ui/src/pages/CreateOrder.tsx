@@ -14,6 +14,7 @@ import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.select
 import {
     useCreateOrderMutation,
     useGetDeliveryPartnersQuery,
+    useGetBookingsQuery,
     useGetMenuItemGroupsLightQuery,
     useGetMyPropertiesQuery,
     useGetPrimaryGuestByBookingQuery,
@@ -21,7 +22,6 @@ import {
     useGetPropertyRestaurantTablesQuery,
     useGetRestaurantTablesLightQuery,
     useGetRoomsByBookingQuery,
-    useTodayInHouseBookingIdsQuery
 } from "@/redux/services/hmsApi";
 import { NativeSelect } from "@/components/ui/native-select";
 import { normalizeNumberInput } from "@/utils/normalizeTextInput";
@@ -31,6 +31,7 @@ import { toast } from "react-toastify";
 import { MenuItemSelect } from "@/components/MenuItemSelect";
 import PhonePrefixSelect from "@/components/forms/PhonePrefixSelect";
 import { useLocation, useNavigate } from "react-router-dom";
+import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import {
     Sheet,
     SheetContent,
@@ -79,6 +80,7 @@ export function CreateOrder() {
     const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
     const [isTotalManual, setIsTotalManual] = useState(false);
     const [expectedDelivery, setExpectedDelivery] = useState<Date | null>(null);
+    const [selectedRoomNo, setSelectedRoomNo] = useState("");
     const [selectedMenuGroups, setSelectedMenuGroups] = useState({})
     const [formErrors, setFormErrors] = useState<Record<string, string>>({});
     const [itemErrors, setItemErrors] = useState<Record<number, any>>({});
@@ -108,7 +110,12 @@ export function CreateOrder() {
         { skip: !isLoggedIn || !selectedPropertyId }
     );
 
-    const { data: bookings } = useTodayInHouseBookingIdsQuery({ propertyId: selectedPropertyId }, {
+    const { data: confirmedBookingsData } = useGetBookingsQuery({
+        propertyId: selectedPropertyId,
+        page: 1,
+        limit: 1000,
+        status: "CONFIRMED"
+    }, {
         skip: !isLoggedIn || !selectedPropertyId
     })
 
@@ -133,6 +140,15 @@ export function CreateOrder() {
     })
 
     const [createOrder] = useCreateOrderMutation();
+    const confirmedBookingRoomOptions = useMemo(() => {
+        return (confirmedBookingsData?.bookings || []).flatMap((booking: any) =>
+            (booking.room_numbers || []).map((roomNo: string | number) => ({
+                value: `${booking.id}:${roomNo}`,
+                bookingId: Number(booking.id),
+                roomNo: String(roomNo),
+            }))
+        );
+    }, [confirmedBookingsData?.bookings]);
 
     /* ============================
        EFFECTS
@@ -142,6 +158,14 @@ export function CreateOrder() {
             setSelectedPropertyId(myProperties.properties[0].id);
         }
     }, [myProperties]);
+
+    useEffect(() => {
+        if (!expectedDelivery) {
+            const now = new Date();
+            now.setMinutes(now.getMinutes() + 30);
+            setExpectedDelivery(now);
+        }
+    }, []);
 
     useEffect(() => {
         if (prefillApplied.current) return;
@@ -164,6 +188,33 @@ export function CreateOrder() {
             delivery_partner_id: "",
         }));
     }, [prefilledBookingId, prefilledPropertyId, prefilledBookingStatus]);
+
+    useEffect(() => {
+        if (!order.booking_id || selectedRoomNo || !confirmedBookingRoomOptions.length) return;
+
+        const roomOption = confirmedBookingRoomOptions.find(
+            (option) => option.bookingId === Number(order.booking_id)
+        );
+
+        if (roomOption) {
+            setSelectedRoomNo(roomOption.roomNo);
+        }
+    }, [order.booking_id, selectedRoomNo, confirmedBookingRoomOptions]);
+
+    useEffect(() => {
+        if (!selectedRoomNo || !rooms?.length) return;
+
+        const selectedRoom = rooms.find(
+            (room: any) => String(room.room_no) === selectedRoomNo
+        );
+
+        if (selectedRoom && String(order.room_id || "") !== String(selectedRoom.ref_room_id)) {
+            setOrder((current) => ({
+                ...current,
+                room_id: String(selectedRoom.ref_room_id),
+            }));
+        }
+    }, [selectedRoomNo, rooms, order.room_id]);
 
     useEffect(() => {
         if (!primaryGuest || order.order_type !== "Room Service" || !order.booking_id) {
@@ -261,6 +312,7 @@ export function CreateOrder() {
             delivery_partner_id: "",
             notes: ""
         });
+        setSelectedRoomNo("");
         setItems([{ menu_item_id: null, item_name: "", quantity: 1, unit_price: 0, item_total: 0, notes: "", touched: {} }]);
         setSelectedMenuGroups({});
         setExpectedDelivery(null);
@@ -395,6 +447,7 @@ export function CreateOrder() {
 
     const hasEmptyRow = items.some(i => !i.menu_item_id);
     const canAddRow = items.length === 0 || !hasEmptyRow;
+    const isRoomService = order.order_type === "Room Service";
 
     /* ============================
        UI
@@ -441,19 +494,25 @@ export function CreateOrder() {
 
                     <div className="flex flex-col gap-1">
                         <Label>Guest Name *</Label>
-                        <Input
-                            className={formErrors.guest_name ? "border-red-500" : ""}
-                            placeholder="Enter guest name"
-                            value={order.guest_name}
-                            onChange={(e) => {
-                                setFormErrors(p => {
-                                    const copy = { ...p };
-                                    delete copy.guest_name;
-                                    return copy;
-                                });
-                                setOrder(o => ({ ...o, guest_name: e.target.value }))
-                            }}
-                        />
+                        {isRoomService ? (
+                            <div className="flex h-10 items-center text-sm font-medium text-foreground cursor-default select-none">
+                                {order.guest_name || "-"}
+                            </div>
+                        ) : (
+                            <Input
+                                className={formErrors.guest_name ? "border-red-500" : ""}
+                                placeholder="Enter guest name"
+                                value={order.guest_name}
+                                onChange={(e) => {
+                                    setFormErrors(p => {
+                                        const copy = { ...p };
+                                        delete copy.guest_name;
+                                        return copy;
+                                    });
+                                    setOrder(o => ({ ...o, guest_name: e.target.value }))
+                                }}
+                            />
+                        )}
                         <p className="min-h-[16px] text-xs text-red-500">
                             {formErrors.guest_name ?? ""}
                         </p>
@@ -463,38 +522,44 @@ export function CreateOrder() {
                     {/* Guest Mobile */}
                     <div className="flex flex-col gap-1">
                         <Label>Guest Mobile {order.order_type === "Delivery" ? "*" : ""}</Label>
-                        <div className="flex">
-                            <PhonePrefixSelect
-                                value={order.guest_mobile_prefix || "+91"}
-                                onValueChange={(val) => setOrder(o => ({ ...o, guest_mobile_prefix: val }))}
-                                triggerClassName={cn(
-                                    "h-10 w-[4.5rem] rounded-l-[3px] rounded-r-none border-border/70 border-r-0 px-3 text-sm font-semibold text-muted-foreground shadow-none hover:bg-background hover:text-foreground focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
-                                    formErrors.guest_mobile && "border-red-500"
-                                )}
-                            />
-                            <Input
-                                className={cn(
-                                    "h-10 rounded-l-none rounded-[3px] border-border/70 bg-background text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
-                                    formErrors.guest_mobile ? "border-red-500" : ""
-                                )}
-                                placeholder="Enter mobile number"
-                                value={order.guest_mobile}
-                                onChange={(e) => {
-                                    const val = e.target.value.trim();
-                                    if (val.length <= 15) {
-                                        setOrder(o => ({
-                                            ...o,
-                                            guest_mobile: normalizeNumberInput(val).toString()
-                                        }))
-                                    }
-                                    setFormErrors(p => {
-                                        const copy = { ...p };
-                                        delete copy.guest_mobile;
-                                        return copy;
-                                    })
-                                }}
-                            />
-                        </div>
+                        {isRoomService ? (
+                            <div className="flex h-10 items-center text-sm font-medium text-foreground cursor-default select-none">
+                                {[order.guest_mobile_prefix, order.guest_mobile].filter(Boolean).join(" ") || "-"}
+                            </div>
+                        ) : (
+                            <div className="flex">
+                                <PhonePrefixSelect
+                                    value={order.guest_mobile_prefix || "+91"}
+                                    onValueChange={(val) => setOrder(o => ({ ...o, guest_mobile_prefix: val }))}
+                                    triggerClassName={cn(
+                                        "h-10 w-[4.5rem] rounded-l-[3px] rounded-r-none border-border/70 border-r-0 px-3 text-sm font-semibold text-muted-foreground shadow-none hover:bg-background hover:text-foreground focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
+                                        formErrors.guest_mobile && "border-red-500"
+                                    )}
+                                />
+                                <Input
+                                    className={cn(
+                                        "h-10 rounded-l-none rounded-[3px] border-border/70 bg-background text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
+                                        formErrors.guest_mobile ? "border-red-500" : ""
+                                    )}
+                                    placeholder="Enter mobile number"
+                                    value={order.guest_mobile}
+                                    onChange={(e) => {
+                                        const val = e.target.value.trim();
+                                        if (val.length <= 15) {
+                                            setOrder(o => ({
+                                                ...o,
+                                                guest_mobile: normalizeNumberInput(val).toString()
+                                            }))
+                                        }
+                                        setFormErrors(p => {
+                                            const copy = { ...p };
+                                            delete copy.guest_mobile;
+                                            return copy;
+                                        })
+                                    }}
+                                />
+                            </div>
+                        )}
                         <p className="min-h-[16px] text-xs text-red-500">
                             {formErrors.guest_mobile ?? ""}
                         </p>
@@ -513,6 +578,7 @@ export function CreateOrder() {
     `}
                             value={order.order_type}
                             onChange={(e) => {
+                                setSelectedRoomNo("");
                                 setOrder(o => ({
                                     ...o,
                                     order_type: e.target.value,
@@ -595,56 +661,36 @@ export function CreateOrder() {
 
                     </div>}
 
-                    {order.order_type === "Room Service" && <div className="flex flex-col gap-1">
-                        <Label>Booking Id*</Label>
-                        <NativeSelect
-                            className={`w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm ${formErrors.booking_id ? "border-red-500" : "border-border"}`}
-                            value={order.booking_id}
-                            onChange={(e) => {
-                                setOrder(o => ({ ...o, booking_id: +e.target.value }))
-                                setFormErrors(p => {
-                                    const copy = { ...p };
-                                    delete copy.booking_id;
-                                    return copy;
-                                });
-                            }}
-                        >
-                            <option value="">-- Please Select --</option>
-                            {bookings &&
-                                bookings?.map((booking) => (
-                                    <option key={booking} value={booking}>
-                                        #{booking}
-                                    </option>
-                                ))}
-                        </NativeSelect>
-                        <p className="min-h-[16px] text-xs text-red-500">
-                            {formErrors.booking_id ?? ""}
-                        </p>
-
-
-                    </div>}
-                    {order.booking_id && <div className="flex flex-col gap-1">
+                    {order.order_type === "Room Service" && <div className="flex flex-col gap-1 md:col-start-1">
                         <Label>Room Number*</Label>
                         <NativeSelect
                             className={`
                                     w-full h-10 rounded-[3px] border bg-background px-3 text-sm
                                     ${formErrors.room_id ? "border-red-500" : "border-border"}
                                     `}
-                            value={order.room_id}
+                            value={order.booking_id && selectedRoomNo ? `${order.booking_id}:${selectedRoomNo}` : ""}
                             onChange={(e) => {
+                                const selectedOption = confirmedBookingRoomOptions.find(
+                                    (option) => option.value === e.target.value
+                                );
+                                setSelectedRoomNo(selectedOption?.roomNo || "");
+                                setOrder(o => ({
+                                    ...o,
+                                    booking_id: selectedOption?.bookingId || null,
+                                    room_id: ""
+                                }))
                                 setFormErrors(p => {
                                     const copy = { ...p };
                                     delete copy.room_id;
+                                    delete copy.booking_id;
                                     return copy;
-                                })
-                                setOrder(o => ({ ...o, room_id: e.target.value }))
+                                });
                             }}
                         >
                             <option value="">-- Please Select --</option>
-                            {rooms &&
-                                rooms?.map((room) => (
-                                    <option key={room.ref_room_id} value={room.ref_room_id}>
-                                        {room.room_no}
+                            {confirmedBookingRoomOptions.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                        {option.roomNo}
                                     </option>
                                 ))}
                         </NativeSelect>
@@ -654,8 +700,19 @@ export function CreateOrder() {
 
                     </div>
                     }
+                    {order.booking_id && <div className="flex flex-col gap-1">
+                        <Label>Booking Id*</Label>
+                        <div className="flex h-10 items-center text-sm font-medium text-foreground cursor-default select-none">
+                            {formatModuleDisplayId("booking", order.booking_id)}
+                        </div>
+                        <p className="min-h-[16px] text-xs text-red-500">
+                            {formErrors.booking_id ?? ""}
+                        </p>
+
+                    </div>
+                    }
                     {/* Expected Delivery */}
-                    <div className="flex flex-col gap-1">
+                    <div className={cn("flex flex-col gap-1", isRoomService && "md:col-start-4 md:row-start-1")}>
                         <Label>Expected Delivery</Label>
 
                         <ResponsiveDatePicker

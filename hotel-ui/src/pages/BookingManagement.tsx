@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import Sidebar from "@/components/layout/Sidebar";
 import AppHeader from "@/components/layout/AppHeader";
@@ -59,13 +59,7 @@ import { formatReadableLabel } from "@/utils/formatString";
 import PropertyViewSection from "@/components/PropertyViewSection";
 import ViewField from "@/components/ViewField";
 
-const REQUIRED_SCOPE_BY_STATUS: Record<string, "upcoming" | "past" | "all"> = {
-    CONFIRMED: "upcoming",
-    CHECKED_IN: "upcoming",
-    CHECKED_OUT: "past",
-    CANCELLED: "all",
-    NO_SHOW: "all",
-};
+
 
 const UPDATABLE_STATUSES = [
     "CHECKED_IN",
@@ -123,7 +117,8 @@ export default function BookingsManagement() {
     const [departureFrom, setDepartureFrom] = useState<string>("");
     const [departureTo, setDepartureTo] = useState<string>("");
     const [scope, setScope] = useState("");
-    const [status, setStatus] = useState("");
+    const [status, setStatus] = useState("CONFIRMED");
+    const didRunInitialStatusSync = useRef(false);
 
     const { page, limit, setPage, handleLimitChange } = useGridPagination({
         initialLimit: 10,
@@ -286,27 +281,9 @@ export default function BookingsManagement() {
     }
 
 
-    useEffect(() => {
-        const requiredScope = REQUIRED_SCOPE_BY_STATUS[status];
+    
 
-        if (requiredScope && scope !== requiredScope) {
-            setScope(requiredScope);
-            setPage(1);
-        }
-    }, [status]);
-
-    useEffect(() => {
-        if (scope === "upcoming" && !["CONFIRMED", "CHECKED_IN"].includes(status)) {
-            setStatus("CONFIRMED");
-            setPage(1);
-        }
-
-        if (scope === "past" && status !== "CHECKED_OUT") {
-            setStatus("CHECKED_OUT");
-            setPage(1);
-        }
-
-    }, [scope]);
+    
 
     const resetFiltersHandler = () => {
         if (myProperties?.properties?.[0]?.id) {
