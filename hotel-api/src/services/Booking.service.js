@@ -38,11 +38,36 @@ class Booking {
             if (formattedIdMatch || isNumericIdSearch) {
                 const rawId = formattedIdMatch ? formattedIdMatch[1] : normalizedSearch;
                 const bookingId = Number(rawId);
-                conditions.push(`(b.id = $${idx} OR b.booking_type ILIKE $${idx + 1} OR b.booking_status ILIKE $${idx + 1})`)
+                conditions.push(`(
+                    b.id = $${idx}
+                    OR b.booking_type ILIKE $${idx + 1}
+                    OR b.booking_status ILIKE $${idx + 1}
+                    OR EXISTS (
+                        SELECT 1
+                        FROM public.room_details rd_search
+                        JOIN public.ref_rooms rr_search
+                            ON rr_search.id = rd_search.ref_room_id
+                        WHERE rd_search.booking_id = b.id
+                            AND rd_search.is_cancelled = false
+                            AND rr_search.room_no ILIKE $${idx + 1}
+                    )
+                )`)
                 params.push(bookingId, `%${normalizedSearch}%`)
                 idx += 2
             } else {
-                conditions.push(`(b.booking_type ILIKE $${idx} OR b.booking_status ILIKE $${idx})`)
+                conditions.push(`(
+                    b.booking_type ILIKE $${idx}
+                    OR b.booking_status ILIKE $${idx}
+                    OR EXISTS (
+                        SELECT 1
+                        FROM public.room_details rd_search
+                        JOIN public.ref_rooms rr_search
+                            ON rr_search.id = rd_search.ref_room_id
+                        WHERE rd_search.booking_id = b.id
+                            AND rd_search.is_cancelled = false
+                            AND rr_search.room_no ILIKE $${idx}
+                    )
+                )`)
                 params.push(`%${normalizedSearch}%`)
                 idx++
             }
@@ -831,11 +856,34 @@ class Booking {
             if (formattedIdMatch || isNumericIdSearch) {
                 const rawId = formattedIdMatch ? formattedIdMatch[1] : normalizedSearch;
                 const bookingId = Number(rawId);
-                conditions.push(`(b.id = $${idx} OR b.booking_type ILIKE $${idx + 1} OR b.booking_status ILIKE $${idx + 1})`)
+                conditions.push(`(
+                    b.id = $${idx}
+                    OR b.booking_type ILIKE $${idx + 1}
+                    OR b.booking_status ILIKE $${idx + 1}
+                    OR EXISTS (
+                        SELECT 1
+                        FROM public.room_details rd_search
+                        JOIN public.ref_rooms rr_search
+                            ON rr_search.id = rd_search.ref_room_id
+                        WHERE rd_search.booking_id = b.id
+                            AND rr_search.room_no ILIKE $${idx + 1}
+                    )
+                )`)
                 params.push(bookingId, `%${normalizedSearch}%`)
                 idx += 2
             } else {
-                conditions.push(`(b.booking_type ILIKE $${idx} OR b.booking_status ILIKE $${idx})`)
+                conditions.push(`(
+                    b.booking_type ILIKE $${idx}
+                    OR b.booking_status ILIKE $${idx}
+                    OR EXISTS (
+                        SELECT 1
+                        FROM public.room_details rd_search
+                        JOIN public.ref_rooms rr_search
+                            ON rr_search.id = rd_search.ref_room_id
+                        WHERE rd_search.booking_id = b.id
+                            AND rr_search.room_no ILIKE $${idx}
+                    )
+                )`)
                 params.push(`%${normalizedSearch}%`)
                 idx++
             }

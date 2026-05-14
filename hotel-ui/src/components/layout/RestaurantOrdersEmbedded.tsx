@@ -10,6 +10,9 @@ import PropertyViewSection from "@/components/PropertyViewSection";
 import ViewField from "@/components/ViewField";
 import { GridBadge } from "../ui/grid-badge";
 import { Label } from "../ui/label";
+import { OrderItemsModal } from "../../pages/OrderItemsModal";
+import { useState } from "react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 
 /* ---------------- Types ---------------- */
 type RestaurantOrder = {
@@ -57,6 +60,9 @@ export default function RestaurantOrdersEmbedded({
         skip: !bookingId
     })
 
+    const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+    const [itemsOpen, setItemsOpen] = useState(false);
+
     function navigateToRestaurant() {
         if (!canCreateRoomServiceOrder) {
             toast.info("Room service orders are available only for checked-in bookings.");
@@ -100,19 +106,38 @@ export default function RestaurantOrdersEmbedded({
                 {orders && orders.map((order) => (
                     <PropertyViewSection
                         key={order.id}
-                        title={`Order #${formatModuleDisplayId("order", order.id)} — ${formatDateTime(order.order_date)}`}
+                        title={
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <button
+                                            onClick={() => {
+                                                setSelectedOrderId(order.id);
+                                                setItemsOpen(true);
+                                            }}
+                                            className="font-bold text-primary hover:underline transition-all cursor-pointer text-left"
+                                        >
+                                            Order #{formatModuleDisplayId("order", order.id)} — {formatDateTime(order.order_date)}
+                                        </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right">
+                                        <p className="text-xs font-medium">Click to view order summary & items</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        }
                         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4"
                     >
                         <ViewField label="Room" value={order.room_no} />
                         <ViewField label="Guest" value={order.guest_name} />
                         <ViewField label="Mobile" value={order.guest_mobile} />
-                        <ViewField label="Table" value={order.table_no || "Room Service"} />
+                        <ViewField label={order.table_no ? "Table" : "Order Type"} value={order.table_no || "Room Service"} />
                         <ViewField label="Expected Delivery" value={formatDateTime(order.expected_delivery_time)} />
                         <ViewField label="Amount" value={`₹${order.total_amount}`} />
                         {order.notes && <ViewField label="Notes" value={order.notes} className="sm:col-span-2 lg:col-span-3 text-amber-600 font-medium" />}
 
                         <div>
-                            <Label className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase">Order Status</Label>
+                            <Label className="text-[10px] font-bold text-muted-foreground">Order Status</Label>
                             <div className="mt-0.5">
                                 <GridBadge status={order.order_status} statusType="order" className="h-6 px-3 text-[10px] font-bold">
                                     {order.order_status}
@@ -121,7 +146,7 @@ export default function RestaurantOrdersEmbedded({
                         </div>
 
                         <div>
-                            <Label className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase">Payment Status</Label>
+                            <Label className="text-[10px] font-bold text-muted-foreground">Payment Status</Label>
                             <div className="mt-0.5">
                                 <GridBadge status={order.payment_status} statusType="payment" className="h-6 px-3 text-[10px] font-bold">
                                     {order.payment_status}
@@ -131,6 +156,15 @@ export default function RestaurantOrdersEmbedded({
                     </PropertyViewSection>
                 ))}
             </div>
+
+            <OrderItemsModal
+                orderId={selectedOrderId}
+                open={itemsOpen}
+                onClose={() => {
+                    setItemsOpen(false);
+                    setSelectedOrderId(null);
+                }}
+            />
         </div>
     );
 }

@@ -22,7 +22,10 @@ class LaundryOrderService {
         userId,
         vendorStatus,
         items = [],
-        comments
+        comments,
+        guestName,
+        guestMobile,
+        totalAmount
     }) {
 
         if (!items.length) {
@@ -49,12 +52,16 @@ class LaundryOrderService {
                 pickup_date,
                 delivery_date,
                 created_by,
-                vendor_status
+                vendor_status,
+                comments,
+                guest_name,
+                guest_mobile,
+                total_amount
             )
             VALUES (
                 $1,$2,$3,$4,
                 'PENDING',
-                $5,$6,$7,$8
+                $5,$6,$7,$8,$9,$10,$11,$12
             )
             RETURNING *;
         `;
@@ -67,7 +74,11 @@ class LaundryOrderService {
                 pickupDate,
                 deliveryDate,
                 userId,
-                vendorStatus
+                vendorStatus,
+                comments,
+                guestName,
+                guestMobile,
+                totalAmount
             ]);
 
             const order = orderRes.rows[0];
@@ -117,7 +128,7 @@ class LaundryOrderService {
                 }
 
                 placeholders.push(
-                    `($${paramIndex++},$${paramIndex++},$${paramIndex++},$${paramIndex++},$${paramIndex++},$${paramIndex++})`
+                    `($${paramIndex++},$${paramIndex++},$${paramIndex++},$${paramIndex++},$${paramIndex++},$${paramIndex++},$${paramIndex++})`
                 );
 
                 values.push(
@@ -126,7 +137,8 @@ class LaundryOrderService {
                     qty,
                     rate,
                     item.roomNo ?? item.room_no ?? null,
-                    userId
+                    userId,
+                    item.notes ?? null
                 );
             }
 
@@ -137,7 +149,8 @@ class LaundryOrderService {
                 item_count,
                 item_rate,
                 room_no,
-                created_by
+                created_by,
+                notes
             )
             VALUES ${placeholders.join(",")}
         `;

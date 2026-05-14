@@ -103,6 +103,7 @@ type LaundryItemRow = {
     laundryId: number | "";
     roomNo?: string;
     itemCount: number | "";
+    notes?: string;
     touched?: {
         laundryId?: boolean;
         roomNo?: boolean;
@@ -115,7 +116,9 @@ type CreateLaundryOrderForm = {
     roomNo?: string;
     vendorId: number | "";
     pickupDate: string | Date;
+    deliveryDate: string | Date;
     vendorStatus: VendorStatus;
+    comments?: string;
 
     items: LaundryItemRow[];
 };
@@ -123,8 +126,21 @@ type CreateLaundryOrderForm = {
 /* ---------------- Helpers ---------------- */
 function buildCreateLaundryOrderPayload(
     propertyId: number,
-    form: CreateLaundryOrderForm
+    form: CreateLaundryOrderForm,
+    laundryPricing: any[],
+    primaryGuest: any
 ) {
+    // Calculate total amount
+    const totalAmount = form.items.reduce((sum, item) => {
+        const pricing = laundryPricing?.find(p => p.id === Number(item.laundryId));
+        const rate = Number(pricing?.item_rate) || 0;
+        const qty = Number(item.itemCount) || 0;
+        return sum + (rate * qty);
+    }, 0);
+
+    const guestName = primaryGuest ? `${primaryGuest.first_name} ${primaryGuest.last_name || ""}`.trim() : "";
+    const guestMobile = primaryGuest?.phone || "";
+
     return {
         property_id: propertyId,
         booking_id: form.bookingId ? Number(form.bookingId) : null,
@@ -132,11 +148,17 @@ function buildCreateLaundryOrderPayload(
         pickup_date: typeof form.pickupDate === "string"
             ? form.pickupDate
             : form.pickupDate.toISOString(),
+        delivery_date: form.deliveryDate ? (typeof form.deliveryDate === "string" ? form.deliveryDate : form.deliveryDate.toISOString()) : null,
         vendor_status: form.vendorStatus,
+        comments: form.comments || null,
+        guest_name: guestName,
+        guest_mobile: guestMobile,
+        total_amount: totalAmount,
         items: form.items.map(i => ({
             laundry_id: Number(i.laundryId),
             item_count: Number(i.itemCount),
-            room_no: i.roomNo || form.roomNo || null
+            room_no: i.roomNo || form.roomNo || null,
+            notes: i.notes || null
         }))
     };
 }
@@ -200,6 +222,10 @@ function formatLaundryAmount(value?: string | number | null) {
 }
 
 function getLaundryOrderTotalAmount(order: LaundryOrder) {
+    if (order.total_amount) {
+        return Number(order.total_amount);
+    }
+
     const itemTotal = order.items?.reduce((sum, item) => {
         return sum + (parseLaundryAmount(item?.amount) ?? 0);
     }, 0);
@@ -238,6 +264,8 @@ function getLaundryOrderDisplay(order: LaundryOrder, vendors?: Array<{ id: strin
     const vendorStatus = getLaundryVendorStatus(order);
 
     return {
+        guestName: order.guest_name || "--",
+        roomNo: order.room_no || "--",
         itemLabel: getLaundryOrderItemLabel(order),
         itemCountLabel: `${order.items?.length ?? 0} item(s)`,
         pickupDateLabel: formatDateTime(order.pickup_date),
@@ -331,6 +359,7 @@ export default function LaundryOrdersManagement() {
     const [form, setForm] = useState<CreateLaundryOrderForm>({
         vendorId: "",
         pickupDate: new Date(), // Will be updated by useEffect on open
+        deliveryDate: "",
         vendorStatus: "NOT_ALLOTTED",
         bookingId: "",
         roomNo: "",
@@ -415,6 +444,13 @@ export default function LaundryOrdersManagement() {
             roomNo: String(room.room_no),
         }));
     }, [todayInHouseRooms]);
+
+    const displayedRoomOptions = useMemo(() => {
+        if (!form.bookingId) return confirmedBookingRoomOptions;
+        return confirmedBookingRoomOptions.filter(
+            (option) => option.bookingId === Number(form.bookingId)
+        );
+    }, [confirmedBookingRoomOptions, form.bookingId]);
 
     useEffect(() => {
         if (selectedPropertyId) {
@@ -524,7 +560,9 @@ export default function LaundryOrdersManagement() {
 
         const payload = buildCreateLaundryOrderPayload(
             Number(selectedPropertyId),
-            form
+            form,
+            laundryTypes?.data || [],
+            primaryGuest
         );
 
         try {
@@ -568,12 +606,14 @@ export default function LaundryOrdersManagement() {
                 vendorStatus: "NOT_ALLOTTED",
                 bookingId: "",
                 roomNo: "",
+                comments: "",
                 items: [
                     {
                         id: generateId(),
                         laundryId: "",
                         roomNo: "",
-                        itemCount: ""
+                        itemCount: "",
+                        notes: ""
                     }
                 ]
             });
@@ -583,6 +623,18 @@ export default function LaundryOrdersManagement() {
             const message = extractApiErrorMessage(err);
             console.error("Create laundry order failed", err);
             toast.error(message);
+        }
+    };
+
+    const handleCloseSheet = () => {
+        setSheetOpen(false);
+        if (location.state?.source === "booking-module") {
+            navigate("/bookings", {
+                state: {
+                    openBookingId: String(form.bookingId || location.state?.bookingId),
+                    tab: "laundry"
+                }
+            });
         }
     };
 
@@ -659,6 +711,7 @@ export default function LaundryOrdersManagement() {
                     laundryId: "",
                     roomNo: prev.roomNo || "",
                     itemCount: "",
+                    notes: "",
                     touched: {}
                 }
             ]
@@ -804,7 +857,7 @@ export default function LaundryOrdersManagement() {
 
     const laundryOrderColumns = useMemo<ColumnDef<LaundryOrder>[]>(() => [
         {
-            label: "Laundry ID",
+            label: "Order ID",
             headClassName: "text-center",
             cellClassName: "text-center font-medium min-w-[90px]",
             render: (order: LaundryOrder) => (
@@ -818,34 +871,42 @@ export default function LaundryOrdersManagement() {
                             order,
                         })
                     }
-                    aria-label={`Open summary view for laundry order ${formatLaundryOrderDisplayId(order.id)}`}
                 >
                     {formatLaundryOrderDisplayId(order.id)}
                 </button>
             ),
         },
         {
-            label: "Item Name",
-            cellClassName: "whitespace-nowrap max-w-[200px] truncate",
+            label: "Room No",
+            headClassName: "text-center",
+            cellClassName: "text-center font-medium whitespace-nowrap",
+            render: (order: LaundryOrder) => getLaundryOrderDisplay(order, vendors).roomNo,
+        },
+        {
+            label: "Guest Name",
+            cellClassName: "whitespace-nowrap max-w-[150px] truncate",
+            render: (order: LaundryOrder) => getLaundryOrderDisplay(order, vendors).guestName,
+        },
+        {
+            label: "Items",
+            cellClassName: "whitespace-nowrap max-w-[180px] truncate",
             render: (order: LaundryOrder) => getLaundryOrderDisplay(order, vendors).itemLabel,
         },
         {
-            label: "No. of Items",
-            headClassName: "text-center",
-            cellClassName: "text-center font-medium whitespace-nowrap",
-            render: (order: LaundryOrder) => getLaundryOrderDisplay(order, vendors).itemCountLabel,
+            label: "Total",
+            cellClassName: "font-semibold text-primary whitespace-nowrap",
+            render: (order: LaundryOrder) => formatLaundryAmount(getLaundryOrderTotalAmount(order)),
         },
         {
-            label: "Pickup Date",
+            label: "Pickup",
             cellClassName: "text-xs text-muted-foreground whitespace-nowrap",
             render: (order: LaundryOrder) => getLaundryOrderDisplay(order, vendors).pickupDateLabel,
         },
         {
-            label: "Delivery Date",
+            label: "Delivery",
             cellClassName: "text-xs text-muted-foreground whitespace-nowrap",
             render: (order: LaundryOrder) => getLaundryOrderDisplay(order, vendors).deliveryDateLabel,
         },
-        
         {
             label: "Laundry Status",
             headClassName: "text-center",
@@ -855,11 +916,6 @@ export default function LaundryOrdersManagement() {
                     {getLaundryOrderDisplay(order, vendors).laundryStatusLabel}
                 </GridBadge>
             ),
-        },
-        {
-            label: "Total Amount",
-            cellClassName: "text-xs text-muted-foreground whitespace-nowrap",
-            render: (order: LaundryOrder) => formatLaundryAmount(getLaundryOrderTotalAmount(order)),
         },
         {
             label: "Vendor Status",
@@ -873,11 +929,6 @@ export default function LaundryOrdersManagement() {
                     {getLaundryOrderDisplay(order, vendors).vendorStatusLabel}
                 </GridBadge>
             ),
-        },
-        {
-            label: "Vendor",
-            cellClassName: "text-muted-foreground whitespace-nowrap text-sm",
-            render: (order: LaundryOrder) => getLaundryOrderDisplay(order, vendors).vendorName,
         },
     ], [vendors]);
 
@@ -1294,7 +1345,10 @@ export default function LaundryOrdersManagement() {
             </section>
 
             {/* Create Order Sheet */}
-            <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+            <Sheet open={sheetOpen} onOpenChange={(open) => {
+                if (!open) handleCloseSheet();
+                else setSheetOpen(true);
+            }}>
                 <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl flex flex-col p-0 bg-background">
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
@@ -1385,6 +1439,27 @@ export default function LaundryOrdersManagement() {
                                 </div>
                             </div>
 
+                            {/* Delivery Date */}
+                            <div className="space-y-1">
+                                <Label>Expected Delivery</Label>
+                                <div>
+                                    <ResponsiveDatePicker
+                                        value={parseDate(form.deliveryDate)}
+                                        onChange={(date) =>
+                                            setForm(prev => ({
+                                                ...prev,
+                                                deliveryDate: formatDate(date)
+                                            }))
+                                        }
+                                        showTime
+                                        minDate={form.pickupDate ? parseDate(form.pickupDate) : now}
+                                        placeholder="Select date & time"
+                                        label="Delivery Information"
+                                        className="bg-background/50"
+                                    />
+                                </div>
+                            </div>
+
                             {/* Room */}
                             <div className="space-y-1">
                                 <Label>Room Number</Label>
@@ -1392,13 +1467,13 @@ export default function LaundryOrdersManagement() {
                                     value={form.bookingId && form.roomNo ? `${form.bookingId}:${form.roomNo}` : ""}
                                     items={[
                                         { id: "", label: "No Room (Hotel Laundry)" },
-                                        ...confirmedBookingRoomOptions.map((option) => ({
+                                        ...displayedRoomOptions.map((option) => ({
                                             id: option.value,
                                             label: option.roomNo
                                         }))
                                     ]}
                                     onSelect={(value) => {
-                                        const selectedOption = confirmedBookingRoomOptions.find(
+                                        const selectedOption = displayedRoomOptions.find(
                                             (option) => option.value === value
                                         );
 
@@ -1441,21 +1516,32 @@ export default function LaundryOrdersManagement() {
                                 </div>
                             </div>
 
+                            <div className="space-y-1 col-span-1 sm:col-span-2">
+                                <Label>Special Instructions (Order Level)</Label>
+                                <textarea
+                                    className="w-full min-h-[60px] rounded-[3px] border border-input bg-background/50 px-3 py-2 text-sm shadow-none outline-none focus:ring-1 focus:ring-primary resize-none"
+                                    placeholder="Add any general notes for this order..."
+                                    value={form.comments || ""}
+                                    onChange={(e) => setForm(prev => ({ ...prev, comments: e.target.value }))}
+                                />
+                            </div>
+
                         </div>
 
                         {/* ================= ITEMS TABLE ================= */}
 
                         <div className="editable-grid-compact border rounded-[5px] overflow-hidden flex flex-col">
                             <div className="overflow-x-auto w-full bg-background border-b border-border">
-                                <div className={cn("w-full", form.bookingId ? "min-w-[820px]" : "min-w-[620px]")}>
+                                <div className={cn("w-full", form.bookingId ? "min-w-[1150px]" : "min-w-[950px]")}>
                                     <DataGrid>
                                         <DataGridHeader>
                                             <tr>
                                                 <DataGridHead>Item *</DataGridHead>
                                                 {form.bookingId && (
-                                                    <DataGridHead className="w-48">Booking ID</DataGridHead>
+                                                    <DataGridHead className="w-40">Booking ID</DataGridHead>
                                                 )}
-                                                <DataGridHead className="w-48 text-center">Quantity *</DataGridHead>
+                                                <DataGridHead className="w-28 text-center">Qty *</DataGridHead>
+                                                <DataGridHead className="flex-1">Item Notes (e.g. stains, starch)</DataGridHead>
                                                 {form.items.length > 1 && (
                                                     <DataGridHead className="w-20 text-center">Action</DataGridHead>
                                                 )}
@@ -1513,7 +1599,7 @@ export default function LaundryOrdersManagement() {
                                                                     type="text"
                                                                     name={`laundry_item_count_${index}`}
                                                                     className={cn(
-                                                                        "w-full h-9 rounded-[3px] border border-input bg-background px-3 text-sm shadow-none outline-none focus:ring-1 focus:ring-primary",
+                                                                        "w-full h-9 rounded-[3px] border border-input bg-background px-3 text-sm shadow-none outline-none focus:ring-1 focus:ring-primary text-center",
                                                                         (showErrors || row.touched?.itemCount) && (error && !row.itemCount) && "border-red-500"
                                                                     )}
                                                                     value={row.itemCount}
@@ -1525,6 +1611,16 @@ export default function LaundryOrdersManagement() {
                                                                     onBlur={() => updateItem(index, { touched: { ...row.touched, itemCount: true } })}
                                                                 />
                                                             </ValidationTooltip>
+                                                        </DataGridCell>
+
+                                                        <DataGridCell>
+                                                            <input
+                                                                type="text"
+                                                                className="w-full h-9 rounded-[3px] border border-input bg-background px-3 text-sm shadow-none outline-none focus:ring-1 focus:ring-primary"
+                                                                placeholder="Optional item notes..."
+                                                                value={row.notes || ""}
+                                                                onChange={(e) => updateItem(index, { notes: e.target.value })}
+                                                            />
                                                         </DataGridCell>
 
                                                         {form.items.length > 1 && (
@@ -1563,7 +1659,7 @@ export default function LaundryOrdersManagement() {
                         <div className="p-6 border-t bg-muted/20 flex justify-end gap-3">
                             <Button
                                 variant="heroOutline"
-                                onClick={() => setSheetOpen(false)}
+                                onClick={handleCloseSheet}
                             >
                                 Cancel
                             </Button>

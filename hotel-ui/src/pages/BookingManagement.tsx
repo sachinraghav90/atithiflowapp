@@ -40,7 +40,7 @@ import { useGridPagination } from "@/hooks/useGridPagination";
 import { useAppSelector } from "@/redux/hook";
 import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
 import { normalizeNumberInput } from "@/utils/normalizeTextInput";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import GuestsEmbedded from "@/components/layout/GuestsEmbedded";
 import VehiclesEmbedded from "@/components/layout/VehiclesEmbedded";
 import PaymentsEmbedded from "@/components/layout/PaymentEmbedded";
@@ -148,6 +148,18 @@ export default function BookingsManagement() {
     const [confirmStatusOpen, setConfirmStatusOpen] = useState(false)
 
     const navigate = useNavigate()
+    const location = useLocation()
+
+    useEffect(() => {
+        if (location.state?.openBookingId) {
+            handleManage(location.state.openBookingId, false);
+            if (location.state?.tab) {
+                setActiveTab(location.state.tab);
+            }
+            // Clear state so a manual page refresh doesn't pop it open again
+            window.history.replaceState({}, document.title)
+        }
+    }, [location.state?.openBookingId, location.state?.tab]);
 
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
 
@@ -337,8 +349,8 @@ export default function BookingsManagement() {
                 </PropertyViewSection>
 
                 <PropertyViewSection title="Booking Information" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
-                    <ViewField label="Guest Name" value={booking?.guest_name || "—"} />
-                    <ViewField label="Booking Source" value={booking?.booking_source || "—"} />
+                    <ViewField label="Guest Name" value={booking?.primary_guest ? `${booking.primary_guest.first_name} ${booking.primary_guest.last_name || ""}`.trim() : "—"} />
+                    <ViewField label="Booking Source" value={booking?.booking_type ? formatReadableLabel(booking.booking_type) : "—"} />
                     <ViewField label="Adults / Children" value={`${booking?.adult || 0} A / ${booking?.child || 0} C`} />
                     <ViewField label="Arrival Date" value={formatToDDMMYY(booking?.estimated_arrival)} />
                     <ViewField label="Departure Date" value={formatToDDMMYY(booking?.estimated_departure)} />
@@ -429,11 +441,19 @@ export default function BookingsManagement() {
     }
 
     function BookingLaundryTab({ bookingId, propertyId, bookingStatus }: any) {
+        const { data: bookingData } = useGetBookingByIdQuery(bookingId, { skip: !bookingId });
+        const booking = bookingData?.booking;
+        
+        const guestName = booking?.primary_guest ? `${booking.primary_guest.first_name} ${booking.primary_guest.last_name || ""}`.trim() : "";
+        const guestMobile = booking?.primary_guest?.phone || "";
+
         return (
             <LaundryEmbedded
                 bookingId={bookingId}
                 propertyId={propertyId}
                 bookingStatus={bookingStatus}
+                guestName={guestName}
+                guestMobile={guestMobile}
             />
         );
     }

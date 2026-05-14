@@ -144,6 +144,13 @@ export function CreateOrder() {
         }));
     }, [todayInHouseRooms]);
 
+    const displayedRoomOptions = useMemo(() => {
+        if (!order.booking_id) return confirmedBookingRoomOptions;
+        return confirmedBookingRoomOptions.filter(
+            (option) => option.bookingId === Number(order.booking_id)
+        );
+    }, [confirmedBookingRoomOptions, order.booking_id]);
+
     /* ============================
        EFFECTS
     ============================ */
@@ -314,6 +321,28 @@ export function CreateOrder() {
         setFormErrors({});
         setItemErrors({});
         setOrderSubmitted(false);
+
+        if (location.state?.source === "booking-module" && order.booking_id) {
+            navigate("/bookings", {
+                state: {
+                    openBookingId: String(order.booking_id),
+                    tab: "orders"
+                }
+            });
+        }
+    };
+
+    const handleCloseSheet = () => {
+        if (location.state?.source === "booking-module") {
+            navigate("/bookings", {
+                state: {
+                    openBookingId: String(order.booking_id || location.state?.bookingId),
+                    tab: "orders"
+                }
+            });
+        } else {
+            navigate("/orders");
+        }
     };
 
     const validateItems = () => {
@@ -447,7 +476,7 @@ export function CreateOrder() {
        UI
     ============================ */
     return (
-        <Sheet open onOpenChange={(nextOpen) => !nextOpen && navigate("/orders")}>
+        <Sheet open onOpenChange={(nextOpen) => !nextOpen && handleCloseSheet()}>
             <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl flex flex-col p-0 bg-background">
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}
@@ -664,7 +693,7 @@ export function CreateOrder() {
                                     `}
                             value={order.booking_id && selectedRoomNo ? `${order.booking_id}:${selectedRoomNo}` : ""}
                             onChange={(e) => {
-                                const selectedOption = confirmedBookingRoomOptions.find(
+                                const selectedOption = displayedRoomOptions.find(
                                     (option) => option.value === e.target.value
                                 );
                                 setSelectedRoomNo(selectedOption?.roomNo || "");
@@ -682,7 +711,7 @@ export function CreateOrder() {
                             }}
                         >
                             <option value="">-- Please Select --</option>
-                            {confirmedBookingRoomOptions.map((option) => (
+                            {displayedRoomOptions.map((option) => (
                                     <option key={option.value} value={option.value}>
                                         {option.roomNo}
                                     </option>
@@ -965,7 +994,7 @@ export function CreateOrder() {
                 <div className="flex justify-end gap-3 pt-4 border-t border-border">
                     <Button
                         variant="heroOutline"
-                        onClick={() => navigate("/orders")}
+                        onClick={handleCloseSheet}
                     >
                         Cancel
                     </Button>

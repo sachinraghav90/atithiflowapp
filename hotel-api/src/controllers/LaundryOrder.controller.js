@@ -26,6 +26,12 @@ class LaundryOrderController {
                 vendor_status,
                 items,
                 comments,
+                guestName,
+                guest_name,
+                guestMobile,
+                guest_mobile,
+                totalAmount,
+                total_amount
             } = req.body;
 
             const userId = req.user?.user_id;
@@ -39,7 +45,10 @@ class LaundryOrderController {
                 vendorStatus: vendor_status ?? vendorStatus,
                 userId,
                 items,
-                comments
+                comments,
+                guestName: guest_name ?? guestName,
+                guestMobile: guest_mobile ?? guestMobile,
+                totalAmount: total_amount ?? totalAmount
             });
 
             return res.status(201).json({

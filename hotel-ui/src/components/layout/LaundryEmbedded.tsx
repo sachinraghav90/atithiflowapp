@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +8,14 @@ import { toast } from "react-toastify";
 import { useGetBookingLaundryOrdersQuery } from "@/redux/services/hmsApi";
 import { useNavigate } from "react-router-dom";
 import { formatAppDateTime } from "@/utils/dateFormat";
+import PropertyViewSection from "../PropertyViewSection";
+import { GridBadge } from "../ui/grid-badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../ui/sheet";
+import { motion } from "framer-motion";
+import { ShoppingCart, Info as InfoIcon } from "lucide-react";
+import { AppDataGrid, type ColumnDef } from "../ui/data-grid";
+import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 
 /* ---------------- Types ---------------- */
 type LaundryForm = {
@@ -26,6 +35,8 @@ type Props = {
     bookingId: string;
     propertyId?: string | number;
     bookingStatus?: string;
+    guestName?: string;
+    guestMobile?: string;
 };
 
 /* ---------------- Component ---------------- */
@@ -33,9 +44,13 @@ export default function LaundryEmbedded({
     bookingId,
     propertyId,
     bookingStatus,
+    guestName,
+    guestMobile,
 }: Props) {
     const [isEditing, setIsEditing] = useState(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
+    const [selectedOrder, setSelectedOrder] = useState<any>(null);
+    const [summaryOpen, setSummaryOpen] = useState(false);
     const canCreateLaundryOrder = bookingStatus === "CHECKED_IN";
 
     const navigate = useNavigate()
@@ -104,47 +119,186 @@ export default function LaundryEmbedded({
                     ?.reduce((sum, i) => sum + Number(i.amount || 0), 0);
 
                 return (
-                    <div
+                    <PropertyViewSection
                         key={order.id}
-                        className="rounded-[5px] border-2 border-primary/50 bg-background p-4 shadow-sm"
+                        title={
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <button
+                                            onClick={() => {
+                                                setSelectedOrder(order);
+                                                setSummaryOpen(true);
+                                            }}
+                                            className="font-bold text-primary hover:underline transition-all cursor-pointer text-left"
+                                        >
+                                            Order #{formatModuleDisplayId("laundry_order", order.id)} — {formatAppDateTime(order.pickup_date)}
+                                        </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right">
+                                        <p className="text-xs font-medium">Click to view order summary & items</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        }
+                        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4"
                     >
+                        <ViewField
+                            label="Room"
+                            value={order.items?.[0]?.room_no || "—"}
+                        />
 
-                        <div className="grid sm:grid-cols-5 gap-4 text-sm">
+                        <ViewField
+                            label="Guest"
+                            value={guestName || "—"}
+                        />
 
-                            <ViewField
-                                label="Items"
-                                value={itemNames || "—"}
-                            />
+                        <ViewField
+                            label="Mobile"
+                            value={guestMobile || "—"}
+                        />
 
-                            <ViewField
-                                label="Total Amount"
-                                value={`₹${totalAmount ?? 0}`}
-                            />
+                        <ViewField
+                            label="Items"
+                            value={itemNames || "—"}
+                            className="sm:col-span-2 lg:col-span-3"
+                        />
 
-                            <ViewField
-                                label="Laundry Status"
-                                value={order.laundry_status}
-                            />
+                        <ViewField
+                            label="Expected Delivery"
+                            value={
+                                order.delivery_date
+                                    ? formatAppDateTime(order.delivery_date)
+                                    : "—"
+                            }
+                        />
 
-                            <ViewField
-                                label="Vendor Status"
-                                value={order.vendor_status}
-                            />
+                        <ViewField
+                            label="Total Amount"
+                            value={`₹${totalAmount ?? 0}`}
+                        />
 
-                            <ViewField
-                                label="Pickup"
-                                value={
-                                    order.pickup_date
-                                        ? formatAppDateTime(order.pickup_date)
-                                        : "—"
-                                }
-                            />
-
+                        <div>
+                            <Label className="text-[10px] font-bold text-muted-foreground">Laundry Status</Label>
+                            <div className="mt-0.5">
+                                <GridBadge status={order.laundry_status} statusType="laundry" className="h-6 px-3 text-[10px] font-bold">
+                                    {order.laundry_status}
+                                </GridBadge>
+                            </div>
                         </div>
 
-                    </div>
+                        <div>
+                            <Label className="text-[10px] font-bold text-muted-foreground">Vendor Status</Label>
+                            <div className="mt-0.5">
+                                <GridBadge status={order.vendor_status} statusType="vendor" className="h-6 px-3 text-[10px] font-bold">
+                                    {order.vendor_status}
+                                </GridBadge>
+                            </div>
+                        </div>
+                    </PropertyViewSection>
                 );
             })}
+
+            <Sheet open={summaryOpen} onOpenChange={(open) => !open && setSummaryOpen(false)}>
+                <SheetContent side="right" className="w-full lg:max-w-4xl sm:max-w-3xl overflow-y-auto bg-background">
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-1"
+                    >
+                        <SheetHeader className="mb-4">
+                            <div className="space-y-1">
+                                <SheetTitle className="text-xl font-bold">
+                                    Laundry Order [{selectedOrder?.id ? `#${formatModuleDisplayId("laundry_order", selectedOrder.id)}` : "..."}]
+                                </SheetTitle>
+                                <p className="text-xs text-muted-foreground font-medium tracking-wider">
+                                    Complete laundry order summary and itemized list
+                                </p>
+                            </div>
+                        </SheetHeader>
+
+                        {selectedOrder && (
+                            <div className="space-y-6">
+                                <PropertyViewSection title="Order Details" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-2.5">
+                                    <ViewField label="Order ID" value={`#${formatModuleDisplayId("laundry_order", selectedOrder.id)}`} />
+                                    <ViewField label="Booking ID" value={formatModuleDisplayId("booking", selectedOrder.booking_id)} />
+                                    <ViewField label="Room" value={selectedOrder.items?.[0]?.room_no || "—"} />
+                                    <ViewField label="Guest" value={guestName || "—"} />
+                                    <ViewField label="Mobile" value={guestMobile || "—"} />
+                                    <ViewField label="Pickup Date" value={formatAppDateTime(selectedOrder.pickup_date)} />
+                                    <ViewField label="Delivery Date" value={selectedOrder.delivery_date ? formatAppDateTime(selectedOrder.delivery_date) : "—"} />
+                                    <ViewField 
+                                        label="Total Amount" 
+                                        value={`₹${selectedOrder.items?.reduce((sum: number, i: any) => sum + Number(i.amount || 0), 0).toFixed(2)}`} 
+                                    />
+                                    
+                                    <div>
+                                        <Label className="text-[10px] font-bold text-muted-foreground">Laundry Status</Label>
+                                        <div className="mt-0.5">
+                                            <GridBadge status={selectedOrder.laundry_status} statusType="laundry" className="h-6 px-3 text-[10px] font-bold">
+                                                {selectedOrder.laundry_status}
+                                            </GridBadge>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <Label className="text-[10px] font-bold text-muted-foreground">Vendor Status</Label>
+                                        <div className="mt-0.5">
+                                            <GridBadge status={selectedOrder.vendor_status} statusType="vendor" className="h-6 px-3 text-[10px] font-bold">
+                                                {selectedOrder.vendor_status}
+                                            </GridBadge>
+                                        </div>
+                                    </div>
+                                </PropertyViewSection>
+
+                                <PropertyViewSection title="Items Ordered" className="mt-0">
+                                    <div className="border border-border rounded-lg overflow-hidden bg-background shadow-sm">
+                                        <AppDataGrid
+                                            density="compact"
+                                            scrollable={false}
+                                            tableClassName="w-full"
+                                            columns={[
+                                                {
+                                                    label: "Item",
+                                                    className: "w-[50%]",
+                                                    cellClassName: "font-medium text-foreground",
+                                                    render: (item: any) => item.item_name || "--",
+                                                },
+                                                {
+                                                    label: "Qty",
+                                                    className: "w-[20%]",
+                                                    headClassName: "text-center",
+                                                    cellClassName: "text-center font-medium",
+                                                    render: (item: any) => item.item_count ?? "--",
+                                                },
+                                                {
+                                                    label: "Amount",
+                                                    className: "w-[30%]",
+                                                    headClassName: "text-right",
+                                                    cellClassName: "text-right font-medium",
+                                                    render: (item: any) => `₹${Number(item.amount || 0).toFixed(2)}`,
+                                                },
+                                            ] as ColumnDef[]}
+                                            data={selectedOrder.items ?? []}
+                                            rowKey={(_, index) => index}
+                                            emptyText="No laundry items found"
+                                            minWidth="500px"
+                                            showActions={false}
+                                            className="mt-0 border-0"
+                                        />
+                                    </div>
+                                </PropertyViewSection>
+
+                                <div className="flex justify-end pt-4 border-t border-border mt-3">
+                                    <Button variant="heroOutline" onClick={() => setSummaryOpen(false)}>
+                                        Close
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </motion.div>
+                </SheetContent>
+            </Sheet>
 
             <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
                 <DialogContent>
@@ -179,11 +333,11 @@ export default function LaundryEmbedded({
     );
 }
 
-function ViewField({ label, value }: { label: string; value?: string | null }) {
+function ViewField({ label, value, className }: { label: string; value?: string | null; className?: string }) {
     return (
-        <div className="space-y-0.5">
-            <p className="text-xs text-muted-foreground">{label}</p>
-            <p className="font-medium">{value || "—"}</p>
+        <div className={cn("space-y-0.5", className)}>
+            <p className="text-[10px] font-bold text-muted-foreground">{label}</p>
+            <p className="font-semibold text-sm">{value || "—"}</p>
         </div>
     );
 }
