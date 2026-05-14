@@ -13,15 +13,14 @@ import { useAppSelector } from "@/redux/hook";
 import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
 import {
     useCreateOrderMutation,
-    useGetDeliveryPartnersQuery,
-    useGetBookingsQuery,
-    useGetMenuItemGroupsLightQuery,
     useGetMyPropertiesQuery,
-    useGetPrimaryGuestByBookingQuery,
+    useGetMenuItemGroupsLightQuery,
     useGetPropertyMenuLightQuery,
     useGetPropertyRestaurantTablesQuery,
-    useGetRestaurantTablesLightQuery,
     useGetRoomsByBookingQuery,
+    useGetDeliveryPartnersQuery,
+    useGetPrimaryGuestByBookingQuery,
+    useTodayInHouseBookingRoomsQuery,
 } from "@/redux/services/hmsApi";
 import { NativeSelect } from "@/components/ui/native-select";
 import { normalizeNumberInput } from "@/utils/normalizeTextInput";
@@ -110,11 +109,8 @@ export function CreateOrder() {
         { skip: !isLoggedIn || !selectedPropertyId }
     );
 
-    const { data: confirmedBookingsData } = useGetBookingsQuery({
-        propertyId: selectedPropertyId,
-        page: 1,
-        limit: 1000,
-        status: "CONFIRMED"
+    const { data: todayInHouseRooms } = useTodayInHouseBookingRoomsQuery({
+        propertyId: selectedPropertyId
     }, {
         skip: !isLoggedIn || !selectedPropertyId
     })
@@ -141,14 +137,12 @@ export function CreateOrder() {
 
     const [createOrder] = useCreateOrderMutation();
     const confirmedBookingRoomOptions = useMemo(() => {
-        return (confirmedBookingsData?.bookings || []).flatMap((booking: any) =>
-            (booking.room_numbers || []).map((roomNo: string | number) => ({
-                value: `${booking.id}:${roomNo}`,
-                bookingId: Number(booking.id),
-                roomNo: String(roomNo),
-            }))
-        );
-    }, [confirmedBookingsData?.bookings]);
+        return (todayInHouseRooms || []).map((room: any) => ({
+            value: `${room.booking_id}:${room.room_no}`,
+            bookingId: Number(room.booking_id),
+            roomNo: String(room.room_no),
+        }));
+    }, [todayInHouseRooms]);
 
     /* ============================
        EFFECTS
@@ -495,8 +489,8 @@ export function CreateOrder() {
                     <div className="flex flex-col gap-1">
                         <Label>Guest Name *</Label>
                         {isRoomService ? (
-                            <div className="flex h-10 items-center text-sm font-medium text-foreground cursor-default select-none">
-                                {order.guest_name || "-"}
+                            <div className={cn("flex h-10 items-center text-sm font-medium cursor-default select-none", !order.guest_name ? "text-muted-foreground" : "text-foreground")}>
+                                {order.guest_name || "—"}
                             </div>
                         ) : (
                             <Input
@@ -523,8 +517,8 @@ export function CreateOrder() {
                     <div className="flex flex-col gap-1">
                         <Label>Guest Mobile {order.order_type === "Delivery" ? "*" : ""}</Label>
                         {isRoomService ? (
-                            <div className="flex h-10 items-center text-sm font-medium text-foreground cursor-default select-none">
-                                {[order.guest_mobile_prefix, order.guest_mobile].filter(Boolean).join(" ") || "-"}
+                            <div className={cn("flex h-10 items-center text-sm font-medium cursor-default select-none", !order.guest_mobile ? "text-muted-foreground" : "text-foreground")}>
+                                {order.guest_mobile ? [order.guest_mobile_prefix, order.guest_mobile].filter(Boolean).join(" ") : "—"}
                             </div>
                         ) : (
                             <div className="flex">
@@ -583,8 +577,8 @@ export function CreateOrder() {
                                     ...o,
                                     order_type: e.target.value,
                                     booking_id: null,
-                                    room_id: null,
-                                    table_no: null
+                                    room_id: "",
+                                    table_no: ""
                                 }));
                                 setFormErrors(p => {
                                     const copy = { ...p };
@@ -700,17 +694,17 @@ export function CreateOrder() {
 
                     </div>
                     }
-                    {order.booking_id && <div className="flex flex-col gap-1">
-                        <Label>Booking Id*</Label>
-                        <div className="flex h-10 items-center text-sm font-medium text-foreground cursor-default select-none">
-                            {formatModuleDisplayId("booking", order.booking_id)}
+                    {isRoomService && (
+                        <div className="flex flex-col gap-1">
+                            <Label>Booking Id*</Label>
+                            <div className={cn("flex h-10 items-center text-sm font-medium cursor-default select-none", !order.booking_id ? "text-muted-foreground" : "text-foreground")}>
+                                {order.booking_id ? formatModuleDisplayId("booking", order.booking_id) : "—"}
+                            </div>
+                            <p className="min-h-[16px] text-xs text-red-500">
+                                {formErrors.booking_id ?? ""}
+                            </p>
                         </div>
-                        <p className="min-h-[16px] text-xs text-red-500">
-                            {formErrors.booking_id ?? ""}
-                        </p>
-
-                    </div>
-                    }
+                    )}
                     {/* Expected Delivery */}
                     <div className={cn("flex flex-col gap-1", isRoomService && "md:col-start-4 md:row-start-1")}>
                         <Label>Expected Delivery</Label>
@@ -745,14 +739,16 @@ export function CreateOrder() {
                                 <DataGrid>
                                     {/* HEADER */}
                                     <DataGridHeader>
-                                        <DataGridHead className="border-r border-slate-200/20">Group</DataGridHead>
-                                        <DataGridHead className="border-r border-slate-200/20">Item</DataGridHead>
-                                        <DataGridHead className="w-24 border-r border-slate-200/20">Qty</DataGridHead>
-                                        <DataGridHead className="w-32 border-r border-slate-200/20">Unit Price</DataGridHead>
-                                        <DataGridHead className="w-32 border-r border-slate-200/20">Total</DataGridHead>
-                                        {items.length > 1 && (
-                                            <DataGridHead className="w-20 text-center">Action</DataGridHead>
-                                        )}
+                                        <tr>
+                                            <DataGridHead className="border-r border-slate-200/20">Group</DataGridHead>
+                                            <DataGridHead className="border-r border-slate-200/20">Item</DataGridHead>
+                                            <DataGridHead className="w-24 border-r border-slate-200/20">Qty</DataGridHead>
+                                            <DataGridHead className="w-32 border-r border-slate-200/20">Unit Price</DataGridHead>
+                                            <DataGridHead className="w-32 border-r border-slate-200/20">Total</DataGridHead>
+                                            {items.length > 1 && (
+                                                <DataGridHead className="w-20 text-center">Action</DataGridHead>
+                                            )}
+                                        </tr>
                                     </DataGridHeader>
 
                                     {/* BODY */}

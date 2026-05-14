@@ -780,7 +780,7 @@ class Booking {
 
             JOIN public.room_details rd
                 ON rd.booking_id = b.id
-                AND rd.is_active = true
+                AND rd.is_cancelled = false
 
             JOIN public.ref_rooms rr
                 ON rr.id = rd.ref_room_id
@@ -788,14 +788,14 @@ class Booking {
 
             WHERE b.property_id = $1
             AND b.is_active = true
-            AND b.booking_status NOT IN ('CANCELLED', 'NO_SHOW')
+            AND b.booking_status = 'CHECKED_IN'
 
             /* Currently in house */
             AND b.estimated_arrival < date_trunc('day', now()) + interval '1 day'
             AND b.estimated_departure > date_trunc('day', now())
 
             /* Only live room statuses */
-            AND rd.room_status IN ('BOOKED','CHECKED_IN')
+            AND rd.room_status IN ('BOOKED', 'CHECKED_IN')
 
             ORDER BY rr.room_no;
         `;

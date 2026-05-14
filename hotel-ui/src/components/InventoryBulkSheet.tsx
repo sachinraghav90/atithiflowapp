@@ -12,6 +12,7 @@ import { MenuItemSelect } from "./MenuItemSelect";
 import { cn } from "@/lib/utils";
 import { Trash2, PlusCircle } from "lucide-react";
 import { ValidationTooltip } from "@/components/ui/validation-tooltip";
+import { generateId } from "@/utils/generateId";
 
 type InventoryRow = {
     id?: string;
@@ -45,7 +46,7 @@ export default function InventoryBulkSheet({
 }: Props) {
 
     const emptyRow = () => ({
-        id: crypto.randomUUID(),
+        id: generateId(),
         inventory_type_id: null,
         use_type: "fix",
         unit: "",

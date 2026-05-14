@@ -17,6 +17,7 @@ import { ValidationTooltip } from "@/components/ui/validation-tooltip";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { NativeSelect } from "./ui/native-select";
 import { Label } from "./ui/label";
+import { generateId } from "@/utils/generateId";
 
 const DUPLICATE_ITEMS_MESSAGE = "Duplicate Items Not Allowed";
 
@@ -56,7 +57,7 @@ export default function MenuMasterBulkSheet({
 }: Props) {
 
     const emptyRow = (): Row => ({
-        id: crypto.randomUUID(),
+        id: generateId(),
         itemName: "",
         description: "",
         price: "",

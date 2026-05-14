@@ -158,7 +158,7 @@ class RoomService {
             JOIN public.ref_rooms r
                 ON r.id = rd.ref_room_id
             WHERE rd.booking_id = $1
-              AND rd.is_active = true
+              AND rd.is_cancelled = false
             ORDER BY r.room_no
         `;
 

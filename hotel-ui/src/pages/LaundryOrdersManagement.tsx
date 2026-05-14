@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useAppSelector } from "@/redux/hook";
-import { useCreateLaundryOrderMutation, useGetAllPropertyVendorsQuery, useGetLogsByTableQuery, useGetLogsQuery, useGetPropertyLaundryOrdersQuery, useGetPropertyLaundryPricingQuery, useLazyExportPropertyLaundryOrdersQuery, useTodayInHouseBookingRoomsQuery, useUpdateLaundryOrderMutation } from "@/redux/services/hmsApi";
+import { useCreateLaundryOrderMutation, useGetAllPropertyVendorsQuery, useGetLogsByTableQuery, useGetLogsQuery, useGetPropertyLaundryOrdersQuery, useGetPropertyLaundryPricingQuery, useLazyExportPropertyLaundryOrdersQuery, useTodayInHouseBookingRoomsQuery, useUpdateLaundryOrderMutation, useGetPrimaryGuestByBookingQuery } from "@/redux/services/hmsApi";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -52,6 +52,7 @@ import { formatReadableLabel } from "@/utils/formatString";
 import { formatAppDateTime } from "@/utils/dateFormat";
 import PropertyViewSection from "@/components/PropertyViewSection";
 import ViewField from "@/components/ViewField";
+import { generateId } from "@/utils/generateId";
 
 /* ---------------- Types ---------------- */
 export type LaundryStatus =
@@ -335,7 +336,7 @@ export default function LaundryOrdersManagement() {
         roomNo: "",
         items: [
             {
-                id: crypto.randomUUID(),
+                id: generateId(),
                 laundryId: "",
                 roomNo: "",
                 itemCount: ""
@@ -393,6 +394,10 @@ export default function LaundryOrdersManagement() {
 
     const { data: todayInHouseRooms } = useTodayInHouseBookingRoomsQuery({ propertyId: selectedPropertyId }, {
         skip: !isLoggedIn || !selectedPropertyId
+    })
+
+    const { data: primaryGuest } = useGetPrimaryGuestByBookingQuery(form.bookingId, {
+        skip: !form.bookingId
     })
 
     const { data: logs, isFetching: logsFetching, refetch: refetchLogs } = useGetLogsByTableQuery({ tableName: "laundry_orders", propertyId: selectedPropertyId, page: 1, limit: 1000 }, {
@@ -565,7 +570,7 @@ export default function LaundryOrdersManagement() {
                 roomNo: "",
                 items: [
                     {
-                        id: crypto.randomUUID(),
+                        id: generateId(),
                         laundryId: "",
                         roomNo: "",
                         itemCount: ""
@@ -650,7 +655,7 @@ export default function LaundryOrdersManagement() {
             items: [
                 ...prev.items,
                 {
-                    id: crypto.randomUUID(),
+                    id: generateId(),
                     laundryId: "",
                     roomNo: prev.roomNo || "",
                     itemCount: "",
@@ -1412,6 +1417,29 @@ export default function LaundryOrdersManagement() {
                                 />
                             </div>
 
+                            {/* Guest Name */}
+                            <div className="space-y-1">
+                                <Label>Guest Name</Label>
+                                <div className={cn("flex h-10 items-center text-sm font-medium cursor-default select-none", (!form.bookingId || !primaryGuest?.first_name) ? "text-muted-foreground" : "text-foreground")}>
+                                    {(form.bookingId && primaryGuest) ? `${primaryGuest.first_name} ${primaryGuest.last_name || ""}`.trim() : "—"}
+                                </div>
+                            </div>
+
+                            {/* Guest Mobile */}
+                            <div className="space-y-1">
+                                <Label>Guest Mobile</Label>
+                                <div className={cn("flex h-10 items-center text-sm font-medium cursor-default select-none", (!form.bookingId || !primaryGuest?.phone) ? "text-muted-foreground" : "text-foreground")}>
+                                    {(form.bookingId && primaryGuest?.phone) ? [primaryGuest.country_code, primaryGuest.phone].filter(Boolean).join(" ") : "—"}
+                                </div>
+                            </div>
+
+                            {/* Booking Id */}
+                            <div className="space-y-1">
+                                <Label>Booking Id</Label>
+                                <div className={cn("flex h-10 items-center text-sm font-medium cursor-default select-none", !form.bookingId ? "text-muted-foreground" : "text-foreground")}>
+                                    {form.bookingId ? formatModuleDisplayId("booking", form.bookingId) : "—"}
+                                </div>
+                            </div>
 
                         </div>
 
@@ -1422,14 +1450,16 @@ export default function LaundryOrdersManagement() {
                                 <div className={cn("w-full", form.bookingId ? "min-w-[820px]" : "min-w-[620px]")}>
                                     <DataGrid>
                                         <DataGridHeader>
-                                            <DataGridHead>Item *</DataGridHead>
-                                            {form.bookingId && (
-                                                <DataGridHead className="w-48">Booking ID</DataGridHead>
-                                            )}
-                                            <DataGridHead className="w-48 text-center">Quantity *</DataGridHead>
-                                            {form.items.length > 1 && (
-                                                <DataGridHead className="w-20 text-center">Action</DataGridHead>
-                                            )}
+                                            <tr>
+                                                <DataGridHead>Item *</DataGridHead>
+                                                {form.bookingId && (
+                                                    <DataGridHead className="w-48">Booking ID</DataGridHead>
+                                                )}
+                                                <DataGridHead className="w-48 text-center">Quantity *</DataGridHead>
+                                                {form.items.length > 1 && (
+                                                    <DataGridHead className="w-20 text-center">Action</DataGridHead>
+                                                )}
+                                            </tr>
                                         </DataGridHeader>
 
                                         <tbody>

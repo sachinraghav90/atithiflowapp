@@ -15,6 +15,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 
 import { normalizeSignedNumberInput } from "@/utils/normalizeTextInput";
 import { ValidationTooltip } from "@/components/ui/validation-tooltip";
+import { generateId } from "@/utils/generateId";
 
 type Row = {
     id: string;
@@ -62,7 +63,7 @@ export default function KitchenInventoryBulkAdjustSheet({
 }: Props) {
 
     const emptyRow = () => ({
-        id: crypto.randomUUID(),
+        id: generateId(),
         inventory_master_id: null,
         quantity: "",
         touched: {}
