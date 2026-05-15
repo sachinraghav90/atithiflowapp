@@ -117,6 +117,12 @@ function formatDate(date?: Date | null) {
     return date ? date.toISOString() : "";
 }
 
+function parseDate(value?: string | Date | null) {
+    if (!value) return null;
+    if (value instanceof Date) return value;
+    return new Date(value);
+}
+
 function formatDateTime(value?: string | null) {
     return formatAppDateTime(value, "--");
 }
@@ -162,15 +168,15 @@ function formatLaundryAmount(value?: string | number | null) {
 }
 
 function getLaundryOrderTotalAmount(order: LaundryOrder) {
-    const headerTotal = parseLaundryAmount(order.total_amount ?? order.amount);
-    
-    if (headerTotal && headerTotal > 0) {
-        return headerTotal;
-    }
-
     const itemTotal = order.items?.reduce((sum, item) => {
         return sum + (parseLaundryAmount(item?.amount) ?? (Number(item.item_count) * Number(item.item_rate)) ?? 0);
     }, 0);
+
+    const headerTotal = parseLaundryAmount(order.total_amount ?? order.amount);
+    
+    if (headerTotal && headerTotal > 0) {
+        return Math.max(headerTotal, itemTotal || 0);
+    }
 
     return itemTotal || 0;
 }
@@ -203,7 +209,7 @@ function getLaundryOrderDisplay(order: LaundryOrder, vendors?: Array<{ id: strin
 
     return {
         guestName: order.guest_name || "--",
-        roomNo: order.room_no || "--",
+        roomNo: order.room_no || order.items?.[0]?.room_no || "--",
         itemLabel: getLaundryOrderItemLabel(order),
         itemCountLabel: `${order.items?.length ?? 0} item(s)`,
         pickupDateLabel: formatDateTime(order.pickup_date),
@@ -532,32 +538,63 @@ export default function LaundryOrdersManagement() {
     // Hook handles all initialization logic now
 
 
+    function buildCreateLaundryOrderPayload(
+        propertyId: number,
+        form: CreateLaundryOrderForm,
+        pricingItems: any[],
+        primaryGuest?: any
+    ) {
+        const items = form.items.map((item) => {
+            const pricing = pricingItems.find((p) => Number(p.id) === Number(item.laundryId));
+            const rate = Number(pricing?.item_rate || 0);
+            const count = Number(item.itemCount || 0);
+            return {
+                laundry_id: Number(item.laundryId),
+                item_name: pricing?.item_name || "",
+                item_count: count,
+                item_rate: rate,
+                amount: count * rate,
+                room_no: item.roomNo || form.roomNo,
+                notes: item.notes,
+            };
+        });
+
+        const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
+
+        return {
+            property_id: propertyId,
+            booking_id: form.bookingId || null,
+            vendor_id: form.vendorId || null,
+            pickup_date: form.pickupDate ? form.pickupDate.toISOString() : null,
+            delivery_date: form.deliveryDate ? new Date(form.deliveryDate).toISOString() : null,
+            vendor_status: form.vendorStatus || "NOT_ALLOTTED",
+            laundry_status: "PENDING",
+            guest_name: primaryGuest ? `${primaryGuest.first_name} ${primaryGuest.last_name || ""}`.trim() : "",
+            guest_mobile: primaryGuest?.mobile || "",
+            total_amount: totalAmount,
+            items,
+        };
+    }
+
     /* ---------------- Handlers ---------------- */
     const validateForm = () => {
-
         if (!form.pickupDate) return false;
-
         if (!form.items.length) return false;
 
         for (const row of form.items) {
-
             if (!row.laundryId || !row.itemCount)
                 return false;
-
             // room required only if booking selected
             if (form.bookingId && !row.roomNo)
                 return false;
-
             // duplicate check
             const duplicates = form.items.filter(i =>
                 i.laundryId === row.laundryId &&
                 i.roomNo === row.roomNo
             );
-
             if (duplicates.length > 1)
                 return false;
         }
-
         return true;
     };
 
@@ -568,7 +605,6 @@ export default function LaundryOrdersManagement() {
         if (!validateForm()) {
             return; // 🚀 stops API call
         }
-
 
         const payload = buildCreateLaundryOrderPayload(
             Number(selectedPropertyId),
@@ -607,7 +643,7 @@ export default function LaundryOrdersManagement() {
                 return;
             }
 
-            /* ✅ RESET FORM — NEW STRUCTURE */
+            /* ✅ RESET FORM - NEW STRUCTURE */
             setForm({
                 vendorId: "",
                 pickupDate: (() => {
@@ -1059,7 +1095,7 @@ export default function LaundryOrdersManagement() {
     /* ---------------- UI ---------------- */
     return (
         <div className="flex flex-col bg-background">
-            <section className="flex flex-col p-6 lg:p-8 gap-6">
+            <section className="flex flex-col p-6 lg:p-8 gap-4">
                     <div className="flex items-center justify-between w-full">
                         <div className="flex flex-col">
                             <h1 className="text-2xl font-bold leading-tight">Laundry Orders</h1>
@@ -1366,7 +1402,7 @@ export default function LaundryOrdersManagement() {
                             <SheetTitle className="text-[#444444]">Add Laundry Order Items</SheetTitle>
                         </SheetHeader>
 
-                        <div className="flex-1 overflow-y-auto px-6 pb-6 pt-3">
+                        <div className="flex-1 overflow-y-auto px-4 pb-6 pt-3">
                             <div className="space-y-4">
                                 {isMultiProperty && (
                                     <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-3">
@@ -1386,301 +1422,187 @@ export default function LaundryOrdersManagement() {
                                     </div>
                                 )}
 
-                        {/* ================= HEADER SECTION ================= */}
+                                <div className="space-y-6">
+                                    {/* ================= HEADER FIELDS ================= */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-x-6 gap-y-4 border-b pb-6">
+                                        <div className="space-y-1.5">
+                                            <Label>Vendor *</Label>
+                                            <MenuItemSelect
+                                                value={form.vendorId || ""}
+                                                items={(vendors || []).map(v => ({ id: v.id, label: v.name }))}
+                                                onSelect={(id) => setForm({ ...form, vendorId: id ? Number(id) : "" })}
+                                                placeholder="--Please Select--"
+                                                extraClasses="h-10 bg-background/50"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label>Room Number*</Label>
+                                            <MenuItemSelect
+                                                value={form.bookingId && form.roomNo ? `${form.bookingId}:${form.roomNo}` : ""}
+                                                items={[
+                                                    { id: "", label: "No Room" },
+                                                    ...displayedRoomOptions.map((option) => ({
+                                                        id: option.value,
+                                                        label: option.roomNo
+                                                    }))
+                                                ]}
+                                                onSelect={(value) => {
+                                                    const selectedOption = displayedRoomOptions.find(option => option.value === value);
+                                                    setForm((prev) => ({
+                                                        ...prev,
+                                                        bookingId: selectedOption?.bookingId || "",
+                                                        roomNo: selectedOption?.roomNo || "",
+                                                        items: prev.items.map(item => ({ ...item, roomNo: selectedOption?.roomNo || "" }))
+                                                    }));
+                                                }}
+                                                placeholder="--Please Select--"
+                                                extraClasses="h-10 bg-background/50 text-foreground font-semibold"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label>Expected Delivery</Label>
+                                            <ResponsiveDatePicker
+                                                value={parseDate(form.deliveryDate)}
+                                                onChange={(date) => setForm(prev => ({ ...prev, deliveryDate: formatDate(date) }))}
+                                                showTime
+                                                minDate={form.pickupDate ? parseDate(form.pickupDate) : now}
+                                                placeholder="Select date & time"
+                                                className="h-10 bg-background/50"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label>Booking Id*</Label>
+                                            <div className="flex h-10 items-center text-sm font-semibold text-foreground">
+                                                {form.bookingId ? formatModuleDisplayId("booking", form.bookingId) : "-"}
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label>Guest Name *</Label>
+                                            <div className="flex h-10 items-center text-sm font-semibold truncate">
+                                                {(form.bookingId && primaryGuest) ? `${primaryGuest.first_name} ${primaryGuest.last_name || ""}`.trim() : "-"}
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label>Guest Mobile</Label>
+                                            <div className="flex h-10 items-center text-sm font-semibold">
+                                                {(form.bookingId && primaryGuest?.phone) ? primaryGuest.phone : "-"}
+                                            </div>
+                                        </div>
+                                    </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    {/* ================= ITEMS SECTION ================= */}
+                                    <div className="space-y-4">
+                                        <h3 className="text-sm font-bold text-foreground">Order Items</h3>
+                                        <div className="editable-grid-compact border rounded-[5px] overflow-hidden flex flex-col">
+                                            <div className="overflow-x-auto w-full bg-background border-b border-border">
+                                                <div className={cn("w-full", form.bookingId ? "min-w-[850px]" : "min-w-[700px]")}>
+                                                    <DataGrid>
+                                                        <DataGridHeader>
+                                                            <tr>
+                                                                <DataGridHead className="w-[150px]">Item *</DataGridHead>
+                                                                {form.bookingId && <DataGridHead className="w-28">Booking ID</DataGridHead>}
+                                                                <DataGridHead className="w-16 text-center">Qty *</DataGridHead>
+                                                                <DataGridHead className="w-20 text-center">Rate</DataGridHead>
+                                                                <DataGridHead className="w-24 text-center">Total</DataGridHead>
+                                                                <DataGridHead className="w-[150px]">Item Notes</DataGridHead>
+                                                                {form.items.length > 1 && <DataGridHead className="w-20 text-center">Action</DataGridHead>}
+                                                            </tr>
+                                                        </DataGridHeader>
+                                                        <tbody>
+                                                            {form.items.map((row, index) => {
+                                                                const error = showErrors ? getRowError(row, form.items, form.bookingId) : "";
+                                                                return (
+                                                                    <DataGridRow key={row.id}>
+                                                                        <DataGridCell>
+                                                                            <ValidationTooltip isValid={!((showErrors || row.touched?.laundryId) && (error && (!row.laundryId || error === "Duplicate item selected")))} message={error === "Duplicate item selected" ? "Duplicate item selected" : "Required field"}>
+                                                                                <MenuItemSelect value={row.laundryId || null} items={laundryPricingItems} disabledIds={form.items.map(item => item.laundryId).filter(Boolean)} itemName="item_name" forceNative={true} extraClasses={cn("h-9 w-full rounded-[3px] border border-input bg-background text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary", (showErrors || row.touched?.laundryId) && (error && (!row.laundryId || error === "Duplicate item selected")) && "border-red-500")} onSelect={(id) => updateItem(index, { laundryId: id, touched: { ...row.touched, laundryId: true } })} placeholder="--Please Select--" />
+                                                                            </ValidationTooltip>
+                                                                        </DataGridCell>
+                                                                        {form.bookingId && (
+                                                                            <DataGridCell>
+                                                                                <div className="flex h-9 items-center rounded-[3px] border border-input bg-background px-3 text-sm">{formatModuleDisplayId("booking", form.bookingId)}</div>
+                                                                            </DataGridCell>
+                                                                        )}
+                                                                        <DataGridCell>
+                                                                            <ValidationTooltip isValid={!((showErrors || row.touched?.itemCount) && (error && !row.itemCount))} message="Required field">
+                                                                                <input type="text" name={`laundry_item_count_${index}`} className={cn("w-full h-9 rounded-[3px] border border-input bg-background px-3 text-sm shadow-none outline-none focus:ring-1 focus:ring-primary text-center", (showErrors || row.touched?.itemCount) && (error && !row.itemCount) && "border-red-500")} value={row.itemCount} onChange={(e) => updateItem(index, { itemCount: +normalizeNumberInput(e.target.value) })} onBlur={() => updateItem(index, { touched: { ...row.touched, itemCount: true } })} />
+                                                                            </ValidationTooltip>
+                                                                        </DataGridCell>
+                                                                        <DataGridCell>
+                                                                            <div className="flex h-9 items-center justify-center rounded-[3px] border border-input bg-muted/20 px-3 text-sm font-medium text-muted-foreground">
+                                                                                {(() => {
+                                                                                    const pricing = laundryPricingItems.find((p: any) => Number(p.id) === Number(row.laundryId));
+                                                                                    return pricing?.item_rate ? `₹${pricing.item_rate}` : "—";
+                                                                                })()}
+                                                                            </div>
+                                                                        </DataGridCell>
+                                                                        <DataGridCell>
+                                                                            <div className="flex h-9 items-center justify-center rounded-[3px] border border-input bg-muted/20 px-3 text-sm font-bold text-foreground">
+                                                                                {(() => {
+                                                                                    const pricing = laundryPricingItems.find((p: any) => Number(p.id) === Number(row.laundryId));
+                                                                                    const rate = Number(pricing?.item_rate || 0);
+                                                                                    const qty = Number(row.itemCount || 0);
+                                                                                    return qty > 0 && rate > 0 ? `₹${(qty * rate).toFixed(2)}` : "—";
+                                                                                })()}
+                                                                            </div>
+                                                                        </DataGridCell>
+                                                                        <DataGridCell>
+                                                                            <input type="text" className="w-full h-9 rounded-[3px] border border-input bg-background px-3 text-sm shadow-none outline-none focus:ring-1 focus:ring-primary" placeholder="Optional item notes..." value={row.notes || ""} onChange={(e) => updateItem(index, { notes: e.target.value })} />
+                                                                        </DataGridCell>
+                                                                        {form.items.length > 1 && (
+                                                                            <DataGridCell className="text-center">
+                                                                                <Button size="icon" variant="ghost" className="editable-grid-remove-btn h-10 w-10 text-destructive hover:text-destructive/80 transition-colors mx-auto" onClick={() => removeRow(row.id)}>
+                                                                                    <Trash2 className="w-5 h-5" />
+                                                                                </Button>
+                                                                            </DataGridCell>
+                                                                        )}
+                                                                    </DataGridRow>
+                                                                );
+                                                            })}
+                                                        </tbody>
+                                                    </DataGrid>
+                                                </div>
+                                            </div>
+                                            <div className="bg-muted/5 border-t border-border px-4 py-3 space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <button type="button" className="flex items-center gap-1.5 text-primary hover:underline text-sm font-semibold transition-colors" onClick={addRow}>
+                                                        <PlusCircle className="w-4 h-4" /> Add New Order Item(s)
+                                                    </button>
+                                                    <div className="flex items-center gap-3 text-sm">
+                                                        <span className="text-muted-foreground font-medium">Total Amount :</span>
+                                                        <span className="text-xl font-bold text-foreground">
+                                                            ₹{form.items.reduce((sum, item) => {
+                                                                const pricing = laundryPricingItems.find((p: any) => Number(p.id) === Number(item.laundryId));
+                                                                return sum + (Number(item.itemCount || 0) * Number(pricing?.item_rate || 0));
+                                                            }, 0).toFixed(0)}
+                                                        </span>
+                                                    </div>
+                                                </div>
 
-                            {/* Vendor */}
-                            <div className="space-y-1">
-                                <Label>Vendor</Label>
-                                <MenuItemSelect
-                                    value={form.vendorId || ""}
-                                    items={(vendors || []).map(v => ({ id: v.id, label: v.name }))}
-                                    onSelect={(id) =>
-                                        setForm({ ...form, vendorId: id ? Number(id) : "" })
-                                    }
-                                    placeholder="--Please Select--"
-                                    extraClasses="h-10 bg-background/50"
-                                />
-                            </div>
-
-                            {/* Vendor Status */}
-                            <div className="space-y-1">
-                                <Label>Vendor Status</Label>
-                                <NativeSelect
-                                    className="w-full h-10 border rounded px-3 text-sm bg-background/50"
-                                    value={form.vendorStatus}
-                                    onChange={(e) =>
-                                        setForm({
-                                            ...form,
-                                            vendorStatus: e.target.value as VendorStatus
-                                        })
-                                    }
-                                >
-                                    {(["NOT_ALLOTTED", "PICKED_UP", "RECEIVED"] as VendorStatus[]).map(s => (
-                                        <option key={s} value={s}>
-                                            {formatDisplayStatus(s)}
-                                        </option>
-                                    ))}
-                                </NativeSelect>
-                            </div>
-
-                            {/* Pickup Date */}
-                            <div className="space-y-1">
-                                <Label>Pickup Date & Time*</Label>
-                                <div>
-                                    <ResponsiveDatePicker
-                                        value={parseDate(form.pickupDate)}
-                                        onChange={(date) =>
-                                            setForm(prev => ({
-                                                ...prev,
-                                                pickupDate: formatDate(date)
-                                            }))
-                                        }
-                                        showTime
-                                        minDate={now}
-                                        placeholder="Select date & time"
-                                        label="Pickup Information"
-                                        className="bg-background/50"
-                                    />
+                                                {/* Order Notes */}
+                                                <div className="space-y-1">
+                                                    <Label>Order Notes</Label>
+                                                    <textarea
+                                                        className="w-full min-h-[48px] rounded-[3px] border border-input bg-background px-3 py-1.5 text-sm shadow-none outline-none focus:ring-1 focus:ring-primary resize-none"
+                                                        placeholder="Special instructions (e.g. stains, starch, extra care)..."
+                                                        value={form.comments || ""}
+                                                        onChange={(e) => setForm(prev => ({ ...prev, comments: e.target.value }))}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-
-                            {/* Delivery Date */}
-                            <div className="space-y-1">
-                                <Label>Expected Delivery</Label>
-                                <div>
-                                    <ResponsiveDatePicker
-                                        value={parseDate(form.deliveryDate)}
-                                        onChange={(date) =>
-                                            setForm(prev => ({
-                                                ...prev,
-                                                deliveryDate: formatDate(date)
-                                            }))
-                                        }
-                                        showTime
-                                        minDate={form.pickupDate ? parseDate(form.pickupDate) : now}
-                                        placeholder="Select date & time"
-                                        label="Delivery Information"
-                                        className="bg-background/50"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Room */}
-                            <div className="space-y-1">
-                                <Label>Room Number</Label>
-                                <MenuItemSelect
-                                    value={form.bookingId && form.roomNo ? `${form.bookingId}:${form.roomNo}` : ""}
-                                    items={[
-                                        { id: "", label: "No Room (Hotel Laundry)" },
-                                        ...displayedRoomOptions.map((option) => ({
-                                            id: option.value,
-                                            label: option.roomNo
-                                        }))
-                                    ]}
-                                    onSelect={(value) => {
-                                        const selectedOption = displayedRoomOptions.find(
-                                            (option) => option.value === value
-                                        );
-
-                                        setForm((prev) => ({
-                                            ...prev,
-                                            bookingId: selectedOption?.bookingId || "",
-                                            roomNo: selectedOption?.roomNo || "",
-                                            items: prev.items.map((item) => ({
-                                                ...item,
-                                                roomNo: selectedOption?.roomNo || "",
-                                            })),
-                                        }));
-                                    }}
-                                    placeholder="--Please Select--"
-                                    extraClasses="h-10 bg-background/50"
-                                />
-                            </div>
-
-                            {/* Guest Name */}
-                            <div className="space-y-1">
-                                <Label>Guest Name</Label>
-                                <div className={cn("flex h-10 items-center text-sm font-medium cursor-default select-none", (!form.bookingId || !primaryGuest?.first_name) ? "text-muted-foreground" : "text-foreground")}>
-                                    {(form.bookingId && primaryGuest) ? `${primaryGuest.first_name} ${primaryGuest.last_name || ""}`.trim() : "—"}
-                                </div>
-                            </div>
-
-                            {/* Guest Mobile */}
-                            <div className="space-y-1">
-                                <Label>Guest Mobile</Label>
-                                <div className={cn("flex h-10 items-center text-sm font-medium cursor-default select-none", (!form.bookingId || !primaryGuest?.phone) ? "text-muted-foreground" : "text-foreground")}>
-                                    {(form.bookingId && primaryGuest?.phone) ? [primaryGuest.country_code, primaryGuest.phone].filter(Boolean).join(" ") : "—"}
-                                </div>
-                            </div>
-
-                            {/* Booking Id */}
-                            <div className="space-y-1">
-                                <Label>Booking Id</Label>
-                                <div className={cn("flex h-10 items-center text-sm font-medium cursor-default select-none", !form.bookingId ? "text-muted-foreground" : "text-foreground")}>
-                                    {form.bookingId ? formatModuleDisplayId("booking", form.bookingId) : "—"}
-                                </div>
-                            </div>
-
-                            <div className="space-y-1 col-span-1 sm:col-span-2">
-                                <Label>Special Instructions (Order Level)</Label>
-                                <textarea
-                                    className="w-full min-h-[60px] rounded-[3px] border border-input bg-background/50 px-3 py-2 text-sm shadow-none outline-none focus:ring-1 focus:ring-primary resize-none"
-                                    placeholder="Add any general notes for this order..."
-                                    value={form.comments || ""}
-                                    onChange={(e) => setForm(prev => ({ ...prev, comments: e.target.value }))}
-                                />
-                            </div>
-
-                        </div>
-
-                        {/* ================= ITEMS TABLE ================= */}
-
-                        <div className="editable-grid-compact border rounded-[5px] overflow-hidden flex flex-col">
-                            <div className="overflow-x-auto w-full bg-background border-b border-border">
-                                <div className={cn("w-full", form.bookingId ? "min-w-[1150px]" : "min-w-[950px]")}>
-                                    <DataGrid>
-                                        <DataGridHeader>
-                                            <tr>
-                                                <DataGridHead>Item *</DataGridHead>
-                                                {form.bookingId && (
-                                                    <DataGridHead className="w-40">Booking ID</DataGridHead>
-                                                )}
-                                                <DataGridHead className="w-28 text-center">Qty *</DataGridHead>
-                                                <DataGridHead className="flex-1">Item Notes (e.g. stains, starch)</DataGridHead>
-                                                {form.items.length > 1 && (
-                                                    <DataGridHead className="w-20 text-center">Action</DataGridHead>
-                                                )}
-                                            </tr>
-                                        </DataGridHeader>
-
-                                        <tbody>
-                                            {form.items.map((row, index) => {
-                                                const error = showErrors
-                                                    ? getRowError(row, form.items, form.bookingId)
-                                                    : "";
-
-                                                return (
-                                                    <DataGridRow key={row.id}>
-                                                        <DataGridCell>
-                                                            <ValidationTooltip
-                                                                isValid={!((showErrors || row.touched?.laundryId) && (error && (!row.laundryId || error === "Duplicate item selected")))}
-                                                                message={error === "Duplicate item selected" ? "Duplicate item selected" : "Required field"}
-                                                            >
-                                                                <MenuItemSelect
-                                                                    value={row.laundryId || null}
-                                                                    items={laundryPricingItems}
-                                                                    disabledIds={form.items.map(item => item.laundryId).filter(Boolean)}
-                                                                    itemName="item_name"
-                                                                    forceNative={true}
-                                                                    extraClasses={cn(
-                                                                        "h-9 w-full rounded-[3px] border border-input bg-background text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary",
-                                                                        (showErrors || row.touched?.laundryId) && (error && (!row.laundryId || error === "Duplicate item selected")) && "border-red-500"
-                                                                    )}
-                                                                    onSelect={(id) =>
-                                                                        updateItem(index, {
-                                                                            laundryId: id,
-                                                                            touched: { ...row.touched, laundryId: true }
-                                                                        })
-                                                                    }
-                                                                    placeholder="--Please Select--"
-                                                                />
-                                                            </ValidationTooltip>
-                                                        </DataGridCell>
-
-                                                        {form.bookingId && (
-                                                            <DataGridCell>
-                                                                <div className="flex h-9 items-center rounded-[3px] border border-input bg-background px-3 text-sm">
-                                                                    {formatModuleDisplayId("booking", form.bookingId)}
-                                                                </div>
-                                                            </DataGridCell>
-                                                        )}
-
-                                                        <DataGridCell>
-                                                            <ValidationTooltip
-                                                                isValid={!((showErrors || row.touched?.itemCount) && (error && !row.itemCount))}
-                                                                message="Required field"
-                                                            >
-                                                                <input
-                                                                    type="text"
-                                                                    name={`laundry_item_count_${index}`}
-                                                                    className={cn(
-                                                                        "w-full h-9 rounded-[3px] border border-input bg-background px-3 text-sm shadow-none outline-none focus:ring-1 focus:ring-primary text-center",
-                                                                        (showErrors || row.touched?.itemCount) && (error && !row.itemCount) && "border-red-500"
-                                                                    )}
-                                                                    value={row.itemCount}
-                                                                    onChange={(e) =>
-                                                                        updateItem(index, {
-                                                                            itemCount: +normalizeNumberInput(e.target.value)
-                                                                        })
-                                                                    }
-                                                                    onBlur={() => updateItem(index, { touched: { ...row.touched, itemCount: true } })}
-                                                                />
-                                                            </ValidationTooltip>
-                                                        </DataGridCell>
-
-                                                        <DataGridCell>
-                                                            <input
-                                                                type="text"
-                                                                className="w-full h-9 rounded-[3px] border border-input bg-background px-3 text-sm shadow-none outline-none focus:ring-1 focus:ring-primary"
-                                                                placeholder="Optional item notes..."
-                                                                value={row.notes || ""}
-                                                                onChange={(e) => updateItem(index, { notes: e.target.value })}
-                                                            />
-                                                        </DataGridCell>
-
-                                                        {form.items.length > 1 && (
-                                                            <DataGridCell className="text-center">
-                                                                <Button
-                                                                    size="icon"
-                                                                    variant="ghost"
-                                                                    className="editable-grid-remove-btn h-10 w-10 text-destructive hover:text-destructive/80 transition-colors mx-auto"
-                                                                    onClick={() => removeRow(row.id)}
-                                                                >
-                                                                    <Trash2 className="w-5 h-5" />
-                                                                </Button>
-                                                            </DataGridCell>
-                                                        )}
-                                                    </DataGridRow>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </DataGrid>
-                                </div>
-                            </div>
-                            <div className="editable-grid-footer p-3 bg-muted/10">
-                                <button
-                                    type="button"
-                                    className="flex items-center gap-1.5 text-primary hover:underline text-sm font-semibold transition-colors"
-                                    onClick={addRow}
-                                >
-                                    <PlusCircle className="w-4 h-4" /> Add New Order Item(s)
-                                </button>
-                            </div>
-                        </div>
-
                             </div>
                         </div>
 
                         <div className="p-6 border-t bg-muted/20 flex justify-end gap-3">
-                            <Button
-                                variant="heroOutline"
-                                onClick={handleCloseSheet}
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                variant="hero"
-                                className="min-w-[140px]"
-                                onClick={handleCreateOrder}
-                            >
-                                Create Order
-                            </Button>
+                            <Button variant="heroOutline" onClick={handleCloseSheet}>Cancel</Button>
+                            <Button variant="hero" className="min-w-[140px]" onClick={handleCreateOrder}>Create Order</Button>
                         </div>
-                </motion.div>
-            </SheetContent>
-        </Sheet>
+                    </motion.div>
+                </SheetContent>
+            </Sheet>
 
             {/* View / Edit Items Modal */}
             {/* View / Edit Items Sheet */}

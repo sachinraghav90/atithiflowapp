@@ -100,7 +100,7 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <ToastContainer />
-      <TooltipProvider>
+      <TooltipProvider delayDuration={100}>
         <Toaster />
         <Sonner />
         <Routes>

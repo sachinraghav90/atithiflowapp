@@ -145,11 +145,15 @@ export function CreateOrder() {
     }, [todayInHouseRooms]);
 
     const displayedRoomOptions = useMemo(() => {
-        if (!order.booking_id) return confirmedBookingRoomOptions;
-        return confirmedBookingRoomOptions.filter(
-            (option) => option.bookingId === Number(order.booking_id)
-        );
-    }, [confirmedBookingRoomOptions, order.booking_id]);
+        // If we opened this from a specific booking context, only show that booking's rooms
+        if (prefilledBookingId) {
+            return confirmedBookingRoomOptions.filter(
+                (option) => option.bookingId === Number(prefilledBookingId)
+            );
+        }
+        // Otherwise (standalone Restaurant Order), show all available in-house rooms
+        return confirmedBookingRoomOptions;
+    }, [confirmedBookingRoomOptions, prefilledBookingId]);
 
     /* ============================
        EFFECTS
@@ -513,8 +517,173 @@ export function CreateOrder() {
                 )}
 
                 {/* Order Info */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
+                    {/* Order Type */}
+                    <div className="flex flex-col gap-1">
+                        <Label>Order Type*</Label>
+                        <NativeSelect
+                            className={`
+      flex h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground ring-offset-background
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
+      disabled:cursor-not-allowed disabled:opacity-50 transition-colors duration-150
+      ${formErrors.order_type ? "border-red-500" : "border-input"}
+    `}
+                            value={order.order_type}
+                            onChange={(e) => {
+                                setSelectedRoomNo("");
+                                setOrder(o => ({
+                                    ...o,
+                                    order_type: e.target.value,
+                                    booking_id: null,
+                                    room_id: "",
+                                    table_no: ""
+                                }));
+                                setFormErrors(p => {
+                                    const copy = { ...p };
+                                    delete copy.order_type;
+                                    return copy;
+                                });
+                            }}
+                        >
+                            <option value="" disabled>-- Please Select --</option>
+                            <option value="Restaurant">Restaurant</option>
+                            <option value="Room Service">Room Service</option>
+                            <option value="Delivery">Delivery</option>
+                        </NativeSelect>
+                        <p className="min-h-[16px] text-xs text-red-500">
+                            {formErrors.order_type ?? ""}
+                        </p>
+                    </div>
 
+                    {/* Table / Room Number */}
+                    {order.order_type === "Restaurant" && (
+                        <div className="flex flex-col gap-1">
+                            <Label>Table No</Label>
+                            <NativeSelect
+                                className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
+                                value={order.table_no}
+                                onChange={(e) =>
+                                    setOrder(o => ({ ...o, table_no: e.target.value }))
+                                }
+                            >
+                                <option value="">-- Please Select --</option>
+                                {[1, 2, 3, 4, 5].map(table => (
+                                    <option key={table} value={table}>
+                                        {table}
+                                    </option>
+                                ))}
+                            </NativeSelect>
+                            <p className="min-h-[16px] text-xs text-red-500">
+                                {formErrors.table_no ?? ""}
+                            </p>
+                        </div>
+                    )}
+
+                    {order.order_type === "Room Service" && (
+                        <div className="flex flex-col gap-1">
+                            <Label>Room Number*</Label>
+                            <NativeSelect
+                                className={`
+                                        w-full h-10 rounded-[3px] border bg-background px-3 text-sm
+                                        ${formErrors.room_id ? "border-red-500" : "border-border"}
+                                        `}
+                                value={order.booking_id && selectedRoomNo ? `${order.booking_id}:${selectedRoomNo}` : ""}
+                                onChange={(e) => {
+                                    const selectedOption = displayedRoomOptions.find(
+                                        (option) => option.value === e.target.value
+                                    );
+                                    setSelectedRoomNo(selectedOption?.roomNo || "");
+                                    setOrder(o => ({
+                                        ...o,
+                                        booking_id: selectedOption?.bookingId || null,
+                                        room_id: ""
+                                    }))
+                                    setFormErrors(p => {
+                                        const copy = { ...p };
+                                        delete copy.room_id;
+                                        delete copy.booking_id;
+                                        return copy;
+                                    });
+                                }}
+                            >
+                                <option value="">-- Please Select --</option>
+                                {displayedRoomOptions.map((option) => (
+                                        <option key={option.value} value={option.value}>
+                                            {option.roomNo}
+                                        </option>
+                                    ))}
+                            </NativeSelect>
+                            <p className="min-h-[16px] text-xs text-red-500">
+                                {formErrors.room_id ?? ""}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Expected Delivery */}
+                    <div className="flex flex-col gap-1">
+                        <Label>Expected Delivery</Label>
+                        <ResponsiveDatePicker
+                            value={expectedDelivery}
+                            onChange={(date: Date | null) => setExpectedDelivery(date)}
+                            showTime
+                            minDate={new Date()}
+                            placeholder="Select date & time"
+                            label="Expected Delivery"
+                            className={cn(formErrors.expected_delivery_time && "border-red-500")}
+                        />
+                        <p className="min-h-[16px] text-xs text-red-500">
+                            {formErrors.expected_delivery_time ?? ""}
+                        </p>
+                    </div>
+
+                    {/* Booking Id / Partner */}
+                    {isRoomService && (
+                        <div className="flex flex-col gap-1">
+                            <Label>Booking Id*</Label>
+                            <div className={cn("flex h-10 items-center text-sm font-medium cursor-default select-none", !order.booking_id ? "text-muted-foreground" : "text-foreground")}>
+                                {order.booking_id ? formatModuleDisplayId("booking", order.booking_id) : "—"}
+                            </div>
+                            <p className="min-h-[16px] text-xs text-red-500">
+                                {formErrors.booking_id ?? ""}
+                            </p>
+                        </div>
+                    )}
+
+                    {order.order_type === "Delivery" && (
+                        <div className="flex flex-col gap-1">
+                            <Label>Delivery Partner*</Label>
+                            <NativeSelect
+                                className={`
+        flex h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground ring-offset-background
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
+        disabled:cursor-not-allowed disabled:opacity-50 transition-colors duration-150
+        ${formErrors.delivery_partner_id ? "border-red-500" : "border-input"}
+      `}
+                                value={order.delivery_partner_id}
+                                onChange={(e) => {
+                                    setOrder(o => ({ ...o, delivery_partner_id: e.target.value }));
+                                    setFormErrors(p => {
+                                        const copy = { ...p };
+                                        delete copy.delivery_partner_id;
+                                        return copy;
+                                    });
+                                }}
+                            >
+                                <option value="" disabled>-- Please Select --</option>
+                                {partners &&
+                                    partners.map((partner, i) => (
+                                        <option value={partner.id} key={i}>
+                                            {partner.name}
+                                        </option>
+                                    ))}
+                            </NativeSelect>
+                            <p className="min-h-[16px] text-xs text-red-500">
+                                {formErrors.delivery_partner_id ?? ""}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Row 2: Guest Details */}
                     <div className="flex flex-col gap-1">
                         <Label>Guest Name *</Label>
                         {isRoomService ? (
@@ -539,10 +708,8 @@ export function CreateOrder() {
                         <p className="min-h-[16px] text-xs text-red-500">
                             {formErrors.guest_name ?? ""}
                         </p>
-
                     </div>
 
-                    {/* Guest Mobile */}
                     <div className="flex flex-col gap-1">
                         <Label>Guest Mobile {order.order_type === "Delivery" ? "*" : ""}</Label>
                         {isRoomService ? (
@@ -587,172 +754,6 @@ export function CreateOrder() {
                             {formErrors.guest_mobile ?? ""}
                         </p>
                     </div>
-
-                    {/* Order Type */}
-
-                    <div className="flex flex-col gap-1">
-                        <Label>Order Type*</Label>
-                        <NativeSelect
-                            className={`
-      flex h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground ring-offset-background
-      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
-      disabled:cursor-not-allowed disabled:opacity-50 transition-colors duration-150
-      ${formErrors.order_type ? "border-red-500" : "border-input"}
-    `}
-                            value={order.order_type}
-                            onChange={(e) => {
-                                setSelectedRoomNo("");
-                                setOrder(o => ({
-                                    ...o,
-                                    order_type: e.target.value,
-                                    booking_id: null,
-                                    room_id: "",
-                                    table_no: ""
-                                }));
-                                setFormErrors(p => {
-                                    const copy = { ...p };
-                                    delete copy.order_type;
-                                    return copy;
-                                });
-                            }}
-                        >
-                            <option value="" disabled>-- Please Select --</option>
-                            <option value="Restaurant">Restaurant</option>
-                            <option value="Room Service">Room Service</option>
-                            <option value="Delivery">Delivery</option>
-                        </NativeSelect>
-                        <p className="min-h-[16px] text-xs text-red-500">
-                            {formErrors.order_type ?? ""}
-                        </p>
-                    </div>
-
-
-                    {/* Delivery Partner */}
-                    {/* Delivery Partner */}
-                    {order.order_type === "Delivery" && (
-                        <div className="flex flex-col gap-1">
-                            <Label>Delivery Partner*</Label>
-                            <NativeSelect
-                                className={`
-        flex h-10 w-full rounded-md border bg-background px-3 text-sm text-foreground ring-offset-background
-        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
-        disabled:cursor-not-allowed disabled:opacity-50 transition-colors duration-150
-        ${formErrors.delivery_partner_id ? "border-red-500" : "border-input"}
-      `}
-                                value={order.delivery_partner_id}
-                                onChange={(e) => {
-                                    setOrder(o => ({ ...o, delivery_partner_id: e.target.value }));
-                                    setFormErrors(p => {
-                                        const copy = { ...p };
-                                        delete copy.delivery_partner_id;
-                                        return copy;
-                                    });
-                                }}
-                            >
-                                <option value="" disabled>-- Please Select --</option>
-                                {partners &&
-                                    partners.map((partner, i) => (
-                                        <option value={partner.id} key={i}>
-                                            {partner.name}
-                                        </option>
-                                    ))}
-                            </NativeSelect>
-                            <p className="min-h-[16px] text-xs text-red-500">
-                                {formErrors.delivery_partner_id ?? ""}
-                            </p>
-                        </div>
-                    )}
-                    {order.order_type === "Restaurant" && <div className="flex flex-col gap-1">
-                        <Label>Table No</Label>
-                        <NativeSelect
-                            className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
-                            value={order.table_no}
-                            onChange={(e) =>
-                                setOrder(o => ({ ...o, table_no: e.target.value }))
-                            }
-                        >
-                            <option value="">-- Please Select --</option>
-                            {[1, 2, 3, 4, 5].map(table => (
-                                <option key={table} value={table}>
-                                    {table}
-                                </option>
-                            ))}
-                        </NativeSelect>
-                        <p className="min-h-[16px] text-xs text-red-500">
-                            {formErrors.table_no ?? ""}
-                        </p>
-
-                    </div>}
-
-                    {order.order_type === "Room Service" && <div className="flex flex-col gap-1 md:col-start-1">
-                        <Label>Room Number*</Label>
-                        <NativeSelect
-                            className={`
-                                    w-full h-10 rounded-[3px] border bg-background px-3 text-sm
-                                    ${formErrors.room_id ? "border-red-500" : "border-border"}
-                                    `}
-                            value={order.booking_id && selectedRoomNo ? `${order.booking_id}:${selectedRoomNo}` : ""}
-                            onChange={(e) => {
-                                const selectedOption = displayedRoomOptions.find(
-                                    (option) => option.value === e.target.value
-                                );
-                                setSelectedRoomNo(selectedOption?.roomNo || "");
-                                setOrder(o => ({
-                                    ...o,
-                                    booking_id: selectedOption?.bookingId || null,
-                                    room_id: ""
-                                }))
-                                setFormErrors(p => {
-                                    const copy = { ...p };
-                                    delete copy.room_id;
-                                    delete copy.booking_id;
-                                    return copy;
-                                });
-                            }}
-                        >
-                            <option value="">-- Please Select --</option>
-                            {displayedRoomOptions.map((option) => (
-                                    <option key={option.value} value={option.value}>
-                                        {option.roomNo}
-                                    </option>
-                                ))}
-                        </NativeSelect>
-                        <p className="min-h-[16px] text-xs text-red-500">
-                            {formErrors.room_id ?? ""}
-                        </p>
-
-                    </div>
-                    }
-                    {isRoomService && (
-                        <div className="flex flex-col gap-1">
-                            <Label>Booking Id*</Label>
-                            <div className={cn("flex h-10 items-center text-sm font-medium cursor-default select-none", !order.booking_id ? "text-muted-foreground" : "text-foreground")}>
-                                {order.booking_id ? formatModuleDisplayId("booking", order.booking_id) : "—"}
-                            </div>
-                            <p className="min-h-[16px] text-xs text-red-500">
-                                {formErrors.booking_id ?? ""}
-                            </p>
-                        </div>
-                    )}
-                    {/* Expected Delivery */}
-                    <div className={cn("flex flex-col gap-1", isRoomService && "md:col-start-4 md:row-start-1")}>
-                        <Label>Expected Delivery</Label>
-
-                        <ResponsiveDatePicker
-                            value={expectedDelivery}
-                            onChange={(date: Date | null) => setExpectedDelivery(date)}
-                            showTime
-                            minDate={new Date()}
-                            placeholder="Select date & time"
-                            label="Expected Delivery"
-                            className={cn(formErrors.expected_delivery_time && "border-red-500")}
-                        />
-                        <p className="min-h-[16px] text-xs text-red-500">
-                            {formErrors.expected_delivery_time ?? ""}
-                        </p>
-                    </div>
-
-
 
                 </div>
 

@@ -2,16 +2,12 @@ import { cn } from "@/lib/utils";
 import { useGetOrderByBookingQuery } from "@/redux/services/hmsApi";
 import { Button } from "../ui/button";
 import { useNavigate } from "react-router-dom";
-import { getStatusColor } from "@/constants/statusColors";
 import { toast } from "react-toastify";
 import { formatAppDateTime } from "@/utils/dateFormat";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import PropertyViewSection from "@/components/PropertyViewSection";
 import ViewField from "@/components/ViewField";
 import { GridBadge } from "../ui/grid-badge";
-import { Label } from "../ui/label";
-import { OrderItemsModal } from "../../pages/OrderItemsModal";
-import { useState } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 
 /* ---------------- Types ---------------- */
@@ -60,9 +56,6 @@ export default function RestaurantOrdersEmbedded({
         skip: !bookingId
     })
 
-    const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-    const [itemsOpen, setItemsOpen] = useState(false);
-
     function navigateToRestaurant() {
         if (!canCreateRoomServiceOrder) {
             toast.info("Room service orders are available only for checked-in bookings.");
@@ -102,23 +95,22 @@ export default function RestaurantOrdersEmbedded({
                 <p className="text-sm text-muted-foreground">No Restaurant Orders</p>
             )}
 
-            <div className="space-y-6">
+            <div className="space-y-4">
                 {orders && orders.map((order) => (
                     <PropertyViewSection
                         key={order.id}
                         title={
-                            <TooltipProvider>
+                            <TooltipProvider delayDuration={100}>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <button
-                                            onClick={() => {
-                                                setSelectedOrderId(order.id);
-                                                setItemsOpen(true);
-                                            }}
+                                        <a
+                                            href={`/orders?summaryOrderId=${encodeURIComponent(String(order.id))}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
                                             className="font-bold text-primary hover:underline transition-all cursor-pointer text-left"
                                         >
                                             Order #{formatModuleDisplayId("order", order.id)} — {formatDateTime(order.order_date)}
-                                        </button>
+                                        </a>
                                     </TooltipTrigger>
                                     <TooltipContent side="right">
                                         <p className="text-xs font-medium">Click to view order summary & items</p>
@@ -156,15 +148,6 @@ export default function RestaurantOrdersEmbedded({
                     </PropertyViewSection>
                 ))}
             </div>
-
-            <OrderItemsModal
-                orderId={selectedOrderId}
-                open={itemsOpen}
-                onClose={() => {
-                    setItemsOpen(false);
-                    setSelectedOrderId(null);
-                }}
-            />
         </div>
     );
 }

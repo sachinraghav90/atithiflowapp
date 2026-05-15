@@ -56,6 +56,19 @@ export default function LaundryEmbedded({
 
     const navigate = useNavigate()
 
+    const buildLaundrySummaryHref = (orderId: string | number) => {
+        const params = new URLSearchParams({
+            summaryOrderId: String(orderId),
+            bookingId: String(bookingId),
+        });
+
+        if (propertyId) {
+            params.set("propertyId", String(propertyId));
+        }
+
+        return `/laundry-orders?${params.toString()}`;
+    };
+
     const { data: laundry } = useGetBookingLaundryOrdersQuery(bookingId,
         { skip: !bookingId }
     );
@@ -85,8 +98,10 @@ export default function LaundryEmbedded({
         })
     }
 
+    const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
+
     return (
-        <div className="space-y-6">
+        <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <div>
                     <h3 className="text-lg font-semibold">Laundry</h3>
@@ -102,19 +117,12 @@ export default function LaundryEmbedded({
                     + Add Order
                 </Button>
             </div>
-            <div className="flex gap-2">
-
-            </div>
 
             {laundry?.length === 0 && (
                 <p className="text-sm text-muted-foreground">No laundry items</p>
             )}
 
             {laundry?.map((order, index) => {
-
-                const itemNames = order.items
-                    ?.map(i => `${i.item_name} (${i.item_count})`)
-                    .join(", ");
 
                 const totalAmount = order.items
                     ?.reduce((sum, i) => sum + Number(i.amount || 0), 0);
@@ -123,18 +131,17 @@ export default function LaundryEmbedded({
                     <PropertyViewSection
                         key={order.id}
                         title={
-                            <TooltipProvider>
+                            <TooltipProvider delayDuration={100}>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <button
-                                            onClick={() => {
-                                                setSelectedOrder(order);
-                                                setSummaryOpen(true);
-                                            }}
+                                        <a
+                                            href={buildLaundrySummaryHref(order.id)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
                                             className="font-bold text-primary hover:underline transition-all cursor-pointer text-left"
                                         >
-                                            Order #{formatModuleDisplayId("laundry_order", order.id)} — {formatAppDateTime(order.pickup_date)}
-                                        </button>
+                                            Order #{formatModuleDisplayId("laundry_order", order.id)} - {formatAppDateTime(order.pickup_date)}
+                                        </a>
                                     </TooltipTrigger>
                                     <TooltipContent side="right">
                                         <p className="text-xs font-medium">Click to view order summary & items</p>
@@ -157,12 +164,6 @@ export default function LaundryEmbedded({
                         <ViewField
                             label="Mobile"
                             value={guestMobile || "—"}
-                        />
-
-                        <ViewField
-                            label="Items"
-                            value={itemNames || "—"}
-                            className="sm:col-span-2 lg:col-span-3"
                         />
 
                         <ViewField

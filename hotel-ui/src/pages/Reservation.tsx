@@ -96,6 +96,7 @@ export default function ReservationManagement() {
 
     const [arrivalDate, setArrivalDate] = useState(todayISO());
     const [departureDate, setDepartureDate] = useState(tomorrowISO());
+    const [estimatedArrivalTime, setEstimatedArrivalTime] = useState("");
 
     const [arrivalError, setArrivalError] = useState("");
     const [departureError, setDepartureError] = useState("");
@@ -483,7 +484,8 @@ export default function ReservationManagement() {
             room_tax_amount: billingDetails.roomTaxAmount,
             comments: acTypeComment,
             drop,
-            pickup
+            pickup,
+            estimated_arrival_time: estimatedArrivalTime
         };
 
         const promise = createBooking(payload).unwrap()
@@ -743,6 +745,7 @@ export default function ReservationManagement() {
     const resetForm = () => {
         setArrivalDate("");
         setDepartureDate("");
+        setEstimatedArrivalTime("");
         setArrivalError("");
         setDepartureError("");
 
@@ -1110,6 +1113,20 @@ export default function ReservationManagement() {
                                     setErrors={setReservationErrors}
                                     required
                                     minDate={new Date()}
+                                />
+
+                                {/* ARRIVAL TIME */}
+                                <FormInput
+                                    label="Arrival Time"
+                                    field="estimatedArrivalTime"
+                                    value={{ estimatedArrivalTime }}
+                                    setValue={(fn: any) => {
+                                        const updated = fn({ estimatedArrivalTime });
+                                        setEstimatedArrivalTime(updated.estimatedArrivalTime);
+                                    }}
+                                    type="time"
+                                    errors={reservationErrors}
+                                    setErrors={setReservationErrors}
                                 />
 
                                 {/* DEPARTURE DATE */}

@@ -188,6 +188,7 @@ class Booking {
             b.estimated_departure,
             b.actual_arrival,
             b.actual_departure,
+            b.estimated_arrival_time,
 
             b.booking_nights,
             b.adult,
@@ -327,7 +328,8 @@ class Booking {
         comments,
         created_by,
         drop,
-        pickup
+        pickup,
+        estimated_arrival_time
     }) {
         const client = await this.#DB.connect();
 
@@ -365,14 +367,15 @@ class Booking {
                 final_amount,
                 comments,
                 pickup,
-                drop
+                drop,
+                estimated_arrival_time
             )
             VALUES (
                 $1,$2,$3,$4,$5,$6,$7,
                 $8,$9,($8::int + $9::int),
                 $10,$11,$12,
                 (DATE($7) - DATE($6)),
-                $13,$14,$15,$16,$17,$18,$19,$20,$21
+                $13,$14,$15,$16,$17,$18,$19,$20,$21,$22
             )
             RETURNING *
             `,
@@ -397,7 +400,8 @@ class Booking {
                     finalAmount,
                     comments || "",
                     pickup,
-                    drop
+                    drop,
+                    estimated_arrival_time
                 ]
             );
 

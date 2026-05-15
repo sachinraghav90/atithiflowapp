@@ -130,10 +130,8 @@ class LaundryOrderService {
                     throw new Error("Invalid laundry item");
                 }
 
-                const itemAmount = qty * rate;
-
                 placeholders.push(
-                    `($${paramIndex++},$${paramIndex++},$${paramIndex++},$${paramIndex++},$${paramIndex++},$${paramIndex++},$${paramIndex++},$${paramIndex++})`
+                    `($${paramIndex++},$${paramIndex++},$${paramIndex++},$${paramIndex++},DEFAULT,$${paramIndex++},$${paramIndex++},$${paramIndex++})`
                 );
 
                 values.push(
@@ -141,7 +139,6 @@ class LaundryOrderService {
                     item.laundryId,
                     qty,
                     rate,
-                    itemAmount,
                     item.roomNo ?? item.room_no ?? null,
                     userId,
                     item.notes ?? null

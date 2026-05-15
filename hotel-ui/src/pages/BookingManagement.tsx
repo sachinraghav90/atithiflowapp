@@ -340,14 +340,14 @@ export default function BookingsManagement() {
 
         return (
             <div className="space-y-4">
-                <PropertyViewSection title="Financial Overview" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                <PropertyViewSection title="Financial Overview" titleClassName="mb-3 text-[12px] font-bold text-primary" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                     <ViewField label="Total Amount" value={`₹ ${totalAmt}`} />
                     <ViewField label="Paid Amount" value={`₹ ${totalPaid}`} />
                     <ViewField label="Remaining Balance" value={`₹ ${remaining}`} />
                     <ViewField label="Discount" value={`₹ ${booking?.discount_amount || 0}`} />
                 </PropertyViewSection>
 
-                <PropertyViewSection title="Booking Information" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                <PropertyViewSection title="Booking Information" titleClassName="mb-3 text-[12px] font-bold text-primary" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
                     <ViewField label="Guest Name" value={booking?.primary_guest ? `${booking.primary_guest.first_name} ${booking.primary_guest.last_name || ""}`.trim() : "—"} />
                     <ViewField label="Booking Source" value={booking?.booking_type ? formatReadableLabel(booking.booking_type) : "—"} />
                     <ViewField label="Adults / Children" value={`${booking?.adult || 0} A / ${booking?.child || 0} C`} />
@@ -358,7 +358,7 @@ export default function BookingsManagement() {
                     <ViewField label="Booking Date" value={formatToDDMMYY(booking?.booking_date)} />
                     <ViewField label="Rooms Booked" value={booking?.rooms?.length || 0} />
                     <ViewField label="Arrival Time" value={booking?.estimated_arrival_time || "—"} />
-                    <ViewField label="Checked In At" value={booking?.checked_in_date ? formatToDDMMYY(booking.checked_in_date) : "—"} />
+                    <ViewField label="Checked In At" value={booking?.actual_arrival ? formatToDDMMYY(booking.actual_arrival) : "—"} />
                     <ViewField label="Comments" value={booking?.comments || "No comments"} className="sm:col-span-2 lg:col-span-3" />
                 </PropertyViewSection>
             </div>
@@ -738,10 +738,10 @@ export default function BookingsManagement() {
                     >
                         <SheetHeader className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                             <div className="space-y-1">
-                                <SheetTitle className="text-xl font-bold">
+                                <SheetTitle className="text-2xl font-bold leading-tight">
                                     Booking [#{formatModuleDisplayId("booking", bookingId)}]
                                 </SheetTitle>
-                                <p className="text-xs text-muted-foreground font-medium tracking-wider">
+                                <p className="text-sm text-muted-foreground font-medium leading-5 tracking-wider">
                                     {editMode ? "Manage Booking Details" : "Booking Related Details"}
                                 </p>
                             </div>
