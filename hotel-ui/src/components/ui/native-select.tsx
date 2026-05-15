@@ -51,9 +51,10 @@ const NativeSelect = React.forwardRef<HTMLSelectElement, NativeSelectProps>(
 
     const handleSelect = (val: string | number) => {
       if (onChange) {
+        const stringValue = val === null || val === undefined ? "" : String(val);
         const event = {
           target: {
-            value: val,
+            value: stringValue,
             name: props.name,
           },
         } as React.ChangeEvent<HTMLSelectElement>;

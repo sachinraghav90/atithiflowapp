@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
+import ViewField from "@/components/ViewField";
 import { useGetLogsQuery, useGetAllRoomsMetaQuery } from "@/redux/services/hmsApi";
 import { formatAppDateTime } from "@/utils/dateFormat";
 
@@ -103,7 +104,7 @@ export default function BookingLogsEmbedded({ bookingId, propertyId }: Props) {
     return (
         <div className="space-y-4">
             <div className="flex justify-between items-center">
-                <h2 className="text-lg font-semibold">Activity Logs</h2>
+                <p className="mb-3 text-[12px] font-bold text-primary">Activity Logs</p>
             </div>
 
             {isLoading && (
@@ -142,8 +143,8 @@ export default function BookingLogsEmbedded({ bookingId, propertyId }: Props) {
 
                                 <div className="p-5 space-y-4">
                                     {/* USER INFO */}
-                                    <div className="text-[11px] text-muted-foreground/80 flex items-center gap-1.5">
-                                        <span className="font-semibold uppercase tracking-tight">Performed By:</span>
+                                    <div className="text-xs text-muted-foreground/80 flex items-center gap-1.5">
+                                        <span className="font-bold">Performed By:</span>
                                         <span className="text-foreground/90 font-medium">{log.user_first_name} {log.user_last_name}</span>
                                         <span className="opacity-50">•</span>
                                         <span className="italic">{log.user_email}</span>
@@ -154,17 +155,12 @@ export default function BookingLogsEmbedded({ bookingId, propertyId }: Props) {
                                         <div className="rounded-[3px] border border-border/50 bg-muted/5 p-4">
                                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-4">
                                                 {Object.entries(detailsObj).map(([key, value]) => (
-                                                    <div
+                                                    <ViewField
                                                         key={key}
-                                                        className="flex flex-col gap-1"
-                                                    >
-                                                        <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
-                                                            {formatKey(key)}
-                                                        </span>
-                                                        <div className="text-xs font-semibold">
-                                                            {renderValue(key, value)}
-                                                        </div>
-                                                    </div>
+                                                        label={formatKey(key)}
+                                                        value={renderValue(key, value)}
+                                                        valueClassName="text-xs"
+                                                    />
                                                 ))}
                                             </div>
                                         </div>

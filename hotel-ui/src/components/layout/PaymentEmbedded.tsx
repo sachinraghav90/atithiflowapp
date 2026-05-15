@@ -205,7 +205,7 @@ export default function PaymentsEmbedded({
     return (
         <div className="space-y-6">
             <div className="flex flex-col">
-                <h3 className="text-base font-semibold text-foreground">Payments</h3>
+                <p className="mb-3 text-[12px] font-bold text-primary">Payments</p>
                 <p className="text-[11px] text-muted-foreground/80">
                     Manage payment entries for this booking
                 </p>

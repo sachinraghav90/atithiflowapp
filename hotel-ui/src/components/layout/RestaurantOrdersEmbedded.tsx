@@ -136,23 +136,23 @@ export default function RestaurantOrdersEmbedded({
                         <ViewField label="Amount" value={`₹${order.total_amount}`} />
                         {order.notes && <ViewField label="Notes" value={order.notes} className="sm:col-span-2 lg:col-span-3 text-amber-600 font-medium" />}
 
-                        <div>
-                            <Label className="text-[10px] font-bold text-muted-foreground">Order Status</Label>
-                            <div className="mt-0.5">
+                        <ViewField
+                            label="Order Status"
+                            value={
                                 <GridBadge status={order.order_status} statusType="order" className="h-6 px-3 text-[10px] font-bold">
                                     {order.order_status}
                                 </GridBadge>
-                            </div>
-                        </div>
+                            }
+                        />
 
-                        <div>
-                            <Label className="text-[10px] font-bold text-muted-foreground">Payment Status</Label>
-                            <div className="mt-0.5">
+                        <ViewField
+                            label="Payment Status"
+                            value={
                                 <GridBadge status={order.payment_status} statusType="payment" className="h-6 px-3 text-[10px] font-bold">
                                     {order.payment_status}
                                 </GridBadge>
-                            </div>
-                        </div>
+                            }
+                        />
                     </PropertyViewSection>
                 ))}
             </div>

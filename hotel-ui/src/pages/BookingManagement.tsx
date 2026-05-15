@@ -136,7 +136,6 @@ export default function BookingsManagement() {
 
     const [updatedStatus, setUpdatedStatus] = useState<string>("");
     const [statusSelectOpen, setStatusSelectOpen] = useState(false);
-    const [statusTooltipOpen, setStatusTooltipOpen] = useState(false);
 
     const memoizedArrivalFrom = useMemo(() => (arrivalFrom ? new Date(arrivalFrom) : null), [arrivalFrom]);
     const memoizedArrivalTo = useMemo(() => (arrivalTo ? new Date(arrivalTo) : null), [arrivalTo]);
@@ -763,23 +762,14 @@ export default function BookingsManagement() {
                                 </Button>
 
                                 <TooltipProvider delayDuration={0}>
-                                <Tooltip
-                                    open={statusTooltipOpen && !statusSelectOpen}
-                                >
+                                <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <div
-                                            className="flex flex-col items-start space-y-0.5 cursor-help"
-                                            onMouseEnter={() => setStatusTooltipOpen(!statusSelectOpen)}
-                                            onMouseLeave={() => setStatusTooltipOpen(false)}
-                                        >
+                                        <div className="flex flex-col items-start space-y-0.5 cursor-help">
                                             <Label className="text-[10px] font-bold tracking-widest text-muted-foreground/80">Update Booking Status</Label>
                                             <NativeSelect
                                                 className="h-8 border-primary/30 bg-primary/5 rounded-[4px] px-3 py-0 text-xs font-bold text-primary focus:ring-1 focus:ring-primary w-[160px] shadow-sm cursor-pointer transition-all hover:bg-primary/10"
                                                 value={updatedStatus || selectedBooking?.booking.booking_status || ""}
-                                                onOpenChange={(open) => {
-                                                    setStatusSelectOpen(open);
-                                                    if (open) setStatusTooltipOpen(false);
-                                                }}
+                                                onOpenChange={setStatusSelectOpen}
                                                 onChange={(e) => {
                                                     setUpdatedStatus(e.target.value);
                                                     setConfirmStatusOpen(true);
@@ -795,9 +785,16 @@ export default function BookingsManagement() {
                                             </NativeSelect>
                                         </div>
                                     </TooltipTrigger>
-                                    <TooltipContent side="top" align="center" sideOffset={6} className="bg-white text-black border-border shadow-md px-3 py-1.5 text-xs font-medium z-[200]">
-                                        Click to update booking status
-                                    </TooltipContent>
+                                    {!statusSelectOpen && (
+                                        <TooltipContent
+                                            side="top"
+                                            align="center"
+                                            sideOffset={6}
+                                            className="bg-white text-black border-border shadow-md px-3 py-1.5 text-xs font-medium z-[200] pointer-events-none"
+                                        >
+                                            Click to update booking status
+                                        </TooltipContent>
+                                    )}
                                 </Tooltip>
                             </TooltipProvider>
                         </div>

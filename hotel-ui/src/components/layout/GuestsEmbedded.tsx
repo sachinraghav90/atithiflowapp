@@ -16,6 +16,7 @@ import {
 } from "@/redux/services/hmsApi";
 import { normalizeNumberInput, normalizeTextInput } from "@/utils/normalizeTextInput";
 import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
+import ViewField from "@/components/ViewField";
 import { cn } from "@/lib/utils";
 import countries from '../../utils/countries.json'
 import SearchSelectPopover from "./SearchSelectPopover";
@@ -716,7 +717,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                     Guest Details
                                 </p>
 
-                                <div className="grid grid-cols-1 gap-x-12 gap-y-0.5 sm:grid-cols-2">
+                                <div className="grid grid-cols-1 gap-x-12 gap-y-4 sm:grid-cols-2">
                                     <InfoRow label="Phone" value={g?.phone} />
                                     <InfoRow label="Email" value={g.email} />
                                     <InfoRow label="Gender" value={g.gender} />
@@ -741,7 +742,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                         <p className="mb-3 text-[12px] font-bold text-primary">
                                             Emergency Contact
                                         </p>
-                                        <div className="space-y-0.5">
+                                        <div className="space-y-3">
                                             <InfoRow
                                                 label="Name"
                                                 value={g.emergency_contact_name || "—"}
@@ -757,7 +758,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                     {g.nationality?.toLowerCase() === "foreigner" && (
                                         <div className="pt-3 border-t border-border/30">
                                             <p className="mb-3 text-[12px] font-bold text-primary">Visa Details</p>
-                                            <div className="space-y-0.5">
+                                            <div className="space-y-3">
                                                 <InfoRow label="Visa No" value={g.visa_number} />
                                                 <InfoRow label="Issue" value={formatReadableDate(g.visa_issue_date)} />
                                                 <InfoRow label="Expiry" value={formatReadableDate(g.visa_expiry_date)} />
@@ -859,12 +860,14 @@ function InfoRow({
     value?: string | null;
     className?: string;
 }) {
-    if (!value) return null;
-
     return (
-        <div className={cn("flex items-baseline gap-10 py-0", className)}>
-            <dt className="text-[11px] font-semibold text-muted-foreground w-20 shrink-0 leading-5">{label}</dt>
-            <dd className="text-[13px] font-medium text-foreground break-all leading-5">{value}</dd>
-        </div>
+        <ViewField
+            label={label}
+            value={value}
+            hideIfEmpty
+            className={cn("flex items-baseline gap-10 py-0 space-y-0", className)}
+            labelClassName="w-20 shrink-0 leading-5 text-muted-foreground"
+            valueClassName="text-[13px] font-medium leading-5"
+        />
     );
 }

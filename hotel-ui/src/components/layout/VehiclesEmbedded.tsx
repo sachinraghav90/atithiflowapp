@@ -25,6 +25,7 @@ type VehicleForm = {
     vehicle_type?: VehicleType | "";
     vehicle_name?: string;
     vehicle_number?: string;
+    phone?: string;
     room_no?: string;
     is_active?: boolean;
     color?: string;
@@ -43,6 +44,7 @@ const EMPTY_VEHICLE: VehicleForm = {
     vehicle_type: "",
     vehicle_name: "",
     vehicle_number: "",
+    phone: "",
     room_no: "",
     color: "",
     is_active: true,
@@ -65,6 +67,7 @@ function isDraftVehiclePopulated(vehicle: VehicleForm) {
         vehicle.vehicle_type ||
         vehicle.vehicle_name?.trim() ||
         vehicle.vehicle_number?.trim() ||
+        vehicle.phone?.trim() ||
         vehicle.color?.trim() ||
         vehicle.room_no?.trim()
     );
@@ -130,6 +133,7 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
         vehicle_type: vehicle.vehicle_type || null,
         vehicle_name: vehicle.vehicle_name?.trim() || "",
         vehicle_number: vehicle.vehicle_number?.trim() || "",
+        phone: vehicle.phone?.trim() || "",
         color: vehicle.color?.trim() || "",
         room_no: vehicle.room_no?.trim() || "",
     });
@@ -147,6 +151,7 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
             String(currentPayload.vehicle_type ?? "") !== String(originalPayload.vehicle_type ?? "") ||
             currentPayload.vehicle_name !== originalPayload.vehicle_name ||
             currentPayload.vehicle_number !== originalPayload.vehicle_number ||
+            currentPayload.phone !== originalPayload.phone ||
             currentPayload.color !== originalPayload.color ||
             currentPayload.room_no !== originalPayload.room_no ||
             Boolean(currentPayload.is_active) !== Boolean(originalPayload.is_active)
@@ -184,7 +189,7 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
         <div className="space-y-4">
             <div className="flex items-center justify-between gap-3">
                 <div>
-                    <h2 className="text-base font-semibold text-foreground">Vehicles</h2>
+                    <p className="mb-3 text-[12px] font-bold text-primary">Vehicles</p>
                     <p className="text-[11px] text-muted-foreground/80">
                         Manage multiple vehicle entries in one save.
                     </p>
@@ -193,14 +198,15 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
             </div>
 
             <div className="editable-grid-compact grid-header-inside-table border-2 border-primary/50 rounded-[5px] overflow-hidden flex flex-col shadow-sm">
-                <div className="grid-scroll-x w-full bg-background">
-                    <div className="w-full min-w-[900px]">
+                <div className="app-scrollbar overflow-x-auto overflow-y-hidden h-fit w-full bg-background">
+                    <div className="w-full min-w-[1050px]">
                         <DataGrid>
                             {/* HEADER */}
                             <DataGridHeader>
                                 <DataGridHead className="border-r border-slate-200/20">Type</DataGridHead>
                                 <DataGridHead className="border-r border-slate-200/20">Name</DataGridHead>
-                                <DataGridHead className="border-r border-slate-200/20">Number</DataGridHead>
+                                <DataGridHead className="border-r border-slate-200/20">Vehicle Number</DataGridHead>
+                                <DataGridHead className="border-r border-slate-200/20">Phone</DataGridHead>
                                 <DataGridHead className="border-r border-slate-200/20">Color</DataGridHead>
                                 <DataGridHead className="border-r border-slate-200/20">Room</DataGridHead>
                                 {showVehicleActions && (
@@ -265,6 +271,23 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
                                                 />
                                             ) : (
                                                 <span className="text-sm font-medium">{vehicle.vehicle_number || "—"}</span>
+                                            )}
+                                        </DataGridCell>
+
+                                        {/* PHONE */}
+                                        <DataGridCell className="border-r border-slate-200/40">
+                                            {isRowEditable(vehicle) ? (
+                                                <Input
+                                                    value={vehicle.phone ?? ""}
+                                                    className="h-9 w-full rounded-[3px] border border-border bg-background px-3 text-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0"
+                                                    onChange={(e) =>
+                                                        updateVehicle(index, {
+                                                            phone: normalizeTextInput(e.target.value),
+                                                        })
+                                                    }
+                                                />
+                                            ) : (
+                                                <span className="text-sm font-medium">{vehicle.phone || "—"}</span>
                                             )}
                                         </DataGridCell>
 

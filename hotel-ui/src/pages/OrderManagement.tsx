@@ -14,7 +14,7 @@ import {
 } from "@/redux/services/hmsApi";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { OrderItemsModal } from "./OrderItemsModal";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import DeliveryPartnerManager from "./DeliveryPartnerManager";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
@@ -58,6 +58,7 @@ type Order = {
 };
 
 export function OrdersManagement() {
+    const location = useLocation();
     const [statusFilter, setStatusFilter] = useState<string>("");
     const [paymentFilter, setPaymentFilter] = useState<string>("");
     const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
@@ -80,6 +81,9 @@ export function OrdersManagement() {
     const prefetchOrder = usePrefetch('getOrderById');
 
     const navigate = useNavigate()
+    const summaryOrderId = useMemo(() => {
+        return new URLSearchParams(location.search).get("summaryOrderId");
+    }, [location.search]);
 
     const {
         myProperties,
@@ -111,6 +115,14 @@ export function OrdersManagement() {
     const filteredOrders = useMemo(() => {
         return data?.data ?? [];
     }, [data?.data]);
+
+    useEffect(() => {
+        if (!summaryOrderId) return;
+
+        setOpenOrderInEditMode(false);
+        setSelectedOrderId(summaryOrderId);
+        setItemsOpen(true);
+    }, [summaryOrderId]);
 
     // ################# Export Orders to Sheet #################
     const exportOrdersSheet = async () => {
@@ -191,20 +203,17 @@ export function OrdersManagement() {
             label: "Order ID",
             cellClassName: "font-medium",
             render: (order) => (
-                <button
-                    type="button"
+                <a
+                    href={`/orders?summaryOrderId=${encodeURIComponent(String(order.id))}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
                     onMouseEnter={() => prefetchOrder(order.id)}
                     onFocus={() => prefetchOrder(order.id)}
-                    onClick={() => {
-                        setOpenOrderInEditMode(false);
-                        setSelectedOrderId(order.id);
-                        setItemsOpen(true);
-                    }}
                     aria-label={`Open summary view for order ${formatOrderDisplayId(order.id)}`}
                 >
                     {formatOrderDisplayId(order.id)}
-                </button>
+                </a>
             ),
         },
         {

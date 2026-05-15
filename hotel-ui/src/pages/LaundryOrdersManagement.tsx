@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useAppSelector } from "@/redux/hook";
-import { useCreateLaundryOrderMutation, useGetAllPropertyVendorsQuery, useGetLogsByTableQuery, useGetLogsQuery, useGetPropertyLaundryOrdersQuery, useGetPropertyLaundryPricingQuery, useLazyExportPropertyLaundryOrdersQuery, useTodayInHouseBookingRoomsQuery, useUpdateLaundryOrderMutation, useGetPrimaryGuestByBookingQuery } from "@/redux/services/hmsApi";
+import { useCreateLaundryOrderMutation, useGetAllPropertyVendorsQuery, useGetBookingLaundryOrdersQuery, useGetLogsByTableQuery, useGetLogsQuery, useGetPropertyLaundryOrdersQuery, useGetPropertyLaundryPricingQuery, useLazyExportPropertyLaundryOrdersQuery, useTodayInHouseBookingRoomsQuery, useUpdateLaundryOrderMutation, useGetPrimaryGuestByBookingQuery } from "@/redux/services/hmsApi";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -85,6 +85,8 @@ const AUDIT_ACTIONS = ["CREATE", "UPDATE", "DELETE"];
 
 type LaundryOrder = {
     id: string;
+    property_id?: string | number | null;
+    booking_id?: string | number | null;
     amount: string;
     laundry_status: LaundryStatus;
     vendor_id?: string;
@@ -111,69 +113,6 @@ type LaundryItemRow = {
         itemCount?: boolean;
     };
 };
-
-type CreateLaundryOrderForm = {
-    bookingId?: number | "";
-    roomNo?: string;
-    vendorId: number | "";
-    pickupDate: string | Date;
-    deliveryDate: string | Date;
-    vendorStatus: VendorStatus;
-    comments?: string;
-    items: LaundryItemRow[];
-};
-
-/* ---------------- Helpers ---------------- */
-function buildCreateLaundryOrderPayload(
-    propertyId: number,
-    form: CreateLaundryOrderForm,
-    laundryPricing: any[],
-    primaryGuest: any
-) {
-    // Calculate total amount
-    const totalAmount = form.items.reduce((sum, item) => {
-        const pricing = laundryPricing.find(p => p.id === Number(item.laundryId));
-        const rate = Number(pricing?.item_rate) || 0;
-        const qty = Number(item.itemCount) || 0;
-        return sum + (rate * qty);
-    }, 0);
-
-    const guestName = primaryGuest ? `${primaryGuest.first_name} ${primaryGuest.last_name || ""}`.trim() : "";
-    const guestMobile = primaryGuest?.phone || "";
-
-    return {
-        property_id: propertyId,
-        booking_id: form.bookingId ? Number(form.bookingId) : null,
-        vendor_id: form.vendorId ? Number(form.vendorId) : null,
-        pickup_date: typeof form.pickupDate === "string"
-            ? form.pickupDate
-            : form.pickupDate.toISOString(),
-        delivery_date: form.deliveryDate ? (typeof form.deliveryDate === "string" ? form.deliveryDate : form.deliveryDate.toISOString()) : null,
-        vendor_status: form.vendorStatus,
-        comments: form.comments || null,
-        guest_name: guestName,
-        guest_mobile: guestMobile,
-        total_amount: totalAmount,
-        room_no: form.roomNo || null,
-        items: form.items.map(i => ({
-            laundry_id: Number(i.laundryId),
-            item_count: Number(i.itemCount),
-            room_no: i.roomNo || form.roomNo || null,
-            notes: i.notes || null
-        }))
-    };
-}
-
-function buildLaundryStatusPayload(status: LaundryStatus) {
-    return {
-        laundryStatus: status,
-    };
-}
-
-function parseDate(value?: string | Date) {
-    return value ? new Date(value) : null;
-}
-
 function formatDate(date?: Date | null) {
     return date ? date.toISOString() : "";
 }
@@ -274,6 +213,23 @@ function getLaundryOrderDisplay(order: LaundryOrder, vendors?: Array<{ id: strin
         vendorStatusLabel: formatDisplayStatus(vendorStatus),
         vendorName: getLaundryVendorName(order, vendors),
     };
+}
+
+function buildLaundryOrderSummaryUrl(order: LaundryOrder, propertyId?: string | number | null) {
+    const params = new URLSearchParams({
+        summaryOrderId: String(order.id),
+    });
+    const bookingId = order.booking_id;
+
+    if (bookingId) {
+        params.set("bookingId", String(bookingId));
+    }
+
+    if (propertyId) {
+        params.set("propertyId", String(propertyId));
+    }
+
+    return `/laundry-orders?${params.toString()}`;
 }
 
 function getLaundryAuditChanges(audit: any) {
@@ -396,6 +352,11 @@ export default function LaundryOrdersManagement() {
     const prefilledBookingId = location.state?.bookingId;
     const prefilledPropertyId = location.state?.propertyId;
     const prefilledBookingStatus = location.state?.bookingStatus;
+    const summaryParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+    const summaryOrderId = summaryParams.get("summaryOrderId");
+    const summaryBookingId = summaryParams.get("bookingId");
+    const summaryPropertyId = summaryParams.get("propertyId");
+    const [autoOpenedSummaryOrderId, setAutoOpenedSummaryOrderId] = useState<string | null>(null);
 
 
     const { myProperties, isMultiProperty, isInitializing } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
@@ -439,6 +400,10 @@ export default function LaundryOrdersManagement() {
         skip: !form.bookingId
     })
 
+    const { data: summaryBookingLaundryOrders } = useGetBookingLaundryOrdersQuery(summaryBookingId, {
+        skip: !summaryOrderId || !summaryBookingId
+    })
+
     const { data: logs, isFetching: logsFetching, refetch: refetchLogs } = useGetLogsByTableQuery({ tableName: "laundry_orders", propertyId: selectedPropertyId, page: 1, limit: 1000 }, {
         skip: !isLoggedIn || !selectedPropertyId
     })
@@ -468,6 +433,43 @@ export default function LaundryOrdersManagement() {
             setAuditPage(1);
         }
     }, [selectedPropertyId]);
+
+    useEffect(() => {
+        if (!summaryPropertyId) return;
+
+        setSelectedPropertyId(String(summaryPropertyId));
+    }, [summaryPropertyId]);
+
+    useEffect(() => {
+        if (!summaryOrderId || summaryBookingId || !summaryPropertyId) return;
+
+        setSearchInput(summaryOrderId);
+        setSearchQuery(summaryOrderId);
+        setOrdersPage(1);
+    }, [summaryBookingId, summaryOrderId, summaryPropertyId]);
+
+    useEffect(() => {
+        if (!summaryOrderId || autoOpenedSummaryOrderId === summaryOrderId) return;
+
+        const bookingOrder = Array.isArray(summaryBookingLaundryOrders)
+            ? summaryBookingLaundryOrders.find((order: LaundryOrder) => String(order.id) === summaryOrderId)
+            : null;
+
+        const propertyOrder = Array.isArray(laundryData?.data)
+            ? laundryData.data.find((order: LaundryOrder) => String(order.id) === summaryOrderId)
+            : null;
+
+        const order = bookingOrder || propertyOrder;
+
+        if (!order) return;
+
+        setViewItemsModal({
+            open: true,
+            editMode: false,
+            order,
+        });
+        setAutoOpenedSummaryOrderId(summaryOrderId);
+    }, [autoOpenedSummaryOrderId, laundryData?.data, summaryBookingLaundryOrders, summaryOrderId]);
 
     useEffect(() => {
         if (searchInput.trim() === "" && searchQuery !== "") {
@@ -763,7 +765,7 @@ export default function LaundryOrdersManagement() {
 
     const now = new Date();
 
-    const pathname = useLocation().pathname
+    const pathname = location.pathname
     const { permission } = usePermission(pathname)
 
     const filteredOrders = useMemo(() => {
@@ -871,19 +873,14 @@ export default function LaundryOrdersManagement() {
             headClassName: "text-center",
             cellClassName: "text-center font-medium min-w-[90px]",
             render: (order: LaundryOrder) => (
-                <button
-                    type="button"
+                <a
+                    href={buildLaundryOrderSummaryUrl(order, selectedPropertyId)}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
-                    onClick={() =>
-                        setViewItemsModal({
-                            open: true,
-                            editMode: false,
-                            order,
-                        })
-                    }
                 >
                     {formatLaundryOrderDisplayId(order.id)}
-                </button>
+                </a>
             ),
         },
         {

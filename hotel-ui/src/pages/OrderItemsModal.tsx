@@ -119,7 +119,7 @@ export function OrderItemsModal({
 
     return (
         <Sheet open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
-            <SheetContent side="right" onOpenAutoFocus={(e) => e.preventDefault()} className="w-full lg:max-w-4xl sm:max-w-3xl overflow-y-auto bg-background">
+            <SheetContent side="right" onOpenAutoFocus={(e) => e.preventDefault()} className="w-full lg:max-w-4xl sm:max-w-3xl overflow-y-auto bg-background outline-none focus:outline-none focus-visible:outline-none">
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}

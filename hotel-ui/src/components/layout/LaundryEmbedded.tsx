@@ -13,6 +13,7 @@ import { GridBadge } from "../ui/grid-badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../ui/sheet";
 import { motion } from "framer-motion";
+import SharedViewField from "@/components/ViewField";
 import { ShoppingCart, Info as InfoIcon } from "lucide-react";
 import { AppDataGrid, type ColumnDef } from "../ui/data-grid";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
@@ -178,23 +179,23 @@ export default function LaundryEmbedded({
                             value={`₹${totalAmount ?? 0}`}
                         />
 
-                        <div>
-                            <Label className="text-[10px] font-bold text-muted-foreground">Laundry Status</Label>
-                            <div className="mt-0.5">
+                        <ViewField
+                            label="Laundry Status"
+                            value={
                                 <GridBadge status={order.laundry_status} statusType="laundry" className="h-6 px-3 text-[10px] font-bold">
                                     {order.laundry_status}
                                 </GridBadge>
-                            </div>
-                        </div>
+                            }
+                        />
 
-                        <div>
-                            <Label className="text-[10px] font-bold text-muted-foreground">Vendor Status</Label>
-                            <div className="mt-0.5">
+                        <ViewField
+                            label="Vendor Status"
+                            value={
                                 <GridBadge status={order.vendor_status} statusType="vendor" className="h-6 px-3 text-[10px] font-bold">
                                     {order.vendor_status}
                                 </GridBadge>
-                            </div>
-                        </div>
+                            }
+                        />
                     </PropertyViewSection>
                 );
             })}
@@ -219,7 +220,7 @@ export default function LaundryEmbedded({
 
                         {selectedOrder && (
                             <div className="space-y-6">
-                                <PropertyViewSection title="Order Details" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-2.5">
+                                <PropertyViewSection title="Order Details" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
                                     <ViewField label="Order ID" value={`#${formatModuleDisplayId("laundry_order", selectedOrder.id)}`} />
                                     <ViewField label="Booking ID" value={formatModuleDisplayId("booking", selectedOrder.booking_id)} />
                                     <ViewField label="Room" value={selectedOrder.items?.[0]?.room_no || "—"} />
@@ -232,23 +233,23 @@ export default function LaundryEmbedded({
                                         value={`₹${selectedOrder.items?.reduce((sum: number, i: any) => sum + Number(i.amount || 0), 0).toFixed(2)}`} 
                                     />
                                     
-                                    <div>
-                                        <Label className="text-[10px] font-bold text-muted-foreground">Laundry Status</Label>
-                                        <div className="mt-0.5">
+                                    <ViewField
+                                        label="Laundry Status"
+                                        value={
                                             <GridBadge status={selectedOrder.laundry_status} statusType="laundry" className="h-6 px-3 text-[10px] font-bold">
                                                 {selectedOrder.laundry_status}
                                             </GridBadge>
-                                        </div>
-                                    </div>
+                                        }
+                                    />
 
-                                    <div>
-                                        <Label className="text-[10px] font-bold text-muted-foreground">Vendor Status</Label>
-                                        <div className="mt-0.5">
+                                    <ViewField
+                                        label="Vendor Status"
+                                        value={
                                             <GridBadge status={selectedOrder.vendor_status} statusType="vendor" className="h-6 px-3 text-[10px] font-bold">
                                                 {selectedOrder.vendor_status}
                                             </GridBadge>
-                                        </div>
-                                    </div>
+                                        }
+                                    />
                                 </PropertyViewSection>
 
                                 <PropertyViewSection title="Items Ordered" className="mt-0">
@@ -334,10 +335,5 @@ export default function LaundryEmbedded({
 }
 
 function ViewField({ label, value, className }: { label: string; value?: string | null; className?: string }) {
-    return (
-        <div className={cn("space-y-0.5", className)}>
-            <p className="text-[10px] font-bold text-muted-foreground">{label}</p>
-            <p className="font-semibold text-sm">{value || "—"}</p>
-        </div>
-    );
+    return <SharedViewField label={label} value={value} className={cn("space-y-0.5", className)} labelClassName="text-muted-foreground" />;
 }
