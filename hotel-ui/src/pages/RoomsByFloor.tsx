@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
-import { useGetRoomsQuery, useAddRoomMutation, useGetRoomTypesQuery, useBulkUpdateRoomsMutation, useGetMyPropertiesQuery } from "@/redux/services/hmsApi";
+import { useGetRoomsQuery, useAddRoomMutation, useGetRoomTypesQuery, useBulkUpdateRoomsMutation, useGetMyPropertiesQuery, useGetPropertyFloorsQuery, useBulkUpsertPropertyFloorsMutation } from "@/redux/services/hmsApi";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAppSelector } from "@/redux/hook";
 import {
@@ -20,6 +20,7 @@ import { ChevronDown, ChevronRight, Plus, PlusCircle } from "lucide-react";
 import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
 import { AnimatePresence, motion } from "framer-motion";
 import { NativeSelect } from "@/components/ui/native-select";
+import { Input } from "@/components/ui/input";
 
 /* -------------------- Types -------------------- */
 type Room = {
@@ -40,16 +41,40 @@ type Props = {
     rooms: Room[];
 };
 
+type AddFlowMode = "room" | "floor";
+type AddFloorRoomDraft = {
+    category: string;
+    bed: string;
+    ac: string;
+};
+type AddFloorEntry = {
+    roomCount: string;
+    roomDrafts: AddFloorRoomDraft[];
+};
+
+const createEmptyRoomDraft = (): AddFloorRoomDraft => ({
+    category: "",
+    bed: "",
+    ac: "",
+});
+const createEmptyFloorEntry = (): AddFloorEntry => ({
+    roomCount: "0",
+    roomDrafts: [],
+});
+
 
 export default function RoomsByFloor() {
     const [editedRooms, setEditedRooms] = useState<Room[]>([]);
     const [open, setOpen] = useState(false);
+    const [addFlowMode, setAddFlowMode] = useState<AddFlowMode>("room");
     const [selectedFloor, setSelectedFloor] = useState<number | null>(null);
     const [roomType, setRoomType] = useState("STANDARD");
     const [addedFloors, setAddedFloors] = useState<number[]>([]);
     const [modalCategory, setModalCategory] = useState("");
     const [modalBed, setModalBed] = useState("");
     const [modalAc, setModalAc] = useState("");
+    const [addFloorCount, setAddFloorCount] = useState("1");
+    const [addFloorEntries, setAddFloorEntries] = useState<AddFloorEntry[]>([]);
     const [roomDrafts, setRoomDrafts] = useState<
         Record<string, { category?: string; bed?: string; ac?: string }>
     >({});
@@ -66,15 +91,19 @@ export default function RoomsByFloor() {
 
     const id = location.state?.propertyId
 
-    const { data: rooms } = useGetRoomsQuery(propertyId, {
+    const { data: rooms, refetch: refetchRooms } = useGetRoomsQuery(propertyId, {
         skip: !isLoggedIn || !propertyId
     })
 
     const { data: roomTypesData } = useGetRoomTypesQuery({ propertyId, page: 1, limit: 100 }, {
         skip: !isLoggedIn || !propertyId
     });
+    const { data: propertyFloorsData, refetch: refetchPropertyFloors } = useGetPropertyFloorsQuery(propertyId, {
+        skip: !isLoggedIn || !propertyId
+    });
 
     const [updateRoomsBulk] = useBulkUpdateRoomsMutation()
+    const [bulkUpsertPropertyFloors, { isLoading: savingFloors }] = useBulkUpsertPropertyFloorsMutation()
     const { 
         myProperties, 
         isMultiProperty, 
@@ -160,16 +189,22 @@ export default function RoomsByFloor() {
     };
 
     const roomsByFloor = useMemo(() => {
-        if (!editedRooms) return [];
-
         const floorMap: Record<number, Room[]> = {};
 
         // existing rooms
-        editedRooms.forEach(room => {
+        if (Array.isArray(editedRooms)) editedRooms.forEach(room => {
             if (!floorMap[room.floor_number]) {
                 floorMap[room.floor_number] = [];
             }
             floorMap[room.floor_number].push(room);
+        });
+
+        const savedFloors = propertyFloorsData?.floors ?? [];
+        savedFloors.forEach((floor: any) => {
+            const floorNumber = Number(floor.floor_number);
+            if (!floorMap[floorNumber]) {
+                floorMap[floorNumber] = [];
+            }
         });
 
         // empty floors added from UI
@@ -185,7 +220,7 @@ export default function RoomsByFloor() {
                 rooms
             }))
             .sort((a, b) => a.floor - b.floor);
-    }, [editedRooms, addedFloors]);
+    }, [editedRooms, propertyFloorsData?.floors, addedFloors]);
 
     const {
         roomCategories,
@@ -224,6 +259,169 @@ export default function RoomsByFloor() {
         }
 
         return roomDrafts[room.id]?.[key] ?? "";
+    };
+
+    const nextFloorNumber = () => {
+        const existingFloors = roomsByFloor.map(f => f.floor);
+        return existingFloors.length > 0
+            ? Math.max(...existingFloors) + 1
+            : 0;
+    };
+
+    const resetAddSheetState = () => {
+        setOpen(false);
+        setAddFlowMode("room");
+        setSelectedFloor(null);
+        setModalCategory("");
+        setModalBed("");
+        setModalAc("");
+        setAddFloorCount("1");
+        setAddFloorEntries([]);
+    };
+
+    const handleAddFloorClick = () => {
+        const floor = nextFloorNumber();
+        setAddFlowMode("floor");
+        setSelectedFloor(floor);
+        setAddFloorCount("1");
+        setAddFloorEntries([createEmptyFloorEntry()]);
+        setOpen(true);
+    };
+
+    const handleAddFloorCountChange = (value: string) => {
+        const normalized = value.replace(/\D/g, "");
+        setAddFloorCount(normalized);
+
+        const count = Number(normalized);
+        if (!normalized || count < 1) {
+            setAddFloorEntries([]);
+            return;
+        }
+
+        setAddFloorEntries(prev =>
+            Array.from({ length: count }, (_, index) => prev[index] ?? createEmptyFloorEntry())
+        );
+    };
+
+    const handleAddFloorEntryRoomCountChange = (floorIndex: number, value: string) => {
+        const normalized = value.replace(/\D/g, "");
+        const roomCount = normalized === "" ? 0 : Number(normalized);
+
+        setAddFloorEntries(prev =>
+            prev.map((entry, index) => {
+                if (index !== floorIndex) return entry;
+
+                return {
+                    ...entry,
+                    roomCount: normalized,
+                    roomDrafts: roomCount > 0
+                        ? Array.from({ length: roomCount }, (_, draftIndex) => entry.roomDrafts[draftIndex] ?? createEmptyRoomDraft())
+                        : [],
+                };
+            })
+        );
+    };
+
+    const updateAddFloorDraft = (
+        floorIndex: number,
+        roomIndex: number,
+        key: keyof AddFloorRoomDraft,
+        value: string
+    ) => {
+        setAddFloorEntries(prev =>
+            prev.map((entry, entryIndex) =>
+                entryIndex === floorIndex
+                    ? {
+                        ...entry,
+                        roomDrafts: entry.roomDrafts.map((draft, draftIndex) =>
+                            draftIndex === roomIndex ? { ...draft, [key]: value } : draft
+                        )
+                    }
+                    : entry
+            )
+        );
+    };
+
+    const addFloorCountValue = addFloorCount === "" ? 0 : Number(addFloorCount);
+    const addFloorBaseNumber = addFlowMode === "floor" ? selectedFloor : null;
+    const canSaveAddFloor =
+        addFlowMode === "floor" &&
+        addFloorCountValue > 0 &&
+        addFloorBaseNumber !== null &&
+        addFloorEntries.length === addFloorCountValue &&
+        addFloorEntries.every(entry => {
+            const roomCount = entry.roomCount === "" ? null : Number(entry.roomCount);
+
+            if (roomCount === null || Number.isNaN(roomCount) || roomCount < 0) return false;
+            if (roomCount === 0) return true;
+
+            return entry.roomDrafts.length === roomCount &&
+                entry.roomDrafts.every(draft =>
+                    draft.category &&
+                    draft.bed &&
+                    draft.ac &&
+                    resolveRoomTypeId(draft.category, draft.bed, draft.ac)
+                );
+        }
+        );
+
+    const handleAddFloorSave = async () => {
+        if (!canSaveAddFloor || addFloorBaseNumber === null) return;
+
+        const floorsToSave = addFloorEntries.map((_, index) => ({
+            floor_number: addFloorBaseNumber + index,
+            rooms_count: 0,
+        }));
+
+        const roomTypeEntries = addFloorEntries.flatMap((entry, floorIndex) =>
+            entry.roomDrafts.map(draft => ({
+                floorNumber: addFloorBaseNumber + floorIndex,
+                roomTypeId: resolveRoomTypeId(draft.category, draft.bed, draft.ac),
+            }))
+        );
+
+        if (roomTypeEntries.some(entry => !entry.roomTypeId)) {
+            toast.error("Invalid room type combination");
+            return;
+        }
+
+        const promise = (async () => {
+            await bulkUpsertPropertyFloors({
+                property_id: propertyId,
+                floors: floorsToSave,
+            }).unwrap();
+
+            const createdRooms = [];
+
+            for (const entry of roomTypeEntries) {
+                createdRooms.push(await addRoom({
+                    propertyId,
+                    floorNumber: entry.floorNumber,
+                    roomTypeId: entry.roomTypeId
+                }).unwrap());
+            }
+
+            return { floors: floorsToSave, rooms: createdRooms };
+        })();
+
+        toast.promise(promise, {
+            pending: "Saving floor details...",
+            success: "Floor details saved successfully",
+            error: "Error saving floor details"
+        });
+
+        try {
+            await promise;
+            setExpandedFloors(prev => ({
+                ...prev,
+                ...Object.fromEntries(floorsToSave.map(floor => [floor.floor_number, true])),
+            }));
+            await refetchRooms();
+            await refetchPropertyFloors();
+            resetAddSheetState();
+        } catch {
+            // Error feedback is handled by toast.promise.
+        }
     };
 
 
@@ -270,19 +468,7 @@ export default function RoomsByFloor() {
                             <Button
                                 variant="hero"
                                 className="h-10 px-4 flex items-center gap-2"
-                                onClick={() => {
-                                    const existingFloors = roomsByFloor.map(f => f.floor);
-                                    const nextFloor =
-                                        existingFloors.length > 0
-                                            ? Math.max(...existingFloors) + 1
-                                            : 0;
-
-                                    if (!addedFloors.includes(nextFloor)) {
-                                        setAddedFloors(prev => [...prev, nextFloor]);
-                                    }
-
-                                    toast.success(`Floor ${nextFloor} added`);
-                                }}
+                                onClick={handleAddFloorClick}
                             >
                                 <Plus className="w-4 h-4" /> Add Floor
                             </Button>
@@ -320,6 +506,7 @@ export default function RoomsByFloor() {
                                                 className="flex items-center gap-1.5 text-primary hover:underline text-sm font-medium transition-colors"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
+                                                    setAddFlowMode("room");
                                                     setSelectedFloor(floor);
                                                     setRoomType("STANDARD");
                                                     setOpen(true);
@@ -469,7 +656,17 @@ export default function RoomsByFloor() {
             </div>
 
 
-            <Sheet open={open} onOpenChange={setOpen}>
+            <Sheet
+                open={open}
+                onOpenChange={(nextOpen) => {
+                    if (nextOpen) {
+                        setOpen(true);
+                        return;
+                    }
+
+                    resetAddSheetState();
+                }}
+            >
                 <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
@@ -477,78 +674,176 @@ export default function RoomsByFloor() {
                         className="space-y-1"
                     >
                         <SheetHeader>
-                            <SheetTitle>Add Room</SheetTitle>
+                            <SheetTitle>{addFlowMode === "floor" ? "Add Floor" : "Add Room"}</SheetTitle>
                         </SheetHeader>
 
-                    <div className="space-y-4">
-                        <p className="text-sm text-muted-foreground">
-                            Do you want to create a new room on{" "}
-                            <span className="font-medium text-foreground">
-                                Floor {selectedFloor}
-                            </span>
-                            ?
-                        </p>
+                        {addFlowMode === "room" ? (
+                            <div className="space-y-4">
+                                <p className="text-sm text-muted-foreground">
+                                    Do you want to create a new room on{" "}
+                                    <span className="font-medium text-foreground">
+                                        Floor {selectedFloor}
+                                    </span>
+                                    ?
+                                </p>
 
-                        <div className="space-y-3">
-                            {/* Room Category */}
-                            <div className="space-y-1">
-                                <label htmlFor="room-modal-category" className="text-sm font-medium">Room Category</label>
-                                <NativeSelect
-                                    id="room-modal-category"
-                                    name="room_modal_category"
-                                    className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
-                                    value={modalCategory}
-                                    onChange={(e) => setModalCategory(e.target.value)}
-                                >
-                                    <option value="">-- Please Select --</option>
-                                    {roomCategories.map(c => (
-                                        <option key={c} value={c}>{c}</option>
-                                    ))}
-                                </NativeSelect>
+                                <div className="space-y-3">
+                                    {/* Room Category */}
+                                    <div className="space-y-1">
+                                        <label htmlFor="room-modal-category" className="text-sm font-medium">Room Category</label>
+                                        <NativeSelect
+                                            id="room-modal-category"
+                                            name="room_modal_category"
+                                            className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
+                                            value={modalCategory}
+                                            onChange={(e) => setModalCategory(e.target.value)}
+                                        >
+                                            <option value="">-- Please Select --</option>
+                                            {roomCategories.map(c => (
+                                                <option key={c} value={c}>{c}</option>
+                                            ))}
+                                        </NativeSelect>
+                                    </div>
+
+                                    {/* Bed Type */}
+                                    <div className="space-y-1">
+                                        <label htmlFor="room-modal-bed-type" className="text-sm font-medium">Bed Type</label>
+                                        <NativeSelect
+                                            id="room-modal-bed-type"
+                                            name="room_modal_bed_type"
+                                            className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
+                                            value={modalBed}
+                                            onChange={(e) => setModalBed(e.target.value)}
+                                        >
+                                            <option value="">-- Please Select --</option>
+                                            {bedTypes.map(b => (
+                                                <option key={b} value={b}>{b}</option>
+                                            ))}
+                                        </NativeSelect>
+                                    </div>
+
+                                    {/* AC Type */}
+                                    <div className="space-y-1">
+                                        <label htmlFor="room-modal-ac-type" className="text-sm font-medium">AC Type</label>
+                                        <NativeSelect
+                                            id="room-modal-ac-type"
+                                            name="room_modal_ac_type"
+                                            className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
+                                            value={modalAc}
+                                            onChange={(e) => setModalAc(e.target.value)}
+                                        >
+                                            <option value="">-- Please Select --</option>
+                                            {acTypes.map(a => (
+                                                <option key={a} value={a}>{a}</option>
+                                            ))}
+                                        </NativeSelect>
+                                    </div>
+                                </div>
                             </div>
+                        ) : (
+                            <div className="space-y-5">
+                                <p className="text-sm text-muted-foreground">
+                                    Enter how many floors to add. Set rooms to 0 to save an empty floor.
+                                </p>
 
-                            {/* Bed Type */}
-                            <div className="space-y-1">
-                                <label htmlFor="room-modal-bed-type" className="text-sm font-medium">Bed Type</label>
-                                <NativeSelect
-                                    id="room-modal-bed-type"
-                                    name="room_modal_bed_type"
-                                    className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
-                                    value={modalBed}
-                                    onChange={(e) => setModalBed(e.target.value)}
-                                >
-                                    <option value="">-- Please Select --</option>
-                                    {bedTypes.map(b => (
-                                        <option key={b} value={b}>{b}</option>
-                                    ))}
-                                </NativeSelect>
+                                <div className="flex flex-wrap items-end gap-4">
+                                    <div className="space-y-1 w-full sm:w-[190px]">
+                                        <Label htmlFor="add-floor-count" className="text-sm font-medium">Number of Floors to Add</Label>
+                                        <Input
+                                            id="add-floor-count"
+                                            type="number"
+                                            min={1}
+                                            value={addFloorCount}
+                                            onChange={(e) => handleAddFloorCountChange(e.target.value)}
+                                            className="h-10 rounded-[3px] border-border bg-background text-sm"
+                                        />
+                                    </div>
+                                </div>
+
+                                {addFloorEntries.length > 0 && addFloorBaseNumber !== null && (
+                                    <div className="space-y-5">
+                                        {addFloorEntries.map((entry, floorIndex) => {
+                                            const floorNumber = addFloorBaseNumber + floorIndex;
+
+                                            return (
+                                                <div
+                                                    key={floorIndex}
+                                                    className="rounded-lg border border-primary/10 bg-primary/[0.02] p-4 space-y-4"
+                                                >
+                                                    <div className="flex flex-wrap items-end justify-between gap-3">
+                                                        <h3 className="text-base font-bold text-foreground">
+                                                            Floor {floorNumber}
+                                                        </h3>
+                                                        <div className="space-y-1 w-full sm:w-[180px]">
+                                                            <Label htmlFor={`add-floor-${floorIndex}-room-count`} className="text-sm font-medium">Number of Rooms</Label>
+                                                            <Input
+                                                                id={`add-floor-${floorIndex}-room-count`}
+                                                                type="number"
+                                                                min={0}
+                                                                value={entry.roomCount}
+                                                                onChange={(e) => handleAddFloorEntryRoomCountChange(floorIndex, e.target.value)}
+                                                                className="h-10 rounded-[3px] border-border bg-background text-sm"
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    {entry.roomDrafts.length > 0 && (
+                                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                                                            {entry.roomDrafts.map((draft, roomIndex) => (
+                                                                <div
+                                                                    key={roomIndex}
+                                                                    className="group relative flex flex-col rounded-lg border border-primary/20 bg-primary/[0.04] shadow-sm"
+                                                                >
+                                                                    <div className="px-3 py-1.5 bg-primary text-white border-b border-primary/20 rounded-t-lg flex justify-between items-center">
+                                                                        <span className="text-[10px] font-bold opacity-80 tracking-wider">Room</span>
+                                                                        <span className="text-sm font-bold">{roomIndex + 1}</span>
+                                                                    </div>
+
+                                                                    <div className="p-2 space-y-1.5 flex-1 flex flex-col justify-center bg-background/40">
+                                                                        <NativeSelect
+                                                                            className="w-full bg-transparent text-[11px] font-medium text-center hover:bg-muted/50 rounded px-1 h-6 transition-all appearance-none cursor-pointer focus:ring-1 focus:ring-primary/20"
+                                                                            value={draft.category}
+                                                                            onChange={(e) => updateAddFloorDraft(floorIndex, roomIndex, "category", e.target.value)}
+                                                                        >
+                                                                            <option value="" disabled>Category</option>
+                                                                            {roomCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                                                                        </NativeSelect>
+
+                                                                        <NativeSelect
+                                                                            className="w-full bg-transparent text-[10px] text-muted-foreground text-center hover:bg-muted/50 rounded px-1 h-5 transition-all appearance-none cursor-pointer"
+                                                                            value={draft.bed}
+                                                                            onChange={(e) => updateAddFloorDraft(floorIndex, roomIndex, "bed", e.target.value)}
+                                                                        >
+                                                                            <option value="" disabled>Bed Type</option>
+                                                                            {bedTypes.map(b => <option key={b} value={b}>{b}</option>)}
+                                                                        </NativeSelect>
+
+                                                                        <NativeSelect
+                                                                            className="w-full bg-transparent text-[10px] text-muted-foreground text-center hover:bg-muted/50 rounded px-1 h-5 transition-all appearance-none cursor-pointer"
+                                                                            value={draft.ac}
+                                                                            onChange={(e) => updateAddFloorDraft(floorIndex, roomIndex, "ac", e.target.value)}
+                                                                        >
+                                                                            <option value="" disabled>AC Type</option>
+                                                                            {acTypes.map(a => <option key={a} value={a}>{a}</option>)}
+                                                                        </NativeSelect>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
-
-                            {/* AC Type */}
-                            <div className="space-y-1">
-                                <label htmlFor="room-modal-ac-type" className="text-sm font-medium">AC Type</label>
-                                <NativeSelect
-                                    id="room-modal-ac-type"
-                                    name="room_modal_ac_type"
-                                    className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
-                                    value={modalAc}
-                                    onChange={(e) => setModalAc(e.target.value)}
-                                >
-                                    <option value="">-- Please Select --</option>
-                                    {acTypes.map(a => (
-                                        <option key={a} value={a}>{a}</option>
-                                    ))}
-                                </NativeSelect>
-                            </div>
-                        </div>
-
-                    </div>
+                        )}
 
                         <div className="pt-6 border-t flex justify-end gap-3 mt-6">
                         <Button
-                            variant="outline"
-                            onClick={() => setOpen(false)}
-                            disabled={adding}
+                            variant="heroOutline"
+                            onClick={resetAddSheetState}
+                            disabled={adding || savingFloors}
                         >
                             Cancel
                         </Button>
@@ -556,12 +851,18 @@ export default function RoomsByFloor() {
                         <Button
                             variant="hero"
                             disabled={
-                                adding ||
-                                !modalCategory ||
-                                !modalBed ||
-                                !modalAc
+                                adding || savingFloors || (
+                                    addFlowMode === "floor"
+                                        ? !canSaveAddFloor
+                                        : (!modalCategory || !modalBed || !modalAc)
+                                )
                             }
                             onClick={async () => {
+                                if (addFlowMode === "floor") {
+                                    await handleAddFloorSave();
+                                    return;
+                                }
+
                                 if (selectedFloor === null) return;
 
                                 const roomTypeId = resolveRoomTypeId(
@@ -587,13 +888,15 @@ export default function RoomsByFloor() {
                                         success: "Room created successfully",
                                         error: "Error creating room"
                                     })
-                                    setOpen(false);
+                                    resetAddSheetState();
                                 } catch {
                                     toast.error("Failed to add room");
                                 }
                             }}
                         >
-                            {adding ? "Adding..." : "Add Room"}
+                            {adding || savingFloors
+                                ? addFlowMode === "floor" ? "Saving..." : "Adding..."
+                                : addFlowMode === "floor" ? "Save" : "Add Room"}
                         </Button>
 
                         </div>

@@ -48,8 +48,7 @@ import { formatToDDMMYY } from "@/utils/formatToDDMMYY";
 import LaundryEmbedded from "@/components/layout/LaundryEmbedded";
 import BookingLogsEmbedded from "@/components/layout/BookingLogsEmbedded";
 import RestaurantOrdersEmbedded from "@/components/layout/RestaurantOrdersEmbedded";
-import { exportToExcel } from "@/utils/exportToExcel";
-import { Copy, Download, Eye, FilterX, Plus, RefreshCcw } from "lucide-react";
+import { Copy, Download, Eye, FilterX, Plus, RefreshCcw, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getStatusColor } from "@/constants/statusColors";
 import { GridBadge } from "@/components/ui/grid-badge";
@@ -74,6 +73,21 @@ const BOOKING_STATUSES = [
     "NO_SHOW",
     "CANCELLED"
 ] as const;
+
+const normalizeBookingStatus = (value?: string) =>
+    value?.trim().toUpperCase().replace(/\s+/g, "_") || "";
+
+const buildStatusTimestamp = (timeValue: string) => {
+    const [hours, minutes] = timeValue.split(":").map(Number);
+
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+        return "";
+    }
+
+    const timestamp = new Date();
+    timestamp.setHours(hours, minutes, 0, 0);
+    return timestamp.toISOString();
+};
 
 
 const parseDate = (value?: string) =>
@@ -118,6 +132,7 @@ export default function BookingsManagement() {
     const [departureTo, setDepartureTo] = useState<string>("");
     const [scope, setScope] = useState("");
     const [status, setStatus] = useState("CONFIRMED");
+    const [instructionsOpen, setInstructionsOpen] = useState(false);
     const didRunInitialStatusSync = useRef(false);
 
     const { page, limit, setPage, handleLimitChange } = useGridPagination({
@@ -136,6 +151,9 @@ export default function BookingsManagement() {
 
     const [updatedStatus, setUpdatedStatus] = useState<string>("");
     const [statusSelectOpen, setStatusSelectOpen] = useState(false);
+    const [statusTime, setStatusTime] = useState("");
+    const [statusTimeError, setStatusTimeError] = useState("");
+    const statusTimeInputRef = useRef<HTMLInputElement>(null);
 
     const memoizedArrivalFrom = useMemo(() => (arrivalFrom ? new Date(arrivalFrom) : null), [arrivalFrom]);
     const memoizedArrivalTo = useMemo(() => (arrivalTo ? new Date(arrivalTo) : null), [arrivalTo]);
@@ -145,6 +163,9 @@ export default function BookingsManagement() {
 
 
     const [confirmStatusOpen, setConfirmStatusOpen] = useState(false)
+    const normalizedUpdatedStatus = normalizeBookingStatus(updatedStatus);
+    const requiresStatusTime = normalizedUpdatedStatus === "CHECKED_IN" || normalizedUpdatedStatus === "CHECKED_OUT";
+    const statusTimeLabel = normalizedUpdatedStatus === "CHECKED_IN" ? "Check-in Time" : "Checkout Time";
 
     const navigate = useNavigate()
     const location = useLocation()
@@ -217,6 +238,27 @@ export default function BookingsManagement() {
         setDetailsOpen(false);
     }
 
+    function resetStatusConfirmation() {
+        setConfirmStatusOpen(false);
+        setUpdatedStatus("");
+        setStatusTime("");
+        setStatusTimeError("");
+    }
+
+    function focusStatusTimeInput() {
+        const input = statusTimeInputRef.current;
+        if (!input) return;
+
+        input.focus();
+
+        try {
+            const inputWithPicker = input as HTMLInputElement & { showPicker?: () => void };
+            inputWithPicker.showPicker?.();
+        } catch {
+            // Browser may not support programmatic native picker opening.
+        }
+    }
+
     async function exportBookingsSheet() {
         if (exportingBookings) return;
 
@@ -270,10 +312,37 @@ export default function BookingsManagement() {
     async function handleUpdateBooking() {
         if (!selectedBooking) return;
 
-        const promise = updateBooking({ booking_id: selectedBooking?.booking?.id, status: updatedStatus }).unwrap();
+        const normalizedStatus = normalizeBookingStatus(updatedStatus);
+        const needsStatusTime = normalizedStatus === "CHECKED_IN" || normalizedStatus === "CHECKED_OUT";
+        const requiredTimeLabel = normalizedStatus === "CHECKED_IN" ? "Check-in Time" : "Checkout Time";
+        const selectedTimestamp = needsStatusTime ? buildStatusTimestamp(statusTime) : "";
 
-        setConfirmStatusOpen(false);
-        setUpdatedStatus("");
+        if (needsStatusTime && !statusTime) {
+            setStatusTimeError(`${requiredTimeLabel} is required`);
+            return;
+        }
+
+        if (needsStatusTime && !selectedTimestamp) {
+            setStatusTimeError(`Enter a valid ${requiredTimeLabel.toLowerCase()}`);
+            return;
+        }
+
+        const payload: Record<string, any> = {
+            booking_id: selectedBooking?.booking?.id,
+            status: updatedStatus,
+        };
+
+        if (normalizedStatus === "CHECKED_IN") {
+            payload.actual_arrival = selectedTimestamp;
+        }
+
+        if (normalizedStatus === "CHECKED_OUT") {
+            payload.actual_departure = selectedTimestamp;
+        }
+
+        const promise = updateBooking(payload).unwrap();
+
+        resetStatusConfirmation();
 
         try {
             await toast.promise(promise, {
@@ -519,6 +588,14 @@ export default function BookingsManagement() {
                         )}
 
                         <Button
+                            variant="heroOutline"
+                            className="h-10 px-4 flex items-center gap-2"
+                            onClick={() => setInstructionsOpen(true)}
+                        >
+                            <HelpCircle className="w-4 h-4" /> Instructions
+                        </Button>
+
+                        <Button
                             variant="hero"
                             className="h-10 px-4 flex items-center gap-2"
                             onClick={() => navigate("/reservation")}
@@ -748,9 +825,9 @@ export default function BookingsManagement() {
                             
                             <div className="flex items-end gap-3">
                                 <Button
-                                    variant="outline"
+                                    variant="heroOutline"
                                     size="sm"
-                                    className="h-8 w-[160px] border-primary text-primary hover:bg-primary/10 font-bold text-[10px] tracking-widest shadow-sm"
+                                    className="h-8 w-[160px] font-bold text-[10px] tracking-widest"
                                     onClick={() => {
                                         navigate("/reservation", {
                                             state: { duplicateBooking: selectedBooking?.booking }
@@ -772,6 +849,8 @@ export default function BookingsManagement() {
                                                 onOpenChange={setStatusSelectOpen}
                                                 onChange={(e) => {
                                                     setUpdatedStatus(e.target.value);
+                                                    setStatusTime("");
+                                                    setStatusTimeError("");
                                                     setConfirmStatusOpen(true);
                                                 }}
                                                 disabled={selectedBooking?.booking.booking_status === "CANCELLED"}
@@ -871,8 +950,12 @@ export default function BookingsManagement() {
             <Dialog 
                 open={confirmStatusOpen} 
                 onOpenChange={(open) => {
-                    setConfirmStatusOpen(open);
-                    if (!open) setUpdatedStatus(""); // Reset on close
+                    if (open) {
+                        setConfirmStatusOpen(true);
+                        return;
+                    }
+
+                    resetStatusConfirmation();
                 }}
             >
                 <DialogContent>
@@ -890,13 +973,38 @@ export default function BookingsManagement() {
                             This action may affect availability, billing, and reports.
                         </p>
 
+                        {requiresStatusTime && (
+                            <div className="space-y-1.5">
+                                <Label htmlFor="booking-status-time" className="text-sm font-semibold text-foreground">
+                                    {statusTimeLabel} *
+                                </Label>
+                                <Input
+                                    ref={statusTimeInputRef}
+                                    id="booking-status-time"
+                                    type="time"
+                                    value={statusTime}
+                                    onClick={focusStatusTimeInput}
+                                    onChange={(e) => {
+                                        setStatusTime(e.target.value);
+                                        setStatusTimeError("");
+                                    }}
+                                    className={cn(
+                                        "h-10 w-32 max-w-full rounded-[4px] border-primary/40 bg-background text-sm font-semibold shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
+                                        statusTimeError && "border-red-500"
+                                    )}
+                                />
+                                {statusTimeError && (
+                                    <p className="text-xs text-red-500">
+                                        {statusTimeError}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
                         <div className="flex justify-end gap-3 pt-2">
                             <Button
                                 variant="heroOutline"
-                                onClick={() => {
-                                    setConfirmStatusOpen(false);
-                                    setUpdatedStatus("");
-                                }}
+                                onClick={resetStatusConfirmation}
                             >
                                 Cancel
                             </Button>
@@ -908,6 +1016,70 @@ export default function BookingsManagement() {
                                 Yes, Update Status
                             </Button>
                         </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={instructionsOpen} onOpenChange={setInstructionsOpen}>
+                <DialogContent className="max-w-md sm:max-w-lg bg-background p-6">
+                    <DialogHeader className="mb-4">
+                        <DialogTitle className="text-xl font-bold flex items-center gap-2 text-primary">
+                            <HelpCircle className="w-5 h-5 text-primary" /> Bookings Page Instructions
+                        </DialogTitle>
+                    </DialogHeader>
+                    
+                    <div className="space-y-4 text-sm text-foreground">
+                        <p className="text-muted-foreground">
+                            Welcome to the AtithiFlow Bookings panel. Follow this guide to efficiently manage and track guest reservations:
+                        </p>
+                        
+                        <div className="space-y-3.5">
+                            <div className="flex gap-3">
+                                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">1</div>
+                                <div className="space-y-0.5">
+                                    <p className="font-semibold text-foreground">Search Bookings</p>
+                                    <p className="text-muted-foreground text-xs">Use the search bar to locate specific bookings instantly by typing keywords (e.g., Guest Name, Mobile, or Booking ID) and clicking <strong>Search</strong>.</p>
+                                </div>
+                            </div>
+                            
+                            <div className="flex gap-3">
+                                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">2</div>
+                                <div className="space-y-0.5">
+                                    <p className="font-semibold text-foreground">Narrow with Filters</p>
+                                    <p className="text-muted-foreground text-xs">Refine your search results using <strong>Scope</strong> (All, In-House, Upcoming, etc.), <strong>Status</strong>, and specific <strong>Arrival</strong> or <strong>Departure</strong> date ranges.</p>
+                                </div>
+                            </div>
+                            
+                            <div className="flex gap-3">
+                                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">3</div>
+                                <div className="space-y-0.5">
+                                    <p className="font-semibold text-foreground">View Booking Details</p>
+                                    <p className="text-muted-foreground text-xs">Click on any clickable <strong>Booking ID</strong> (e.g., BO026) in the grid to pull up the complete Reservation Side Sheet containing Guest Details, Laundry, and Restaurant Orders.</p>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3">
+                                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">4</div>
+                                <div className="space-y-0.5">
+                                    <p className="font-semibold text-foreground">Create a New Booking</p>
+                                    <p className="text-muted-foreground text-xs">Click the primary <strong>+ New Booking</strong> button in the top right to start a fresh reservation flow, assign rooms, and enter guest details.</p>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3">
+                                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">5</div>
+                                <div className="space-y-0.5">
+                                    <p className="font-semibold text-foreground">Refresh & Export</p>
+                                    <p className="text-muted-foreground text-xs">Use the refresh icon button to instantly reload the grid. Use the download icon button to export the current view to Excel.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="flex justify-end pt-4 border-t border-border mt-4">
+                        <Button variant="hero" className="px-5 h-9" onClick={() => setInstructionsOpen(false)}>
+                            Got it, thanks!
+                        </Button>
                     </div>
                 </DialogContent>
             </Dialog>

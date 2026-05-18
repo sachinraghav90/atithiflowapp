@@ -284,7 +284,7 @@ export default function DeliveryPartnerManager({
                     </div>
 
                     <div className="p-6 border-t bg-background flex justify-end gap-3">
-                        <Button variant="outline" onClick={() => setSheetOpen(false)}>
+                        <Button variant="heroOutline" onClick={() => setSheetOpen(false)}>
                             Cancel
                         </Button>
                     </div>
@@ -355,7 +355,7 @@ export default function DeliveryPartnerManager({
 
                     <div className="p-6 border-t bg-background flex justify-end gap-3">
                         <Button
-                            variant="outline"
+                            variant="heroOutline"
                             onClick={() => setCreateOpen(false)}
                         >
                             Cancel

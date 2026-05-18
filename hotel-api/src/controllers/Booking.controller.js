@@ -83,13 +83,15 @@ class Booking {
     async updateBookingStatus(req, res) {
         try {
             const bookingId = req.params.id
-            const { status, comments } = req.body
+            const { status, comments, actual_arrival, actual_departure } = req.body
             const userId = req.user.user_id
 
             const result = await BookingService.updateBookingStatus({
                 bookingId,
                 status,
                 comments,
+                actual_arrival,
+                actual_departure,
                 updatedBy: userId
             })
 
@@ -112,6 +114,14 @@ class Booking {
                     message: err.message,
                     booking_id: err.booking_id,
                     current_status: err.current_status
+                });
+            }
+
+            if (err?.code === "STATUS_TIME_REQUIRED" || err?.code === "INVALID_STATUS_TIME") {
+                return res.status(400).json({
+                    code: err.code,
+                    message: err.message,
+                    booking_id: err.booking_id
                 });
             }
 

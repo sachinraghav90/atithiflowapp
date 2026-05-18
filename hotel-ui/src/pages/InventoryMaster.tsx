@@ -892,7 +892,7 @@ export default function InventoryMaster() {
                             </div>
 
                             <div className="p-6 border-t bg-muted/20 flex justify-end gap-3">
-                                <Button variant="outline" onClick={() => setMode(null)}>
+                                <Button variant="heroOutline" onClick={() => setMode(null)}>
                                     Cancel
                                 </Button>
                                 <Button variant="hero" className="min-w-[140px]" onClick={handleBulkSubmit}>

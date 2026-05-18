@@ -308,7 +308,7 @@ export default function KitchenInventoryBulkAdjustSheet({
                     </div>
 
                     <div className="p-6 border-t bg-background flex justify-end gap-3">
-                        <Button variant="outline" onClick={() => onOpenChange(false)}>
+                        <Button variant="heroOutline" onClick={() => onOpenChange(false)}>
                             Cancel
                         </Button>
                         <Button variant="hero" className="min-w-[140px]" onClick={handleSubmit}>

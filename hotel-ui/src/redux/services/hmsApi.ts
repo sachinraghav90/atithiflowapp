@@ -745,11 +745,16 @@ export const hmsApi = createApi({
     }),
 
     updateBooking: builder.mutation({
-      query: ({ booking_id, status }) => {
+      query: ({ booking_id, status, actual_arrival, actual_departure }) => {
+        const body: Record<string, any> = { status };
+
+        if (actual_arrival) body.actual_arrival = actual_arrival;
+        if (actual_departure) body.actual_departure = actual_departure;
+
         return {
           url: `/bookings/${booking_id}/status`,
           method: "PATCH",
-          body: { status },
+          body,
         }
       },
       invalidatesTags: ["Bookings", "Audits"]

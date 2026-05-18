@@ -91,7 +91,7 @@ class VendorService {
         FROM public.ref_vendors
         WHERE property_id = $1
         ${searchCondition}
-        ORDER BY name
+        ORDER BY id DESC
         LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
 

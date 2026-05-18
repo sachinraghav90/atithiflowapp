@@ -2,6 +2,15 @@ import { getDb } from "../../utils/getDb.js"
 import AuditService from "./Audit.service.js"
 import GuestsService from "./Guests.service.js"
 
+const parseStatusTimestamp = (value) => {
+    if (!value) return null;
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return null;
+
+    return parsed.toISOString();
+};
+
 class Booking {
 
     #DB
@@ -145,7 +154,7 @@ class Booking {
             LEFT JOIN public.ref_rooms rr ON rr.id = rd.ref_room_id
             ${whereClause}
             GROUP BY b.id
-            ORDER BY b.estimated_arrival ASC
+            ORDER BY b.id DESC
             LIMIT $${idx} OFFSET $${idx + 1}
             `,
             [...params, limit, offset]
@@ -604,6 +613,8 @@ class Booking {
         bookingId,
         status,
         comments,
+        actual_arrival,
+        actual_departure,
         updatedBy
     }) {
         const client = await this.#DB.connect();
@@ -689,13 +700,41 @@ class Booking {
             /* ------------------------------------------------ */
 
             let extraUpdates = ``;
+            const updateParams = [
+                bookingId,
+                status,
+                comments,
+                updatedBy
+            ];
 
             if (status === 'CHECKED_IN') {
-                extraUpdates += `, actual_arrival = now()`;
+                const actualArrival = parseStatusTimestamp(actual_arrival);
+
+                if (!actualArrival) {
+                    throw {
+                        code: actual_arrival ? "INVALID_STATUS_TIME" : "STATUS_TIME_REQUIRED",
+                        message: actual_arrival ? "Invalid check-in time" : "Check-in time is required",
+                        booking_id: bookingId
+                    };
+                }
+
+                updateParams.push(actualArrival);
+                extraUpdates += `, actual_arrival = $${updateParams.length}`;
             }
 
             if (status === 'CHECKED_OUT') {
-                extraUpdates += `, actual_departure = now()`;
+                const actualDeparture = parseStatusTimestamp(actual_departure);
+
+                if (!actualDeparture) {
+                    throw {
+                        code: actual_departure ? "INVALID_STATUS_TIME" : "STATUS_TIME_REQUIRED",
+                        message: actual_departure ? "Invalid checkout time" : "Checkout time is required",
+                        booking_id: bookingId
+                    };
+                }
+
+                updateParams.push(actualDeparture);
+                extraUpdates += `, actual_departure = $${updateParams.length}`;
             }
 
             if (status === 'NO_SHOW') {
@@ -718,12 +757,7 @@ class Booking {
             WHERE id = $1
             RETURNING *
             `,
-                [
-                    bookingId,
-                    status,
-                    comments,
-                    updatedBy
-                ]
+                updateParams
             );
 
             /* ------------------------------------------------ */
@@ -774,7 +808,12 @@ class Booking {
         } catch (err) {
             await client.query("ROLLBACK");
 
-            if (err?.code === "ROOM_NOT_AVAILABLE" || err?.code === "INVALID_CHECKOUT") {
+            if (
+                err?.code === "ROOM_NOT_AVAILABLE" ||
+                err?.code === "INVALID_CHECKOUT" ||
+                err?.code === "STATUS_TIME_REQUIRED" ||
+                err?.code === "INVALID_STATUS_TIME"
+            ) {
                 throw err;
             }
 

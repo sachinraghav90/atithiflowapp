@@ -36,7 +36,7 @@ class MenuMasterService {
             LEFT JOIN public.menu_item_groups g
                 ON g.id = m.menu_item_group_id
             WHERE m.property_id = $1
-            ORDER BY m.item_name
+            ORDER BY m.id DESC
             LIMIT $2 OFFSET $3
             `,
             [propertyId, limit, offset]

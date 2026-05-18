@@ -917,13 +917,6 @@ export default function ReservationManagement() {
             setRoomCount(b.rooms.length);
         }
 
-        // Mark as duplicated
-        setComments(prev =>
-            prev
-                ? `${prev}\n(Duplicated from booking #${b.id})`
-                : `Duplicated from booking #${b.id}`
-        );
-
     }, [duplicateBooking]);
 
     const handleFile = (key: string, file?: File) => {

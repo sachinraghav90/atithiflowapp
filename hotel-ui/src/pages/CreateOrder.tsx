@@ -517,7 +517,7 @@ export function CreateOrder() {
                 )}
 
                 {/* Order Info */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                     {/* Order Type */}
                     <div className="flex flex-col gap-1">
                         <Label>Order Type*</Label>

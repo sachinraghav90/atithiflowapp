@@ -427,11 +427,14 @@ export default function LaundryOrdersManagement() {
     }, [todayInHouseRooms]);
 
     const displayedRoomOptions = useMemo(() => {
+        if (location.state?.source !== "booking-module") {
+            return confirmedBookingRoomOptions;
+        }
         if (!form.bookingId) return confirmedBookingRoomOptions;
         return confirmedBookingRoomOptions.filter(
             (option) => option.bookingId === Number(form.bookingId)
         );
-    }, [confirmedBookingRoomOptions, form.bookingId]);
+    }, [confirmedBookingRoomOptions, form.bookingId, location.state?.source]);
 
     useEffect(() => {
         if (selectedPropertyId) {
@@ -1424,7 +1427,7 @@ export default function LaundryOrdersManagement() {
 
                                 <div className="space-y-6">
                                     {/* ================= HEADER FIELDS ================= */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-x-6 gap-y-4 border-b pb-6">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4 border-b pb-6">
                                         <div className="space-y-1.5">
                                             <Label>Vendor *</Label>
                                             <MenuItemSelect
@@ -1500,7 +1503,6 @@ export default function LaundryOrdersManagement() {
                                                         <DataGridHeader>
                                                             <tr>
                                                                 <DataGridHead className="w-[150px]">Item *</DataGridHead>
-                                                                {form.bookingId && <DataGridHead className="w-28">Booking ID</DataGridHead>}
                                                                 <DataGridHead className="w-16 text-center">Qty *</DataGridHead>
                                                                 <DataGridHead className="w-20 text-center">Rate</DataGridHead>
                                                                 <DataGridHead className="w-24 text-center">Total</DataGridHead>
@@ -1518,11 +1520,6 @@ export default function LaundryOrdersManagement() {
                                                                                 <MenuItemSelect value={row.laundryId || null} items={laundryPricingItems} disabledIds={form.items.map(item => item.laundryId).filter(Boolean)} itemName="item_name" forceNative={true} extraClasses={cn("h-9 w-full rounded-[3px] border border-input bg-background text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary", (showErrors || row.touched?.laundryId) && (error && (!row.laundryId || error === "Duplicate item selected")) && "border-red-500")} onSelect={(id) => updateItem(index, { laundryId: id, touched: { ...row.touched, laundryId: true } })} placeholder="--Please Select--" />
                                                                             </ValidationTooltip>
                                                                         </DataGridCell>
-                                                                        {form.bookingId && (
-                                                                            <DataGridCell>
-                                                                                <div className="flex h-9 items-center rounded-[3px] border border-input bg-background px-3 text-sm">{formatModuleDisplayId("booking", form.bookingId)}</div>
-                                                                            </DataGridCell>
-                                                                        )}
                                                                         <DataGridCell>
                                                                             <ValidationTooltip isValid={!((showErrors || row.touched?.itemCount) && (error && !row.itemCount))} message="Required field">
                                                                                 <input type="text" name={`laundry_item_count_${index}`} className={cn("w-full h-9 rounded-[3px] border border-input bg-background px-3 text-sm shadow-none outline-none focus:ring-1 focus:ring-primary text-center", (showErrors || row.touched?.itemCount) && (error && !row.itemCount) && "border-red-500")} value={row.itemCount} onChange={(e) => updateItem(index, { itemCount: +normalizeNumberInput(e.target.value) })} onBlur={() => updateItem(index, { touched: { ...row.touched, itemCount: true } })} />

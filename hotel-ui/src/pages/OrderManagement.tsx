@@ -203,17 +203,20 @@ export function OrdersManagement() {
             label: "Order ID",
             cellClassName: "font-medium",
             render: (order) => (
-                <a
-                    href={`/orders?summaryOrderId=${encodeURIComponent(String(order.id))}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                <button
+                    type="button"
                     className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
                     onMouseEnter={() => prefetchOrder(order.id)}
                     onFocus={() => prefetchOrder(order.id)}
+                    onClick={() => {
+                        setOpenOrderInEditMode(false);
+                        setSelectedOrderId(order.id);
+                        setItemsOpen(true);
+                    }}
                     aria-label={`Open summary view for order ${formatOrderDisplayId(order.id)}`}
                 >
                     {formatOrderDisplayId(order.id)}
-                </a>
+                </button>
             ),
         },
         {
@@ -314,7 +317,7 @@ export function OrdersManagement() {
 
                         {canCreateOrders && (
                             <Button
-                                variant="heroOutline"
+                                variant="hero"
                                 className="h-10"
                                 onClick={() => navigate("/create-order")}
                             >
