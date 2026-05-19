@@ -31,6 +31,7 @@ type Payment = {
 type Props = {
     bookingId: string;
     propertyId: string;
+    remainingBalance?: number;
 };
 
 const EMPTY_PAYMENT: Payment = {
@@ -68,6 +69,7 @@ function toPaymentDateInput(value: string | undefined) {
 export default function PaymentsEmbedded({
     bookingId,
     propertyId,
+    remainingBalance,
 }: Props) {
     const [payments, setPayments] = useState<Payment[]>([]);
     const [originalPayments, setOriginalPayments] = useState<Payment[]>([]);
@@ -204,11 +206,19 @@ export default function PaymentsEmbedded({
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col">
-                <p className="mb-3 text-[12px] font-bold text-primary">Payments</p>
-                <p className="text-[11px] text-muted-foreground/80">
-                    Manage payment entries for this booking
-                </p>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex flex-col">
+                    <p className="mb-3 text-[12px] font-bold text-primary">Payments</p>
+                    <p className="text-[11px] text-muted-foreground/80">
+                        Manage payment entries for this booking
+                    </p>
+                </div>
+                {remainingBalance !== undefined && (
+                    <div className="flex flex-col items-end">
+                        <p className="text-[12px] font-semibold text-muted-foreground mb-0.5">Remaining Balance</p>
+                        <p className="text-base font-bold text-primary">₹ {remainingBalance}</p>
+                    </div>
+                )}
             </div>
 
             <div className="editable-grid-compact grid-header-inside-table border-2 border-primary/50 rounded-[5px] overflow-hidden flex flex-col shadow-sm">

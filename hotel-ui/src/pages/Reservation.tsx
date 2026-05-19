@@ -79,6 +79,13 @@ type FieldError = {
     message: string;
 };
 
+const getCurrentTimeHHMM = () => {
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+};
+
 /* -------------------- Component -------------------- */
 export default function ReservationManagement() {
 
@@ -96,7 +103,7 @@ export default function ReservationManagement() {
 
     const [arrivalDate, setArrivalDate] = useState(todayISO());
     const [departureDate, setDepartureDate] = useState(tomorrowISO());
-    const [estimatedArrivalTime, setEstimatedArrivalTime] = useState("");
+    const [estimatedArrivalTime, setEstimatedArrivalTime] = useState(getCurrentTimeHHMM());
 
     const [arrivalError, setArrivalError] = useState("");
     const [departureError, setDepartureError] = useState("");
@@ -745,7 +752,7 @@ export default function ReservationManagement() {
     const resetForm = () => {
         setArrivalDate("");
         setDepartureDate("");
-        setEstimatedArrivalTime("");
+        setEstimatedArrivalTime(getCurrentTimeHHMM());
         setArrivalError("");
         setDepartureError("");
 

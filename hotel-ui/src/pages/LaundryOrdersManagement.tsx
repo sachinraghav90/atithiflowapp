@@ -912,14 +912,20 @@ export default function LaundryOrdersManagement() {
             headClassName: "text-center",
             cellClassName: "text-center font-medium min-w-[90px]",
             render: (order: LaundryOrder) => (
-                <a
-                    href={buildLaundryOrderSummaryUrl(order, selectedPropertyId)}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                <button
+                    type="button"
+                    onClick={() => {
+                        setEditOrder(order);
+                        setViewItemsModal({
+                            open: true,
+                            editMode: false,
+                            order,
+                        });
+                    }}
                     className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
                 >
                     {formatLaundryOrderDisplayId(order.id)}
-                </a>
+                </button>
             ),
         },
         {

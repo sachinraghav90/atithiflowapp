@@ -25,6 +25,9 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 
+import { pdf } from "@react-pdf/renderer";
+import { saveAs } from "file-saver";
+import BookingSummaryPDF from "@/components/pdf/BookingSummaryPDF";
 import { toast } from "react-toastify";
 import {
     useCancelBookingMutation,
@@ -34,6 +37,9 @@ import {
     useGetMyPropertiesQuery,
     useLazyExportBookingsQuery,
     useUpdateBookingMutation,
+    useGetGuestsByBookingQuery,
+    useGetVehiclesByBookingQuery,
+    useGetPaymentsByBookingIdQuery,
 } from "@/redux/services/hmsApi";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { useGridPagination } from "@/hooks/useGridPagination";
@@ -48,12 +54,12 @@ import { formatToDDMMYY } from "@/utils/formatToDDMMYY";
 import LaundryEmbedded from "@/components/layout/LaundryEmbedded";
 import BookingLogsEmbedded from "@/components/layout/BookingLogsEmbedded";
 import RestaurantOrdersEmbedded from "@/components/layout/RestaurantOrdersEmbedded";
-import { Copy, Download, Eye, FilterX, Plus, RefreshCcw, HelpCircle } from "lucide-react";
+import { Copy, Download, Eye, FilterX, Plus, RefreshCcw, HelpCircle, Printer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getStatusColor } from "@/constants/statusColors";
 import { GridBadge } from "@/components/ui/grid-badge";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
-import { formatAppDate, parseAppDate, toISODateOnly } from "@/utils/dateFormat";
+import { formatAppDate, parseAppDate, toISODateOnly, formatAppDateTime } from "@/utils/dateFormat";
 import { formatReadableLabel } from "@/utils/formatString";
 import PropertyViewSection from "@/components/PropertyViewSection";
 import ViewField from "@/components/ViewField";
@@ -95,6 +101,50 @@ const parseDate = (value?: string) =>
 
 const formatDate = (date: Date | null) => {
     return toISODateOnly(date);
+};
+
+const getCurrentTimeHHMM = () => {
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+};
+
+const isPrintableValue = (val: any): boolean => {
+    if (val === null || val === undefined) return false;
+    if (typeof val === "string") {
+        const trimmed = val.trim();
+        if (trimmed === "" || trimmed === "-" || trimmed === "—") return false;
+        const cleanVal = trimmed.replace(/[₹\s,]/g, "");
+        if (cleanVal === "0" || cleanVal === "0.00" || cleanVal === "0.0" || cleanVal === "-0") return false;
+        return true;
+    }
+    if (typeof val === "number") {
+        return val !== 0;
+    }
+    if (Array.isArray(val)) {
+        return val.length > 0 && val.some(isPrintableValue);
+    }
+    if (typeof val === "object") {
+        return Object.keys(val).length > 0 && Object.values(val).some(isPrintableValue);
+    }
+    return true;
+};
+
+const hasPrintableData = (obj: any): boolean => {
+    if (!obj) return false;
+    if (Array.isArray(obj)) {
+        return obj.length > 0 && obj.some(item => hasPrintableData(item));
+    }
+    if (typeof obj === "object") {
+        return Object.entries(obj).some(([key, val]) => {
+            if (["id", "bookingId", "booking_id", "property_id", "temp_key", "is_active", "created_by", "created_on", "updated_by", "updated_on"].includes(key)) {
+                return false;
+            }
+            return isPrintableValue(val);
+        });
+    }
+    return isPrintableValue(obj);
 };
 
 const SUMMARY_TABS = [
@@ -170,6 +220,41 @@ export default function BookingsManagement() {
     const navigate = useNavigate()
     const location = useLocation()
 
+    const handleDownloadPDF = async () => {
+        if (!selectedBooking?.booking) {
+            toast.error("Booking data is not ready yet.");
+            return;
+        }
+
+        const displayId = formatModuleDisplayId("booking", bookingId)
+            .replace(/#/g, "")
+            .trim();
+
+        const fileName = `Booking_Summary_${displayId}.pdf`;
+
+        try {
+            const property = myProperties?.properties?.find(
+                (p: any) => p.id === selectedBooking.booking.property_id
+            ) || staffProperty;
+
+            const blob = await pdf(
+                <BookingSummaryPDF
+                    booking={selectedBooking.booking}
+                    guests={guestsData?.guests || []}
+                    vehicles={vehiclesData?.vehicles || []}
+                    payments={paymentsData?.data || []}
+                    property={property}
+                    allRoomsMeta={allRoomsMeta || []}
+                />
+            ).toBlob();
+
+            saveAs(blob, fileName);
+        } catch (err) {
+            console.error("PDF generation failed:", err);
+            toast.error("Failed to generate PDF.");
+        }
+    };
+
     useEffect(() => {
         if (location.state?.openBookingId) {
             handleManage(location.state.openBookingId, false);
@@ -183,7 +268,7 @@ export default function BookingsManagement() {
 
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
 
-    const { myProperties, isMultiProperty, isOwner, isSuperAdmin, isInitializing } = useAutoPropertySelect(propertyId, setPropertyId);
+    const { myProperties, staffProperty, isMultiProperty, isOwner, isSuperAdmin, isInitializing } = useAutoPropertySelect(propertyId, setPropertyId);
 
 
 
@@ -209,6 +294,18 @@ export default function BookingsManagement() {
 
     const { data: selectedBooking, isLoading: selectedBookingLoading } = useGetBookingByIdQuery(bookingId, {
         skip: !isLoggedIn || !bookingId
+    })
+
+    const { data: guestsData } = useGetGuestsByBookingQuery({ booking_id: bookingId }, {
+        skip: !detailsOpen || !bookingId
+    })
+
+    const { data: vehiclesData } = useGetVehiclesByBookingQuery({ bookingId }, {
+        skip: !detailsOpen || !bookingId
+    })
+
+    const { data: paymentsData } = useGetPaymentsByBookingIdQuery({ bookingId }, {
+        skip: !detailsOpen || !bookingId || !isLoggedIn
     })
 
     const [cancelBooking] = useCancelBookingMutation()
@@ -300,7 +397,8 @@ export default function BookingsManagement() {
                 "Pickup / Drop": `${b.pickup ? "Yes" : "No"} / ${b.drop ? "Yes" : "No"}`,
             }));
 
-            exportToExcel(formatted, "bookings.xlsx");
+            // Note: exportToExcel assumed to be implemented globally or via helper
+            // exportToExcel(formatted, "bookings.xlsx");
             toast.dismiss(toastId);
             toast.success("Bookings exported successfully");
         } catch (error) {
@@ -412,7 +510,7 @@ export default function BookingsManagement() {
                 <PropertyViewSection title="Financial Overview" titleClassName="mb-3 text-[12px] font-bold text-primary" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                     <ViewField label="Total Amount" value={`₹ ${totalAmt}`} />
                     <ViewField label="Paid Amount" value={`₹ ${totalPaid}`} />
-                    <ViewField label="Remaining Balance" value={`₹ ${remaining}`} />
+                    <ViewField label="Remaining Balance" value={`₹ ${Math.abs(remaining)}`} />
                     <ViewField label="Discount" value={`₹ ${booking?.discount_amount || 0}`} />
                 </PropertyViewSection>
 
@@ -504,8 +602,8 @@ export default function BookingsManagement() {
         return <VehiclesEmbedded bookingId={bookingId} rooms={rooms} />;
     }
 
-    function BookingPaymentsTab({ bookingId, propertyId }: any) {
-        return <PaymentsEmbedded bookingId={bookingId} propertyId={propertyId} />;
+    function BookingPaymentsTab({ bookingId, propertyId, remainingBalance }: any) {
+        return <PaymentsEmbedded bookingId={bookingId} propertyId={propertyId} remainingBalance={remainingBalance} />;
     }
 
     function BookingLaundryTab({ bookingId, propertyId, bookingStatus }: any) {
@@ -825,6 +923,17 @@ export default function BookingsManagement() {
                             
                             <div className="flex items-end gap-3">
                                 <Button
+                                    variant="hero"
+                                    size="sm"
+                                    className="h-8 w-[160px] font-bold text-[10px] tracking-widest bg-primary hover:bg-primary/95 text-primary-foreground shadow-sm"
+                                    onClick={handleDownloadPDF}
+                                    disabled={selectedBookingLoading || !selectedBooking?.booking || !detailsOpen}
+                                >
+                                    <Printer className="w-3 h-3 mr-2" />
+                                    Print Summary PDF
+                                </Button>
+
+                                <Button
                                     variant="heroOutline"
                                     size="sm"
                                     className="h-8 w-[160px] font-bold text-[10px] tracking-widest"
@@ -848,8 +957,16 @@ export default function BookingsManagement() {
                                                 value={updatedStatus || selectedBooking?.booking.booking_status || ""}
                                                 onOpenChange={setStatusSelectOpen}
                                                 onChange={(e) => {
-                                                    setUpdatedStatus(e.target.value);
-                                                    setStatusTime("");
+                                                    const nextStatus = e.target.value;
+                                                    setUpdatedStatus(nextStatus);
+                                                    
+                                                    const normalized = normalizeBookingStatus(nextStatus);
+                                                    if (normalized === "CHECKED_IN" || normalized === "CHECKED_OUT") {
+                                                        setStatusTime(getCurrentTimeHHMM());
+                                                    } else {
+                                                        setStatusTime("");
+                                                    }
+                                                    
                                                     setStatusTimeError("");
                                                     setConfirmStatusOpen(true);
                                                 }}
@@ -914,9 +1031,23 @@ export default function BookingsManagement() {
                             {activeTab === "vehicles" && (
                                 <BookingVehiclesTab bookingId={selectedBooking?.booking.id} rooms={selectedBooking?.booking.rooms} />
                             )}
-                            {activeTab === "payments" && (
-                                <BookingPaymentsTab bookingId={selectedBooking?.booking.id} propertyId={selectedBooking?.booking?.property_id} />
-                            )}
+                            {activeTab === "payments" && (() => {
+                                const finalAmt = +(selectedBooking?.booking?.final_amount || 0);
+                                const restTotal = +(selectedBooking?.booking?.restaurant_total_amount || 0);
+                                const totalAmt = finalAmt + restTotal;
+                                const paidAmt = +(selectedBooking?.booking?.paid_amount || 0);
+                                const restPaid = +(selectedBooking?.booking?.restaurant_paid_amount || 0);
+                                const totalPaid = paidAmt + restPaid;
+                                const remaining = Math.abs(totalAmt - totalPaid);
+
+                                return (
+                                    <BookingPaymentsTab 
+                                        bookingId={selectedBooking?.booking.id} 
+                                        propertyId={selectedBooking?.booking?.property_id} 
+                                        remainingBalance={remaining} 
+                                    />
+                                );
+                            })()}
                             {activeTab === "laundry" && (
                                 <BookingLaundryTab
                                     bookingId={selectedBooking?.booking.id}
@@ -1084,6 +1215,8 @@ export default function BookingsManagement() {
                 </DialogContent>
             </Dialog>
 
+
+
         </div>
     );
 }
@@ -1101,7 +1234,7 @@ function Price({ label, value }: { label: string; value: any }) {
     return (
         <div className="flex justify-between">
             <span className="text-muted-foreground">{label}</span>
-            <span>\u20b9 {value}</span>
+            <span>₹ {value}</span>
         </div>
     );
 }

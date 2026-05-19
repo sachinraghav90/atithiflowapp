@@ -858,10 +858,6 @@ class Booking {
             AND b.is_active = true
             AND b.booking_status = 'CHECKED_IN'
 
-            /* Currently in house */
-            AND b.estimated_arrival < date_trunc('day', now()) + interval '1 day'
-            AND b.estimated_departure > date_trunc('day', now())
-
             /* Only live room statuses */
             AND rd.room_status IN ('BOOKED', 'CHECKED_IN')
 
