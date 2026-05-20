@@ -3,10 +3,9 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const connectionString =
-  process.env.NODE_ENV === "production"
-    ? process.env.DIRECT_URL
-    : process.env.DATABASE_URL;
+// Runtime app traffic must use DATABASE_URL.
+// DIRECT_URL may be used by one-off tools (e.g. migrations) separately.
+const connectionString = process.env.DATABASE_URL;
 
 const poolConfig = {
   connectionString,

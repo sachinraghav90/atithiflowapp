@@ -230,6 +230,16 @@ export const hmsApi = createApi({
           : [{ type: "Properties", id: "LIST" }],
     }),
 
+    getPropertyById: builder.query<any, number>({
+      query: (id) => {
+        return {
+          url: `/properties/${id}`,
+          method: "GET",
+        };
+      },
+      providesTags: (_result, _error, id) => [{ type: "Properties", id }],
+    }),
+
     updateProperties: builder.mutation<any, any>({
       query: ({ id, payload }) => {
         return {
@@ -1684,6 +1694,7 @@ export const {
   useGetAllRolesQuery,
   useCreateUserMutation,
   useGetMyPropertiesQuery,
+  useGetPropertyByIdQuery,
   useGetRoomsQuery,
   useBulkUpdateRoomsMutation,
   useBulkUpsertRoomsMutation,

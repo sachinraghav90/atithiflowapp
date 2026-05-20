@@ -1,0 +1,1 @@
+/* RichTextEditor plugins placeholder. Replace with vendor plugins if needed. */

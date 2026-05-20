@@ -512,13 +512,18 @@ class Property {
             const propertyAddress = {};
             const officeAddress = {};
 
+            const normalizePropertyFieldKey = (key) => {
+                if (key === "bookingInstructions") return "booking_instructions";
+                return key;
+            };
+
             for (const [key, value] of Object.entries(payload)) {
                 if (PROPERTY_ADDRESS_FIELDS.includes(key)) {
                     propertyAddress[key] = value;
                 } else if (OFFICE_ADDRESS_FIELDS.includes(key)) {
                     officeAddress[key.replace("_office", "")] = value;
                 } else {
-                    propertyFields[key] = value;
+                    propertyFields[normalizePropertyFieldKey(key)] = value;
                 }
             }
 

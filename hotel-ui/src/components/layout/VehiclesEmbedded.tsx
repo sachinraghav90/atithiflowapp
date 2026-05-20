@@ -205,9 +205,9 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
                             <DataGridHeader>
                                 <DataGridHead className="border-r border-slate-200/20">Type</DataGridHead>
                                 <DataGridHead className="border-r border-slate-200/20">Name</DataGridHead>
+                                <DataGridHead className="border-r border-slate-200/20">Color</DataGridHead>
                                 <DataGridHead className="border-r border-slate-200/20">Vehicle Number</DataGridHead>
                                 <DataGridHead className="border-r border-slate-200/20">Phone</DataGridHead>
-                                <DataGridHead className="border-r border-slate-200/20">Color</DataGridHead>
                                 <DataGridHead className="border-r border-slate-200/20">Room</DataGridHead>
                                 {showVehicleActions && (
                                     <DataGridHead className="w-20 text-center">Action</DataGridHead>
@@ -257,6 +257,23 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
                                             )}
                                         </DataGridCell>
 
+                                        {/* COLOR */}
+                                        <DataGridCell className="border-r border-slate-200/40">
+                                            {isRowEditable(vehicle) ? (
+                                                <Input
+                                                    value={vehicle.color ?? ""}
+                                                    className="h-9 w-full rounded-[3px] border border-border bg-background px-3 text-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0"
+                                                    onChange={(e) =>
+                                                        updateVehicle(index, {
+                                                            color: normalizeTextInput(e.target.value),
+                                                        })
+                                                    }
+                                                />
+                                            ) : (
+                                                <span className="text-sm font-medium">{vehicle.color || "—"}</span>
+                                            )}
+                                        </DataGridCell>
+
                                         {/* NUMBER */}
                                         <DataGridCell className="border-r border-slate-200/40">
                                             {isRowEditable(vehicle) ? (
@@ -288,23 +305,6 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
                                                 />
                                             ) : (
                                                 <span className="text-sm font-medium">{vehicle.phone || "—"}</span>
-                                            )}
-                                        </DataGridCell>
-
-                                        {/* COLOR */}
-                                        <DataGridCell className="border-r border-slate-200/40">
-                                            {isRowEditable(vehicle) ? (
-                                                <Input
-                                                    value={vehicle.color ?? ""}
-                                                    className="h-9 w-full rounded-[3px] border border-border bg-background px-3 text-sm focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0"
-                                                    onChange={(e) =>
-                                                        updateVehicle(index, {
-                                                            color: normalizeTextInput(e.target.value),
-                                                        })
-                                                    }
-                                                />
-                                            ) : (
-                                                <span className="text-sm font-medium">{vehicle.color || "—"}</span>
                                             )}
                                         </DataGridCell>
 

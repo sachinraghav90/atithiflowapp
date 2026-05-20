@@ -12,7 +12,6 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from "@/components/ui/dialog";
 import { NativeSelect } from "@/components/ui/native-select";
 import { MenuItemSelect } from "@/components/MenuItemSelect";
@@ -26,7 +25,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 
 import { pdf } from "@react-pdf/renderer";
-import { saveAs } from "file-saver";
 import BookingSummaryPDF from "@/components/pdf/BookingSummaryPDF";
 import { toast } from "react-toastify";
 import {
@@ -40,11 +38,13 @@ import {
     useGetGuestsByBookingQuery,
     useGetVehiclesByBookingQuery,
     useGetPaymentsByBookingIdQuery,
+    useGetPropertyByIdQuery,
+    useUpdatePropertiesMutation,
 } from "@/redux/services/hmsApi";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { useGridPagination } from "@/hooks/useGridPagination";
 import { useAppSelector } from "@/redux/hook";
-import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
+import { selectCanManagePropertySettings, selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
 import { normalizeNumberInput } from "@/utils/normalizeTextInput";
 import { useNavigate, useLocation } from "react-router-dom";
 import GuestsEmbedded from "@/components/layout/GuestsEmbedded";
@@ -63,6 +63,7 @@ import { formatAppDate, parseAppDate, toISODateOnly, formatAppDateTime } from "@
 import { formatReadableLabel } from "@/utils/formatString";
 import PropertyViewSection from "@/components/PropertyViewSection";
 import ViewField from "@/components/ViewField";
+import RichTextEditor from "@/components/ui/rich-text-editor";
 
 
 
@@ -183,6 +184,8 @@ export default function BookingsManagement() {
     const [scope, setScope] = useState("");
     const [status, setStatus] = useState("CONFIRMED");
     const [instructionsOpen, setInstructionsOpen] = useState(false);
+    const [isEditingInstructions, setIsEditingInstructions] = useState(false);
+    const [instructionsDraft, setInstructionsDraft] = useState("");
     const didRunInitialStatusSync = useRef(false);
 
     const { page, limit, setPage, handleLimitChange } = useGridPagination({
@@ -226,6 +229,12 @@ export default function BookingsManagement() {
             return;
         }
 
+        const previewTab = window.open("", "_blank");
+        if (!previewTab) {
+            toast.error("Unable to open PDF preview. Please allow pop-ups.");
+            return;
+        }
+
         const displayId = formatModuleDisplayId("booking", bookingId)
             .replace(/#/g, "")
             .trim();
@@ -248,8 +257,52 @@ export default function BookingsManagement() {
                 />
             ).toBlob();
 
-            saveAs(blob, fileName);
+            const blobUrl = URL.createObjectURL(blob);
+
+            const safeTitle = fileName.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            previewTab.document.write(`
+                <!doctype html>
+                <html>
+                  <head>
+                    <meta charset="utf-8" />
+                    <meta name="viewport" content="width=device-width, initial-scale=1" />
+                    <title>${safeTitle}</title>
+                    <style>
+                      html, body { margin: 0; padding: 0; height: 100%; background: #111827; }
+                      .toolbar {
+                        height: 44px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: flex-end;
+                        padding: 0 12px;
+                        background: #0b1220;
+                        border-bottom: 1px solid #1f2937;
+                        box-sizing: border-box;
+                      }
+                      .download-link {
+                        color: #e5e7eb;
+                        text-decoration: none;
+                        font: 600 13px/1 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+                        background: #1d4ed8;
+                        border-radius: 6px;
+                        padding: 8px 12px;
+                      }
+                      .download-link:hover { background: #1e40af; }
+                      iframe { border: 0; width: 100%; height: calc(100% - 44px); }
+                    </style>
+                  </head>
+                  <body>
+                    <div class="toolbar">
+                      <a class="download-link" href="${blobUrl}" download="${safeTitle}">Download PDF</a>
+                    </div>
+                    <iframe src="${blobUrl}" title="${safeTitle}"></iframe>
+                  </body>
+                </html>
+            `);
+            previewTab.document.close();
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 120_000);
         } catch (err) {
+            previewTab.close();
             console.error("PDF generation failed:", err);
             toast.error("Failed to generate PDF.");
         }
@@ -269,6 +322,58 @@ export default function BookingsManagement() {
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
 
     const { myProperties, staffProperty, isMultiProperty, isOwner, isSuperAdmin, isInitializing } = useAutoPropertySelect(propertyId, setPropertyId);
+    const canManagePropertySettings = useAppSelector(selectCanManagePropertySettings);
+    const [updateProperty, { isLoading: isSavingInstructions }] = useUpdatePropertiesMutation();
+    const currentPropertyId = propertyId ?? (staffProperty?.id ? Number(staffProperty.id) : undefined);
+    const { data: propertyDetails } = useGetPropertyByIdQuery(currentPropertyId as number, {
+        skip: !currentPropertyId || !instructionsOpen,
+    });
+    const bookingInstructions = propertyDetails?.booking_instructions || "";
+
+    const sanitizeInstructionsHtml = (raw: string) => {
+        if (!raw) return "";
+        return raw
+            .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
+            .replace(/\son\w+="[^"]*"/gi, "")
+            .replace(/\son\w+='[^']*'/gi, "")
+            .replace(/javascript:/gi, "");
+    };
+
+    const handleEditInstructions = () => {
+        setInstructionsDraft(bookingInstructions || "");
+        setIsEditingInstructions(true);
+    };
+
+    const handleCancelInstructionsEdit = () => {
+        setInstructionsDraft(bookingInstructions || "");
+        setIsEditingInstructions(false);
+    };
+
+    const handleCloseInstructionsPanel = () => {
+        setInstructionsOpen(false);
+    };
+
+    const handleUpdateInstructions = async () => {
+        if (!currentPropertyId || isSavingInstructions) return;
+        try {
+            await updateProperty({
+                id: currentPropertyId,
+                payload: { booking_instructions: instructionsDraft || "" },
+            }).unwrap();
+            toast.success("Booking instructions updated successfully");
+            setIsEditingInstructions(false);
+        } catch {
+            toast.error("Failed to update booking instructions");
+        }
+    };
+
+    useEffect(() => {
+        if (!instructionsOpen) {
+            setIsEditingInstructions(false);
+            return;
+        }
+        setInstructionsDraft(bookingInstructions || "");
+    }, [instructionsOpen, bookingInstructions]);
 
 
 
@@ -925,25 +1030,25 @@ export default function BookingsManagement() {
                                 <Button
                                     variant="hero"
                                     size="sm"
-                                    className="h-8 w-[160px] font-bold text-[10px] tracking-widest bg-primary hover:bg-primary/95 text-primary-foreground shadow-sm"
+                                    className="h-9 w-[160px] px-3 text-xs font-semibold tracking-normal bg-primary hover:bg-primary/95 text-primary-foreground shadow-sm rounded-md"
                                     onClick={handleDownloadPDF}
                                     disabled={selectedBookingLoading || !selectedBooking?.booking || !detailsOpen}
                                 >
-                                    <Printer className="w-3 h-3 mr-2" />
-                                    Print Summary PDF
+                                    <Printer className="w-3.5 h-3.5 mr-2" />
+                                    Print PDF
                                 </Button>
 
                                 <Button
                                     variant="heroOutline"
                                     size="sm"
-                                    className="h-8 w-[160px] font-bold text-[10px] tracking-widest"
+                                    className="h-9 w-[160px] px-3 text-xs font-semibold tracking-normal rounded-md"
                                     onClick={() => {
                                         navigate("/reservation", {
                                             state: { duplicateBooking: selectedBooking?.booking }
                                         });
                                     }}
                                 >
-                                    <Copy className="w-3 h-3 mr-2" />
+                                    <Copy className="w-3.5 h-3.5 mr-2" />
                                     Duplicate Booking
                                 </Button>
 
@@ -951,9 +1056,9 @@ export default function BookingsManagement() {
                                 <Tooltip>
                                     <TooltipTrigger asChild>
                                         <div className="flex flex-col items-start space-y-0.5 cursor-help">
-                                            <Label className="text-[10px] font-bold tracking-widest text-muted-foreground/80">Update Booking Status</Label>
+                                            <Label className="text-xs font-semibold tracking-normal text-muted-foreground/80">Update Booking Status</Label>
                                             <NativeSelect
-                                                className="h-8 border-primary/30 bg-primary/5 rounded-[4px] px-3 py-0 text-xs font-bold text-primary focus:ring-1 focus:ring-primary w-[160px] shadow-sm cursor-pointer transition-all hover:bg-primary/10"
+                                                className="h-9 w-[160px] border-primary/30 bg-primary/5 rounded-md px-3 py-0 text-xs font-semibold tracking-normal text-primary focus:ring-1 focus:ring-primary shadow-sm cursor-pointer transition-all hover:bg-primary/10"
                                                 value={updatedStatus || selectedBooking?.booking.booking_status || ""}
                                                 onOpenChange={setStatusSelectOpen}
                                                 onChange={(e) => {
@@ -1151,69 +1256,79 @@ export default function BookingsManagement() {
                 </DialogContent>
             </Dialog>
 
-            <Dialog open={instructionsOpen} onOpenChange={setInstructionsOpen}>
-                <DialogContent className="max-w-md sm:max-w-lg bg-background p-6">
-                    <DialogHeader className="mb-4">
-                        <DialogTitle className="text-xl font-bold flex items-center gap-2 text-primary">
-                            <HelpCircle className="w-5 h-5 text-primary" /> Bookings Page Instructions
-                        </DialogTitle>
-                    </DialogHeader>
-                    
-                    <div className="space-y-4 text-sm text-foreground">
-                        <p className="text-muted-foreground">
-                            Welcome to the AtithiFlow Bookings panel. Follow this guide to efficiently manage and track guest reservations:
-                        </p>
-                        
-                        <div className="space-y-3.5">
-                            <div className="flex gap-3">
-                                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">1</div>
-                                <div className="space-y-0.5">
-                                    <p className="font-semibold text-foreground">Search Bookings</p>
-                                    <p className="text-muted-foreground text-xs">Use the search bar to locate specific bookings instantly by typing keywords (e.g., Guest Name, Mobile, or Booking ID) and clicking <strong>Search</strong>.</p>
-                                </div>
-                            </div>
-                            
-                            <div className="flex gap-3">
-                                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">2</div>
-                                <div className="space-y-0.5">
-                                    <p className="font-semibold text-foreground">Narrow with Filters</p>
-                                    <p className="text-muted-foreground text-xs">Refine your search results using <strong>Scope</strong> (All, In-House, Upcoming, etc.), <strong>Status</strong>, and specific <strong>Arrival</strong> or <strong>Departure</strong> date ranges.</p>
-                                </div>
-                            </div>
-                            
-                            <div className="flex gap-3">
-                                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">3</div>
-                                <div className="space-y-0.5">
-                                    <p className="font-semibold text-foreground">View Booking Details</p>
-                                    <p className="text-muted-foreground text-xs">Click on any clickable <strong>Booking ID</strong> (e.g., BO026) in the grid to pull up the complete Reservation Side Sheet containing Guest Details, Laundry, and Restaurant Orders.</p>
-                                </div>
-                            </div>
+            <Sheet open={instructionsOpen} onOpenChange={setInstructionsOpen}>
+                <SheetContent side="right" className="w-full sm:max-w-2xl h-full overflow-y-auto bg-background p-0 flex flex-col">
+                    <SheetHeader className="px-6 py-4 border-b bg-background">
+                        <SheetTitle>Booking Instructions</SheetTitle>
+                    </SheetHeader>
 
-                            <div className="flex gap-3">
-                                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">4</div>
-                                <div className="space-y-0.5">
-                                    <p className="font-semibold text-foreground">Create a New Booking</p>
-                                    <p className="text-muted-foreground text-xs">Click the primary <strong>+ New Booking</strong> button in the top right to start a fresh reservation flow, assign rooms, and enter guest details.</p>
-                                </div>
-                            </div>
+                    <div className="flex-1 p-6 space-y-4">
+                        {!isEditingInstructions ? (
+                            <>
+                                {bookingInstructions?.trim() ? (
+                                    <div
+                                        className="min-h-[220px] rounded-md border border-border bg-muted/10 p-4 text-sm leading-6 text-foreground [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:mb-2"
+                                        dangerouslySetInnerHTML={{ __html: sanitizeInstructionsHtml(bookingInstructions) }}
+                                    />
+                                ) : (
+                                    <div className="min-h-[220px] rounded-md border border-dashed border-border bg-muted/10 p-4 text-sm text-muted-foreground">
+                                        No booking instructions have been added yet.
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                <Label className="text-sm font-semibold text-foreground">Instructions</Label>
+                                <RichTextEditor
+                                    value={instructionsDraft}
+                                    onChange={setInstructionsDraft}
+                                    className="min-h-[260px]"
+                                />
+                            </>
+                        )}
+                    </div>
 
-                            <div className="flex gap-3">
-                                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">5</div>
-                                <div className="space-y-0.5">
-                                    <p className="font-semibold text-foreground">Refresh & Export</p>
-                                    <p className="text-muted-foreground text-xs">Use the refresh icon button to instantly reload the grid. Use the download icon button to export the current view to Excel.</p>
-                                </div>
-                            </div>
-                        </div>
+                    <div className="border-t border-border px-6 py-4 flex justify-end gap-3">
+                        {!isEditingInstructions ? (
+                            <>
+                                <Button
+                                    variant="heroOutline"
+                                    className="h-9 px-5"
+                                    onClick={handleCloseInstructionsPanel}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    variant="hero"
+                                    className="h-9 px-5"
+                                    disabled={!canManagePropertySettings}
+                                    onClick={handleEditInstructions}
+                                >
+                                    Update
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <Button
+                                    variant="heroOutline"
+                                    className="h-9 px-5"
+                                    onClick={handleCancelInstructionsEdit}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    variant="hero"
+                                    className="h-9 px-5"
+                                    disabled={isSavingInstructions || !currentPropertyId}
+                                    onClick={handleUpdateInstructions}
+                                >
+                                    {isSavingInstructions ? "Saving..." : "Save"}
+                                </Button>
+                            </>
+                        )}
                     </div>
-                    
-                    <div className="flex justify-end pt-4 border-t border-border mt-4">
-                        <Button variant="hero" className="px-5 h-9" onClick={() => setInstructionsOpen(false)}>
-                            Got it, thanks!
-                        </Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
+                </SheetContent>
+            </Sheet>
 
 
 
