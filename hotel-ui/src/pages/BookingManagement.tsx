@@ -44,7 +44,7 @@ import {
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { useGridPagination } from "@/hooks/useGridPagination";
 import { useAppSelector } from "@/redux/hook";
-import { selectCanManagePropertySettings, selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
+import { selectCanAccessDeliveryFeatures, selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
 import { normalizeNumberInput } from "@/utils/normalizeTextInput";
 import { useNavigate, useLocation } from "react-router-dom";
 import GuestsEmbedded from "@/components/layout/GuestsEmbedded";
@@ -322,11 +322,11 @@ export default function BookingsManagement() {
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
 
     const { myProperties, staffProperty, isMultiProperty, isOwner, isSuperAdmin, isInitializing } = useAutoPropertySelect(propertyId, setPropertyId);
-    const canManagePropertySettings = useAppSelector(selectCanManagePropertySettings);
+    const canAccessDeliveryFeatures = useAppSelector(selectCanAccessDeliveryFeatures);
     const [updateProperty, { isLoading: isSavingInstructions }] = useUpdatePropertiesMutation();
     const currentPropertyId = propertyId ?? (staffProperty?.id ? Number(staffProperty.id) : undefined);
     const { data: propertyDetails } = useGetPropertyByIdQuery(currentPropertyId as number, {
-        skip: !currentPropertyId || !instructionsOpen,
+        skip: !currentPropertyId,
     });
     const bookingInstructions = propertyDetails?.booking_instructions || "";
 
@@ -1298,14 +1298,15 @@ export default function BookingsManagement() {
                                 >
                                     Cancel
                                 </Button>
-                                <Button
-                                    variant="hero"
-                                    className="h-9 px-5"
-                                    disabled={!canManagePropertySettings}
-                                    onClick={handleEditInstructions}
-                                >
-                                    Update
-                                </Button>
+                                {canAccessDeliveryFeatures && (
+                                    <Button
+                                        variant="hero"
+                                        className="h-9 px-5"
+                                        onClick={handleEditInstructions}
+                                    >
+                                        Update
+                                    </Button>
+                                )}
                             </>
                         ) : (
                             <>
