@@ -155,6 +155,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#e0f2fe",
     paddingBottom: 4,
+    marginTop: 0,
     marginBottom: 8,
   },
   card: {
@@ -162,6 +163,7 @@ const styles = StyleSheet.create({
     borderColor: "#e0f2fe",
     borderRadius: 6,
     padding: 8,
+    marginTop: 0,
     marginBottom: 12,
     backgroundColor: "#ffffff",
   },
@@ -215,20 +217,26 @@ const styles = StyleSheet.create({
   gridRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    marginBottom: 0,
   },
   gridCol7: {
-    width: "57%",
+    width: "58.5%",
   },
   gridCol5: {
-    width: "41%",
+    width: "40.5%",
   },
   infoCard: {
     borderWidth: 1,
     borderColor: "#e0f2fe",
     borderRadius: 6,
     padding: 8,
+    marginTop: 0,
+    marginBottom: 12,
     minHeight: 120,
     backgroundColor: "#ffffff",
+  },
+  sideBySideCardCompact: {
+    padding: 6,
   },
   infoRow: {
     flexDirection: "row",
@@ -320,6 +328,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e0f2fe",
     borderRadius: 6,
+    padding: 0,
+    marginTop: 0,
+    marginBottom: 12,
     backgroundColor: "#ffffff",
     overflow: "hidden",
   },
@@ -402,6 +413,10 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     flex: 1,
     textAlign: "right",
+  },
+  sectionContainer: {
+    marginTop: 0,
+    marginBottom: 8,
   },
   footer: {
     marginTop: 20,
@@ -506,9 +521,9 @@ export default function BookingSummaryPDF({
         <View style={styles.gridRow}>
           {/* Booking Info */}
           <View style={styles.gridCol7}>
-               <View style={{ marginBottom: 8}}></View>
-            <Text style={styles.sectionTitle}>Booking Information</Text>
-            <View style={styles.infoCard}>
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>Booking Information</Text>
+            <View style={[styles.infoCard, styles.sideBySideCardCompact]}>
               <View style={styles.infoRow}>
                 <View style={styles.infoItem}>
                   <Text style={styles.infoLabel}>Primary Guest</Text>
@@ -572,14 +587,14 @@ export default function BookingSummaryPDF({
                 </View>
               )}
             </View>
+            </View>
           </View>
 
           {/* Rooms Info */}
-           <View style={{ marginBottom: 8}}></View>
           <View style={styles.gridCol5}>
-            
-            <Text style={styles.sectionTitle}>Rooms</Text>
-            <View style={styles.infoCard}>
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>Rooms</Text>
+            <View style={[styles.infoCard, styles.sideBySideCardCompact]}>
               {hasData(booking?.rooms) ? (
                 <View style={styles.table}>
                   <View style={styles.tableHeader}>
@@ -617,12 +632,13 @@ export default function BookingSummaryPDF({
                 <Text style={styles.noDataText}>No Rooms Assigned</Text>
               )}
             </View>
+            </View>
           </View>
         </View>
 
         {/* Guests Details */}
         {hasData(guests) && (
-          <View style={{ marginBottom: 8}}>
+          <View style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>Guests Details</Text>
             {guests.map((g: any, index: number) => {
               const fullName = `${g.salutation || ""} ${g.first_name || ""} ${g.middle_name || ""} ${g.last_name || ""}`
@@ -632,7 +648,7 @@ export default function BookingSummaryPDF({
               return (
                 <View
                   key={g.id || index}
-                  style={[styles.card, isLastGuest ? { marginBottom: 4 } : null]}
+                  style={[styles.card, isLastGuest ? { marginBottom: 12 } : null]}
                 >
                   <View style={styles.guestNameBox}>
                     <View style={styles.guestDot} />
@@ -711,13 +727,13 @@ export default function BookingSummaryPDF({
 
         {/* Side-by-Side Payments and Vehicles */}
         {(hasData(payments) || hasData(vehicles)) && (
-          <View style={[styles.gridRow]}>
+          <View style={styles.gridRow}>
             {/* Payments */}
             {hasData(payments) ? (
               <View style={[styles.gridCol5, !hasData(vehicles) ? { width: "100%" } : { width: "48%" }]}>
-                  <View style={{ marginBottom: 8}}></View>
-                <Text style={styles.sectionTitle}>Payments</Text>
-                <View style={styles.card}>
+                <View style={styles.sectionContainer}>
+                  <Text style={styles.sectionTitle}>Payments</Text>
+                <View style={[styles.card, styles.sideBySideCardCompact]}>
                   <View style={styles.table}>
                     <View style={styles.tableHeader}>
                       <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>Date</Text>
@@ -740,6 +756,7 @@ export default function BookingSummaryPDF({
                   </View>
                 </View>
               </View>
+            </View>
             ) : (
               <View style={hasData(vehicles) ? { width: "0%" } : undefined} />
             )}
@@ -747,9 +764,9 @@ export default function BookingSummaryPDF({
             {/* Vehicles */}
             {hasData(vehicles) && (
               <View style={[styles.gridCol5, !hasData(payments) ? { width: "100%" } : { width: "48%" }]}>
-                <View style={{ marginBottom: 8}}></View>
-                <Text style={styles.sectionTitle}>Vehicle Details</Text>
-                <View style={styles.card}>
+                <View style={styles.sectionContainer}>
+                  <Text style={styles.sectionTitle}>Vehicle Details</Text>
+                <View style={[styles.card, styles.sideBySideCardCompact]}>
                   <View style={styles.table}>
                     <View style={styles.tableHeader}>
                       <Text style={[styles.tableHeaderCell, { flex: 1.2 }]}>Type</Text>
@@ -776,12 +793,13 @@ export default function BookingSummaryPDF({
                   </View>
                 </View>
               </View>
+            </View>
             )}
           </View>
         )}
 
         {/* Billing & Financial Summary */}
-        <View style={{ marginBottom: 8  }}>
+        <View style={[styles.sectionContainer]}>
           <Text style={styles.sectionTitle}>Billing Summary</Text>
           <View style={styles.billingTable}>
             <View style={styles.billingHeaderRow}>
@@ -876,7 +894,7 @@ export default function BookingSummaryPDF({
         </View>
 
         {!!instructionsPlainText && (
-          <View style={{ marginBottom: 8 }}>
+          <View style={styles.sectionContainer} break>
             <Text style={styles.sectionTitle}>Booking Instructions</Text>
             <View style={styles.card}>
               <Text style={[styles.commentsValue, { fontSize: 8, lineHeight: 1.5 }]}>

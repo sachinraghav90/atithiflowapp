@@ -2,8 +2,10 @@ import { Button } from "@/components/ui/button";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
     useGetOrderByIdQuery,
+    useGetPropertyByIdQuery,
     useUpdateOrderPaymentMutation,
     useUpdateOrderStatusMutation
 } from "@/redux/services/hmsApi";
@@ -12,7 +14,9 @@ import { toast } from "react-toastify";
 import { useEffect, useState } from "react";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { formatAppDateTime } from "@/utils/dateFormat";
-import { ShoppingCart, Pencil, User, Phone, MapPin, UtensilsCrossed, Truck, Calendar, CreditCard, ClipboardList, Info as InfoIcon, Hash, Plus, Camera } from "lucide-react";
+import { pdf } from "@react-pdf/renderer";
+import RestaurantOrderSummaryPDF from "@/components/pdf/RestaurantOrderSummaryPDF";
+import { ShoppingCart, Pencil, User, Phone, MapPin, UtensilsCrossed, Truck, Calendar, CreditCard, ClipboardList, Info as InfoIcon, Hash, Plus, Camera, Printer } from "lucide-react";
 import { motion } from "framer-motion";
 import { GridBadge } from "@/components/ui/grid-badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -58,6 +62,9 @@ export function OrderItemsModal({
 
     const { data, isLoading } = useGetOrderByIdQuery(orderId, {
         skip: !orderId || !open
+    });
+    const { data: propertyDetails } = useGetPropertyByIdQuery(Number(data?.property_id), {
+        skip: !data?.property_id
     });
 
     const [updateOrderStatus] = useUpdateOrderStatusMutation();
@@ -117,6 +124,79 @@ export function OrderItemsModal({
         setEditMode(false);
     };
 
+    const handleDownloadPDF = async () => {
+        if (!data) {
+            toast.error("Order data is not ready yet.");
+            return;
+        }
+
+        const previewTab = window.open("", "_blank");
+        if (!previewTab) {
+            toast.error("Unable to open PDF preview. Please allow pop-ups.");
+            return;
+        }
+
+        const displayId = formatModuleDisplayId("order", data.id).replace(/#/g, "").trim();
+        const fileName = `Restaurant_Order_Summary_${displayId}.pdf`;
+
+        try {
+            const propertyName = propertyDetails?.brand_name || propertyDetails?.name || "AtithiFlow Hotel";
+            const blob = await pdf(
+                <RestaurantOrderSummaryPDF
+                    order={data}
+                    propertyName={propertyName}
+                />
+            ).toBlob();
+
+            const blobUrl = URL.createObjectURL(blob);
+            const safeTitle = fileName.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            previewTab.document.write(`
+                <!doctype html>
+                <html>
+                  <head>
+                    <meta charset="utf-8" />
+                    <meta name="viewport" content="width=device-width, initial-scale=1" />
+                    <title>${safeTitle}</title>
+                    <style>
+                      html, body { margin: 0; padding: 0; height: 100%; background: #111827; }
+                      .toolbar {
+                        height: 44px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: flex-end;
+                        padding: 0 12px;
+                        background: #0b1220;
+                        border-bottom: 1px solid #1f2937;
+                        box-sizing: border-box;
+                      }
+                      .download-link {
+                        color: #e5e7eb;
+                        text-decoration: none;
+                        font: 600 13px/1 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+                        background: #1d4ed8;
+                        border-radius: 6px;
+                        padding: 8px 12px;
+                      }
+                      .download-link:hover { background: #1e40af; }
+                      iframe { border: 0; width: 100%; height: calc(100% - 44px); }
+                    </style>
+                  </head>
+                  <body>
+                    <div class="toolbar">
+                      <a class="download-link" href="${blobUrl}" download="${safeTitle}">Download PDF</a>
+                    </div>
+                    <iframe src="${blobUrl}" title="${safeTitle}"></iframe>
+                  </body>
+                </html>
+            `);
+            previewTab.document.close();
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 120_000);
+        } catch (error) {
+            previewTab.close();
+            toast.error("Failed to generate PDF.");
+        }
+    };
+
     return (
         <Sheet open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
             <SheetContent side="right" onOpenAutoFocus={(e) => e.preventDefault()} className="w-full lg:max-w-4xl sm:max-w-3xl overflow-y-auto bg-background outline-none focus:outline-none focus-visible:outline-none">
@@ -126,15 +206,38 @@ export function OrderItemsModal({
                     className="space-y-1"
                 >
                     <SheetHeader className="mb-4">
-                        <div className="space-y-1">
-                            <SheetTitle className="text-xl font-bold">
-                                {editMode ? `Update Restaurant Order [${data?.id ? `#${formatOrderDisplayId(data.id)}` : "..."}]` : `Restaurant Order [${data?.id ? `#${formatOrderDisplayId(data.id)}` : "..."}]`}
-                            </SheetTitle>
-                            <p className="text-xs text-muted-foreground font-medium tracking-wider">
-                                {editMode
-                                    ? "Update order status and payment details"
-                                    : "Complete order details with list of items"}
-                            </p>
+                        <div className="flex items-end justify-between gap-3">
+                            <div className="space-y-1">
+                                <SheetTitle className="text-xl font-bold">
+                                    {editMode ? `Update Restaurant Order [${data?.id ? `#${formatOrderDisplayId(data.id)}` : "..."}]` : `Restaurant Order [${data?.id ? `#${formatOrderDisplayId(data.id)}` : "..."}]`}
+                                </SheetTitle>
+                                <p className="text-xs text-muted-foreground font-medium tracking-wider">
+                                    {editMode
+                                        ? "Update order status and payment details"
+                                        : "Complete order details with list of items"}
+                                </p>
+                            </div>
+                            {!editMode && (
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                variant="heroOutline"
+                                                size="sm"
+                                                className="h-9 w-9 p-0 shadow-sm rounded-md mr-12"
+                                                onClick={handleDownloadPDF}
+                                                disabled={!data}
+                                                aria-label="Print PDF"
+                                            >
+                                                <Printer className="w-4 h-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" align="center" className="text-xs">
+                                            Print PDF
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            )}
                         </div>
                     </SheetHeader>
                 {isLoading && (

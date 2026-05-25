@@ -216,6 +216,7 @@ export default function BookingsManagement() {
 
     const [updatedStatus, setUpdatedStatus] = useState<string>("");
     const [statusSelectOpen, setStatusSelectOpen] = useState(false);
+    const [isPrintTooltipOpen, setIsPrintTooltipOpen] = useState(false);
     const [statusTime, setStatusTime] = useState("");
     const [statusTimeError, setStatusTimeError] = useState("");
     const statusTimeInputRef = useRef<HTMLInputElement>(null);
@@ -1066,13 +1067,17 @@ export default function BookingsManagement() {
                             
                             <div className="flex items-end gap-3">
                                 <TooltipProvider>
-                                    <Tooltip>
+                                    <Tooltip open={detailsOpen && isPrintTooltipOpen}>
                                         <TooltipTrigger asChild>
                                             <Button
                                                 variant="heroOutline"
                                                 size="sm"
                                                 className="h-9 w-9 p-0 shadow-sm rounded-md"
                                                 onClick={handleDownloadPDF}
+                                                onMouseEnter={() => setIsPrintTooltipOpen(true)}
+                                                onMouseLeave={() => setIsPrintTooltipOpen(false)}
+                                                onFocus={() => setIsPrintTooltipOpen(false)}
+                                                onBlur={() => setIsPrintTooltipOpen(false)}
                                                 disabled={selectedBookingLoading || !selectedBooking?.booking || !detailsOpen}
                                                 aria-label="Print PDF"
                                             >

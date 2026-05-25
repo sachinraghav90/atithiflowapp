@@ -201,6 +201,7 @@ export function OrdersManagement() {
     const orderColumns = useMemo<ColumnDef<Order>[]>(() => [
         {
             label: "Order ID",
+            headClassName: "text-center",
             cellClassName: "text-center font-medium",
             render: (order) => (
                 <button
