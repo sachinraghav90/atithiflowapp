@@ -21,10 +21,22 @@ export const baseQueryWithErrorHandler: BaseQueryFn<
     const result = await rawBaseQuery(args, api, extraOptions);
     
     if (result.error) {
+        const requestUrl =
+            typeof args === "string"
+                ? args
+                : (args?.url ?? "");
         const status = result.error.status;
         const effectiveStatus =
             status === "PARSING_ERROR" ? result.error.originalStatus : status;
         const message = extractApiErrorMessage(result.error);
+
+        const isGuestImageNotFound =
+            effectiveStatus === 404 &&
+            /\/bookings\/\d+\/guest-image$/.test(requestUrl);
+
+        if (isGuestImageNotFound) {
+            return result;
+        }
 
         switch (effectiveStatus) {
             case 401:

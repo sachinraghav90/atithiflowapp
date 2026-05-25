@@ -1,6 +1,15 @@
 import BookingService from "../services/Booking.service.js"
 
 class Booking {
+    #isGuestImageSchemaMissing(error) {
+        const msg = String(error?.message || "").toLowerCase();
+        return msg.includes('column "guest_image" does not exist') || msg.includes("guest_image does not exist");
+    }
+    #validateBookingId(id) {
+        const bookingId = Number(id);
+        if (!bookingId || Number.isNaN(bookingId)) return null;
+        return bookingId;
+    }
     async getBookings(req, res) {
         try {
             const { propertyId, arrivalFrom, arrivalTo, departureFrom, departureTo, page = 1, limit = 10, scope, status, search } = req.query
@@ -146,6 +155,63 @@ class Booking {
         })
 
         res.json(bookings)
+    }
+
+    async uploadGuestImage(req, res) {
+        try {
+            const bookingId = this.#validateBookingId(req.params.id);
+            if (!bookingId) return res.status(400).json({ message: "Invalid booking id" });
+            if (!req.file) return res.status(400).json({ message: "Image file is required" });
+            if (!["image/jpeg", "image/png"].includes(req.file.mimetype)) {
+                return res.status(400).json({ message: "Only JPEG or PNG images are allowed" });
+            }
+            if (req.file.size > 2 * 1024 * 1024) {
+                return res.status(400).json({ message: "Image size must be 2MB or less" });
+            }
+            const result = await BookingService.uploadGuestImage({
+                bookingId,
+                userId: req.user.user_id,
+                imageBuffer: req.file.buffer,
+                imageMime: req.file.mimetype,
+            });
+            return res.status(200).json(result);
+        } catch (error) {
+            if (this.#isGuestImageSchemaMissing(error)) {
+                return res.status(404).json({ message: "Guest image feature is not available yet. Please run latest migrations." });
+            }
+            return res.status(400).json({ message: error.message || "Failed to upload guest image" });
+        }
+    }
+
+    async getGuestImage(req, res) {
+        try {
+            const bookingId = this.#validateBookingId(req.params.id);
+            if (!bookingId) return res.status(400).json({ message: "Invalid booking id" });
+            const result = await BookingService.getGuestImage({ bookingId, userId: req.user.user_id });
+            if (!result) return res.status(404).json({ message: "Guest image not found" });
+            res.setHeader("Content-Type", result.mime);
+            res.setHeader("Cache-Control", "private, max-age=3600");
+            return res.send(result.buffer);
+        } catch (error) {
+            if (this.#isGuestImageSchemaMissing(error)) {
+                return res.status(404).json({ message: "Guest image feature is not available yet. Please run latest migrations." });
+            }
+            return res.status(400).json({ message: error.message || "Failed to fetch guest image" });
+        }
+    }
+
+    async deleteGuestImage(req, res) {
+        try {
+            const bookingId = this.#validateBookingId(req.params.id);
+            if (!bookingId) return res.status(400).json({ message: "Invalid booking id" });
+            const result = await BookingService.deleteGuestImage({ bookingId, userId: req.user.user_id });
+            return res.status(200).json(result);
+        } catch (error) {
+            if (this.#isGuestImageSchemaMissing(error)) {
+                return res.status(404).json({ message: "Guest image feature is not available yet. Please run latest migrations." });
+            }
+            return res.status(400).json({ message: error.message || "Failed to delete guest image" });
+        }
     }
 }
 

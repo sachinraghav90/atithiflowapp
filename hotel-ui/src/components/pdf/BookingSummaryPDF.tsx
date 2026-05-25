@@ -13,6 +13,22 @@ import { formatAppDate } from "@/utils/dateUtils";
 const safeText = (value: any) => {
   if (value === null || value === undefined || value === "") return "—";
   if (typeof value === "string" && value.trim() === "") return "—";
+  if (typeof value === "object") {
+    if (Array.isArray(value)) {
+      return value.filter(Boolean).map(String).join(", ") || "—";
+    }
+    const flattened = [
+      value.address_line_1,
+      value.address_line_2,
+      value.city,
+      value.state,
+      value.postal_code,
+      value.country,
+    ]
+      .filter(Boolean)
+      .join(", ");
+    return flattened || "—";
+  }
   return value;
 };
 
@@ -104,7 +120,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#0f172a",
   },
-  folioText: {
+  propertyAddress: {
     fontSize: 8,
     color: "#0284c7",
     fontWeight: "bold",
@@ -407,6 +423,7 @@ type Props = {
   payments: any[];
   property: any;
   allRoomsMeta: any[];
+  bookingInstructions?: string;
 };
 
 export default function BookingSummaryPDF({
@@ -416,10 +433,20 @@ export default function BookingSummaryPDF({
   payments,
   property,
   allRoomsMeta,
+  bookingInstructions,
 }: Props) {
   const propertyBrandName =
     property?.brand_name || property?.name || "AtithiFlow Hotel";
-
+ const propertyAddress = [
+  property?.address_line_1,
+  property?.address_line_2,
+  property?.city,
+  property?.state,
+  property?.postal_code,
+  property?.country,
+]
+  .filter(Boolean) // remove null/undefined/empty values
+  .join(", ");
   const displayBookingId = String(booking?.id || "").padStart(3, "0");
   const formattedBookingId = booking?.booking_no || `BO${displayBookingId}`;
   const bookingStatus = (booking?.booking_status || "").replace("_", " ");
@@ -445,6 +472,20 @@ export default function BookingSummaryPDF({
       .join(" ");
   };
 
+  const instructionsPlainText = (bookingInstructions || "")
+    .replace(/<li[^>]*>/gi, "\n• ")
+    .replace(/<\/li>/gi, "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<\/(h1|h2|h3|h4|h5|h6)>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -452,7 +493,7 @@ export default function BookingSummaryPDF({
         <View style={styles.header}>
           <View>
             <Text style={styles.propertyTitle}>{propertyBrandName}</Text>
-            <Text style={styles.folioText}>Official Guest Folio</Text>
+            <Text style={styles.propertyAddress}>{safeText(propertyAddress)}</Text>
           </View>
           <View style={styles.bookingIdBox}>
             <Text style={styles.bookingId}>BOOKING #{formattedBookingId}</Text>
@@ -461,9 +502,11 @@ export default function BookingSummaryPDF({
         </View>
 
         {/* Side-by-Side Booking & Rooms */}
+      
         <View style={styles.gridRow}>
           {/* Booking Info */}
           <View style={styles.gridCol7}>
+               <View style={{ marginBottom: 8}}></View>
             <Text style={styles.sectionTitle}>Booking Information</Text>
             <View style={styles.infoCard}>
               <View style={styles.infoRow}>
@@ -532,7 +575,9 @@ export default function BookingSummaryPDF({
           </View>
 
           {/* Rooms Info */}
+           <View style={{ marginBottom: 8}}></View>
           <View style={styles.gridCol5}>
+            
             <Text style={styles.sectionTitle}>Rooms</Text>
             <View style={styles.infoCard}>
               {hasData(booking?.rooms) ? (
@@ -577,14 +622,18 @@ export default function BookingSummaryPDF({
 
         {/* Guests Details */}
         {hasData(guests) && (
-          <View style={{ marginBottom: 12, marginTop: 12 }}>
+          <View style={{ marginBottom: 8}}>
             <Text style={styles.sectionTitle}>Guests Details</Text>
             {guests.map((g: any, index: number) => {
               const fullName = `${g.salutation || ""} ${g.first_name || ""} ${g.middle_name || ""} ${g.last_name || ""}`
                 .replace(/\s+/g, " ")
                 .trim();
+              const isLastGuest = index === guests.length - 1;
               return (
-                <View key={g.id || index} style={styles.card}>
+                <View
+                  key={g.id || index}
+                  style={[styles.card, isLastGuest ? { marginBottom: 4 } : null]}
+                >
                   <View style={styles.guestNameBox}>
                     <View style={styles.guestDot} />
                     <Text style={styles.guestName}>{fullName}</Text>
@@ -662,10 +711,11 @@ export default function BookingSummaryPDF({
 
         {/* Side-by-Side Payments and Vehicles */}
         {(hasData(payments) || hasData(vehicles)) && (
-          <View style={[styles.gridRow, { marginBottom: 12 }]}>
+          <View style={[styles.gridRow]}>
             {/* Payments */}
             {hasData(payments) ? (
               <View style={[styles.gridCol5, !hasData(vehicles) ? { width: "100%" } : { width: "48%" }]}>
+                  <View style={{ marginBottom: 8}}></View>
                 <Text style={styles.sectionTitle}>Payments</Text>
                 <View style={styles.card}>
                   <View style={styles.table}>
@@ -697,6 +747,7 @@ export default function BookingSummaryPDF({
             {/* Vehicles */}
             {hasData(vehicles) && (
               <View style={[styles.gridCol5, !hasData(payments) ? { width: "100%" } : { width: "48%" }]}>
+                <View style={{ marginBottom: 8}}></View>
                 <Text style={styles.sectionTitle}>Vehicle Details</Text>
                 <View style={styles.card}>
                   <View style={styles.table}>
@@ -730,7 +781,7 @@ export default function BookingSummaryPDF({
         )}
 
         {/* Billing & Financial Summary */}
-        <View style={{ marginBottom: 12, marginTop: 12 }}>
+        <View style={{ marginBottom: 8  }}>
           <Text style={styles.sectionTitle}>Billing Summary</Text>
           <View style={styles.billingTable}>
             <View style={styles.billingHeaderRow}>
@@ -824,13 +875,19 @@ export default function BookingSummaryPDF({
           </View>
         </View>
 
+        {!!instructionsPlainText && (
+          <View style={{ marginBottom: 8 }}>
+            <Text style={styles.sectionTitle}>Booking Instructions</Text>
+            <View style={styles.card}>
+              <Text style={[styles.commentsValue, { fontSize: 8, lineHeight: 1.5 }]}>
+                {instructionsPlainText}
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* Footer */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            *Note: This document is system-generated by AtithiFlow and is based on the
-            provided details.
-          </Text>
-        </View>
+       
       </Page>
     </Document>
   );

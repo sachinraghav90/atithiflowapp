@@ -111,6 +111,18 @@ const getCurrentTimeHHMM = () => {
     return `${hours}:${minutes}`;
 };
 
+const BOOKING_INSTRUCTIONS_WORD_LIMIT = 4000;
+
+const getWordCountFromHtml = (value: string) => {
+    if (!value) return 0;
+    const plainText = value
+        .replace(/<[^>]*>/g, " ")
+        .replace(/&nbsp;/gi, " ")
+        .trim();
+    if (!plainText) return 0;
+    return plainText.split(/\s+/).filter(Boolean).length;
+};
+
 const isPrintableValue = (val: any): boolean => {
     if (val === null || val === undefined) return false;
     if (typeof val === "string") {
@@ -242,9 +254,13 @@ export default function BookingsManagement() {
         const fileName = `Booking_Summary_${displayId}.pdf`;
 
         try {
-            const property = myProperties?.properties?.find(
+            const fallbackProperty = myProperties?.properties?.find(
                 (p: any) => p.id === selectedBooking.booking.property_id
             ) || staffProperty;
+            const propertyForPdf =
+                propertyDetails?.id === selectedBooking.booking.property_id
+                    ? propertyDetails
+                    : fallbackProperty;
 
             const blob = await pdf(
                 <BookingSummaryPDF
@@ -252,8 +268,9 @@ export default function BookingsManagement() {
                     guests={guestsData?.guests || []}
                     vehicles={vehiclesData?.vehicles || []}
                     payments={paymentsData?.data || []}
-                    property={property}
+                    property={propertyForPdf}
                     allRoomsMeta={allRoomsMeta || []}
+                    bookingInstructions={propertyForPdf?.booking_instructions || ""}
                 />
             ).toBlob();
 
@@ -339,6 +356,16 @@ export default function BookingsManagement() {
             .replace(/javascript:/gi, "");
     };
 
+    const normalizeInstructionsHtml = (raw: string) => {
+        if (!raw) return "";
+        return raw
+            .replace(/<li>\s*(<br\s*\/?>|&nbsp;|\s)*<\/li>/gi, "")
+            .replace(/<p>\s*(<br\s*\/?>|&nbsp;|\s)*<\/p>/gi, "")
+            .replace(/(?:<br\s*\/?>\s*){3,}/gi, "<br /><br />")
+            .replace(/(<\/(ul|ol)>)\s*(<(ul|ol)>)/gi, "$1")
+            .trim();
+    };
+
     const handleEditInstructions = () => {
         setInstructionsDraft(bookingInstructions || "");
         setIsEditingInstructions(true);
@@ -355,10 +382,16 @@ export default function BookingsManagement() {
 
     const handleUpdateInstructions = async () => {
         if (!currentPropertyId || isSavingInstructions) return;
+        const normalizedDraft = normalizeInstructionsHtml(instructionsDraft || "");
+        const wordCount = getWordCountFromHtml(normalizedDraft);
+        if (wordCount > BOOKING_INSTRUCTIONS_WORD_LIMIT) {
+            toast.error(`Booking instructions cannot exceed ${BOOKING_INSTRUCTIONS_WORD_LIMIT} words`);
+            return;
+        }
         try {
             await updateProperty({
                 id: currentPropertyId,
-                payload: { booking_instructions: instructionsDraft || "" },
+                payload: { booking_instructions: normalizedDraft },
             }).unwrap();
             toast.success("Booking instructions updated successfully");
             setIsEditingInstructions(false);
@@ -584,7 +617,12 @@ export default function BookingsManagement() {
 
     const refreshTable = async () => {
         if (bookingsFetching) return;
-        await refetchBookings();
+        try {
+            await refetchBookings();
+            toast.success("Data refreshed");
+        } catch {
+            toast.error("Failed to refresh data");
+        }
     };
 
     const bookingRows = useMemo(() => {
@@ -1027,16 +1065,25 @@ export default function BookingsManagement() {
                             </div>
                             
                             <div className="flex items-end gap-3">
-                                <Button
-                                    variant="hero"
-                                    size="sm"
-                                    className="h-9 w-[160px] px-3 text-xs font-semibold tracking-normal bg-primary hover:bg-primary/95 text-primary-foreground shadow-sm rounded-md"
-                                    onClick={handleDownloadPDF}
-                                    disabled={selectedBookingLoading || !selectedBooking?.booking || !detailsOpen}
-                                >
-                                    <Printer className="w-3.5 h-3.5 mr-2" />
-                                    Print PDF
-                                </Button>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                variant="heroOutline"
+                                                size="sm"
+                                                className="h-9 w-9 p-0 shadow-sm rounded-md"
+                                                onClick={handleDownloadPDF}
+                                                disabled={selectedBookingLoading || !selectedBooking?.booking || !detailsOpen}
+                                                aria-label="Print PDF"
+                                            >
+                                                <Printer className="w-4 h-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" align="center" className="text-xs">
+                                            Print PDF
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
 
                                 <Button
                                     variant="heroOutline"
@@ -1262,12 +1309,23 @@ export default function BookingsManagement() {
                         <SheetTitle>Booking Instructions</SheetTitle>
                     </SheetHeader>
 
-                    <div className="flex-1 p-6 space-y-4">
+                    <div className="flex-1 px-6 pt-2 pb-6 space-y-4">
                         {!isEditingInstructions ? (
                             <>
+                                {canAccessDeliveryFeatures && (
+                                    <div className="mb-2 flex justify-end">
+                                        <Button
+                                            variant="hero"
+                                            className="h-9 px-5"
+                                            onClick={handleEditInstructions}
+                                        >
+                                            Update
+                                        </Button>
+                                    </div>
+                                )}
                                 {bookingInstructions?.trim() ? (
                                     <div
-                                        className="min-h-[220px] rounded-md border border-border bg-muted/10 p-4 text-sm leading-6 text-foreground [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:mb-2"
+                                        className="min-h-[220px] rounded-md border border-border bg-muted/10 p-4 text-sm leading-6 text-foreground [&_p]:my-0 [&_p+ul]:mt-2 [&_p+ol]:mt-2 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:mb-2 [&_h1]:my-1 [&_h2]:my-1 [&_h3]:my-1 [&_h4]:my-1"
                                         dangerouslySetInnerHTML={{ __html: sanitizeInstructionsHtml(bookingInstructions) }}
                                     />
                                 ) : (
@@ -1279,11 +1337,21 @@ export default function BookingsManagement() {
                         ) : (
                             <>
                                 <Label className="text-sm font-semibold text-foreground">Instructions</Label>
-                                <RichTextEditor
-                                    value={instructionsDraft}
-                                    onChange={setInstructionsDraft}
-                                    className="min-h-[260px]"
-                                />
+                                <div className="relative">
+                                    <RichTextEditor
+                                        value={instructionsDraft}
+                                        onChange={setInstructionsDraft}
+                                        className="min-h-[260px]"
+                                    />
+                                    <p className={cn(
+                                        "pointer-events-none absolute bottom-2 right-3 text-xs",
+                                        getWordCountFromHtml(instructionsDraft || "") > BOOKING_INSTRUCTIONS_WORD_LIMIT
+                                            ? "text-red-500"
+                                            : "text-muted-foreground"
+                                    )}>
+                                        {getWordCountFromHtml(instructionsDraft || "")}/{BOOKING_INSTRUCTIONS_WORD_LIMIT}
+                                    </p>
+                                </div>
                             </>
                         )}
                     </div>
@@ -1296,17 +1364,8 @@ export default function BookingsManagement() {
                                     className="h-9 px-5"
                                     onClick={handleCloseInstructionsPanel}
                                 >
-                                    Cancel
+                                    Close
                                 </Button>
-                                {canAccessDeliveryFeatures && (
-                                    <Button
-                                        variant="hero"
-                                        className="h-9 px-5"
-                                        onClick={handleEditInstructions}
-                                    >
-                                        Update
-                                    </Button>
-                                )}
                             </>
                         ) : (
                             <>

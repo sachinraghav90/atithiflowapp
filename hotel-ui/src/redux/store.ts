@@ -20,7 +20,12 @@ export const store = configureStore({
         isLoggedIn: isLoggedInSlice
     },
     middleware: (getDefaultMiddleware) =>
-        getDefaultMiddleware().concat(hmsApi.middleware, resetApiOnLogoutMiddleware),
+        getDefaultMiddleware({
+            serializableCheck: {
+                // Keep checks enabled in dev, but avoid noisy warnings for slightly heavy actions/state.
+                warnAfter: 128,
+            },
+        }).concat(hmsApi.middleware, resetApiOnLogoutMiddleware),
 })
 
 setupListeners(store.dispatch)

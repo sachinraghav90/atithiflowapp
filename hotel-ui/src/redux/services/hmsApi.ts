@@ -22,6 +22,7 @@ export const hmsApi = createApi({
     "Bookings",
     "Vehicles",
     "Guests",
+    "BookingGuestImage",
     "Payments",
     "roomTypes",
     "Vendors",
@@ -810,6 +811,65 @@ export const hmsApi = createApi({
         }
       },
       providesTags: ["Guests"]
+    }),
+
+    uploadBookingGuestImage: builder.mutation<any, { bookingId: string; file: Blob }>({
+      query: ({ bookingId, file }) => {
+        const formData = new FormData();
+        formData.append("image", file, "guest-image.jpg");
+        return {
+          url: `/bookings/${bookingId}/guest-image`,
+          method: "POST",
+          body: formData,
+        };
+      },
+      invalidatesTags: ["BookingGuestImage"],
+    }),
+
+    getBookingGuestImage: builder.query<string | null, string>({
+      query: (bookingId) => {
+        return {
+          url: `/bookings/${bookingId}/guest-image`,
+          method: "GET",
+          params: { t: Date.now() },
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
+          validateStatus: (response) => response.ok || response.status === 404,
+          responseHandler: async (response) => {
+            if (response.status === 404) {
+              return null;
+            }
+            const contentType = response.headers.get("content-type") || "";
+            if (contentType.includes("application/json")) {
+              const json = await response.json();
+              throw new Error(json?.message || "Failed to load guest image");
+            }
+            const blob = await response.blob();
+            const dataUrl = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(String(reader.result || ""));
+              reader.onerror = () => reject(new Error("Failed to read guest image"));
+              reader.readAsDataURL(blob);
+            });
+            return dataUrl || null;
+          },
+        };
+      },
+      providesTags: ["BookingGuestImage"],
+    }),
+
+    deleteBookingGuestImage: builder.mutation<any, string>({
+      query: (bookingId) => {
+        return {
+          url: `/bookings/${bookingId}/guest-image`,
+          method: "DELETE",
+        };
+      },
+      invalidatesTags: ["BookingGuestImage"],
     }),
 
     updateGuests: builder.mutation({
@@ -1789,6 +1849,9 @@ export const {
   useAdjustStockMutation,
   useUpdateRoleNameMutation,
   useGetPrimaryGuestByBookingQuery,
+  useUploadBookingGuestImageMutation,
+  useGetBookingGuestImageQuery,
+  useDeleteBookingGuestImageMutation,
   useUpdateStaffPasswordMutation,
   useCreateInventoryMasterBulkMutation,
   useBulkAdjustStockMutation,

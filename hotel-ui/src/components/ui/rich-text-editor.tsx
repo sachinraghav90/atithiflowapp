@@ -32,6 +32,17 @@ export default function RichTextEditor({ value, onChange, className }: RichTextE
     return EditorState.createWithContent(contentState);
   };
 
+  const normalizeEditorHtml = (raw: string) => {
+    if (!raw) return "";
+    return raw
+      .replace(/<li>\s*(<br\s*\/?>|&nbsp;|\s)*<\/li>/gi, "")
+      .replace(/<p>\s*(<br\s*\/?>|&nbsp;|\s)*<\/p>/gi, "")
+      .replace(/(?:<br\s*\/?>\s*){3,}/gi, "<br /><br />")
+      .replace(/(<\/(ul|ol)>)\s*(<(ul|ol)>)/gi, "$1")
+      .replace(/\s+<\/(p|li)>/gi, "</$1>")
+      .trim();
+  };
+
   const [editorState, setEditorState] = useState<EditorState>(createStateFromHtml(value || ""));
   const lastHtmlRef = useRef<string>(value || "");
 
@@ -52,11 +63,11 @@ export default function RichTextEditor({ value, onChange, className }: RichTextE
         }}
         onEditorStateChange={(nextState) => {
           setEditorState(nextState);
-          const html = draftToHtml(convertToRaw(nextState.getCurrentContent()));
+          const html = normalizeEditorHtml(draftToHtml(convertToRaw(nextState.getCurrentContent())));
           lastHtmlRef.current = html || "";
           onChange(html || "");
         }}
-        toolbarClassName="rounded-t-md border border-border bg-muted/30 px-1"
+        toolbarClassName="sticky top-0 z-10 rounded-t-md border border-border bg-background px-1 overflow-x-auto overflow-y-hidden whitespace-nowrap"
         editorClassName="min-h-[220px] rounded-b-md border border-t-0 border-border bg-background px-3 py-2 text-sm"
         wrapperClassName="w-full"
       />

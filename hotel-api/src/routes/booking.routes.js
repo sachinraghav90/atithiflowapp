@@ -40,4 +40,9 @@ router.route("/:id/vehicles")
     .post(supabaseAuth, requireRole(roles.ALL), VehicleController.upsertVehicles.bind(VehicleController))
     .get(supabaseAuth, requireRole(roles.ALL), VehicleController.getByBooking.bind(VehicleController))
 
+router.route("/:id/guest-image")
+    .post(supabaseAuth, requireRole(roles.ALL), upload.single("image"), BookingController.uploadGuestImage.bind(BookingController))
+    .get(supabaseAuth, requireRole(roles.ALL), BookingController.getGuestImage.bind(BookingController))
+    .delete(supabaseAuth, requireRole(roles.ALL), BookingController.deleteGuestImage.bind(BookingController))
+
 export default router

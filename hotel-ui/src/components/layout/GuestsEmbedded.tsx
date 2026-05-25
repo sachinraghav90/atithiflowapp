@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,9 @@ import { toast } from "react-toastify";
 import {
     useGetGuestsByBookingQuery,
     useAddGuestsByBookingMutation,
+    useDeleteBookingGuestImageMutation,
+    useGetBookingGuestImageQuery,
+    useUploadBookingGuestImageMutation,
 } from "@/redux/services/hmsApi";
 import { normalizeNumberInput, normalizeTextInput } from "@/utils/normalizeTextInput";
 import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
@@ -22,6 +25,10 @@ import countries from '../../utils/countries.json'
 import SearchSelectPopover from "./SearchSelectPopover";
 import PhonePrefixSelect from "@/components/forms/PhonePrefixSelect";
 import { formatAppDate, parseAppDate, toISODateOnly } from "@/utils/dateFormat";
+import WebcamCapture from "@/components/common/WebcamCapture";
+import { X } from "lucide-react";
+import { Camera } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 /* ---------------- Types ---------------- */
 export type GuestForm = {
@@ -86,6 +93,10 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
     const [originalGuests, setOriginalGuests] = useState<GuestForm[]>([]);
     const [errors, setErrors] = useState<Record<number, any>>({});
     const [remainingGuests, setRemainingGuests] = useState(0)
+    const [guestImagePreview, setGuestImagePreview] = useState<string | null>(null);
+    const [capturedBlob, setCapturedBlob] = useState<Blob | null>(null);
+    const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
+    const [captureModalOpen, setCaptureModalOpen] = useState(false);
     const maxGuests = totalGuest ?? guestCount;
 
     const { data } = useGetGuestsByBookingQuery(
@@ -95,6 +106,42 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
 
     const [upsertGuests, { isLoading }] =
         useAddGuestsByBookingMutation();
+    const [uploadGuestImage, { isLoading: isUploadingGuestImage }] = useUploadBookingGuestImageMutation();
+    const [deleteGuestImage, { isLoading: isDeletingGuestImage }] = useDeleteBookingGuestImageMutation();
+    const {
+        data: guestImageDataUrl,
+        isSuccess: hasGuestImageFromApi,
+        error: guestImageError,
+        refetch: refetchGuestImage,
+    } = useGetBookingGuestImageQuery(bookingId, {
+        skip: !bookingId,
+        refetchOnMountOrArgChange: true,
+        refetchOnFocus: true,
+        refetchOnReconnect: true,
+    });
+
+    const hasSavedGuestImage = useMemo(() => Boolean(hasGuestImageFromApi && guestImagePreview), [hasGuestImageFromApi, guestImagePreview]);
+
+    useEffect(() => {
+        setGuestImagePreview((prev) => {
+            if (!guestImageDataUrl) {
+                if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+                return null;
+            }
+            if (prev?.startsWith("blob:") && prev !== guestImageDataUrl) {
+                URL.revokeObjectURL(prev);
+            }
+            return guestImageDataUrl;
+        });
+    }, [guestImageDataUrl]);
+
+    useEffect(() => {
+        if (!guestImageError) return;
+        setGuestImagePreview((prev) => {
+            if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+            return null;
+        });
+    }, [guestImageError]);
 
     /* -------- Init -------- */
     useEffect(() => {
@@ -151,6 +198,50 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
     const handleFile = (key: string, file?: File) => {
         if (!file) return;
         setIdProofFiles((p) => ({ ...p, [key]: file }));
+    };
+
+    const handleCaptureGuestImage = ({ blob, previewUrl }: { blob: Blob; previewUrl: string }) => {
+        setCapturedBlob(blob);
+        setGuestImagePreview((prev) => {
+            if (prev?.startsWith("blob:") && prev !== previewUrl) URL.revokeObjectURL(prev);
+            return previewUrl;
+        });
+    };
+
+    const handleDeleteGuestImage = async () => {
+        try {
+            setImagePreviewOpen(false);
+            setCapturedBlob(null);
+            if (!hasGuestImageFromApi) {
+                setGuestImagePreview((prev) => {
+                    if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+                    return null;
+                });
+                return;
+            }
+            await deleteGuestImage(bookingId).unwrap();
+            setGuestImagePreview((prev) => {
+                if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+                return null;
+            });
+            await refetchGuestImage();
+        } catch (error: any) {
+            const message = error?.data?.message || error?.message || "Failed to delete guest image";
+            toast.error(message);
+        }
+    };
+
+    const handleSaveCapturedGuestImage = async () => {
+        try {
+            if (!capturedBlob) return;
+            await uploadGuestImage({ bookingId, file: capturedBlob }).unwrap();
+            setCapturedBlob(null);
+            setCaptureModalOpen(false);
+            void refetchGuestImage();
+        } catch (error: any) {
+            const message = error?.data?.message || error?.message || "Failed to save guest image";
+            toast.error(message);
+        }
     };
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -661,22 +752,27 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                         </div>
 
                         {/* View ID Proof button (only if existing guest) */}
-                        {g.has_id_proof && g.id && (
-                            <div className="mt-2">
+                        {(g.has_id_proof && g.id) || hasSavedGuestImage ? (
+                            <div className="mt-2 flex items-center gap-2">
                                 <Button
                                     size="sm"
                                     variant="heroOutline"
                                     className="h-8"
-                                    onClick={() =>
-                                        setPreviewId(
-                                            `${import.meta.env.VITE_API_URL}/guests/${g.id}/id-proof`
-                                        )
-                                    }
+                                    onClick={() => {
+                                        if (!g.id) return;
+                                        setPreviewId(`${import.meta.env.VITE_API_URL}/guests/${g.id}/id-proof`);
+                                    }}
+                                    disabled={!g.has_id_proof || !g.id}
                                 >
                                     View ID Proof
                                 </Button>
+                                {hasSavedGuestImage && (
+                                    <Button size="sm" variant="heroOutline" className="h-8" onClick={() => setImagePreviewOpen(true)}>
+                                        View Image
+                                    </Button>
+                                )}
                             </div>
-                        )}
+                        ) : null}
                     </div>
                 );
             })}
@@ -690,24 +786,50 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                     >
                         {/* Name Header */}
                         <div className="flex items-center justify-between border-b border-border/50 bg-primary/5 px-5 py-3">
-                            <h3 className="text-sm font-bold text-foreground tracking-tight">
-                                {g.salutation} {g.first_name} {g.middle_name} {g.last_name}
-                            </h3>
+                            <div className="flex items-center gap-2">
+                                {hasSavedGuestImage && guestImagePreview && (
+                                    <img src={guestImagePreview} alt="Guest" className="h-8 w-8 rounded object-cover border border-border" />
+                                )}
+                                <h3 className="text-sm font-bold text-foreground tracking-tight">
+                                    {g.salutation} {g.first_name} {g.middle_name} {g.last_name}
+                                </h3>
+                            </div>
 
-                            {g.has_id_proof && g.id && (
-                                <Button
-                                    size="sm"
-                                    variant="heroOutline"
-                                    className="h-7 rounded-[4px] px-3 text-[11px] font-semibold"
-                                    onClick={() =>
-                                        setPreviewId(
-                                            `${import.meta.env.VITE_API_URL}/guests/${g.id}/id-proof`
-                                        )
-                                    }
-                                >
-                                    View ID Proof
-                                </Button>
-                            )}
+                            <div className="flex items-center gap-2">
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                size="sm"
+                                                variant="heroOutline"
+                                                className="h-7 w-7 rounded-[4px] p-0"
+                                                onClick={() => setCaptureModalOpen(true)}
+                                                aria-label="Capture image"
+                                            >
+                                                <Camera className="h-4 w-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" align="center" className="text-xs">
+                                            Capture Guest Image
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                                {hasSavedGuestImage && (
+                                    <Button size="sm" variant="heroOutline" className="h-7 rounded-[4px] px-3 text-[11px] font-semibold" onClick={() => setImagePreviewOpen(true)}>
+                                        View Image
+                                    </Button>
+                                )}
+                                {g.has_id_proof && g.id && (
+                                    <Button
+                                        size="sm"
+                                        variant="heroOutline"
+                                        className="h-7 rounded-[4px] px-3 text-[11px] font-semibold"
+                                        onClick={() => setPreviewId(`${import.meta.env.VITE_API_URL}/guests/${g.id}/id-proof`)}
+                                    >
+                                        View ID Proof
+                                    </Button>
+                                )}
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px]">
@@ -806,6 +928,65 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                             />
                         </div>
                     )}
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={imagePreviewOpen} onOpenChange={setImagePreviewOpen}>
+                <DialogContent className="max-w-4xl [&>button]:hidden">
+                    <DialogHeader className="flex-row items-start justify-between space-y-0">
+                        <DialogTitle>Guest Image</DialogTitle>
+                        <button
+                            type="button"
+                            aria-label="Close"
+                            onClick={() => setImagePreviewOpen(false)}
+                            className="h-8 w-8 rounded-md border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white transition-all flex items-center justify-center"
+                        >
+                            <X className="h-5 w-5" />
+                        </button>
+                    </DialogHeader>
+                    {guestImagePreview ? (
+                        <div className="space-y-3">
+                            <img src={guestImagePreview} alt="Guest capture" className="max-h-[70vh] w-full rounded-md object-contain border border-border" />
+                        </div>
+                    ) : (
+                        <div className="text-sm text-muted-foreground">No image available.</div>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            <Dialog
+                open={captureModalOpen}
+                onOpenChange={(nextOpen) => {
+                    setCaptureModalOpen(nextOpen);
+                    if (!nextOpen) setCapturedBlob(null);
+                }}
+            >
+                <DialogContent className="max-w-4xl [&>button]:hidden">
+                    <DialogHeader className="flex-row items-start justify-between space-y-0">
+                        <DialogTitle>Capture Guest Image</DialogTitle>
+                        <button
+                            type="button"
+                            aria-label="Close"
+                            onClick={() => setCaptureModalOpen(false)}
+                            className="h-5 w-5 rounded-md border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white transition-all flex items-center justify-center"
+                        >
+                            <X className="h-5 w-5" />
+                        </button>
+                    </DialogHeader>
+                    <WebcamCapture
+                        initialPreviewUrl={guestImagePreview}
+                        onCapture={handleCaptureGuestImage}
+                        onDelete={handleDeleteGuestImage}
+                        onCancelRequest={() => {
+                            setCaptureModalOpen(false);
+                            setCapturedBlob(null);
+                        }}
+                        rightAction={capturedBlob ? (
+                            <Button size="sm" variant="hero" className="h-8" onClick={handleSaveCapturedGuestImage} disabled={isUploadingGuestImage}>
+                                {isUploadingGuestImage ? "Saving..." : "Save Image"}
+                            </Button>
+                        ) : null}
+                    />
                 </DialogContent>
             </Dialog>
 

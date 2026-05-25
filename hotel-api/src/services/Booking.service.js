@@ -1005,6 +1005,71 @@ class Booking {
 
         return rows
     }
+
+    async #getScopedBooking(bookingId, userId) {
+        const { rows } = await this.#DB.query(
+            `
+            SELECT b.id, b.property_id
+            FROM public.bookings b
+            LEFT JOIN public.property_users pu
+              ON pu.property_id = b.property_id
+             AND pu.user_id = $2
+             AND pu.is_active = true
+            WHERE b.id = $1
+            LIMIT 1
+            `,
+            [Number(bookingId), userId]
+        );
+        if (!rows.length) throw new Error("Booking not found");
+        return rows[0];
+    }
+
+    async uploadGuestImage({ bookingId, userId, imageBuffer, imageMime }) {
+        await this.#getScopedBooking(bookingId, userId);
+        await this.#DB.query(
+            `
+            UPDATE public.bookings
+            SET guest_image = $2,
+                guest_image_mime = $3,
+                updated_by = $4,
+                updated_on = now()
+            WHERE id = $1
+            `,
+            [Number(bookingId), imageBuffer, imageMime, userId]
+        );
+        return { message: "Guest image uploaded successfully" };
+    }
+
+    async getGuestImage({ bookingId, userId }) {
+        await this.#getScopedBooking(bookingId, userId);
+        const { rows } = await this.#DB.query(
+            `
+            SELECT guest_image, guest_image_mime
+            FROM public.bookings
+            WHERE id = $1
+              AND guest_image IS NOT NULL
+            `,
+            [Number(bookingId)]
+        );
+        if (!rows.length) return null;
+        return { buffer: rows[0].guest_image, mime: rows[0].guest_image_mime || "image/jpeg" };
+    }
+
+    async deleteGuestImage({ bookingId, userId }) {
+        await this.#getScopedBooking(bookingId, userId);
+        await this.#DB.query(
+            `
+            UPDATE public.bookings
+            SET guest_image = NULL,
+                guest_image_mime = NULL,
+                updated_by = $2,
+                updated_on = now()
+            WHERE id = $1
+            `,
+            [Number(bookingId), userId]
+        );
+        return { message: "Guest image deleted successfully" };
+    }
 }
 
 export default Object.freeze(new Booking())
