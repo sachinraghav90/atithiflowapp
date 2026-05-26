@@ -141,7 +141,7 @@ export default function IdentificationDocuments({
                             />
                             <div className="absolute top-2 right-2 z-10">
                                 <button
-                                    className="text-[10px] uppercase tracking-wider font-bold bg-background/90 hover:bg-background border px-3 py-1.5 rounded shadow-sm transition-colors"
+                                    className="text-[10px] uppercase tracking-wide font-bold bg-background/90 hover:bg-background border px-3 py-1.5 rounded shadow-sm transition-colors"
                                     onClick={() =>
                                         downloadImage(
                                             `${import.meta.env.VITE_API_URL}/staff/${value.id}/id-proof`,
@@ -197,7 +197,7 @@ export default function IdentificationDocuments({
 
                         {/* CUSTOM UI */}
                         <div className="flex items-center w-full px-0.5">
-                            <div className="h-10 px-5 flex items-center justify-center bg-primary/10 text-primary text-[11px] font-bold uppercase tracking-wider rounded-[2px] transition-colors group-hover:bg-primary/20">
+                            <div className="h-10 px-5 flex items-center justify-center bg-primary/10 text-primary text-[11px] font-bold uppercase tracking-wide rounded-[2px] transition-colors group-hover:bg-primary/20">
                                 Choose File
                             </div>
                             

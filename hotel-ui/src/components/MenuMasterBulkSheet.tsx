@@ -293,7 +293,7 @@ export default function MenuMasterBulkSheet({
                                                                     onCheckedChange={(val) => updateRow(index, { isVeg: val })}
                                                                 />
                                                                 <span className={cn(
-                                                                    "text-[10px] font-bold tracking-wider",
+                                                                    "text-[10px] font-bold tracking-wide",
                                                                     row.isVeg ? "text-green-600" : "text-red-600"
                                                                 )}>
                                                                     {row.isVeg ? "Veg" : "Non-Veg"}

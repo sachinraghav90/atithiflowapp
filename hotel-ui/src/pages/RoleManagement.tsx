@@ -354,7 +354,7 @@ export default function RoleManagement() {
                                 <SheetHeader>
                                     <div className="space-y-1">
                                         <SheetTitle>Create New Role</SheetTitle>
-                                        <p className="text-xs text-muted-foreground font-medium tracking-wider">
+                                        <p className="text-xs text-muted-foreground font-medium tracking-wide">
                                             Define access levels and module permissions
                                         </p>
                                     </div>

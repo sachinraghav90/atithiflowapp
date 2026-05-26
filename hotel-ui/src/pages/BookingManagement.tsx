@@ -44,7 +44,7 @@ import {
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { useGridPagination } from "@/hooks/useGridPagination";
 import { useAppSelector } from "@/redux/hook";
-import { selectCanAccessDeliveryFeatures, selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
+import { selectCanManagePropertySettings, selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
 import { normalizeNumberInput } from "@/utils/normalizeTextInput";
 import { useNavigate, useLocation } from "react-router-dom";
 import GuestsEmbedded from "@/components/layout/GuestsEmbedded";
@@ -340,7 +340,7 @@ export default function BookingsManagement() {
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
 
     const { myProperties, staffProperty, isMultiProperty, isOwner, isSuperAdmin, isInitializing } = useAutoPropertySelect(propertyId, setPropertyId);
-    const canAccessDeliveryFeatures = useAppSelector(selectCanAccessDeliveryFeatures);
+    const canManagePropertySettings = useAppSelector(selectCanManagePropertySettings);
     const [updateProperty, { isLoading: isSavingInstructions }] = useUpdatePropertiesMutation();
     const currentPropertyId = propertyId ?? (staffProperty?.id ? Number(staffProperty.id) : undefined);
     const { data: propertyDetails } = useGetPropertyByIdQuery(currentPropertyId as number, {
@@ -1057,10 +1057,10 @@ export default function BookingsManagement() {
                     >
                         <SheetHeader className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                             <div className="space-y-1">
-                                <SheetTitle className="text-2xl font-bold leading-tight">
-                                    Booking [#{formatModuleDisplayId("booking", bookingId)}]
+                                <SheetTitle className="text-xl font-bold    ">
+                                    Booking {bookingId ? `[#${formatModuleDisplayId("booking", bookingId)}]` : ""}
                                 </SheetTitle>
-                                <p className="text-sm text-muted-foreground font-medium leading-5 tracking-wider">
+                                <p className="text-xs text-muted-foreground font-medium tracking-wide">
                                     {editMode ? "Manage Booking Details" : "Booking Related Details"}
                                 </p>
                             </div>
@@ -1311,13 +1311,13 @@ export default function BookingsManagement() {
             <Sheet open={instructionsOpen} onOpenChange={setInstructionsOpen}>
                 <SheetContent side="right" className="w-full sm:max-w-2xl h-full overflow-y-auto bg-background p-0 flex flex-col">
                     <SheetHeader className="px-6 py-4 border-b bg-background">
-                        <SheetTitle>Booking Instructions</SheetTitle>
+                        <SheetTitle className="text-xl font-bold">Booking Instructions</SheetTitle>
                     </SheetHeader>
 
                     <div className="flex-1 px-6 pt-2 pb-6 space-y-4">
                         {!isEditingInstructions ? (
                             <>
-                                {canAccessDeliveryFeatures && (
+                                {canManagePropertySettings && (
                                     <div className="mb-2 flex justify-end">
                                         <Button
                                             variant="hero"

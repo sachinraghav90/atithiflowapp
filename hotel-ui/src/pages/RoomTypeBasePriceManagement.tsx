@@ -567,10 +567,10 @@ export default function RoomTypeBasePriceManagement() {
                     >
                         <SheetHeader>
                             <div className="space-y-1">
-                                <SheetTitle>
+                                <SheetTitle className="text-xl font-bold">
                                     {mode === "view" ? `Room Category [${selectedRow?.id ? formatModuleDisplayId("room", selectedRow.id) : "..."}]` : "Edit Configuration"}
                                 </SheetTitle>
-                                <p className="text-xs text-muted-foreground font-medium tracking-wider">
+                               <p className="text-xs text-muted-foreground font-medium tracking-wide">
                                     {mode === "view" ? "Room category details and pricing" : "Modify base price and room details"}
                                 </p>
                             </div>

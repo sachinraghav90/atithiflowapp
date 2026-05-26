@@ -789,10 +789,10 @@ export default function StaffManagement() {
                     >
                         <SheetHeader className="mb-6">
                             <div className="space-y-1">
-                                <SheetTitle className="text-xl font-bold text-foreground">
-                                    {mode === "add" ? "Register New Staff" : mode === "edit" ? `Update Staff Member [${staff?.id ? `#${formatModuleDisplayId("staff", staff.id)}` : "..."}]` : `Staff [${staff?.id ? `#${formatModuleDisplayId("staff", staff.id)}` : "..."}]`}
+                                <SheetTitle className="text-xl font-bold">
+                                    {mode === "add" ? "Register New Staff" : mode === "edit" ? `Update Staff Member ${staff?.id ? `[#${formatModuleDisplayId("staff", staff.id)}]` : "..."}` : `Staff ${staff?.id ? `[#${formatModuleDisplayId("staff", staff.id)}]` : "..."}`}
                                 </SheetTitle>
-                                <p className="text-xs text-muted-foreground font-medium tracking-wide">
+                              <p className="text-xs text-muted-foreground font-medium tracking-wide">
                                     {mode === "add" ? "Create new profile for hotel personnel" : mode === "edit" ? "Modify existing staff member information" : "Detailed profile information of staff member"}
                                 </p>
                             </div>

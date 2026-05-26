@@ -546,7 +546,7 @@ export default function RoomsByFloor() {
                                                         >
                                                             {/* Card Header (Room No) */}
                                                             <div className="px-3 py-1.5 bg-primary text-white border-b border-primary/20 rounded-t-lg flex justify-between items-center transition-colors">
-                                                                <span className="text-[10px] font-bold opacity-80 tracking-wider">Room</span>
+                                                                <span className="text-[10px] font-bold opacity-80 tracking-wide">Room</span>
                                                                 <span className="text-sm font-bold">
                                                                     {room.room_no}
                                                                 </span>
@@ -674,12 +674,12 @@ export default function RoomsByFloor() {
                         className="space-y-1"
                     >
                         <SheetHeader>
-                            <SheetTitle>{addFlowMode === "floor" ? "Add Floor" : "Add Room"}</SheetTitle>
+                            <SheetTitle className="text-xl font-bold">{addFlowMode === "floor" ? "Add Floor" : "Add Room"}</SheetTitle>
                         </SheetHeader>
 
                         {addFlowMode === "room" ? (
                             <div className="space-y-4">
-                                <p className="text-sm text-muted-foreground">
+                                <p className="text-xs text-muted-foreground font-medium tracking-wide">
                                     Do you want to create a new room on{" "}
                                     <span className="font-medium text-foreground">
                                         Floor {selectedFloor}
@@ -795,7 +795,7 @@ export default function RoomsByFloor() {
                                                                     className="group relative flex flex-col rounded-lg border border-primary/20 bg-primary/[0.04] shadow-sm"
                                                                 >
                                                                     <div className="px-3 py-1.5 bg-primary text-white border-b border-primary/20 rounded-t-lg flex justify-between items-center">
-                                                                        <span className="text-[10px] font-bold opacity-80 tracking-wider">Room</span>
+                                                                        <span className="text-[10px] font-bold opacity-80 tracking-wide">Room</span>
                                                                         <span className="text-sm font-bold">{roomIndex + 1}</span>
                                                                     </div>
 

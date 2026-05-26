@@ -191,7 +191,7 @@ export function ResponsiveDateRangePicker({
                 <Dialog open={open} onOpenChange={setOpen}>
                     <DialogContent className="max-w-[340px] p-0 overflow-hidden rounded-xl border-none shadow-2xl bg-background">
                         <DialogHeader className="p-4 border-b bg-muted/30 text-left">
-                            <DialogTitle className="text-sm font-bold tracking-wider text-muted-foreground">
+                            <DialogTitle className="text-sm font-bold tracking-wide text-muted-foreground">
                                 Select Range
                             </DialogTitle>
                         </DialogHeader>

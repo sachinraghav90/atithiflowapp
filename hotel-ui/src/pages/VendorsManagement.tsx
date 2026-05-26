@@ -508,14 +508,14 @@ export default function VendorsManagement() {
                     >
                         <SheetHeader className="mb-6">
                             <div className="space-y-1">
-                                <SheetTitle className="text-xl font-bold text-foreground">
+                                <SheetTitle className="text-xl font-bold">
                                     {mode === "add" || mode === "edit"
-                                        ? `Vendor ${mode === "add" ? "" : editingVendor?.id ? `#${formatModuleDisplayId("vendor", editingVendor.id)}` : ""}`
-                                        : `Vendor ${editingVendor?.id ? `#${formatModuleDisplayId("vendor", editingVendor.id)}` : ""}`
+                                        ? `Vendor ${mode === "add" ? "" : editingVendor?.id ? `[#${formatModuleDisplayId("vendor", editingVendor.id)}]` : ""}`
+                                        : `Vendor ${editingVendor?.id ? `[#${formatModuleDisplayId("vendor", editingVendor.id)}]` : ""}`
                                     }
                                 </SheetTitle>
                                 <p className="text-xs text-muted-foreground font-medium tracking-wide">
-                                    {mode === "add"
+                                    {mode === "add"         
                                         ? "Onboard New Supplier or Service Provider"
                                         : mode === "edit"
                                             ? "Modify Existing Vendor Contact or Tax Information"
@@ -697,7 +697,7 @@ export default function VendorsManagement() {
                                             />
 
                                             <span className={cn(
-                                                "px-3 py-1 rounded-[3px] text-xs font-bold tracking-wider",
+                                                "px-3 py-1 rounded-[3px] text-xs font-bold tracking-wide",
                                                 getStatusColor(form.is_active ? "active" : "inactive", "toggle")
                                             )}>
                                                 {form.is_active ? "Active" : "Inactive"}

@@ -573,10 +573,10 @@ export default function LaundryPricingManagement() {
                     >
                         <SheetHeader className="mb-6">
                             <div className="space-y-1">
-                                <SheetTitle className="text-xl font-bold text-foreground">
+                                <SheetTitle className="text-xl font-bold">
                                     {mode === "view" ? "Laundry Pricing" : mode === "edit" ? "Update Laundry Pricing" : "Add Laundry Items"}
                                     {(mode === "view" || mode === "edit") && selectedItem?.id && (
-                                        <span className="ml-2 font-semibold">
+                                        <span className="ml-2">
                                             {`[#${formatModuleDisplayId("laundry_pricing", selectedItem.id)}]`}
                                         </span>
                                     )}

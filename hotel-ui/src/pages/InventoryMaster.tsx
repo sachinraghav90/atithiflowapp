@@ -729,7 +729,7 @@ export default function InventoryMaster() {
                 <Sheet open={mode === "add"} onOpenChange={(open) => !open && setMode(null)}>
                     <SheetContent side="right" onOpenAutoFocus={(event) => event.preventDefault()} className="w-full sm:max-w-4xl flex flex-col p-0">
                         <SheetHeader className="px-6 py-4 border-b">
-                            <SheetTitle className="text-[#444444]">Add Inventory Items</SheetTitle>
+                            <SheetTitle className="text-xl font-bold">Add Inventory Items</SheetTitle>
                         </SheetHeader>
 
                         <div className="flex-1 overflow-y-auto">
@@ -916,7 +916,7 @@ export default function InventoryMaster() {
                                     <SheetTitle className="text-xl font-bold">
                                         {mode === "view" ? `Master Inventory [${selected?.id ? `#${formatModuleDisplayId("inventory", selected.id)}` : "..."}]` : mode === "edit" ? `Update Master Inventory [${selected?.id ? `#${formatModuleDisplayId("inventory", selected.id)}` : "..."}]` : "Add Master Inventory Item"}
                                     </SheetTitle>
-                                    <p className="text-xs text-muted-foreground font-medium tracking-wider">
+                                    <p className="text-xs text-muted-foreground font-medium tracking-wide">
                                         {mode === "view" ? "Inventory configuration details" : "Modify existing inventory item details."}
                                     </p>
                                 </div>

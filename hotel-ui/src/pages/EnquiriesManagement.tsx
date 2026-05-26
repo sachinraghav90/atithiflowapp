@@ -526,9 +526,9 @@ export default function EnquiriesManagement() {
                     >
                         <SheetHeader className="pb-4">
                             <div className="space-y-0.5">
-                                <SheetTitle className="text-xl font-bold text-foreground">
+                                <SheetTitle className="text-xl font-bold">
                                     {editMode ? "Update Enquiry" : "Enquiry"}
-                                    {selected?.id && <span className="ml-2 font-semibold">[#{formatModuleDisplayId("enquiry", selected.id)}]</span>}
+                                    {selected?.id && <span className="ml-2">[#{formatModuleDisplayId("enquiry", selected.id)}]</span>}
                                 </SheetTitle>
                                 <p className="text-xs text-muted-foreground font-medium tracking-wide">
                                     {editMode 

@@ -211,7 +211,7 @@ export function OrderItemsModal({
                                 <SheetTitle className="text-xl font-bold">
                                     {editMode ? `Update Restaurant Order [${data?.id ? `#${formatOrderDisplayId(data.id)}` : "..."}]` : `Restaurant Order [${data?.id ? `#${formatOrderDisplayId(data.id)}` : "..."}]`}
                                 </SheetTitle>
-                                <p className="text-xs text-muted-foreground font-medium tracking-wider">
+                                <p className="text-xs text-muted-foreground font-medium tracking-wide">
                                     {editMode
                                         ? "Update order status and payment details"
                                         : "Complete order details with list of items"}
@@ -227,13 +227,13 @@ export function OrderItemsModal({
                                                 className="h-9 w-9 p-0 shadow-sm rounded-md mr-12"
                                                 onClick={handleDownloadPDF}
                                                 disabled={!data}
-                                                aria-label="Print PDF"
+                                                aria-label="Print Invoice"
                                             >
                                                 <Printer className="w-4 h-4" />
                                             </Button>
                                         </TooltipTrigger>
                                         <TooltipContent side="top" align="center" className="text-xs">
-                                            Print PDF
+                                            Print Invoice
                                         </TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>

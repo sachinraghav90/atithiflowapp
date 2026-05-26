@@ -495,10 +495,10 @@ export default function PackageManagement() {
                         >
                             <SheetHeader className="mb-6">
                                 <div className="space-y-1">
-                                    <SheetTitle className="text-xl font-bold text-foreground">
-                                        {mode === "add" ? "Create New Plan" : mode === "edit" ? `Update Plan [${selectedPackage?.id ? `#${formatModuleDisplayId("package", selectedPackage.id)}` : "..."}]` : `Plan Summary [${selectedPackage?.id ? `#${formatModuleDisplayId("package", selectedPackage.id)}` : "..."}]`}
+                                    <SheetTitle className="text-xl font-bold">
+                                        {mode === "add" ? "Create New Plan" : mode === "edit" ? `Update Plan ${selectedPackage?.id ? `[#${formatModuleDisplayId("package", selectedPackage.id)}]` : "..."}` : `Plan Summary ${selectedPackage?.id ? `[#${formatModuleDisplayId("package", selectedPackage.id)}]` : "..."}`}
                                     </SheetTitle>
-                                    <p className="text-xs text-muted-foreground font-medium tracking-wide">
+                                   <p className="text-xs text-muted-foreground font-medium tracking-wide">
                                         {mode === "add" ? "Setup new room plan" : mode === "edit" ? "Modify existing plan information" : "Plan details and pricing"}
                                     </p>
                                 </div>
@@ -664,7 +664,7 @@ export default function PackageManagement() {
                                                     }
                                                 />
                                                 <span className={cn(
-                                                    "text-xs font-bold tracking-wider",
+                                                    "text-xs font-bold tracking-wide",
                                                     selectedPackage?.is_active ? "text-green-600" : "text-muted-foreground"
                                                 )}>
                                                     {selectedPackage?.is_active ? "Active" : "Inactive"}

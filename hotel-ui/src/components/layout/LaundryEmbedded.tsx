@@ -213,7 +213,7 @@ export default function LaundryEmbedded({
                                 <SheetTitle className="text-xl font-bold">
                                     Laundry Order [{selectedOrder?.id ? `#${formatModuleDisplayId("laundry_order", selectedOrder.id)}` : "..."}]
                                 </SheetTitle>
-                                <p className="text-xs text-muted-foreground font-medium tracking-wider">
+                                <p className="text-xs text-muted-foreground font-medium tracking-wide">
                                     Complete laundry order summary and itemized list
                                 </p>
                             </div>

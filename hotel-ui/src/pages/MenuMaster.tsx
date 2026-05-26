@@ -661,7 +661,7 @@ export default function MenuMaster() {
                                 <SheetTitle className="text-xl font-bold">
                                     {mode === "add" ? "Create Menu Item" : mode === "edit" ? `Update Menu Item [${selected?.id ? `#${formatModuleDisplayId("menu", selected.id)}` : "..."}]` : `Menu Item [${selected?.id ? `#${formatModuleDisplayId("menu", selected.id)}` : "..."}]`}
                                 </SheetTitle>
-                                <p className="text-xs text-muted-foreground font-medium tracking-wider">
+                                <p className="text-xs text-muted-foreground font-medium tracking-wide">
                                     {mode === "add" ? "Setup your new food or beverage item" : mode === "edit" ? "Modify existing menu item details" : "Detailed summary of menu item configuration"}
                                 </p>
                             </div>
@@ -723,7 +723,7 @@ export default function MenuMaster() {
                                                         <div className="px-3 pb-2 bg-gradient-to-t from-accent/30 to-transparent pt-4 -mt-4">
                                                             <button 
                                                                 onClick={() => setIsDescExpanded(!isDescExpanded)}
-                                                                className="text-[10px] font-bold text-primary hover:underline tracking-wider"
+                                                                className="text-[10px] font-bold text-primary hover:underline tracking-wide"
                                                             >
                                                                 {isDescExpanded ? "Show Less" : "Show More"}
                                                             </button>

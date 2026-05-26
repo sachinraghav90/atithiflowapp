@@ -1627,10 +1627,10 @@ export default function LaundryOrdersManagement() {
                                     {viewItemsModal.editMode ? <Pencil className="w-4 h-4" /> : <ClipboardList className="w-4 h-4" />}
                                 </div>
                                 <div className="space-y-0.5">
-                                    <SheetTitle className="text-lg font-bold text-foreground">
+                                    <SheetTitle className="text-xl font-bold">
                                         {viewItemsModal.editMode ? `Update Laundry Order [${viewItemsModal.order?.id ? `#${formatLaundryOrderDisplayId(viewItemsModal.order.id)}` : "..."}]` : `Laundry Order [${viewItemsModal.order?.id ? `#${formatLaundryOrderDisplayId(viewItemsModal.order.id)}` : "..."}]`}
                                     </SheetTitle>
-                                    <p className="text-xs text-muted-foreground font-medium  tracking-wider">
+                                    <p className="text-xs text-muted-foreground font-medium  tracking-wide">
                                         {viewItemsModal.editMode
                                             ? "Update existing laundry order details"
                                             : `Laundry order details`}
@@ -1983,7 +1983,7 @@ export default function LaundryOrdersManagement() {
                                     <div key={log.id} className="border rounded-lg p-5 space-y-4 bg-muted/5">
                                         <div className="flex justify-between items-start">
                                             <div className="space-y-1">
-                                                <div className="font-bold text-primary uppercase text-xs tracking-wider">
+                                                <div className="font-bold text-primary uppercase text-xs tracking-wide">
                                                     {formatDisplayStatus(log.task_name || log.event_type)}
                                                 </div>
                                                 <div className="text-sm font-medium">
