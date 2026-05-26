@@ -44,7 +44,7 @@ import { GridBadge } from "@/components/ui/grid-badge";
 import { useGridPagination } from "@/hooks/useGridPagination";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
-import PropertyViewSection from "@/components/PropertyViewSection";
+import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
 import { formatAppDate } from "@/utils/dateFormat";
 
@@ -828,7 +828,11 @@ export default function StaffManagement() {
 
                                 {sheetTab === "summary" && (
                                     <div className="space-y-4">
-                                        <PropertyViewSection title="Personal Details" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                                        <CardSectionView 
+                                            title="Personal Details" 
+                                            titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal"
+                                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4"
+                                        >
                                             <ViewField label="First Name" value={staff.first_name} />
                                             <ViewField label="Middle Name" value={staff.middle_name} />
                                             <ViewField label="Last Name" value={staff.last_name} />
@@ -840,17 +844,25 @@ export default function StaffManagement() {
                                             />
                                             <ViewField label="Nationality" value={staff.nationality} />
                                             <ViewField label="Blood Group" value={staff.blood_group} />
-                                        </PropertyViewSection>
+                                        </CardSectionView>
 
-                                        <PropertyViewSection title="Contact & Login" className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-4">
+                                        <CardSectionView 
+                                            title="Contact & Login" 
+                                            titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal"
+                                            className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-4"
+                                        >
                                             <ViewField label="Email" value={staff.email} />
                                             <ViewField label="Phone" value={staff.phone1} />
                                             <ViewField label="Alternate Phone" value={staff.phone2} />                          
                                             <ViewField label="Address" value={staff.address} className="sm:col-span-2" />
                                             <ViewField label="Country" value={staff.country} />
-                                        </PropertyViewSection>
+                                        </CardSectionView>
 
-                                        <PropertyViewSection title="Property & Role" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                                        <CardSectionView 
+                                            title="Property & Role" 
+                                            titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal"
+                                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4"
+                                        >
                                             <ViewField 
                                                 label="Property" 
                                                 value={
@@ -873,24 +885,32 @@ export default function StaffManagement() {
                                             <ViewField label="Shift Pattern" value={staff.shift_pattern || "General"} />
                                             <ViewField label="Employment Type" value={staff.employment_type} />
                                             <ViewField label="Joining Date" value={formatAppDate(staff.hire_date)} />
-                                        </PropertyViewSection>
+                                        </CardSectionView>
 
-                                        <PropertyViewSection title="Emergency Contacts" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                                        <CardSectionView 
+                                            title="Emergency Contacts" 
+                                            titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal"
+                                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4"
+                                        >
                                             <div className="space-y-4 p-3 bg-background rounded-[3px] border border-border/50">
-                                                <p className="text-[10px] font-bold text-primary tracking-widest uppercase">Primary Contact</p>
+                                                <p className="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal">Primary Contact</p>
                                                 <ViewField label="Name" value={staff.emergency_contact_name} />
                                                 <ViewField label="Relation" value={staff.emergency_contact_relation} />
                                                 <ViewField label="Phone" value={staff.emergency_contact} />
                                             </div>
                                             <div className="space-y-4 p-3 bg-background rounded-[3px] border border-border/50">
-                                                <p className="text-[10px] font-bold text-primary tracking-widest uppercase">Secondary Contact</p>
+                                                <p className="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal">Secondary Contact</p>
                                                 <ViewField label="Name" value={staff.emergency_contact_name_2} />
                                                 <ViewField label="Relation" value={staff.emergency_contact_relation_2} />
                                                 <ViewField label="Phone" value={staff.emergency_contact_2} />
                                             </div>
-                                        </PropertyViewSection>
+                                        </CardSectionView>
 
-                                        <PropertyViewSection title="Identification" className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-4 items-end">
+                                        <CardSectionView 
+                                            title="Identification" 
+                                            titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal"
+                                            className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-4 items-end"
+                                        >
                                             <ViewField label="ID Proof Type" value={staff.id_proof_type} />
                                             <ViewField label="ID Number" value={staff.id_number} />
                                             {staffIdProofExists && (
@@ -903,7 +923,7 @@ export default function StaffManagement() {
                                                     Download ID Proof
                                                 </Button>
                                             )}
-                                        </PropertyViewSection>
+                                        </CardSectionView>
                                     </div>
                                 )}
 

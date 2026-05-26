@@ -104,7 +104,7 @@ export default function BookingLogsEmbedded({ bookingId, propertyId }: Props) {
     return (
         <div className="space-y-4">
             <div className="flex justify-between items-center">
-                <p className="mb-3 text-[12px] font-bold text-primary">Activity Logs</p>
+                <p className="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal">Activity Logs</p>
             </div>
 
             {isLoading && (

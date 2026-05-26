@@ -35,7 +35,7 @@ import { ValidationTooltip } from "@/components/ui/validation-tooltip";
 import { GridBadge } from "@/components/ui/grid-badge";
 import { formatReadableLabel } from "@/utils/formatString";
 import { formatAppDate } from "@/utils/dateFormat";
-import PropertyViewSection from "@/components/PropertyViewSection";
+import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
 import { motion } from "framer-motion";
 
@@ -951,13 +951,17 @@ export default function InventoryMaster() {
                                     </div>
 
                                     {sheetTab === "summary" && (
-                                        <PropertyViewSection title="Inventory Details" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
-                                            <ViewField label="Name" value={selected.name} className="sm:col-span-2" />
+                                         <CardSectionView 
+                                             title="Inventory Details" 
+                                             titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal"
+                                             className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4"
+                                         >
+                                             <ViewField label="Name" value={selected.name} className="sm:col-span-2" />
                                             <ViewField label="Inventory Type" value={formatReadableLabel(selected.inventory_type)} />
                                             <ViewField label="Use Type" value={selected.use_type} className="capitalize" />
                                             <ViewField label="Status" value={selected.is_active ? "Active" : "Inactive"} />
                                             <ViewField label="Created On" value={formatAppDate(selected.created_on)} />
-                                        </PropertyViewSection>
+                                        </CardSectionView>
                                     )}
 
                                     {sheetTab === "history" && (

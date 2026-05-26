@@ -61,7 +61,7 @@ import { GridBadge } from "@/components/ui/grid-badge";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { formatAppDate, parseAppDate, toISODateOnly, formatAppDateTime } from "@/utils/dateFormat";
 import { formatReadableLabel } from "@/utils/formatString";
-import PropertyViewSection from "@/components/PropertyViewSection";
+import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
 import RichTextEditor from "@/components/ui/rich-text-editor";
 
@@ -651,14 +651,22 @@ export default function BookingsManagement() {
 
         return (
             <div className="space-y-4">
-                <PropertyViewSection title="Financial Overview" titleClassName="mb-3 text-[12px] font-bold text-primary" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                <CardSectionView 
+                    title="Financial Overview" 
+                    titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" 
+                    className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4"
+                >
                     <ViewField label="Total Amount" value={`₹ ${totalAmt}`} />
                     <ViewField label="Paid Amount" value={`₹ ${totalPaid}`} />
                     <ViewField label="Remaining Balance" value={`₹ ${Math.abs(remaining)}`} />
                     <ViewField label="Discount" value={`₹ ${booking?.discount_amount || 0}`} />
-                </PropertyViewSection>
+                </CardSectionView>
 
-                <PropertyViewSection title="Booking Information" titleClassName="mb-3 text-[12px] font-bold text-primary" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                <CardSectionView 
+                    title="Booking Information" 
+                    titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" 
+                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4"
+                >
                     <ViewField label="Guest Name" value={booking?.primary_guest ? `${booking.primary_guest.first_name} ${booking.primary_guest.last_name || ""}`.trim() : "—"} />
                     <ViewField label="Booking Source" value={booking?.booking_type ? formatReadableLabel(booking.booking_type) : "—"} />
                     <ViewField label="Adults / Children" value={`${booking?.adult || 0} A / ${booking?.child || 0} C`} />
@@ -671,7 +679,7 @@ export default function BookingsManagement() {
                     <ViewField label="Arrival Time" value={booking?.estimated_arrival_time || "—"} />
                     <ViewField label="Checked In At" value={booking?.actual_arrival ? formatToDDMMYY(booking.actual_arrival) : "—"} />
                     <ViewField label="Comments" value={booking?.comments || "No comments"} className="sm:col-span-2 lg:col-span-3" />
-                </PropertyViewSection>
+                </CardSectionView>
             </div>
         );
     }

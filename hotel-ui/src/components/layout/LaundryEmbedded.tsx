@@ -8,7 +8,7 @@ import { toast } from "react-toastify";
 import { useGetBookingLaundryOrdersQuery } from "@/redux/services/hmsApi";
 import { useNavigate } from "react-router-dom";
 import { formatAppDateTime } from "@/utils/dateFormat";
-import PropertyViewSection from "../PropertyViewSection";
+import CardSectionView from "../CardSectionView";
 import { GridBadge } from "../ui/grid-badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../ui/sheet";
@@ -104,7 +104,7 @@ export default function LaundryEmbedded({
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <div>
-                    <h3 className="text-lg font-semibold">Laundry</h3>
+                    <h3 className="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal">Laundry</h3>
                 </div>
 
                 <Button
@@ -128,7 +128,7 @@ export default function LaundryEmbedded({
                     ?.reduce((sum, i) => sum + Number(i.amount || 0), 0);
 
                 return (
-                    <PropertyViewSection
+                    <CardSectionView
                         key={order.id}
                         title={
                             <TooltipProvider delayDuration={100}>
@@ -197,7 +197,7 @@ export default function LaundryEmbedded({
                                 </GridBadge>
                             }
                         />
-                    </PropertyViewSection>
+                    </CardSectionView>
                 );
             })}
 
@@ -221,7 +221,11 @@ export default function LaundryEmbedded({
 
                         {selectedOrder && (
                             <div className="space-y-6">
-                                <PropertyViewSection title="Order Details" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                                <CardSectionView 
+                                    title="Order Details" 
+                                    titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal"
+                                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4"
+                                >
                                     <ViewField label="Order ID" value={`#${formatModuleDisplayId("laundry_order", selectedOrder.id)}`} />
                                     <ViewField label="Booking ID" value={formatModuleDisplayId("booking", selectedOrder.booking_id)} />
                                     <ViewField label="Room" value={selectedOrder.items?.[0]?.room_no || "—"} />
@@ -251,9 +255,13 @@ export default function LaundryEmbedded({
                                             </GridBadge>
                                         }
                                     />
-                                </PropertyViewSection>
+                                </CardSectionView>
 
-                                <PropertyViewSection title="Items Ordered" className="mt-0">
+                                <CardSectionView 
+                                    title="Items Ordered" 
+                                    titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal"
+                                    className="mt-0"
+                                >
                                     <div className="border border-border rounded-lg overflow-hidden bg-background shadow-sm">
                                         <AppDataGrid
                                             density="compact"
@@ -289,7 +297,7 @@ export default function LaundryEmbedded({
                                             className="mt-0 border-0"
                                         />
                                     </div>
-                                </PropertyViewSection>
+                                </CardSectionView>
 
                                 <div className="flex justify-end pt-4 border-t border-border mt-3">
                                     <Button variant="heroOutline" onClick={() => setSummaryOpen(false)}>

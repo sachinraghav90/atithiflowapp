@@ -474,7 +474,7 @@ export default function RoleManagement() {
 
                                 {!isEditingRoleName ? (
                                     <div className="space-y-0.5">
-                                        <p className="text-[10px] font-bold text-muted-foreground tracking-widest">Managing Access For</p>
+                                       <p className="text-xs text-muted-foreground font-medium tracking-wide">Managing Access For</p>
                                         <div className="flex items-center gap-2">
                                             <h2 className="text-xl font-bold text-primary">
                                                 {selectedRoleName}
@@ -591,7 +591,7 @@ export default function RoleManagement() {
                                                             />
                                                         </div>
                                                         <span className={cn(
-                                                            "text-[10px] font-bold tracking-tight",
+                                                            "text-[13px] font-bold",
                                                             isRadioSelected ? "text-primary" : "text-muted-foreground"
                                                         )}>
                                                             {getPermissionLabel(action)}

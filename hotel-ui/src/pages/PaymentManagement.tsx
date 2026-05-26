@@ -24,7 +24,7 @@ import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { GridBadge } from "@/components/ui/grid-badge";
 import { formatReadableLabel } from "@/utils/formatString";
 import { formatAppDate } from "@/utils/dateFormat";
-import PropertyViewSection from "@/components/PropertyViewSection";
+import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
 
 type PropertyOption = {
@@ -308,7 +308,7 @@ export default function PaymentsManagement() {
 
                         {selectedPayment && (
                             <div className="mt-6 space-y-4">
-                                <PropertyViewSection title="Payment Details" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                <CardSectionView title="Payment Details" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                     <ViewField label="Payment ID" value={formatModuleDisplayId("payment", selectedPayment.id)} />
                                     <ViewField label="Booking ID" value={formatModuleDisplayId("booking", selectedPayment.booking_id)} />
                                     <ViewField label="Property Name" value={selectedPaymentData?.property_name} />
@@ -321,7 +321,7 @@ export default function PaymentsManagement() {
                                             {selectedPayment.payment_status}
                                         </GridBadge>
                                     } />
-                                </PropertyViewSection>
+                                </CardSectionView>
 
                                 <div className="flex justify-end gap-3 pt-4 border-t border-border">
                                     <Button

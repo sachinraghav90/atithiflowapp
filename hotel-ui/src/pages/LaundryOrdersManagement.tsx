@@ -50,7 +50,7 @@ import { ValidationTooltip } from "@/components/ui/validation-tooltip";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { formatReadableLabel } from "@/utils/formatString";
 import { formatAppDateTime } from "@/utils/dateFormat";
-import PropertyViewSection from "@/components/PropertyViewSection";
+import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
 import { generateId } from "@/utils/generateId";
 
@@ -1621,21 +1621,16 @@ export default function LaundryOrdersManagement() {
                         animate={{ opacity: 1, y: 0 }}
                         className="space-y-1"
                     >
-                        <SheetHeader className="border-b border-border/50 pb-3 mb-3">
-                            <div className="flex items-center gap-3">
-                                <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center text-primary shadow-sm">
-                                    {viewItemsModal.editMode ? <Pencil className="w-4 h-4" /> : <ClipboardList className="w-4 h-4" />}
-                                </div>
-                                <div className="space-y-0.5">
-                                    <SheetTitle className="text-xl font-bold">
-                                        {viewItemsModal.editMode ? `Update Laundry Order [${viewItemsModal.order?.id ? `#${formatLaundryOrderDisplayId(viewItemsModal.order.id)}` : "..."}]` : `Laundry Order [${viewItemsModal.order?.id ? `#${formatLaundryOrderDisplayId(viewItemsModal.order.id)}` : "..."}]`}
-                                    </SheetTitle>
-                                    <p className="text-xs text-muted-foreground font-medium  tracking-wide">
-                                        {viewItemsModal.editMode
-                                            ? "Update existing laundry order details"
-                                            : `Laundry order details`}
-                                    </p>
-                                </div>
+                        <SheetHeader className="mb-6">
+                            <div className="space-y-1">
+                                <SheetTitle className="text-xl font-bold">
+                                    {viewItemsModal.editMode ? `Update Laundry Order [${viewItemsModal.order?.id ? `#${formatLaundryOrderDisplayId(viewItemsModal.order.id)}` : "..."}]` : `Laundry Order [${viewItemsModal.order?.id ? `#${formatLaundryOrderDisplayId(viewItemsModal.order.id)}` : "..."}]`}
+                                </SheetTitle>
+                                <p className="text-xs text-muted-foreground font-medium tracking-wide">
+                                    {viewItemsModal.editMode
+                                        ? "Update existing laundry order details"
+                                        : `Laundry order details`}
+                                </p>
                             </div>
                         </SheetHeader>
 
@@ -1680,30 +1675,26 @@ export default function LaundryOrdersManagement() {
 
                                         {!viewItemsModal.editMode ? (
                                             <div className="space-y-4">
-                                                <PropertyViewSection title="Order Overview" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                                                <CardSectionView title="Order Overview" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
                                                     <ViewField label="Vendor" value={displayOrder.vendorName} />
                                                     <ViewField label="Vendor Status" value={<GridBadge status={displayOrder.vendorStatus} statusType="vendor" className="h-6 px-2 text-[10px]">{displayOrder.vendorStatusLabel}</GridBadge>} />
                                                     <ViewField label="Laundry Status" value={<GridBadge status={order.laundry_status} statusType="laundry" className="h-6 px-2 text-[10px]">{displayOrder.laundryStatusLabel}</GridBadge>} />
                                                     <ViewField label="Pickup Date" value={formatDateTime(order.pickup_date)} />
                                                     <ViewField label="Delivery Date" value={formatDateTime(order.delivery_date)} />
                                                     <ViewField label="Total Amount" value={formatLaundryAmount(getLaundryOrderTotalAmount(order))} className="font-semibold text-primary" />
-                                                </PropertyViewSection>
+                                                </CardSectionView>
                                             </div>
                                         ) : (
-                                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 text-sm">
-                                            <div className="bg-accent border border-primary/10 rounded-lg p-3 space-y-3 shadow-sm">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="h-7 w-7 rounded-lg bg-background flex items-center justify-center text-primary border border-primary/5">
-                                                        <Truck className="w-3.5 h-3.5" />
-                                                    </div>
-                                                    <h3 className="text-sm font-bold text-primary">Order Assignment</h3>
-                                                </div>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                    <div>
-                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Vendor</Label>
+                                            <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-5 [&>h3+*]:!mt-4">
+                                                <h3 className="text-sm font-semibold text-primary/90">
+                                                    Edit Laundry Details
+                                                </h3>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                                                    <div className="space-y-2">
+                                                        <Label className="text-foreground">Vendor *</Label>
                                                         {viewItemsModal.editMode ? (
                                                             <NativeSelect
-                                                                className="w-full h-9 border border-primary/20 bg-background rounded-md px-3 text-sm shadow-none focus:outline-none focus:ring-1 focus:ring-primary mt-1"
+                                                                className="w-full h-10 border border-border bg-background rounded-[3px] px-3 text-sm shadow-none focus:outline-none focus:ring-1 focus:ring-primary"
                                                                 value={editOrder?.vendor_id || ""}
                                                                 onChange={(e) =>
                                                                     setEditOrder(prev => ({
@@ -1718,17 +1709,17 @@ export default function LaundryOrdersManagement() {
                                                                 ))}
                                                             </NativeSelect>
                                                         ) : (
-                                                            <p className="mt-1 text-sm font-semibold text-foreground">
+                                                            <p className="py-2.5 px-0.5 text-sm font-semibold text-foreground">
                                                                 {displayOrder.vendorName}
                                                             </p>
                                                         )}
                                                     </div>
 
-                                                    <div>
-                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Vendor Status</Label>
+                                                    <div className="space-y-2">
+                                                        <Label className="text-foreground">Vendor Status *</Label>
                                                         {viewItemsModal.editMode ? (
                                                             <NativeSelect
-                                                                className="w-full h-9 border border-primary/20 bg-background rounded-md px-3 text-sm shadow-none focus:outline-none focus:ring-1 focus:ring-primary mt-1"
+                                                                className="w-full h-10 border border-border bg-background rounded-[3px] px-3 text-sm shadow-none focus:outline-none focus:ring-1 focus:ring-primary"
                                                                 value={editOrder?.vendor_status || editOrder?.vendorStatus}
                                                                 onChange={(e) =>
                                                                     setEditOrder(prev => ({
@@ -1742,29 +1733,19 @@ export default function LaundryOrdersManagement() {
                                                                 ))}
                                                             </NativeSelect>
                                                         ) : (
-                                                            <div className="mt-1">
+                                                            <div className="py-2 px-0.5">
                                                                 <GridBadge status={displayOrder.vendorStatus} statusType="vendor">
                                                                     {displayOrder.vendorStatusLabel}
                                                                 </GridBadge>
                                                             </div>
                                                         )}
                                                     </div>
-                                                </div>
-                                            </div>
 
-                                            <div className="bg-accent border border-primary/10 rounded-lg p-3 space-y-3 shadow-sm">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="h-7 w-7 rounded-lg bg-background flex items-center justify-center text-primary border border-primary/5">
-                                                        <ShieldCheck className="w-3.5 h-3.5" />
-                                                    </div>
-                                                    <h3 className="text-sm font-semibold text-primary/90">Status & Delivery</h3>
-                                                </div>
-                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                                    <div>
-                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Laundry Status</Label>
+                                                    <div className="space-y-2">
+                                                        <Label className="text-foreground">Laundry Status *</Label>
                                                         {viewItemsModal.editMode ? (
                                                             <NativeSelect
-                                                                className="w-full h-9 border border-primary/20 bg-background rounded-md px-3 text-sm shadow-none focus:outline-none focus:ring-1 focus:ring-primary mt-1"
+                                                                className="w-full h-10 border border-border bg-background rounded-[3px] px-3 text-sm shadow-none focus:outline-none focus:ring-1 focus:ring-primary"
                                                                 value={editOrder?.laundry_status}
                                                                 onChange={(e) =>
                                                                     setEditOrder(prev => ({
@@ -1778,7 +1759,7 @@ export default function LaundryOrdersManagement() {
                                                                 ))}
                                                             </NativeSelect>
                                                         ) : (
-                                                            <div className="mt-1">
+                                                            <div className="py-2 px-0.5">
                                                                 <GridBadge status={order.laundry_status} statusType="laundry">
                                                                     {displayOrder.laundryStatusLabel}
                                                                 </GridBadge>
@@ -1786,8 +1767,8 @@ export default function LaundryOrdersManagement() {
                                                         )}
                                                     </div>
 
-                                                    <div>
-                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Delivery Date</Label>
+                                                    <div className="space-y-2">
+                                                        <Label className="text-foreground">Delivery Date</Label>
                                                         {viewItemsModal.editMode ? (
                                                             <DatePicker
                                                                 selected={parseDate(editOrder?.delivery_date || order.delivery_date)}
@@ -1808,27 +1789,26 @@ export default function LaundryOrdersManagement() {
                                                                 maxTime={new Date(new Date().setHours(23, 59, 59, 999))}
                                                                 dateFormat="dd/MM/yy HH:mm"
                                                                 wrapperClassName="block w-full"
-                                                                className="w-full h-9 border border-primary/20 bg-background rounded-md px-3 text-sm shadow-none outline-none focus:ring-1 focus:ring-primary mt-1"
+                                                                className="w-full h-10 border border-border bg-background rounded-[3px] px-3 text-sm shadow-none outline-none focus:ring-1 focus:ring-primary"
                                                             />
                                                         ) : (
-                                                            <p className="mt-1 text-sm font-semibold text-foreground">
+                                                            <p className="py-2.5 px-0.5 text-sm font-semibold text-foreground">
                                                                 {formatDateTime(order.delivery_date)}
                                                             </p>
                                                         )}
                                                     </div>
 
-                                                    <div>
-                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Pickup Date</Label>
-                                                        <p className="mt-1 text-sm font-semibold text-foreground">
+                                                    <div className="space-y-2">
+                                                        <Label className="text-foreground">Pickup Date</Label>
+                                                        <p className="py-2.5 px-0.5 text-sm font-semibold text-foreground">
                                                             {formatDateTime(order.pickup_date)}
                                                         </p>
                                                     </div>
                                                 </div>
                                             </div>
-                                            </div>
                                         )}
 
-                                        <PropertyViewSection title="Order Items" className="mt-0">
+                                        <CardSectionView title="Order items" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="mt-0">
                                             <div className="border border-border rounded-lg overflow-hidden bg-background shadow-sm">
                                                 <AppDataGrid
                                                     density="compact"
@@ -1871,7 +1851,7 @@ export default function LaundryOrdersManagement() {
                                                     className="mt-0 border-0"
                                                 />
                                             </div>
-                                        </PropertyViewSection>
+                                        </CardSectionView>
                                             </div>
                                         )}
 

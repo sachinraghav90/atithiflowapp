@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/sheet";
 import { motion } from "framer-motion";
 import { formatAppDate } from "@/utils/dateFormat";
-import PropertyViewSection from "@/components/PropertyViewSection";
+import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
 
 /* ---------------- Types ---------------- */
@@ -607,15 +607,15 @@ export default function RoomTypeBasePriceManagement() {
 
                                 {sheetTab === "summary" && (
                                     <div className="space-y-4">
-                                <PropertyViewSection title="Category Information" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                <CardSectionView title="Category Information" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                     <ViewField label="Room Category Name" value={selectedRow?.room_category_name} />
                                     <ViewField label="Bed Type" value={selectedRow?.bed_type_name} />
                                     <ViewField label="AC Type" value={selectedRow?.ac_type_name} />
-                                </PropertyViewSection>
+                                </CardSectionView>
 
-                                <PropertyViewSection title="Pricing Details" className="grid grid-cols-1 gap-x-8 gap-y-4">
+                                <CardSectionView title="Pricing Details" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 gap-x-8 gap-y-4">
                                     <ViewField label="Base Price" value={`₹ ${selectedRow?.base_price || "0.00"}`} />
-                                </PropertyViewSection>
+                                </CardSectionView>
                                     </div>
                                 )}
 
@@ -627,70 +627,76 @@ export default function RoomTypeBasePriceManagement() {
                             </div>
                         ) : (
                             <div className="space-y-5 mt-6">
-                                <div className="space-y-1.5">
-                                    <Label className="text-foreground">Room Category Name</Label>
-                                    {selectedRow?.system_generated ? (
-                                        <p className="text-sm font-semibold text-foreground py-1 px-0.5">
-                                            {selectedRow?.room_category_name || "—"}
-                                        </p>
-                                    ) : (
+                                <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-5 [&>h3+*]:!mt-4">
+                                    <h3 className="text-sm font-semibold text-primary/90">
+                                        Room Details
+                                    </h3>
+
+                                    <div className="space-y-1.5">
+                                        <Label className="text-foreground">Room Category Name</Label>
+                                        {selectedRow?.system_generated ? (
+                                            <p className="text-sm font-semibold text-foreground py-1 px-0.5">
+                                                {selectedRow?.room_category_name || "—"}
+                                            </p>
+                                        ) : (
+                                            <Input
+                                                className="h-9 focus-visible:ring-1 focus-visible:ring-primary"
+                                                value={formCategory}
+                                                onChange={(e) => setFormCategory(e.target.value)}
+                                            />
+                                        )}
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div className="space-y-1.5">
+                                            <Label className="text-foreground">Bed Type</Label>
+                                            {selectedRow?.system_generated ? (
+                                                <p className="text-sm font-semibold text-foreground py-1 px-0.5">
+                                                    {selectedRow?.bed_type_name || "—"}
+                                                </p>
+                                            ) : (
+                                                <NativeSelect
+                                                    className="h-9 w-full border border-border bg-background rounded-[3px] px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                                                    value={formBedType}
+                                                    onChange={(e) => setFormBedType(e.target.value)}
+                                                >
+                                                    <option value="" disabled>Select Bed Type</option>
+                                                    {bedOptions.map(opt => (
+                                                        <option key={opt} value={opt}>{opt}</option>
+                                                    ))}
+                                                </NativeSelect>
+                                            )}
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label className="text-foreground">AC Type</Label>
+                                            {selectedRow?.system_generated ? (
+                                                <p className="text-sm font-semibold text-foreground py-1 px-0.5">
+                                                    {selectedRow?.ac_type_name || "—"}
+                                                </p>
+                                            ) : (
+                                                <NativeSelect
+                                                    className="h-9 w-full border border-border bg-background rounded-[3px] px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                                                    value={formAcType}
+                                                    onChange={(e) => setFormAcType(e.target.value)}
+                                                >
+                                                    <option value="" disabled>Select AC Type</option>
+                                                    {acOptions.map(opt => (
+                                                        <option key={opt} value={opt}>{opt}</option>
+                                                    ))}
+                                                </NativeSelect>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2 pt-4 border-t border-border">
+                                        <Label className="text-foreground">Base Price</Label>
                                         <Input
-                                            className="h-9 focus-visible:ring-1 focus-visible:ring-primary"
-                                            value={formCategory}
-                                            onChange={(e) => setFormCategory(e.target.value)}
+                                            type="text"
+                                            className="h-10 w-full rounded focus-visible:ring-1 focus-visible:ring-primary"
+                                            value={formPrice}
+                                            onChange={(e) => setFormPrice(normalizeNumberInput(e.target.value).toString())}
                                         />
-                                    )}
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-6">
-                                    <div className="space-y-1.5">
-                                        <Label className="text-foreground">Bed Type</Label>
-                                        {selectedRow?.system_generated ? (
-                                            <p className="text-sm font-semibold text-foreground py-1 px-0.5">
-                                                {selectedRow?.bed_type_name || "—"}
-                                            </p>
-                                        ) : (
-                                            <NativeSelect
-                                                className="h-9 w-full border border-border bg-background rounded-[3px] px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                                                value={formBedType}
-                                                onChange={(e) => setFormBedType(e.target.value)}
-                                            >
-                                                <option value="" disabled>Select Bed Type</option>
-                                                {bedOptions.map(opt => (
-                                                    <option key={opt} value={opt}>{opt}</option>
-                                                ))}
-                                            </NativeSelect>
-                                        )}
                                     </div>
-                                    <div className="space-y-1.5">
-                                        <Label className="text-foreground">AC Type</Label>
-                                        {selectedRow?.system_generated ? (
-                                            <p className="text-sm font-semibold text-foreground py-1 px-0.5">
-                                                {selectedRow?.ac_type_name || "—"}
-                                            </p>
-                                        ) : (
-                                            <NativeSelect
-                                                className="h-9 w-full border border-border bg-background rounded-[3px] px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                                                value={formAcType}
-                                                onChange={(e) => setFormAcType(e.target.value)}
-                                            >
-                                                <option value="" disabled>Select AC Type</option>
-                                                {acOptions.map(opt => (
-                                                    <option key={opt} value={opt}>{opt}</option>
-                                                ))}
-                                            </NativeSelect>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2 pt-4 border-t border-border">
-                                    <Label className="text-foreground">Base Price</Label>
-                                    <Input
-                                        type="text"
-                                        className="h-10 w-full rounded focus-visible:ring-1 focus-visible:ring-primary"
-                                        value={formPrice}
-                                        onChange={(e) => setFormPrice(normalizeNumberInput(e.target.value).toString())}
-                                    />
                                 </div>
                             </div>
                         )}

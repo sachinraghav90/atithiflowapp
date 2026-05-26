@@ -208,7 +208,7 @@ export default function PaymentsEmbedded({
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="flex flex-col">
-                    <p className="mb-3 text-[12px] font-bold text-primary">Payments</p>
+                    <p className="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal">Payments</p>
                     <p className="text-[11px] text-muted-foreground/80">
                         Manage payment entries for this booking
                     </p>

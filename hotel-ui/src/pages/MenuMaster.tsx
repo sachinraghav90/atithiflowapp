@@ -26,7 +26,7 @@ import { exportToExcel } from "@/utils/exportToExcel";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { toast } from "react-toastify";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
-import PropertyViewSection from "@/components/PropertyViewSection";
+import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
 
 type MenuItem = {
@@ -700,58 +700,64 @@ export default function MenuMaster() {
                             <div className="space-y-3">
                                 {sheetTab === "summary" && (
                                     <div className="space-y-3">
-                                        <PropertyViewSection title="Item Details" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2">
+                                        <CardSectionView title="Item Details" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2">
                                             <ViewField label="Name" value={selected.item_name} />
                                             <ViewField label="Menu Group" value={selected.menu_item_group || "General"} />
                                             <ViewField label="Dietary Type" value={selected.is_veg ? "Veg" : "Non-Veg"} />
                                             <ViewField label="Price" value={`₹ ${selected.price}`} />
                                             <ViewField label="Prep Time" value={selected.prep_time ? `${selected.prep_time} mins` : "—"} />
                                             <ViewField label="Status" value={selected.is_active ? "Active" : "Inactive"} />
-                                        </PropertyViewSection>
+                                        </CardSectionView>
 
-                                        <PropertyViewSection title="Description & Media" className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] font-bold text-muted-foreground tracking-wide">Item Description</Label>
-                                                <div className="relative aspect-video rounded-lg bg-accent/30 border border-primary/50 overflow-hidden flex flex-col">
-                                                    <div className={cn(
-                                                        "flex-1 p-3 text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap overflow-y-auto scrollbar-thin",
-                                                        !isDescExpanded && selected.description && selected.description.length > 150 ? "line-clamp-4" : ""
-                                                    )}>
-                                                        {selected.description || "No description provided for this menu item."}
-                                                    </div>
-                                                    {selected.description && selected.description.length > 150 && (
-                                                        <div className="px-3 pb-2 bg-gradient-to-t from-accent/30 to-transparent pt-4 -mt-4">
-                                                            <button 
-                                                                onClick={() => setIsDescExpanded(!isDescExpanded)}
-                                                                className="text-[10px] font-bold text-primary hover:underline tracking-wide"
-                                                            >
-                                                                {isDescExpanded ? "Show Less" : "Show More"}
-                                                            </button>
+                                        <CardSectionView title="Description & Media" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                                            <ViewField
+                                                label="Item Description"
+                                                valueClassName="font-normal"
+                                                value={
+                                                    <div className="relative aspect-video rounded-lg bg-accent/30 border border-primary/50 overflow-hidden flex flex-col">
+                                                        <div className={cn(
+                                                            "flex-1 p-3 text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap overflow-y-auto scrollbar-thin",
+                                                            !isDescExpanded && selected.description && selected.description.length > 150 ? "line-clamp-4" : ""
+                                                        )}>
+                                                            {selected.description || "No description provided for this menu item."}
                                                         </div>
-                                                    )}
-                                                </div>
-                                            </div>
+                                                        {selected.description && selected.description.length > 150 && (
+                                                            <div className="px-3 pb-2 bg-gradient-to-t from-accent/30 to-transparent pt-4 -mt-4">
+                                                                <button 
+                                                                    onClick={() => setIsDescExpanded(!isDescExpanded)}
+                                                                    className="text-[10px] font-bold text-primary hover:underline tracking-wide"
+                                                                >
+                                                                    {isDescExpanded ? "Show Less" : "Show More"}
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                }
+                                            />
 
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] font-bold text-muted-foreground tracking-wide">Item Image</Label>
-                                                <div 
-                                                    className="relative aspect-video rounded-lg overflow-hidden border border-primary/50 bg-accent/20 cursor-zoom-in group"
-                                                    onClick={() => setIsImagePreviewOpen(true)}
-                                                >
-                                                    <img
-                                                        src={`${import.meta.env.VITE_API_URL}/menu/${selected.id}/image`}
-                                                        alt={selected.item_name}
-                                                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                                        onError={(e) => { e.currentTarget.src = "https://placehold.co/400x225?text=Preview+Unavailable"; }}
-                                                    />
-                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                                        <div className="bg-white/90 p-2 rounded-full shadow-lg">
-                                                            <Plus className="w-5 h-5 text-primary" />
+                                            <ViewField
+                                                label="Item Image"
+                                                valueClassName="font-normal"
+                                                value={
+                                                    <div 
+                                                        className="relative aspect-video rounded-lg overflow-hidden border border-primary/50 bg-accent/20 cursor-zoom-in group"
+                                                        onClick={() => setIsImagePreviewOpen(true)}
+                                                    >
+                                                        <img
+                                                            src={`${import.meta.env.VITE_API_URL}/menu/${selected.id}/image`}
+                                                            alt={selected.item_name}
+                                                            className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                                            onError={(e) => { e.currentTarget.src = "https://placehold.co/400x225?text=Preview+Unavailable"; }}
+                                                        />
+                                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                                            <div className="bg-white/90 p-2 rounded-full shadow-lg">
+                                                                <Plus className="w-5 h-5 text-primary" />
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            </div>
-                                        </PropertyViewSection>
+                                                }
+                                            />
+                                        </CardSectionView>
                                     </div>
                                 )}
 

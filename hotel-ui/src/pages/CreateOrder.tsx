@@ -78,7 +78,11 @@ export function CreateOrder() {
     const [items, setItems] = useState<OrderItemForm[]>([]);
     const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
     const [isTotalManual, setIsTotalManual] = useState(false);
-    const [expectedDelivery, setExpectedDelivery] = useState<Date | null>(null);
+    const [expectedDelivery, setExpectedDelivery] = useState<Date | null>(() => {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() + 30);
+        return now;
+    });
     const [selectedRoomNo, setSelectedRoomNo] = useState("");
     const [selectedMenuGroups, setSelectedMenuGroups] = useState({})
     const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -170,7 +174,7 @@ export function CreateOrder() {
             now.setMinutes(now.getMinutes() + 30);
             setExpectedDelivery(now);
         }
-    }, []);
+    }, [expectedDelivery]);
 
     useEffect(() => {
         if (prefillApplied.current) return;

@@ -47,7 +47,7 @@ import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import KitchenInventoryBulkAdjustSheet from "@/components/KitchenInventoryBulkAdjustSheet";
 import { motion } from "framer-motion";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
-import PropertyViewSection from "@/components/PropertyViewSection";
+import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
 import { cn } from "@/lib/utils";
 
@@ -800,13 +800,13 @@ export default function KitchenInventory() {
                                 </div>
 
                                 {sheetTab === "summary" && (
-                                    <PropertyViewSection title="Inventory Overview" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                    <CardSectionView title="Inventory Overview" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                         <ViewField label="Item Name" value={selectedItem.name} className="sm:col-span-2" />
                                         <ViewField label="Category" value={selectedItem.inventory_type} />
                                         <ViewField label="Reorder Level" value={selectedItem.reorder_level} />
                                         <ViewField label="Current Stock" value={`${selectedItem.quantity} ${selectedItem.unit}`} />
                                         <ViewField label="Status" value={selectedItem.is_active ? "Active" : "Inactive"} />
-                                    </PropertyViewSection>
+                                    </CardSectionView>
                                 )}
 
                                 {sheetTab === "history" && (

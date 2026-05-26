@@ -21,7 +21,7 @@ import { motion } from "framer-motion";
 import { GridBadge } from "@/components/ui/grid-badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import PropertyViewSection from "@/components/PropertyViewSection";
+import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
 
 
@@ -293,7 +293,7 @@ export function OrderItemsModal({
                         {/* ================= INFORMATION GRID ================= */}
                         {!editMode ? (
                             <div className="space-y-4">
-                                <PropertyViewSection title="Order Details" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-2.5">
+                                <CardSectionView title="Order Details" titleClassName="text-sm font-semibold text-primary/90 tracking-normal border-b-0 pb-0 mb-4" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-2.5">
                                     <ViewField label="Order ID" value={`#${formatOrderDisplayId(data.id)}`} />
                                     <ViewField label="Guest Name" value={data.guest_name || "Guest Order"} />
                                     <ViewField label="Mobile Number" value={data.guest_mobile} />
@@ -316,27 +316,13 @@ export function OrderItemsModal({
                                     {data.notes && (
                                         <ViewField label="Order Notes" value={data.notes} className="sm:col-span-2 lg:col-span-3" />
                                     )}
-                                    <div>
-                                        <Label className="text-[10px] font-bold text-muted-foreground tracking-widest">Order Status</Label>
-                                        <div className="mt-0.5">
-                                            <GridBadge status={data.order_status} statusType="order" className="h-6 px-3 text-[10px] font-bold">
-                                                {data.order_status}
-                                            </GridBadge>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <Label className="text-[10px] font-bold text-muted-foreground tracking-widest">Payment Status</Label>
-                                        <div className="mt-0.5">
-                                            <GridBadge status={data.payment_status} statusType="payment" className="h-6 px-3 text-[10px] font-bold">
-                                                {data.payment_status}
-                                            </GridBadge>
-                                        </div>
-                                    </div>
-                                </PropertyViewSection>
+                                    <ViewField label="Order Status" value={data.order_status} />
+                                    <ViewField label="Payment Status" value={data.payment_status} />
+                                </CardSectionView>
                             </div>
                         ) : (
                             <div className="space-y-5">
-                                <PropertyViewSection title="Order Details" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-2.5">
+                                <CardSectionView title="Order Details" titleClassName="text-sm font-semibold text-primary/90 tracking-normal border-b-0 pb-0 mb-4" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-2.5">
                                     <ViewField label="Order ID" value={`#${formatOrderDisplayId(data.id)}`} />
                                     <ViewField label="Guest Name" value={data.guest_name || "Guest Order"} />
                                     <ViewField label="Mobile Number" value={data.guest_mobile} />
@@ -354,7 +340,7 @@ export function OrderItemsModal({
                                         <ViewField label="Delivery Partner" value={data.delivery_partner_name || "—"} />
                                     )}
                                     <ViewField label="Expected Delivery" value={data.expected_delivery_time ? formatAppDateTime(data.expected_delivery_time) : "—"} />
-                                </PropertyViewSection>
+                                </CardSectionView>
 
                                 <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-4">
                                     <h3 className="text-sm font-semibold text-primary/90">
@@ -392,7 +378,7 @@ export function OrderItemsModal({
                         )}
 
                         {/* ================= ITEMS SECTION ================= */}
-                        <PropertyViewSection title="Items Ordered" className="mt-0">
+                        <CardSectionView title="Items Ordered" titleClassName="text-sm font-semibold text-primary/90 tracking-normal border-b-0 pb-0 mb-4" className="mt-0">
                             <div className="border border-border rounded-lg overflow-hidden bg-background shadow-sm">
                                 <AppDataGrid
                                     density="compact"
@@ -439,7 +425,7 @@ export function OrderItemsModal({
                                     minWidth="540px"
                                 />
                             </div>
-                        </PropertyViewSection>
+                        </CardSectionView>
                             </div>
                         )}
 

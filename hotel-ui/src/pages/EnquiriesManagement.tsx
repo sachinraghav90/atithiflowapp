@@ -35,7 +35,7 @@ import { filterGridRowsByQuery } from "@/utils/filterGridRows";
 import { GridBadge } from "@/components/ui/grid-badge";
 import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
 import { formatAppDate, formatAppDateTime, parseAppDate, toDatetimeLocalValue } from "@/utils/dateFormat";
-import PropertyViewSection from "@/components/PropertyViewSection";
+import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
 
 type EnquiryStatus =
@@ -569,23 +569,23 @@ export default function EnquiriesManagement() {
                             <div className="space-y-4">
                                 {sheetTab === "summary" && (
                                     <div className="space-y-4">
-                                        <PropertyViewSection title="Guest Profile" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                        <CardSectionView title="Guest Profile" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                             <ViewField label="Guest Name" value={selected.guest_name} />
                                             <ViewField label="Mobile" value={selected.mobile} />
                                             <ViewField label="Email" value={selected.email} />
                                             <ViewField label="City" value={selected.city} />
                                             <ViewField label="Source" value={selected.source || "Direct"} />
                                             <ViewField label="Enquiry Type" value={selected.enquiry_type || "General"} />
-                                        </PropertyViewSection>
+                                        </CardSectionView>
 
-                                        <PropertyViewSection title="Stay Schedule" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                        <CardSectionView title="Stay Schedule" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                             <ViewField label="Check In" value={selected.check_in ? formatAppDate(selected.check_in) : "—"} />
                                             <ViewField label="Check Out" value={selected.check_out ? formatAppDate(selected.check_out) : "—"} />
                                             <ViewField label="Selected Plan" value={selected.plan} />
                                             <ViewField label="Status" value={formatEnquiryStatus(selected.status)} />
-                                        </PropertyViewSection>
+                                        </CardSectionView>
 
-                                        <PropertyViewSection title="Room Requirements" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                        <CardSectionView title="Room Requirements" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                             {selected.room_details?.length ? (
                                                 selected.room_details.map((room, i) => (
                                                     <ViewField
@@ -603,14 +603,14 @@ export default function EnquiriesManagement() {
                                             )}
                                             <ViewField label="Total Guests" value={`${selected.total_members || 0} Members • ${selected.child || 0} Children`} />
                                             <ViewField label="Offer Amount" value={selected.offer_amount ? `₹ ${selected.offer_amount}` : "—"} />
-                                        </PropertyViewSection>
+                                        </CardSectionView>
 
-                                        <PropertyViewSection title="Internal Activity Notes" className="grid grid-cols-1 gap-y-4">
+                                        <CardSectionView title="Internal Activity Notes" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 gap-y-4">
                                             <ViewField
                                                 label="Notes"
                                                 value={selected.comment || "No activity notes recorded yet for this enquiry."}
                                             />
-                                        </PropertyViewSection>
+                                        </CardSectionView>
                                     </div>
                                 )}
 

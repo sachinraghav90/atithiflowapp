@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { formatAppDateTime } from "@/utils/dateFormat";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
-import PropertyViewSection from "@/components/PropertyViewSection";
+import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
 import { GridBadge } from "../ui/grid-badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
@@ -76,7 +76,7 @@ export default function RestaurantOrdersEmbedded({
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <div>
-                    <h3 className="text-lg font-semibold">Restaurant Orders</h3>
+                    <h3 className="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal">Restaurant Orders</h3>
                 </div>
 
                 <Button
@@ -97,7 +97,7 @@ export default function RestaurantOrdersEmbedded({
 
             <div className="space-y-4">
                 {orders && orders.map((order) => (
-                    <PropertyViewSection
+                    <CardSectionView
                         key={order.id}
                         title={
                             <TooltipProvider delayDuration={100}>
@@ -145,7 +145,7 @@ export default function RestaurantOrdersEmbedded({
                                 </GridBadge>
                             }
                         />
-                    </PropertyViewSection>
+                    </CardSectionView>
                 ))}
             </div>
         </div>

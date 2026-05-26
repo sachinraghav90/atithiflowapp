@@ -2130,7 +2130,7 @@ export default function ReservationManagement() {
 const CardSection = ({ title, subtitle, children }) => (
     <div className="rounded-[5px] border border-border bg-background p-5">
         <div className="mb-4">
-            <h3 className="text-sm font-semibold text-primary/90">{title}</h3>
+            <h3 className="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal">{title}</h3>
             {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
         </div>
         {children}

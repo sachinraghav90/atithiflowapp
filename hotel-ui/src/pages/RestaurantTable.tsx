@@ -37,7 +37,7 @@ import { cn } from "@/lib/utils";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { GridBadge } from "@/components/ui/grid-badge";
-import PropertyViewSection from "@/components/PropertyViewSection";
+import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
 const TABLE_STATUSES = ["Available", "Occupied", "Reserved", "Out of Service"];
 
@@ -400,21 +400,21 @@ export function RestaurantTables() {
 
                     {mode === "view" && selectedTable && (
                         <div className="mt-6 space-y-4">
-                            <PropertyViewSection title="Table Details" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                            <CardSectionView title="Table Details" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                 <ViewField label="Table ID" value={formatModuleDisplayId("table", selectedTable.id)} />
                                 <ViewField label="Table Number" value={selectedTable.table_no} />
                                 <ViewField label="Capacity" value={`${selectedTable.capacity} Persons`} />
                                 <ViewField label="Location" value={selectedTable.location || "No location specified"} />
-                            </PropertyViewSection>
+                            </CardSectionView>
 
-                            <PropertyViewSection title="Status & Pricing" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                            <CardSectionView title="Status & Pricing" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                 <ViewField label="Status" value={
                                     <GridBadge status={selectedTable.status} statusType="restaurantTable">
                                         {selectedTable.status}
                                     </GridBadge>
                                 } />
                                 <ViewField label="Min Order Amount" value={`₹${selectedTable.min_order_amount || 0}`} />
-                            </PropertyViewSection>
+                            </CardSectionView>
 
                             <div className="flex justify-end gap-3 pt-4 border-t border-border">
                                 <Button

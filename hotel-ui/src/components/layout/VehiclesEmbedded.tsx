@@ -189,7 +189,7 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
         <div className="space-y-4">
             <div className="flex items-center justify-between gap-3">
                 <div>
-                    <p className="mb-3 text-[12px] font-bold text-primary">Vehicles</p>
+                    <p className="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal">Vehicles</p>
                     <p className="text-[11px] text-muted-foreground/80">
                         Manage multiple vehicle entries in one save.
                     </p>

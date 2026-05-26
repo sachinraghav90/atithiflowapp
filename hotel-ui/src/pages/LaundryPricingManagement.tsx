@@ -31,7 +31,7 @@ import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { useGridPagination } from "@/hooks/useGridPagination";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { GridBadge } from "@/components/ui/grid-badge";
-import PropertyViewSection from "@/components/PropertyViewSection";
+import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
 
 /* ---------------- Types ---------------- */
@@ -616,15 +616,15 @@ export default function LaundryPricingManagement() {
 
                                 {sheetTab === "summary" && (
                                     <div className="space-y-4">
-                                        <PropertyViewSection title="Laundry Item Details" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                        <CardSectionView title="Laundry Item Details" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                             <ViewField label="Item Name" value={selectedItem.item_name} />
                                             <ViewField label="Item Rate" value={`₹ ${selectedItem.item_rate}`} />
                                             <ViewField label="Status" value={selectedItem.is_active ? "Active" : "Inactive"} />
-                                        </PropertyViewSection>
+                                        </CardSectionView>
 
-                                        <PropertyViewSection title="Description" className="grid grid-cols-1 gap-y-4">
+                                        <CardSectionView title="Description" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 gap-y-4">
                                             <ViewField label="Description" value={selectedItem.description || "No description provided."} />
-                                        </PropertyViewSection>
+                                        </CardSectionView>
                                     </div>
                                 )}
 

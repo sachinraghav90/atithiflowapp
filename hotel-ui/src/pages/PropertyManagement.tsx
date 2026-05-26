@@ -31,7 +31,7 @@ import PropertyCorporate from "@/components/property-form/sections/PropertyCorpo
 
 
 import { usePermission } from "@/rbac/usePermission";
-import PropertyViewSection from "@/components/PropertyViewSection";
+import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -1032,14 +1032,14 @@ export default function PropertyManagement() {
 
                                 {sheetTab === "summary" && (
                                     <div className="space-y-4">
-                                        <PropertyViewSection title="Property Identity" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                        <CardSectionView title="Property Identity" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                             <ViewField label="Property Name" value={newProperty.brand_name} />
                                             <ViewField label="Property Code" value={newProperty.serial_number} />
                                             <ViewField label="GSTIN" value={newProperty.gst_no} />
                                             <ViewField label="Status" value={newProperty.status} />
-                                        </PropertyViewSection>
+                                        </CardSectionView>
 
-                                        <PropertyViewSection title="Media" className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+                                        <CardSectionView title="Media" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
                                             {!imageError ? (
                                                 <div className="w-full aspect-video rounded-[5px] overflow-hidden bg-muted/60 border border-border/40">
                                                     <img
@@ -1068,38 +1068,38 @@ export default function PropertyManagement() {
                                                     <ImageIcon className="w-6 h-6 text-muted-foreground" />
                                                 </div>
                                             )}
-                                        </PropertyViewSection>
+                                        </CardSectionView>
 
-                                        <PropertyViewSection title="Location" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                        <CardSectionView title="Location" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                             <ViewField label="Address" value={newProperty.address_line_1} />
                                             <ViewField label="City" value={newProperty.city} />
                                             <ViewField label="State" value={newProperty.state} />
                                             <ViewField label="Country" value={newProperty.country} />
                                             <ViewField label="Postal Code" value={newProperty.postal_code} />
-                                        </PropertyViewSection>
+                                        </CardSectionView>
 
-                                        <PropertyViewSection title="Contact" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                        <CardSectionView title="Contact" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                             <ViewField label="Phone" value={newProperty.phone} />
                                             <ViewField label="Alternate Phone" value={newProperty.phone2} />
                                             <ViewField label="Email" value={newProperty.email} />
-                                        </PropertyViewSection>
+                                        </CardSectionView>
 
-                                        <PropertyViewSection title="Operations" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                        <CardSectionView title="Operations" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                             <ViewField label="Check In" value={newProperty.checkin_time} />
                                             <ViewField label="Check Out" value={newProperty.checkout_time} />
-                                        </PropertyViewSection>
+                                        </CardSectionView>
 
-                                        <PropertyViewSection title="Tax" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                        <CardSectionView title="Tax" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                             <ViewField label="GST %" value={newProperty.gst} />
                                             <ViewField label="Room Tax %" value={newProperty.room_tax_rate} />
-                                        </PropertyViewSection>
+                                        </CardSectionView>
 
                                         {newProperty.address_line_1_office && (
-                                            <PropertyViewSection title="Corporate Office" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                            <CardSectionView title="Corporate Office" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                                 <ViewField label="Address" value={newProperty.address_line_1_office} />
                                                 <ViewField label="City" value={newProperty.city_office} />
                                                 <ViewField label="Phone" value={newProperty.phone_office} />
-                                            </PropertyViewSection>
+                                            </CardSectionView>
                                         )}
                                     </div>
                                 )}

@@ -43,7 +43,7 @@ import PhonePrefixSelect from "@/components/forms/PhonePrefixSelect";
 import { formatReadableLabel } from "@/utils/formatString";
 import { getStatusColor } from "@/constants/statusColors";
 import { GridBadge } from "@/components/ui/grid-badge";
-import PropertyViewSection from "@/components/PropertyViewSection";
+import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
 import FormInput from "@/components/forms/FormInput";
 
@@ -553,22 +553,22 @@ export default function VendorsManagement() {
 
                                 {sheetTab === "summary" && (
                                     <div className="space-y-4">
-                                        <PropertyViewSection title="Basic Information" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                        <CardSectionView title="Basic Information" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                             <ViewField label="Vendor Name" value={form.name} />
                                             <ViewField label="Primary Category" value={formatReadableLabel(form.vendor_type)} />
                                             <ViewField label="Relationship Status" value={form.is_active ? "Active" : "Inactive"} />
-                                        </PropertyViewSection>
+                                        </CardSectionView>
 
-                                        <PropertyViewSection title="Contact Channels" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                        <CardSectionView title="Contact Channels" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                             <ViewField label="Direct Contact" value={form.contact_no} />
                                             <ViewField label="Official Email" value={form.email_id} />
                                             <ViewField label="Physical Address" value={form.address} />
-                                        </PropertyViewSection>
+                                        </CardSectionView>
 
-                                        <PropertyViewSection title="Compliance & Tax" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                        <CardSectionView title="Compliance & Tax" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                             <ViewField label="PAN Number" value={form.pan_no} />
                                             <ViewField label="GST Identification" value={form.gst_no} />
-                                        </PropertyViewSection>
+                                        </CardSectionView>
                                     </div>
                                 )}
 

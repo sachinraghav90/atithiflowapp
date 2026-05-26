@@ -31,7 +31,7 @@ import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { useGridPagination } from "@/hooks/useGridPagination";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { GridBadge } from "@/components/ui/grid-badge";
-import PropertyViewSection from "@/components/PropertyViewSection";
+import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
 
 /* -------------------- Types -------------------- */
@@ -533,16 +533,16 @@ export default function PackageManagement() {
 
                                     {sheetTab === "summary" && (
                                         <div className="space-y-4">
-                                            <PropertyViewSection title="Plan Configuration" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                            <CardSectionView title="Plan Configuration" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                                 <ViewField label="Plan Name" value={selectedPackage?.package_name} />
                                                 <ViewField label="Base Price" value={selectedPackage?.base_price ? `₹ ${selectedPackage.base_price}` : "—"} />
                                                 <ViewField label="Type" value={selectedPackage?.system_generated ? "System" : "Custom"} />
                                                 <ViewField label="Status" value={selectedPackage?.is_active ? "Active" : "Inactive"} />
-                                            </PropertyViewSection>
+                                            </CardSectionView>
 
-                                            <PropertyViewSection title="Internal Description" className="grid grid-cols-1 gap-y-4">
+                                            <CardSectionView title="Internal Description" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 gap-y-4">
                                                 <ViewField label="Description" value={selectedPackage?.description || "No description provided."} />
-                                            </PropertyViewSection>
+                                            </CardSectionView>
                                         </div>
                                     )}
 
@@ -609,7 +609,7 @@ export default function PackageManagement() {
                                                 <Label className="text-foreground">Description</Label>
                                                 {selectedPackage?.system_generated ? (
                                                     <div className="bg-muted/10 p-3 rounded-[3px] border border-border/50 min-h-[80px]">
-                                                        <p className="text-sm text-muted-foreground whitespace-pre-wrap italic">
+                                                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">
                                                             {selectedPackage?.description || "No description provided"}
                                                         </p>
                                                     </div>

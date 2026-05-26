@@ -32,10 +32,10 @@ const money = (value: any) => {
 
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 10,
-    paddingBottom: 10,
-    paddingHorizontal: 12,
-    fontFamily: "Courier",
+    paddingTop: 14,
+    paddingBottom: 14,
+    paddingHorizontal: 16,
+    fontFamily: "Times-Roman",
     backgroundColor: "#ffffff",
     color: "#000000",
   },
@@ -44,57 +44,62 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 12,
-    fontWeight: "bold",
-    marginBottom: 2,
+    fontFamily: "Times-Bold",
+    marginBottom: 4,
   },
   subtitle: {
-    fontSize: 10,
-    fontWeight: "bold",
-    marginBottom: 8,
+    fontSize: 8.5,
+    fontFamily: "Times-Bold",
+    marginBottom: 10,
   },
   metaRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 2,
+    marginBottom: 3,
   },
   metaText: {
-    fontSize: 9,
+    fontSize: 8,
+    fontFamily: "Times-Roman",
   },
   divider: {
-    borderBottomWidth: 1,
-    borderBottomColor: "#000000",
+    borderBottomWidth: 0.8,
+    borderBottomColor: "#555555",
     borderBottomStyle: "dashed",
     marginVertical: 6,
   },
   sectionTitle: {
-    fontSize: 9,
-    fontWeight: "bold",
+    fontSize: 8,
+    fontFamily: "Times-Bold",
     marginBottom: 4,
   },
   detailRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 2,
+    marginBottom: 3.5,
   },
   detailLabel: {
-    fontSize: 9,
-    fontWeight: "bold",
+    fontSize: 8,
+    fontFamily: "Times-Bold",
   },
-  detailValue: { fontSize: 9 },
+  detailValue: {
+    fontSize: 8,
+    fontFamily: "Times-Roman",
+  },
   tableHeader: {
     flexDirection: "row",
-    paddingVertical: 2,
+    paddingVertical: 3,
   },
   tableRow: {
     flexDirection: "row",
-    paddingVertical: 2,
+    paddingVertical: 3.5,
   },
   th: {
-    fontSize: 9,
-    fontWeight: "bold",
+    fontSize: 8,
+    fontFamily: "Times-Bold",
   },
   td: {
-    fontSize: 9,
+    fontSize: 8,
+    fontFamily: "Times-Roman",
   },
   right: {
     textAlign: "right",
@@ -102,20 +107,22 @@ const styles = StyleSheet.create({
   totalRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 2,
+    paddingVertical: 3,
   },
   totalLabel: {
-    fontSize: 10,
-    fontWeight: "bold",
+    fontSize: 8.5,
+    fontFamily: "Times-Bold",
   },
   totalValue: {
-    fontSize: 10,
-    fontWeight: "bold",
+    fontSize: 8.5,
+    fontFamily: "Times-Bold",
   },
   footNote: {
-    marginTop: 10,
-    fontSize: 9,
+    marginTop: 14,
+    fontSize: 7.5,
+    fontFamily: "Times-Roman",
     textAlign: "center",
+    lineHeight: 1.3,
   },
 });
 
@@ -134,31 +141,87 @@ export default function RestaurantOrderSummaryPDF({ order, propertyName }: Props
   const showGuestMobile = isPrintableValue(order?.guest_mobile);
   const showBookingId = isPrintableValue(order?.booking_id);
   const showRoom = isPrintableValue(order?.room_no);
-  const showTable = orderType === "Restaurant" || isPrintableValue(order?.table_no);
+  const showTable = orderType === "Restaurant" && isPrintableValue(order?.table_no);
   const showOrderStatus = isPrintableValue(order?.order_status);
   const showPaymentStatus = isPrintableValue(order?.payment_status);
   const showNotes = isPrintableValue(order?.notes);
+  const showExpectedDelivery = isPrintableValue(order?.expected_delivery_time);
+  const formattedExpectedDelivery = order?.expected_delivery_time ? formatAppDateTime(order.expected_delivery_time) : "";
+  const showDeliveryPartner = isPrintableValue(order?.delivery_partner_name);
   const formattedDateTime = safeText(formatAppDateTime(order?.order_date));
   const [datePart, timePart] = String(formattedDateTime).split(" ");
   const modeText = showPaymentStatus ? safeText(order?.payment_status) : "Pending";
 
+  // Calculate dynamic page height to fit the content perfectly without empty trailing space.
+  let dynamicHeight = 260; // base height (margins + headers + first 3 meta rows + totals + payment status + footnote)
+  if (showGuestMobile || showBookingId) dynamicHeight += 14;
+  if (showExpectedDelivery || showDeliveryPartner) dynamicHeight += 14;
+  if (hasItems) {
+    dynamicHeight += 38; // table header, borders
+    dynamicHeight += items.length * 18; // height per item row
+  }
+  if (showOrderStatus) dynamicHeight += 14;
+  if (showNotes) {
+    const notesStr = String(order?.notes || "");
+    const lines = Math.max(1, Math.ceil(notesStr.length / 32));
+    dynamicHeight += 12 + (lines * 12);
+  }
+
   return (
     <Document>
-      <Page size={[226, 600]} style={styles.page}>
+      <Page size={[226, dynamicHeight]} style={styles.page}>
         <Text style={[styles.center, styles.title]}>{headerTitle}</Text>
         <Text style={[styles.center, styles.subtitle]}>Original Receipt</Text>
         <View style={styles.metaRow}>
-          <Text style={styles.metaText}>Date:{safeText(datePart)}</Text>
-          <Text style={styles.metaText}>Time:{safeText(timePart)}</Text>
+          <Text style={styles.metaText}>{"Date:  " + safeText(datePart)}</Text>
+          <Text style={styles.metaText}>{"Time:  " + safeText(timePart)}</Text>
         </View>
         <View style={styles.metaRow}>
-          <Text style={styles.metaText}>Order:{safeText(orderId)}</Text>
-          <Text style={styles.metaText}>{showTable ? `Table:${safeText(order?.table_no)}` : `Room:${safeText(order?.room_no)}`}</Text>
+          <Text style={styles.metaText}>{"Order:  " + safeText(orderId)}</Text>
+          {orderType === "Restaurant" && showTable ? (
+            <Text style={styles.metaText}>{"Table:  " + safeText(order?.table_no)}</Text>
+          ) : orderType === "Room Service" && showRoom ? (
+            <Text style={styles.metaText}>{"Room:  " + safeText(order?.room_no)}</Text>
+          ) : (
+            <Text style={styles.metaText}></Text>
+          )}
         </View>
         <View style={styles.metaRow}>
-          <Text style={styles.metaText}>Type:{safeText(orderType)}</Text>
-          {showGuestName && <Text style={styles.metaText}>Guest:{safeText(order?.guest_name)}</Text>}
+          <Text style={styles.metaText}>{"Type:  " + safeText(orderType)}</Text>
+          {showGuestName ? (
+            <Text style={styles.metaText}>{"Guest:  " + safeText(order?.guest_name)}</Text>
+          ) : (
+            <Text style={styles.metaText}></Text>
+          )}
         </View>
+        {(showGuestMobile || showBookingId) && (
+          <View style={styles.metaRow}>
+            {showGuestMobile ? (
+              <Text style={styles.metaText}>{"Mobile:  " + safeText(order?.guest_mobile)}</Text>
+            ) : (
+              <Text style={styles.metaText}></Text>
+            )}
+            {showBookingId ? (
+              <Text style={styles.metaText}>{"Booking:  " + safeText(formatModuleDisplayId("booking", order.booking_id))}</Text>
+            ) : (
+              <Text style={styles.metaText}></Text>
+            )}
+          </View>
+        )}
+        {(showExpectedDelivery || showDeliveryPartner) && (
+          <View style={styles.metaRow}>
+            {showExpectedDelivery ? (
+              <Text style={styles.metaText}>{"Exp Delivery:  " + safeText(formattedExpectedDelivery)}</Text>
+            ) : (
+              <Text style={styles.metaText}></Text>
+            )}
+            {showDeliveryPartner ? (
+              <Text style={styles.metaText}>{"Delivery:  " + safeText(order?.delivery_partner_name)}</Text>
+            ) : (
+              <Text style={styles.metaText}></Text>
+            )}
+          </View>
+        )}
         <View style={styles.divider} />
 
         {hasItems && (
@@ -200,7 +263,7 @@ export default function RestaurantOrderSummaryPDF({ order, propertyName }: Props
         </View>
         <View style={styles.divider} />
         <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>MODE:</Text>
+          <Text style={styles.detailLabel}>PAYMENT STATUS:</Text>
           <Text style={styles.detailValue}>{modeText}</Text>
         </View>
         {showOrderStatus && (

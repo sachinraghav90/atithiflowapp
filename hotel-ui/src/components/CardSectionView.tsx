@@ -5,7 +5,7 @@ type Props = {
     titleClassName?: string;
 };
 
-export default function PropertyViewSection({ title, children, className, titleClassName }: Props) {
+export default function CardSectionView({ title, children, className, titleClassName }: Props) {
 
     return (
         <section className="space-y-4 rounded-[5px] border-2 border-primary/50 bg-background p-4 shadow-sm">

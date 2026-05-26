@@ -835,7 +835,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px]">
                             {/* Left Side: Guest Details */}
                             <div className="px-5 py-3">
-                                <p className="mb-3 text-[12px] font-bold text-primary">
+                                <p className="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal">
                                     Guest Details
                                 </p>
 
@@ -861,7 +861,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                 <div className="space-y-6">
                                     {/* Emergency Contact */}
                                     <div>
-                                        <p className="mb-3 text-[12px] font-bold text-primary">
+                                        <p className="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal">
                                             Emergency Contact
                                         </p>
                                         <div className="space-y-3">
@@ -879,7 +879,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                     {/* Visa Details */}
                                     {g.nationality?.toLowerCase() === "foreigner" && (
                                         <div className="pt-3 border-t border-border/30">
-                                            <p className="mb-3 text-[12px] font-bold text-primary">Visa Details</p>
+                                            <p className="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal">Visa Details</p>
                                             <div className="space-y-3">
                                                 <InfoRow label="Visa No" value={g.visa_number} />
                                                 <InfoRow label="Issue" value={formatReadableDate(g.visa_issue_date)} />
