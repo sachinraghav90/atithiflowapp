@@ -83,6 +83,36 @@ Most services:
 
 This keeps the backend explicit and debuggable, but it also means consistency depends on service discipline rather than framework conventions.
 
+## Application Status Models & Business Logic
+
+### 1. Daily Room Status Logic
+The Room Status board computes room states dynamically per target date in the backend (`Room.Service.js`). It does not rely solely on a single static string in the database, but instead resolves the status using a priority-based rule engine against the `booking_overlap` and `ref_rooms` tables:
+- **`CHECKED_IN` (Occupied)**: Highest priority. If a room has an active booking that is `CHECKED_IN` on the target day, the room is occupied.
+- **`CHECKED_OUT` evaluation**: If a room was vacated on the target day, the system checks the physical `dirty` flag in the `ref_rooms` table:
+  - If `dirty = true`, the room is marked as **`DIRTY`**.
+  - If `dirty = false`, the room is marked as **`FREE`**.
+- **`BOOKED` (Advance Booked)**: If the room has a booking status of `BOOKED` or `CONFIRMED` on the target day, it shows as booked.
+- **`FREE` (Default fallback)**: If there are NO overlapping bookings for the target day, the room defaults to **`FREE`**, ignoring the physical `dirty` flag for past unoccupied days.
+
+### 2. Booking Status Lifecycle
+Bookings (`Booking.service.js`) move through the following primary states:
+- **`RESERVED`**: A hold is placed but payment or confirmation might be pending.
+- **`CONFIRMED`**: The booking is locked in.
+- **`CHECKED_IN`**: The guest has arrived and the room is occupied.
+- **`CHECKED_OUT`**: The guest has departed. `actual_departure` timestamp is recorded.
+- **`NO_SHOW`**: The guest did not arrive on the `estimated_arrival` date.
+- **`CANCELLED`**: The booking was voided before arrival.
+
+### 3. Restaurant Order Statuses
+Restaurant orders (`RestaurantOrder.service.js`) track both fulfillment and payment independently:
+- **`order_status`**: Defaults to `New` when an order is created. Can be updated by staff through the lifecycle (e.g., preparing, delivered).
+- **`payment_status`**: Defaults to `Pending`. Updated when the bill is settled or routed to the room.
+
+### 4. Laundry Order Statuses
+Laundry orders (`LaundryOrder.service.js`) involve both internal tracking and external vendor coordination:
+- **`laundry_status`**: Represents the primary lifecycle. Starts as `PENDING`. Can be moved through active states and terminates at `DELIVERED` or `CANCELLED`. Once `DELIVERED` or `CANCELLED`, the order is locked from further edits.
+- **`vendor_status`**: Represents the handover state to a third-party laundry vendor. Defaults to `NOT_ALLOTTED` if no vendor is assigned, and updates as the vendor processes the items.
+
 ## Supabase Schema & Data Layer
 ### Data access model
 - Primary data access path: backend `pg` queries against Postgres
