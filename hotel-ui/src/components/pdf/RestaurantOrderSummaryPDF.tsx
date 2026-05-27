@@ -152,6 +152,14 @@ export default function RestaurantOrderSummaryPDF({ order, propertyName }: Props
   const [datePart, timePart] = String(formattedDateTime).split(" ");
   const modeText = showPaymentStatus ? safeText(order?.payment_status) : "Pending";
 
+  const subtotalAmount = order?.subtotal_amount != null ? Number(order.subtotal_amount) : Number(order?.total_amount || 0);
+  const gstRate = order?.gst_rate != null ? Number(order.gst_rate) : 0;
+  const cgstRate = order?.cgst_rate != null ? Number(order.cgst_rate) : 0;
+  const sgstRate = order?.sgst_rate != null ? Number(order.sgst_rate) : 0;
+  const cgstAmount = order?.cgst_amount != null ? Number(order.cgst_amount) : 0;
+  const sgstAmount = order?.sgst_amount != null ? Number(order.sgst_amount) : 0;
+  const grandTotalAmount = order?.grand_total_amount != null ? Number(order.grand_total_amount) : Number(order?.total_amount || 0);
+
   // Calculate dynamic page height to fit the content perfectly without empty trailing space.
   let dynamicHeight = 260; // base height (margins + headers + first 3 meta rows + totals + payment status + footnote)
   if (showGuestMobile || showBookingId) dynamicHeight += 14;
@@ -247,19 +255,19 @@ export default function RestaurantOrderSummaryPDF({ order, propertyName }: Props
 
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>Sub Total:</Text>
-          <Text style={styles.totalValue}>{money(order?.total_amount)}</Text>
+          <Text style={styles.totalValue}>{money(subtotalAmount)}</Text>
         </View>
         <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>CGST (0%):</Text>
-          <Text style={styles.totalValue}>0.00</Text>
+          <Text style={styles.totalLabel}>{`CGST (${cgstRate}%):`}</Text>
+          <Text style={styles.totalValue}>{money(cgstAmount)}</Text>
         </View>
         <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>SGST (0%):</Text>
-          <Text style={styles.totalValue}>0.00</Text>
+          <Text style={styles.totalLabel}>{`SGST (${sgstRate}%):`}</Text>
+          <Text style={styles.totalValue}>{money(sgstAmount)}</Text>
         </View>
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>Total:</Text>
-          <Text style={styles.totalValue}>{money(order?.total_amount)}</Text>
+          <Text style={styles.totalValue}>{money(grandTotalAmount)}</Text>
         </View>
         <View style={styles.divider} />
         <View style={styles.detailRow}>

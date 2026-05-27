@@ -161,6 +161,8 @@ class Property {
                 p.updated_on,
                 p.room_tax_rate,
                 p.gst,
+                p.restaurant_gst,
+                p.laundry_gst,
                 p.serial_number,
                 p.total_floors,
                 p.phone,
@@ -276,6 +278,9 @@ class Property {
                 restaurant_tables = 0,
             } = payload;
 
+            const restaurant_gst = payload.restaurant_gst !== undefined ? payload.restaurant_gst : payload.restaurantGst;
+            const laundry_gst = payload.laundry_gst !== undefined ? payload.laundry_gst : payload.laundryGst;
+
             const { rows } = await client.query(
                 `
                 INSERT INTO public.properties (
@@ -307,13 +312,15 @@ class Property {
                     phone2_office,
                     email_office,
                     status,
-                    restaurant_tables
+                    restaurant_tables,
+                    restaurant_gst,
+                    laundry_gst
                 )
                 VALUES (
                     $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
                     $11,$12,$13,$14,$15,$16,$17,$18,
                     $19,$20,$21,$22,$23,$24,$25,$26,
-                    $27,$28,$29
+                    $27,$28,$29,$30,$31
                 )
                 RETURNING id
                 `,
@@ -346,7 +353,9 @@ class Property {
                     phone2_office,
                     email_office,
                     status,
-                    Math.max(0, Number(restaurant_tables) || 0)
+                    Math.max(0, Number(restaurant_tables) || 0),
+                    Number(restaurant_gst || 0),
+                    Number(laundry_gst || 0)
                 ]
             );
 
@@ -514,6 +523,8 @@ class Property {
 
             const normalizePropertyFieldKey = (key) => {
                 if (key === "bookingInstructions") return "booking_instructions";
+                if (key === "restaurantGst") return "restaurant_gst";
+                if (key === "laundryGst") return "laundry_gst";
                 return key;
             };
 
@@ -783,7 +794,9 @@ class Property {
             `
             SELECT
             room_tax_rate,
-            gst
+            gst,
+            restaurant_gst,
+            laundry_gst
             FROM public.properties
             WHERE id = $1
             AND is_active = true
@@ -799,7 +812,8 @@ class Property {
         return {
             room_tax_rate: Number(rows[0].room_tax_rate),
             gst: Number(rows[0].gst),
-
+            restaurant_gst: Number(rows[0].restaurant_gst || 0),
+            laundry_gst: Number(rows[0].laundry_gst || 0),
         }
     }
 

@@ -59,6 +59,8 @@ type Property = {
     checkout_time?: string | null;
     image?: string | null;
     owner_user_id?: string | null;
+    restaurant_gst?: number;
+    laundry_gst?: number;
 };
 
 const EMPTY_PROPERTY = {
@@ -75,6 +77,8 @@ const EMPTY_PROPERTY = {
     is_active: true,
     room_tax_rate: 0,
     gst: 5,
+    restaurant_gst: 0,
+    laundry_gst: 0,
     serial_number: "001",
     serial_suffix: "",
     total_floors: 0,
@@ -369,6 +373,8 @@ export default function PropertyManagement() {
 
         fd.append('room_tax_rate', String(payload.room_tax_rate ?? 0))
         fd.append('gst', String(payload.gst ?? 0))
+        fd.append('restaurant_gst', String(payload.restaurant_gst ?? payload.restaurantGst ?? 0))
+        fd.append('laundry_gst', String(payload.laundry_gst ?? payload.laundryGst ?? 0))
 
         if (payload.serial_number) fd.append('serial_number', payload.serial_number)
         if (payload.total_floors) fd.append('total_floors', String(payload.total_floors))

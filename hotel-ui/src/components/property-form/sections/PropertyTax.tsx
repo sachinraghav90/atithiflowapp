@@ -12,6 +12,10 @@ type PropertyTaxData = {
     gst_no: string;
     room_tax_rate: string | number;
     gst: string | number;
+    restaurant_gst?: string | number;
+    laundry_gst?: string | number;
+    restaurantGst?: string | number;
+    laundryGst?: string | number;
     pan_no?: string;
     [key: string]: string | number | boolean | null | undefined;
 };
@@ -82,9 +86,7 @@ export default function PropertyTax({
                 Legal & Tax Information
             </h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-
-                {/* GSTIN */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
                 <div>
                     <FormInput
@@ -105,46 +107,105 @@ export default function PropertyTax({
 
                 {/* ROOM TAX RATE */}
 
-                <FormInput
-                    label="Room Tax Rate %"
-                    field="room_tax_rate"
-                    type="text"
-                    value={value}
-                    setValue={setValue}
-                    errors={errors}
-                    setErrors={setErrors}
-                    viewMode={viewMode}
-                    transform={(val: string) =>
-                        normalizeNumberInput(val)
-                    }
-                    maxLength={2}
-                />
-
-                {/* GST RATE SELECT */}
+                <div>
+                    <FormInput
+                        label="Room Tax Rate %"
+                        field="room_tax_rate"
+                        type="text"
+                        value={value}
+                        setValue={setValue}
+                        errors={errors}
+                        setErrors={setErrors}
+                        viewMode={viewMode}
+                        transform={(val: string) =>
+                            normalizeNumberInput(val)
+                        }
+                        maxLength={2}
+                    />
+                </div>
 
                 <div className="space-y-1">
                     <Label className="text-foreground">GST Rate for Rooms *</Label>
+                    <div className="flex gap-0">
+                        <NativeSelect
+                            disabled={viewMode}
+                            value={value.gst !== undefined && value.gst !== null && value.gst !== "" ? Number(value.gst) : ""}
+                            title={errors.gst?.message || ""}
+                            className={`w-full h-11 rounded-[3px] border px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 ${errors.gst
+                                ? "border-red-500 bg-background"
+                                : "border-border/70 bg-background"
+                                }`}
+                            onChange={(e) =>
+                                setValue((prev) => ({
+                                    ...prev,
+                                    gst: Number(e.target.value),
+                                }))
+                            }
+                        >
+                            <option value="" disabled>-- Please Select --</option>
+                            <option value={5}>5%</option>
+                            <option value={12}>12%</option>
+                            <option value={18}>18%</option>
+                        </NativeSelect>
+                    </div>
+                </div>
 
-                    <NativeSelect
-                        disabled={viewMode}
-                        value={value.gst}
-                        title={errors.gst?.message || ""}
-                        className={`w-full h-11 rounded-[3px] border px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 ${errors.gst
-                            ? "border-red-500 bg-background"
-                            : "border-border/70 bg-background"
-                            }`}
-                        onChange={(e) =>
-                            setValue((prev) => ({
-                                ...prev,
-                                gst: Number(e.target.value),
-                            }))
-                        }
-                    >
-                        <option value="" disabled>-- Please Select --</option>
-                        <option value={5}>5%</option>
-                        <option value={12}>12%</option>
-                        <option value={18}>18%</option>
-                    </NativeSelect>
+                {/* GST RATE FOR RESTAURANT SELECT */}
+
+                <div className="space-y-1">
+                    <Label className="text-foreground">GST Rate for Restaurant Orders *</Label>
+                    <div className="flex gap-0">
+                        <NativeSelect
+                            disabled={viewMode}
+                            value={value.restaurant_gst !== undefined && value.restaurant_gst !== null ? Number(value.restaurant_gst) : (value.restaurantGst !== undefined && value.restaurantGst !== null ? Number(value.restaurantGst) : 0)}
+                            title={errors.restaurant_gst?.message || errors.restaurantGst?.message || ""}
+                            className={`w-full h-11 rounded-[3px] border px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 ${(errors.restaurant_gst || errors.restaurantGst)
+                                ? "border-red-500 bg-background"
+                                : "border-border/70 bg-background"
+                                }`}
+                            onChange={(e) =>
+                                setValue((prev) => ({
+                                    ...prev,
+                                    restaurant_gst: Number(e.target.value),
+                                    restaurantGst: Number(e.target.value),
+                                }))
+                            }
+                        >
+                            <option value={0}>0%</option>
+                            <option value={5}>5%</option>
+                            <option value={12}>12%</option>
+                            <option value={18}>18%</option>
+                        </NativeSelect>
+                    </div>
+                </div>
+
+                {/* GST RATE FOR LAUNDRY SELECT */}
+
+                <div className="space-y-1">
+                    <Label className="text-foreground">GST Rate for Laundry Orders *</Label>
+                    <div className="flex gap-0">
+                        <NativeSelect
+                            disabled={viewMode}
+                            value={value.laundry_gst !== undefined && value.laundry_gst !== null ? Number(value.laundry_gst) : (value.laundryGst !== undefined && value.laundryGst !== null ? Number(value.laundryGst) : 0)}
+                            title={errors.laundry_gst?.message || errors.laundryGst?.message || ""}
+                            className={`w-full h-11 rounded-[3px] border px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 ${(errors.laundry_gst || errors.laundryGst)
+                                ? "border-red-500 bg-background"
+                                : "border-border/70 bg-background"
+                                }`}
+                            onChange={(e) =>
+                                setValue((prev) => ({
+                                    ...prev,
+                                    laundry_gst: Number(e.target.value),
+                                    laundryGst: Number(e.target.value),
+                                }))
+                            }
+                        >
+                            <option value={0}>0%</option>
+                            <option value={5}>5%</option>
+                            <option value={12}>12%</option>
+                            <option value={18}>18%</option>
+                        </NativeSelect>
+                    </div>
                 </div>
 
             </div>

@@ -312,7 +312,16 @@ export function OrderItemsModal({
                                     )}
                                     <ViewField label="Expected Delivery" value={data.expected_delivery_time ? formatAppDateTime(data.expected_delivery_time) : "—"} />
                                     <ViewField label="Order Date" value={formatAppDateTime(data.order_date)} />
-                                    <ViewField label="Order Total" value={`₹${Number(data.total_amount).toFixed(2)}`} />
+                                    {data.subtotal_amount != null ? (
+                                        <>
+                                            <ViewField label="Sub Total" value={`₹${Number(data.subtotal_amount).toFixed(2)}`} />
+                                            <ViewField label={`CGST (${Number(data.cgst_rate || 0)}%)`} value={`₹${Number(data.cgst_amount || 0).toFixed(2)}`} />
+                                            <ViewField label={`SGST (${Number(data.sgst_rate || 0)}%)`} value={`₹${Number(data.sgst_amount || 0).toFixed(2)}`} />
+                                            <ViewField label="Order Total" value={`₹${Number(data.grand_total_amount).toFixed(2)}`} />
+                                        </>
+                                    ) : (
+                                        <ViewField label="Order Total" value={`₹${Number(data.total_amount).toFixed(2)}`} />
+                                    )}
                                     {data.notes && (
                                         <ViewField label="Order Notes" value={data.notes} className="sm:col-span-2 lg:col-span-3" />
                                     )}

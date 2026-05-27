@@ -178,6 +178,30 @@ class RestaurantOrderService {
         try {
             await client.query("BEGIN");
 
+            // Calculate subtotal from items
+            let subtotal = 0;
+            for (const item of items) {
+                const qty = Number(item.quantity) || 0;
+                const price = Number(item.unit_price) || 0;
+                subtotal += qty * price;
+            }
+            subtotal = Number(subtotal.toFixed(2));
+
+            // Fetch property's restaurant_gst
+            const propRes = await client.query(
+                `SELECT restaurant_gst FROM public.properties WHERE id = $1`,
+                [order.property_id]
+            );
+            const restaurant_gst = propRes.rows[0]?.restaurant_gst !== null ? Number(propRes.rows[0]?.restaurant_gst) : 0;
+
+            const gst_rate = restaurant_gst;
+            const cgst_rate = Number((gst_rate / 2).toFixed(2));
+            const sgst_rate = Number((gst_rate / 2).toFixed(2));
+            const cgst_amount = Number((subtotal * cgst_rate / 100).toFixed(2));
+            const sgst_amount = Number((subtotal * sgst_rate / 100).toFixed(2));
+            const grand_total_amount = Number((subtotal + cgst_amount + sgst_amount).toFixed(2));
+            const finalTotal = grand_total_amount;
+
             // 1. Create order
             const { rows: orderRows } = await client.query(
                 `
@@ -199,9 +223,17 @@ class RestaurantOrderService {
                     created_by,
                     delivery_partner_id,
                     order_type,
-                    notes
+                    notes,
+
+                    subtotal_amount,
+                    gst_rate,
+                    cgst_rate,
+                    sgst_rate,
+                    cgst_amount,
+                    sgst_amount,
+                    grand_total_amount
                 )
-                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
                 RETURNING *
                 `,
                 [
@@ -211,7 +243,7 @@ class RestaurantOrderService {
                     order.booking_id,
                     order.guest_name,
                     order.guest_mobile,
-                    order.total_amount,
+                    finalTotal,
                     order.order_status || "New",
                     order.payment_status || "Pending",
                     order.waiter_staff_id,
@@ -219,7 +251,15 @@ class RestaurantOrderService {
                     userId,
                     order.delivery_partner_id || null,
                     order.order_type,
-                    order.notes || null
+                    order.notes || null,
+
+                    subtotal,
+                    gst_rate,
+                    cgst_rate,
+                    sgst_rate,
+                    cgst_amount,
+                    sgst_amount,
+                    grand_total_amount
                 ]
             );
 

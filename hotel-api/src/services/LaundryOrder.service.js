@@ -41,51 +41,6 @@ class LaundryOrderService {
 
             const laundryType = bookingId ? "GUEST" : "HOTEL";
 
-            /* ---------- CREATE ORDER ---------- */
-
-            const orderQuery = `
-            INSERT INTO public.laundry_orders (
-                booking_id,
-                property_id,
-                vendor_id,
-                laundry_type,
-                laundry_status,
-                pickup_date,
-                delivery_date,
-                created_by,
-                vendor_status,
-                comments,
-                guest_name,
-                guest_mobile,
-                total_amount,
-                room_no
-            )
-            VALUES (
-                $1,$2,$3,$4,
-                'PENDING',
-                $5,$6,$7,$8,$9,$10,$11,$12,$13
-            )
-            RETURNING *;
-        `;
-
-            const orderRes = await client.query(orderQuery, [
-                bookingId,
-                propertyId,
-                vendorId,
-                laundryType,
-                pickupDate,
-                deliveryDate,
-                userId,
-                vendorStatus,
-                comments,
-                guestName,
-                guestMobile,
-                totalAmount,
-                roomNo
-            ]);
-
-            const order = orderRes.rows[0];
-
             /* ---------- FETCH MASTER ITEMS ---------- */
 
             const laundryIds = items.map(i => i.laundryId);
@@ -108,6 +63,92 @@ class LaundryOrderService {
                     Number(r.item_rate) || 0
                 ])
             );
+
+            // Calculate subtotal from items
+            let subtotal = 0;
+            for (const item of items) {
+                const qty = Number(item.itemCount) || 0;
+                const rate = rateMap.get(item.laundryId.toString()) || 0;
+                subtotal += qty * rate;
+            }
+            subtotal = Number(subtotal.toFixed(2));
+
+            // Fetch property's laundry_gst
+            const propRes = await client.query(
+                `SELECT laundry_gst FROM public.properties WHERE id = $1`,
+                [propertyId]
+            );
+            const laundry_gst = propRes.rows[0]?.laundry_gst !== null ? Number(propRes.rows[0]?.laundry_gst) : 0;
+
+            const gst_rate = laundry_gst;
+            const cgst_rate = Number((gst_rate / 2).toFixed(2));
+            const sgst_rate = Number((gst_rate / 2).toFixed(2));
+            const cgst_amount = Number((subtotal * cgst_rate / 100).toFixed(2));
+            const sgst_amount = Number((subtotal * sgst_rate / 100).toFixed(2));
+            const grand_total_amount = Number((subtotal + cgst_amount + sgst_amount).toFixed(2));
+            const finalTotal = grand_total_amount;
+
+            /* ---------- CREATE ORDER ---------- */
+
+            const orderQuery = `
+            INSERT INTO public.laundry_orders (
+                booking_id,
+                property_id,
+                vendor_id,
+                laundry_type,
+                laundry_status,
+                pickup_date,
+                delivery_date,
+                created_by,
+                vendor_status,
+                comments,
+                guest_name,
+                guest_mobile,
+                total_amount,
+                room_no,
+
+                subtotal_amount,
+                gst_rate,
+                cgst_rate,
+                sgst_rate,
+                cgst_amount,
+                sgst_amount,
+                grand_total_amount
+            )
+            VALUES (
+                $1,$2,$3,$4,
+                'PENDING',
+                $5,$6,$7,$8,$9,$10,$11,$12,$13,
+                $14,$15,$16,$17,$18,$19,$20
+            )
+            RETURNING *;
+        `;
+
+            const orderRes = await client.query(orderQuery, [
+                bookingId,
+                propertyId,
+                vendorId,
+                laundryType,
+                pickupDate,
+                deliveryDate,
+                userId,
+                vendorStatus,
+                comments,
+                guestName,
+                guestMobile,
+                finalTotal,
+                roomNo,
+
+                subtotal,
+                gst_rate,
+                cgst_rate,
+                sgst_rate,
+                cgst_amount,
+                sgst_amount,
+                grand_total_amount
+            ]);
+
+            const order = orderRes.rows[0];
 
             /* ---------- INSERT ITEMS ---------- */
 
