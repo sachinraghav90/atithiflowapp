@@ -4,15 +4,18 @@ import AppHeader from "@/components/layout/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { useGetMyPropertiesQuery, useGetSidebarLinksQuery, useRoomsStatusQuery } from "@/redux/services/hmsApi";
+import { useGetMyPropertiesQuery, useGetSidebarLinksQuery, useRoomsStatusQuery, useUpdateRoomDirtyStatusMutation } from "@/redux/services/hmsApi";
 import { useAppSelector } from "@/redux/hook";
 import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
 import { useLocation, useNavigate } from "react-router-dom";
 import { usePermission } from "@/rbac/usePermission";
 import { NativeSelect } from "@/components/ui/native-select";
-import { Plus } from "lucide-react";
+import { Plus, Brush } from "lucide-react";
 import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
 import { parseAppDate, toISODateOnly } from "@/utils/dateFormat";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Switch } from "@/components/ui/switch";
+import { apiToast } from "@/utils/apiToastPromise";
 
 /* ---------------- Types ---------------- */
 type Room = {
@@ -123,6 +126,55 @@ export default function RoomStatusBoard() {
     })
 
     const navigate = useNavigate()
+    const [updateRoomDirtyStatus, { isLoading: isUpdatingDirty }] = useUpdateRoomDirtyStatusMutation();
+
+    const [isDirtySheetOpen, setIsDirtySheetOpen] = useState(false);
+    const [dirtyStatuses, setDirtyStatuses] = useState<Record<string, boolean>>({});
+
+    useEffect(() => {
+        if (data?.rooms) {
+            const initial: Record<string, boolean> = {};
+            data.rooms.forEach(r => {
+                initial[r.ref_room_id.toString()] = r.dirty;
+            });
+            setDirtyStatuses(initial);
+        }
+    }, [data?.rooms, isDirtySheetOpen]);
+
+    const handleSaveDirtyStatus = async () => {
+        if (!propertyId) return;
+        
+        const updates = Object.entries(dirtyStatuses).map(([id, dirty]) => ({
+            id: Number(id),
+            dirty
+        }));
+
+        try {
+            await apiToast(
+                updateRoomDirtyStatus({ propertyId, updates }).unwrap(),
+                "Room dirty status updated successfully"
+            );
+            setIsDirtySheetOpen(false);
+        } catch (error) {
+            console.error("Failed to update room dirty status", error);
+        }
+    };
+
+    const handleCleanAll = () => {
+        setDirtyStatuses(prev => {
+            const next = { ...prev };
+            Object.keys(next).forEach(k => next[k] = false);
+            return next;
+        });
+    };
+
+    const handleUncleanAll = () => {
+        setDirtyStatuses(prev => {
+            const next = { ...prev };
+            Object.keys(next).forEach(k => next[k] = true);
+            return next;
+        });
+    };
 
     const filteredCheckIns = data?.checking_in || [];
     const filteredCheckOuts = data?.checking_out || [];
@@ -337,10 +389,82 @@ export default function RoomStatusBoard() {
                             ))}
                         </div>
 
+                        <div className="bg-card border rounded-[5px] p-4">
+                            <div className="flex justify-between items-center mb-3">
+                                <p className="font-semibold">Dirty Rooms</p>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-8 w-8 hover:bg-accent hover:text-accent-foreground rounded-[3px]"
+                                    onClick={() => setIsDirtySheetOpen(true)}
+                                >
+                                    <Brush className="h-4 w-4" />
+                                </Button>
+                            </div>
+                            {data?.rooms.filter(r => r.dirty).length === 0 ? (
+                                <p className="text-sm text-muted-foreground">All rooms clean</p>
+                            ) : (
+                                data?.rooms.filter(r => r.dirty).map((r, i) => (
+                                    <div key={i} className="flex items-center justify-between rounded-lg border px-3 py-2 mb-2 bg-gray-50/50">
+                                        <span className="font-medium text-sm">{r.room_no}</span>
+                                        <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Dirty</span>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
                     </div>
                 </div>
 
             </section>
+
+            {/* Dirty Rooms Sheet */}
+            <Sheet open={isDirtySheetOpen} onOpenChange={setIsDirtySheetOpen}>
+                <SheetContent side="right" className="w-full sm:max-w-md overflow-hidden bg-background flex flex-col h-screen max-h-screen">
+                    <SheetHeader className="mb-6 shrink-0 mt-6">
+                        <SheetTitle className="text-xl font-bold">Manage Dirty Rooms</SheetTitle>
+                        <p className="text-xs text-muted-foreground font-medium tracking-wide">
+                            Toggle room cleanliness status manually
+                        </p>
+                    </SheetHeader>
+                    
+                    <div className="flex gap-2 mb-6 shrink-0">
+                        <Button variant="outline" className="flex-1" onClick={handleCleanAll}>
+                            Clean All
+                        </Button>
+                        <Button variant="outline" className="flex-1" onClick={handleUncleanAll}>
+                            Unclean All
+                        </Button>
+                    </div>
+
+                    <div className="space-y-3 mb-6 flex-1 overflow-y-auto pr-2">
+                        {data?.rooms.map(r => (
+                            <div key={r.ref_room_id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                                <div>
+                                    <p className="font-medium">{r.room_no}</p>
+                                    <p className="text-xs text-muted-foreground">{getFloorName(r.floor_number)}</p>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <span className={cn("text-xs font-bold uppercase tracking-wider", dirtyStatuses[r.ref_room_id.toString()] ? "text-gray-500" : "text-green-600")}>
+                                        {dirtyStatuses[r.ref_room_id.toString()] ? "Dirty" : "Clean"}
+                                    </span>
+                                    <Switch 
+                                        checked={dirtyStatuses[r.ref_room_id.toString()] ?? false} 
+                                        onCheckedChange={(checked) => setDirtyStatuses(prev => ({...prev, [r.ref_room_id.toString()]: checked}))} 
+                                    />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="shrink-0 bg-background pt-4 border-t border-border mt-auto mb-6">
+                        <Button className="w-full" onClick={handleSaveDirtyStatus} disabled={isUpdatingDirty}>
+                            {isUpdatingDirty ? "Saving..." : "Save Changes"}
+                        </Button>
+                    </div>
+                </SheetContent>
+            </Sheet>
+
         </div>
     );
 }

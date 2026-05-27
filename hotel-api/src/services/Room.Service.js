@@ -332,6 +332,78 @@ class RoomService {
         }
     }
 
+    async bulkUpdateDirtyStatus({ propertyId, updates, updatedBy }) {
+        if (!updates || updates.length === 0) return [];
+
+        const client = await this.#DB.connect();
+
+        try {
+            await client.query("BEGIN");
+
+            const ids = updates.map(u => u.id);
+
+            // Fetch existing rooms to verify ownership
+            const { rows: existingRooms } = await client.query(
+                `
+                SELECT id
+                FROM public.ref_rooms
+                WHERE id = ANY($1) AND property_id = $2
+                `,
+                [ids, propertyId]
+            );
+
+            if (existingRooms.length !== ids.length) {
+                const eIds = new Set(existingRooms.map(r => r.id));
+                const missing = ids.filter(id => !eIds.has(id));
+                throw new Error(`Rooms not found or do not belong to property: ${missing.join(", ")}`);
+            }
+
+            const dirtyCases = [];
+            const bindings = [];
+            let i = 1;
+
+            for (const u of updates) {
+                if (u.dirty !== undefined) {
+                    dirtyCases.push(`WHEN id = $${i} THEN $${i + 1}`);
+                    bindings.push(u.id, u.dirty);
+                    i += 2;
+                }
+            }
+
+            if (dirtyCases.length === 0) {
+                await client.query("ROLLBACK");
+                return [];
+            }
+
+            bindings.push(updatedBy);
+            bindings.push(ids);
+
+            const updateQuery = `
+            UPDATE public.ref_rooms
+            SET
+                dirty = CASE
+                    ${dirtyCases.join(" ")}
+                    ELSE dirty
+                END,
+                updated_by = $${i},
+                updated_on = NOW()
+            WHERE id = ANY($${i + 1})
+            RETURNING id, property_id, floor_number, room_no, dirty
+            `;
+
+            const { rows: updatedRooms } = await client.query(updateQuery, bindings);
+
+            await client.query("COMMIT");
+            return updatedRooms;
+
+        } catch (err) {
+            await client.query("ROLLBACK");
+            throw err;
+        } finally {
+            client.release();
+        }
+    }
+
     async addRoom({
         propertyId,
         floorNumber,
@@ -909,10 +981,7 @@ class RoomService {
                     bo.drop
                 FROM room_meta rm
                 JOIN booking_overlap bo ON bo.ref_room_id = rm.ref_room_id
-                JOIN target_day td ON true
-                WHERE bo.booking_status IN ('BOOKED','CONFIRMED')
-                AND bo.actual_arrival IS NULL
-                AND bo.estimated_arrival::date = td.day
+                WHERE bo.booking_status = 'CHECKED_IN'
             ),
 
             checking_out AS (
@@ -921,14 +990,15 @@ class RoomService {
                     rm.room_category_name,
                     rm.bed_type_name,
                     rm.ac_type_name,
-                    bo.pickup,
-                    bo.drop
+                    b.pickup,
+                    b.drop
                 FROM room_meta rm
-                JOIN booking_overlap bo ON bo.ref_room_id = rm.ref_room_id
+                JOIN room_details rd ON rd.ref_room_id = rm.ref_room_id
+                JOIN bookings b ON b.id = rd.booking_id
                 JOIN target_day td ON true
-                WHERE bo.booking_status = 'CHECKED_IN'
-                AND bo.actual_departure IS NULL
-                AND COALESCE(bo.actual_departure, bo.effective_departure)::date = td.day
+                WHERE b.booking_status = 'CHECKED_OUT'
+                AND rd.is_cancelled = false
+                AND COALESCE(b.actual_departure, b.estimated_departure)::date = td.day
             )
 
             SELECT
@@ -936,7 +1006,7 @@ class RoomService {
             jsonb_build_object(
                 'checked_in', COUNT(*) FILTER (WHERE status = 'CHECKED_IN'),
                 'confirmed', COUNT(*) FILTER (WHERE status = 'BOOKED'),
-                'no_show', 0,
+                'checked_out', (SELECT COUNT(*) FROM checking_out),
                 'free', COUNT(*) FILTER (WHERE status = 'FREE'),
                 'dirty', COUNT(*) FILTER (WHERE status = 'DIRTY')
             ) AS summary,

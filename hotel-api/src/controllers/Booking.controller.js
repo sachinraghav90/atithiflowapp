@@ -62,6 +62,13 @@ class Booking {
             return res.status(201).json({ message: "Success", booking })
         } catch (error) {
             console.log("🚀 ~ Booking ~ createBooking ~ error:", error)
+            if (error?.code === "ROOM_NOT_AVAILABLE") {
+                return res.status(409).json({
+                    code: "ROOM_NOT_AVAILABLE",
+                    message: error.message,
+                    conflicted_rooms: error.conflicted_rooms || []
+                })
+            }
             return res.status(500).json({ message: "Error creating booking" })
         }
     }

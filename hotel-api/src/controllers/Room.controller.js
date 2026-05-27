@@ -47,6 +47,23 @@ class RoomController {
         }
     }
 
+    async updateDirtyStatus(req, res) {
+        try {
+            const { propertyId, updates } = req.body;
+            const updatedBy = req.user.user_id;
+
+            if (!propertyId || !updates || !Array.isArray(updates)) {
+                return res.status(400).json({ message: "Invalid payload: requires propertyId and updates array" });
+            }
+
+            const rows = await RoomService.bulkUpdateDirtyStatus({ propertyId, updates, updatedBy });
+            return res.status(200).json({ message: "Room dirty status updated successfully", data: rows });
+        } catch (error) {
+            console.log("🚀 ~ RoomController ~ updateDirtyStatus ~ error:", error);
+            return res.status(500).json({ message: "Error updating room dirty status" });
+        }
+    }
+
     async addRoom(req, res) {
         try {
             const createdBy = req.user.user_id

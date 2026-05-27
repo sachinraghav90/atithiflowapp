@@ -11,6 +11,8 @@ router.route("/")
     .post(supabaseAuth, requireRole(roles.ALL), RoomController.bulkCreateRooms.bind(RoomController))
     .patch(supabaseAuth, requireRole(roles.ALL), RoomController.bulkUpdateRooms.bind(RoomController))
 
+router.patch("/dirty-status", supabaseAuth, requireRole(roles.ALL), RoomController.updateDirtyStatus.bind(RoomController))
+
 router.route("/single-room")
     .post(supabaseAuth, requireRole(roles.ALL), RoomController.addRoom.bind(RoomController))
 

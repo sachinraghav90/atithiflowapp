@@ -18,7 +18,7 @@ class PropertyBankAccounts {
         try {
             const { propertyId } = req.params
             const accounts = await PropertyBankAccountService.getPropertyBankAccounts(propertyId)
-            return res.status(201).json(accounts)
+            return res.status(200).json(accounts)
         } catch (error) {
             console.log("🚀 ~ PropertyBankAccount ~ getBankAccounts ~ error:", error)
             return res.status(500).json({ message: "Error fetching bank accounts" })

@@ -281,39 +281,42 @@ class Booking {
 
             /* ------------------ ROOM AVAILABILITY CHECK ------------------ */
             for (const room of rooms) {
-                const { rowCount } = await client.query(
+                const { rows: conflicts } = await client.query(
                     `
-                SELECT 1
+                SELECT
+                    rr.room_no,
+                    b.id AS booking_id,
+                    b.booking_status
                 FROM public.room_details rd
                 JOIN public.bookings b
                   ON b.id = rd.booking_id
-                WHERE rd.ref_room_id = $1
+                 AND b.property_id = $1
+                 AND b.is_active = true
+                JOIN public.ref_rooms rr
+                  ON rr.id = rd.ref_room_id
+                WHERE rd.ref_room_id = $2
                   AND rd.is_cancelled = false
-
-                  AND b.booking_status IN (
-                        'CONFIRMED',
-                        'CHECKED_IN',
-                        'NO_SHOW'
-                  )
-
+                  AND b.booking_status IN ('CONFIRMED', 'CHECKED_IN')
                   AND (
-                        b.estimated_arrival < $3
-                    AND COALESCE(
-                            b.actual_departure,
-                            b.estimated_departure
-                        ) > $2
+                        b.estimated_arrival < $4
+                    AND COALESCE(b.actual_departure, b.estimated_departure) > $3
                   )
                 LIMIT 1
                 `,
                     [
+                        property_id,
                         room.ref_room_id,
                         estimated_arrival,
-                        estimated_departure
+                        estimated_departure,
                     ]
                 );
 
-                if (rowCount > 0) {
-                    throw new Error(`Room ${room.ref_room_id} is not available`);
+                if (conflicts.length > 0) {
+                    throw {
+                        code: "ROOM_NOT_AVAILABLE",
+                        message: "One or more rooms are not available",
+                        conflicted_rooms: conflicts
+                    };
                 }
 
                 /* ------------------ INSERT ROOM DETAILS ------------------ */

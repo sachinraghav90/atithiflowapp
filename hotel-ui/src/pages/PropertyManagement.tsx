@@ -9,7 +9,7 @@ import {
     SheetHeader,
     SheetTitle,
 } from "@/components/ui/sheet";
-import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
+import { AppDataGrid, DataGrid, DataGridHeader, DataGridRow, DataGridHead, DataGridCell, type ColumnDef } from "@/components/ui/data-grid";
 import { TableCell } from "@/components/ui/table";
 import { Building2, FilterX, Image as ImageIcon, Pencil, RefreshCcw } from "lucide-react";
 import { useAddPropertyBySuperAdminMutation, useAddPropertyMutation, useBulkUpsertPropertyFloorsMutation, useGetMeQuery, useGetPropertiesQuery, useGetPropertyBanksQuery, useGetPropertyFloorsQuery, useLazyGetUsersByPropertyAndRoleQuery, useLazyGetUsersByRoleQuery, useUpdatePropertiesMutation, useUpsertPropertyBanksMutation } from "@/redux/services/hmsApi";
@@ -179,7 +179,7 @@ export default function PropertyManagement() {
     const [addProperty] = useAddPropertyMutation()
     const [addPropertySuperAdmin] = useAddPropertyBySuperAdminMutation()
     const [updateProperty] = useUpdatePropertiesMutation()
-    
+
     const {
         data: properties,
         isLoading: propertiesLoading,
@@ -222,7 +222,7 @@ export default function PropertyManagement() {
             // getUsers("admin")
             getPropertyAdmins({ propertyId: selectedProperty.id, role: "admin" })
         }
-    }, [isLoggedIn, isSuperAdmin, getUsers, selectedProperty])
+    }, [isLoggedIn, isSuperAdmin, getUsers, selectedProperty, getPropertyAdmins, isOwner])
 
     useEffect(() => {
         if (mode === "edit" && floors.length > 0) {
@@ -245,7 +245,7 @@ export default function PropertyManagement() {
         if (mode === "add" && newProperty.floors.length !== newProperty.total_floors) {
             syncFloors(newProperty.total_floors);
         }
-    }, [newProperty.total_floors, mode]);
+    }, [newProperty.total_floors, newProperty.floors.length, mode]);
 
     useEffect(() => {
         return () => {
@@ -280,7 +280,7 @@ export default function PropertyManagement() {
     }, [newProperty?.id]);
 
     useEffect(() => {
-        if (mode !== "edit") return;
+        if (mode === "add") return;
 
         if (propertyBanks?.length) {
             setHasBankDetails(true);
@@ -348,6 +348,13 @@ export default function PropertyManagement() {
                 : [],
         [properties, propertiesError, propertiesLoading, propertyUninitialized]
     );
+
+    const maskAccountNumber = (value?: string) => {
+        if (!value) return value;
+        const trimmed = String(value).trim();
+        if (trimmed.length <= 4) return trimmed;
+        return `****${trimmed.slice(-4)}`;
+    };
 
     function buildPropertyFormData(payload: any) {
         const fd = new FormData()
@@ -882,103 +889,103 @@ export default function PropertyManagement() {
                             density="compact"
                             rowKey={(p: Property) => p.id}
                             columns={[
-                        {
-                            label: "Property ID",
-                            headClassName: "text-center",
-                            cellClassName: "text-center font-medium min-w-[90px]",
-                            render: (property: Property) => (
-                                <button
-                                    type="button"
-                                    className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
-                                    aria-label={`Open summary view for property ${formatModuleDisplayId("property", property.id)}`}
-                                    onClick={() => openPropertyDetails(property, "view")}
-                                >
-                                    {formatModuleDisplayId("property", property.id)}
-                                </button>
-                            ),
-                        },
-                        {
-                            label: "Property Name",
-                            cellClassName: "font-medium whitespace-nowrap max-w-[200px] truncate",
-                            render: (property: Property) => (
-                                <div className="flex items-center gap-2 truncate">
-                                    <Building2 className="h-4 w-4 text-primary shrink-0" />
-                                    <span className="truncate">{property.brand_name}</span>
-                                </div>
-                            ),
-                        },
-                        {
-                            label: "Address",
-                            cellClassName: "text-muted-foreground text-sm",
-                            render: (property: Property) => (
-                                <div>
-                                    {property.city}, {property.state}
-                                </div>
-                            ),
-                        },
-                        {
-                            label: "Email",
-                            key: "email",
-                            cellClassName: "text-muted-foreground text-xs whitespace-nowrap",
-                        },
-                        {
-                            label: "Phone",
-                            key: "phone",
-                            cellClassName: "font-mono text-xs text-muted-foreground whitespace-nowrap",
-                        },
-                        {
-                            label: "Status",
-                            headClassName: "text-center",
-                            cellClassName: "text-center whitespace-nowrap",
-                            render: (property: Property) => (
-                                <GridBadge status={property.is_active ? "active" : "inactive"} statusType="toggle">
-                                    {property.is_active ? "Active" : "Inactive"}
-                                </GridBadge>
-                            ),
-                        },
-                    ] as ColumnDef[]}
-                    data={propertyRows}
-                    loading={propertiesLoading}
-                    emptyText="No properties found"
-                    minWidth="760px"
-                    actionLabel=""
-                    actionClassName="text-center w-[60px]"
-                    showActions={permission?.can_create}
-                    actions={(property: Property) => (
-                        <>
-                            {permission?.can_create && (
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            size="icon"
-                                            variant="ghost"
-                                            className="h-7 w-7 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
-                                            disabled={updatingPropertyIds.has(property.id)}
-                                            aria-label={`View and edit details for property ${property.brand_name}`}
-                                            onClick={() => openPropertyDetails(property, "edit")}
+                                {
+                                    label: "Property ID",
+                                    headClassName: "text-center",
+                                    cellClassName: "text-center font-medium min-w-[90px]",
+                                    render: (property: Property) => (
+                                        <button
+                                            type="button"
+                                            className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
+                                            aria-label={`Open summary view for property ${formatModuleDisplayId("property", property.id)}`}
+                                            onClick={() => openPropertyDetails(property, "view")}
                                         >
-                                            <Pencil className="w-3.5 h-3.5 mx-auto" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>View / Edit Details</TooltipContent>
-                                </Tooltip>
+                                            {formatModuleDisplayId("property", property.id)}
+                                        </button>
+                                    ),
+                                },
+                                {
+                                    label: "Property Name",
+                                    cellClassName: "font-medium whitespace-nowrap max-w-[200px] truncate",
+                                    render: (property: Property) => (
+                                        <div className="flex items-center gap-2 truncate">
+                                            <Building2 className="h-4 w-4 text-primary shrink-0" />
+                                            <span className="truncate">{property.brand_name}</span>
+                                        </div>
+                                    ),
+                                },
+                                {
+                                    label: "Address",
+                                    cellClassName: "text-muted-foreground text-sm",
+                                    render: (property: Property) => (
+                                        <div>
+                                            {property.city}, {property.state}
+                                        </div>
+                                    ),
+                                },
+                                {
+                                    label: "Email",
+                                    key: "email",
+                                    cellClassName: "text-muted-foreground text-xs whitespace-nowrap",
+                                },
+                                {
+                                    label: "Phone",
+                                    key: "phone",
+                                    cellClassName: "font-mono text-xs text-muted-foreground whitespace-nowrap",
+                                },
+                                {
+                                    label: "Status",
+                                    headClassName: "text-center",
+                                    cellClassName: "text-center whitespace-nowrap",
+                                    render: (property: Property) => (
+                                        <GridBadge status={property.is_active ? "active" : "inactive"} statusType="toggle">
+                                            {property.is_active ? "Active" : "Inactive"}
+                                        </GridBadge>
+                                    ),
+                                },
+                            ] as ColumnDef[]}
+                            data={propertyRows}
+                            loading={propertiesLoading}
+                            emptyText="No properties found"
+                            minWidth="760px"
+                            actionLabel=""
+                            actionClassName="text-center w-[60px]"
+                            showActions={permission?.can_create}
+                            actions={(property: Property) => (
+                                <>
+                                    {permission?.can_create && (
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-7 w-7 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                                    disabled={updatingPropertyIds.has(property.id)}
+                                                    aria-label={`View and edit details for property ${property.brand_name}`}
+                                                    onClick={() => openPropertyDetails(property, "edit")}
+                                                >
+                                                    <Pencil className="w-3.5 h-3.5 mx-auto" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>View / Edit Details</TooltipContent>
+                                        </Tooltip>
+                                    )}
+                                </>
                             )}
-                        </>
-                    )}
-                    enablePagination={!!properties?.pagination}
-                    paginationProps={{
-                        page,
-                        totalPages: properties?.pagination?.totalPages ?? 1,
-                        setPage,
-                        disabled: propertiesFetching,
-                        totalRecords: properties?.pagination?.totalItems || properties?.data?.length || 0,
-                        limit,
-                        onLimitChange: (value) => {
-                            setLimit(value);
-                            setPage(1);
-                        }
-                    }}
-                />
+                            enablePagination={!!properties?.pagination}
+                            paginationProps={{
+                                page,
+                                totalPages: properties?.pagination?.totalPages ?? 1,
+                                setPage,
+                                disabled: propertiesFetching,
+                                totalRecords: properties?.pagination?.totalItems || properties?.data?.length || 0,
+                                limit,
+                                onLimitChange: (value) => {
+                                    setLimit(value);
+                                    setPage(1);
+                                }
+                            }}
+                        />
                     </div>
                 </div>
             </section>
@@ -1038,73 +1045,135 @@ export default function PropertyManagement() {
 
                                 {sheetTab === "summary" && (
                                     <div className="space-y-4">
-                                        <CardSectionView title="Property Identity" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
-                                            <ViewField label="Property Name" value={newProperty.brand_name} />
-                                            <ViewField label="Property Code" value={newProperty.serial_number} />
-                                            <ViewField label="GSTIN" value={newProperty.gst_no} />
-                                            <ViewField label="Status" value={newProperty.status} />
+                                        <CardSectionView
+                                            title="Property Identity & Media"
+                                            titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal"
+                                            className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 items-center"
+                                        >
+                                            {/* Left: Property Image Only */}
+                                            <div>
+                                                {!imageError ? (
+                                                    <div className="w-full aspect-video rounded-[5px] overflow-hidden bg-muted/60 border border-border/40">
+                                                        <img
+                                                            src={`${import.meta.env.VITE_API_URL}/properties/${newProperty.id}/image`}
+                                                            className="w-full h-full object-cover"
+                                                            onError={() => setImageError(true)}
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <div className="w-full aspect-video flex items-center justify-center bg-muted/60 rounded-[5px] border border-border/40">
+                                                        <ImageIcon className="w-6 h-6 text-muted-foreground" />
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Right: Logo Above Property Details */}
+                                            <div className="flex flex-col items-start gap-3">
+                                                {!logoError ? (
+                                                    <div className="w-20 aspect-square rounded-[5px] overflow-hidden bg-muted/60 border border-border/40 flex items-center justify-center">
+                                                        <img
+                                                            src={`${import.meta.env.VITE_API_URL}/properties/${newProperty.id}/logo`}
+                                                            className="w-full h-full object-contain"
+                                                            onError={() => setLogoError(true)}
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <div className="w-20 aspect-square flex items-center justify-center bg-muted/60 rounded-[5px] border border-border/40">
+                                                        <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                                                    </div>
+                                                )}
+
+                                                <div className="grid grid-cols-1 gap-x-3 gap-y-3">
+                                                    <ViewField label="Property Name" value={newProperty.brand_name} />
+                                                    <ViewField label="Property Code" value={newProperty.serial_number} />
+                                                    <ViewField label="GSTIN" value={newProperty.gst_no} />
+                                                    <ViewField label="Status" value={newProperty.status} />
+                                                </div>
+                                            </div>
                                         </CardSectionView>
 
-                                        <CardSectionView title="Media" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
-                                            {!imageError ? (
-                                                <div className="w-full aspect-video rounded-[5px] overflow-hidden bg-muted/60 border border-border/40">
-                                                    <img
-                                                        src={`${import.meta.env.VITE_API_URL}/properties/${newProperty.id}/image`}
-                                                        className="w-full h-full object-cover"
-                                                        onError={() => setImageError(true)}
-                                                    />
-                                                </div>
-                                            ) : (
-                                                <div className="h-24 w-24 flex items-center justify-center bg-muted/60 rounded-[5px] border border-border/40">
-                                                    <ImageIcon className="w-6 h-6 text-muted-foreground" />
-                                                </div>
-
-                                            )}
-
-                                            {!logoError ? (
-                                                <div className="w-24 aspect-square rounded-[5px] overflow-hidden bg-muted/60 border border-border/40 flex items-center justify-center">
-                                                    <img
-                                                        src={`${import.meta.env.VITE_API_URL}/properties/${newProperty.id}/logo`}
-                                                        className="w-full h-full object-contain"
-                                                        onError={() => setLogoError(true)}
-                                                    />
-                                                </div>
-                                            ) : (
-                                                <div className="h-24 w-24 flex items-center justify-center bg-muted/60 rounded-[5px] border border-border/40">
-                                                    <ImageIcon className="w-6 h-6 text-muted-foreground" />
-                                                </div>
-                                            )}
-                                        </CardSectionView>
-
-                                        <CardSectionView title="Location" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                        <CardSectionView
+                                            title="Location & Contact"
+                                            titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal"
+                                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4"
+                                        >
                                             <ViewField label="Address" value={newProperty.address_line_1} />
                                             <ViewField label="City" value={newProperty.city} />
                                             <ViewField label="State" value={newProperty.state} />
+
                                             <ViewField label="Country" value={newProperty.country} />
                                             <ViewField label="Postal Code" value={newProperty.postal_code} />
-                                        </CardSectionView>
-
-                                        <CardSectionView title="Contact" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                                             <ViewField label="Phone" value={newProperty.phone} />
+
                                             <ViewField label="Alternate Phone" value={newProperty.phone2} />
                                             <ViewField label="Email" value={newProperty.email} />
                                         </CardSectionView>
 
-                                        <CardSectionView title="Operations" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                        <CardSectionView
+                                            title="Operations & Property Configuration"
+                                            titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal"
+                                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4"
+                                        >
+                                            <ViewField label="Total Floors" value={newProperty.total_floors} />
+                                            <ViewField label="Total Rooms" value={newProperty.total_rooms} />
+
+                                            {/* Row 3: Operation fields below */}
                                             <ViewField label="Check In" value={newProperty.checkin_time} />
                                             <ViewField label="Check Out" value={newProperty.checkout_time} />
                                         </CardSectionView>
 
-                                        <CardSectionView title="Tax" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
-                                            <ViewField label="GST %" value={newProperty.gst} />
-                                            <ViewField label="Room Tax %" value={newProperty.room_tax_rate} />
+                                        <CardSectionView title="Legal & Tax Information" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
+                                            <ViewField label="GSTIN *" value={newProperty.gst_no} />
+                                            <ViewField label="Room Tax Rate %" value={newProperty.room_tax_rate} />
+                                            <ViewField label="GST Rate for Rooms *" value={newProperty.gst} />
+                                            <ViewField label="GST Rate for Restaurant Orders *" value={newProperty.restaurant_gst ?? newProperty.restaurantGst} />
+                                            <ViewField label="GST Rate for Laundry Orders *" value={newProperty.laundry_gst ?? newProperty.laundryGst} />
                                         </CardSectionView>
 
                                         {newProperty.address_line_1_office && (
-                                            <CardSectionView title="Corporate Office" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                            <CardSectionView title="Corporate Office" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4">
                                                 <ViewField label="Address" value={newProperty.address_line_1_office} />
+                                                <ViewField label="Address Line 2" value={newProperty.address_line_2_office} />
                                                 <ViewField label="City" value={newProperty.city_office} />
+                                                <ViewField label="State" value={newProperty.state_office} />
+                                                <ViewField label="Postal Code" value={newProperty.postal_code_office} />
+                                                <ViewField label="Country" value={newProperty.country_office} />
                                                 <ViewField label="Phone" value={newProperty.phone_office} />
+                                                <ViewField label="Alternate Phone" value={newProperty.phone2_office} />
+                                                <ViewField label="Email" value={newProperty.email_office} />
+                                            </CardSectionView>
+                                        )}
+
+                                        {hasBankDetails && Array.isArray(bankAccounts) && bankAccounts.length > 0 && (
+                                            <CardSectionView
+                                                title="Bank Details"
+                                                titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal"
+                                                className="space-y-3"
+                                            >
+                                                <div className="editable-grid-compact border rounded-[5px] overflow-hidden flex flex-col">
+                                                    <div className="overflow-x-auto w-full bg-background">
+                                                        <div className="w-full min-w-[860px]">
+                                                            <DataGrid>
+                                                                <DataGridHeader>
+                                                                    <DataGridHead>Bank Name</DataGridHead>
+                                                                    <DataGridHead>Account Holder</DataGridHead>
+                                                                    <DataGridHead>Account Number</DataGridHead>
+                                                                    <DataGridHead>IFSC Code</DataGridHead>
+                                                                </DataGridHeader>
+                                                                <tbody>
+                                                                    {bankAccounts.map((bank, index) => (
+                                                                        <DataGridRow key={bank.id ?? index}>
+                                                                            <DataGridCell>{bank.bank_name || "-"}</DataGridCell>
+                                                                            <DataGridCell>{bank.account_holder_name || "-"}</DataGridCell>
+                                                                            <DataGridCell>{maskAccountNumber(bank.account_number) || "-"}</DataGridCell>
+                                                                            <DataGridCell>{bank.ifsc_code || "-"}</DataGridCell>
+                                                                        </DataGridRow>
+                                                                    ))}
+                                                                </tbody>
+                                                            </DataGrid>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </CardSectionView>
                                         )}
                                     </div>

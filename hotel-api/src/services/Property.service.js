@@ -34,20 +34,20 @@ class Property {
                 p.*,
 
                 -- property address
-                pa.address_line_1,
-                pa.address_line_2,
-                pa.city,
-                pa.state,
-                pa.postal_code,
-                pa.country,
+                COALESCE(pa.address_line_1, p.address_line_1) AS address_line_1,
+                COALESCE(pa.address_line_2, p.address_line_2) AS address_line_2,
+                COALESCE(pa.city, p.city) AS city,
+                COALESCE(pa.state, p.state) AS state,
+                COALESCE(pa.postal_code, p.postal_code) AS postal_code,
+                COALESCE(pa.country, p.country) AS country,
 
                 -- office address
-                oa.address_line_1 AS address_line_1_office,
-                oa.address_line_2 AS address_line_2_office,
-                oa.city AS city_office,
-                oa.state AS state_office,
-                oa.postal_code AS postal_code_office,
-                oa.country AS country_office
+                COALESCE(oa.address_line_1, p.address_line_1_office) AS address_line_1_office,
+                COALESCE(oa.address_line_2, p.address_line_2_office) AS address_line_2_office,
+                COALESCE(oa.city, p.city_office) AS city_office,
+                COALESCE(oa.state, p.state_office) AS state_office,
+                COALESCE(oa.postal_code, p.postal_code_office) AS postal_code_office,
+                COALESCE(oa.country, p.country_office) AS country_office
 
             FROM public.properties p
             ${this.#addressJoins()}
@@ -144,12 +144,12 @@ class Property {
                 p.id,
                 p.brand_name,
 
-                pa.address_line_1,
-                pa.address_line_2,
-                pa.city,
-                pa.state,
-                pa.postal_code,
-                pa.country,
+                COALESCE(pa.address_line_1, p.address_line_1) AS address_line_1,
+                COALESCE(pa.address_line_2, p.address_line_2) AS address_line_2,
+                COALESCE(pa.city, p.city) AS city,
+                COALESCE(pa.state, p.state) AS state,
+                COALESCE(pa.postal_code, p.postal_code) AS postal_code,
+                COALESCE(pa.country, p.country) AS country,
 
                 p.checkin_time,
                 p.checkout_time,
@@ -178,12 +178,12 @@ class Property {
                 p.logo_mime,
                 p.restaurant_tables,
 
-                oa.address_line_1 AS address_line_1_office,
-                oa.address_line_2 AS address_line_2_office,
-                oa.city AS city_office,
-                oa.state AS state_office,
-                oa.postal_code AS postal_code_office,
-                oa.country AS country_office,
+                COALESCE(oa.address_line_1, p.address_line_1_office) AS address_line_1_office,
+                COALESCE(oa.address_line_2, p.address_line_2_office) AS address_line_2_office,
+                COALESCE(oa.city, p.city_office) AS city_office,
+                COALESCE(oa.state, p.state_office) AS state_office,
+                COALESCE(oa.postal_code, p.postal_code_office) AS postal_code_office,
+                COALESCE(oa.country, p.country_office) AS country_office,
 
                 p.phone_office,
                 p.phone2_office,

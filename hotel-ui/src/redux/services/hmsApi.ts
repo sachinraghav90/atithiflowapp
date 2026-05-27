@@ -334,6 +334,17 @@ export const hmsApi = createApi({
       invalidatesTags: ["Rooms"]
     }),
 
+    updateRoomDirtyStatus: builder.mutation({
+      query: (payload) => {
+        return {
+          url: `/rooms/dirty-status`,
+          method: "PATCH",
+          body: payload,
+        }
+      },
+      invalidatesTags: ["rooms-status"]
+    }),
+
     getRooms: builder.query({
       query: (propertyId) => {
         return {
@@ -1757,6 +1768,7 @@ export const {
   useGetPropertyByIdQuery,
   useGetRoomsQuery,
   useBulkUpdateRoomsMutation,
+  useUpdateRoomDirtyStatusMutation,
   useBulkUpsertRoomsMutation,
   useGetPackageByIdQuery,
   useGetPackagesByPropertyQuery,
