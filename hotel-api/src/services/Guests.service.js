@@ -285,12 +285,18 @@ class GuestsService {
             g.id_type,
             g.id_number,
             (g.id_proof IS NOT NULL) AS has_id_proof,
+            g.coming_from,
+            g.going_to,
+            g.emergency_contact,
+            g.emergency_contact_name,
+            a.address_line_1 AS address,
 
             vd.visa_number,
             vd.issued_date  AS visa_issue_date,
             vd.expiry_date  AS visa_expiry_date
 
         FROM public.guests g
+        ${this.#addressJoin()}
         LEFT JOIN public.visa_details vd
             ON vd.guest_id = g.id
 

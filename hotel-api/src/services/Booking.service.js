@@ -172,148 +172,11 @@ class Booking {
         return {
             pagination: {
                 page,
-                limit,
                 total: countRows[0].total,
                 totalPages: Math.ceil(countRows[0].total / limit),
             },
             bookings: rows,
-        }
-    }
-
-
-    async getBookingById(bookingId) {
-        const { rows } = await this.#DB.query(
-            `
-            SELECT
-            b.id,
-            b.property_id,
-            b.package_id,
-
-            b.booking_status,
-            b.booking_type,
-            b.booking_date,
-
-            b.estimated_arrival,
-            b.estimated_departure,
-            b.actual_arrival,
-            b.actual_departure,
-            b.estimated_arrival_time,
-
-            b.booking_nights,
-            b.adult,
-            b.child,
-            b.total_guest,
-
-            b.discount_type,
-            b.discount,
-            b.discount_amount,
-
-            b.price_before_tax,
-            b.price_after_discount,
-            b.gst_amount,
-            b.room_tax_amount,
-            b.final_amount,
-
-            b.cancellation_fee,
-            b.is_no_show,
-
-            b.comments,
-            b.is_active,
-
-            b.created_by,
-            b.created_on,
-            b.updated_by,
-            b.updated_on,
-
-            b.drop,
-            b.pickup,
-
-            COALESCE(paid.total_paid_amount, 0) AS paid_amount,
-
-            /* ============================
-               RESTAURANT AGGREGATES
-            ============================ */
-            COALESCE(ro.restaurant_total_amount, 0) AS restaurant_total_amount,
-            COALESCE(ro.restaurant_paid_amount, 0)  AS restaurant_paid_amount,
-
-            COALESCE(
-                json_agg(
-                    json_build_object(
-                        'room_id', rd.ref_room_id,
-                        'room_no', rr.room_no,
-                        'room_type', rd.room_type,
-                        'room_status', rd.room_status
-                    )
-                ) FILTER (WHERE rd.id IS NOT NULL),
-                '[]'
-            ) AS rooms
-
-        FROM public.bookings b
-
-        /* -------- PAYMENTS -------- */
-        LEFT JOIN (
-            SELECT
-                booking_id,
-                SUM(paid_amount) AS total_paid_amount
-            FROM public.payments
-            WHERE is_active = true
-            GROUP BY booking_id
-        ) paid ON paid.booking_id = b.id
-
-        /* -------- RESTAURANT ORDERS -------- */
-        LEFT JOIN (
-            SELECT
-                booking_id,
-
-                -- total of non-cancelled orders
-                SUM(
-                    CASE 
-                        WHEN order_status != 'Cancelled' 
-                        THEN total_amount 
-                        ELSE 0 
-                    END
-                ) AS restaurant_total_amount,
-
-                -- total of paid orders
-                SUM(
-                    CASE 
-                        WHEN payment_status = 'Paid' 
-                        THEN total_amount 
-                        ELSE 0 
-                    END
-                ) AS restaurant_paid_amount
-
-            FROM public.restaurant_orders
-            GROUP BY booking_id
-        ) ro ON ro.booking_id = b.id
-
-        /* -------- ROOMS -------- */
-        LEFT JOIN public.room_details rd
-            ON rd.booking_id = b.id
-            AND rd.is_cancelled = false
-
-        LEFT JOIN public.ref_rooms rr
-            ON rr.id = rd.ref_room_id
-
-        WHERE b.id = $1
-        GROUP BY
-            b.id,
-            paid.total_paid_amount,
-            ro.restaurant_total_amount,
-            ro.restaurant_paid_amount
-        `,
-            [Number(bookingId)]
-        );
-
-        if (!rows.length) return null;
-
-        const booking = rows[0];
-
-        /* -------- PRIMARY GUEST -------- */
-        const primaryGuest = await GuestsService.getPrimaryGuestByBookingId(bookingId);
-        booking.primary_guest = primaryGuest;
-
-        return booking;
+        };
     }
 
     async createBooking({
@@ -517,6 +380,141 @@ class Booking {
         } finally {
             client.release();
         }
+    }
+
+    async getBookingById(bookingId) {
+        const { rows } = await this.#DB.query(
+            `
+            SELECT
+            b.id,
+            b.property_id,
+            b.package_id,
+
+            b.booking_status,
+            b.booking_type,
+            b.booking_date,
+
+            b.estimated_arrival,
+            b.estimated_departure,
+            b.actual_arrival,
+            b.actual_departure,
+            b.estimated_arrival_time,
+
+            b.booking_nights,
+            b.adult,
+            b.child,
+            b.total_guest,
+
+            b.discount_type,
+            b.discount,
+            b.discount_amount,
+
+            b.price_before_tax,
+            b.price_after_discount,
+            b.gst_amount,
+            b.room_tax_amount,
+            b.final_amount,
+
+            b.cancellation_fee,
+            b.is_no_show,
+
+            b.comments,
+            b.is_active,
+
+            b.created_by,
+            b.created_on,
+            b.updated_by,
+            b.updated_on,
+
+            b.drop,
+            b.pickup,
+
+            COALESCE(paid.total_paid_amount, 0) AS paid_amount,
+
+            /* ============================
+               RESTAURANT AGGREGATES
+            ============================ */
+            COALESCE(ro.restaurant_total_amount, 0) AS restaurant_total_amount,
+            COALESCE(ro.restaurant_paid_amount, 0)  AS restaurant_paid_amount,
+
+            COALESCE(
+                json_agg(
+                    json_build_object(
+                        'room_id', rd.ref_room_id,
+                        'room_no', rr.room_no,
+                        'room_type', rd.room_type,
+                        'room_status', rd.room_status
+                    )
+                ) FILTER (WHERE rd.id IS NOT NULL),
+                '[]'
+            ) AS rooms
+
+        FROM public.bookings b
+
+        /* -------- PAYMENTS -------- */
+        LEFT JOIN (
+            SELECT
+                booking_id,
+                SUM(paid_amount) AS total_paid_amount
+            FROM public.payments
+            WHERE is_active = true
+            GROUP BY booking_id
+        ) paid ON paid.booking_id = b.id
+
+        /* -------- RESTAURANT ORDERS -------- */
+        LEFT JOIN (
+            SELECT
+                booking_id,
+
+                -- total of non-cancelled orders
+                SUM(
+                    CASE 
+                        WHEN order_status != 'Cancelled' 
+                        THEN total_amount 
+                        ELSE 0 
+                    END
+                ) AS restaurant_total_amount,
+
+                -- total of paid orders
+                SUM(
+                    CASE 
+                        WHEN payment_status = 'Paid' 
+                        THEN total_amount 
+                        ELSE 0 
+                    END
+                ) AS restaurant_paid_amount
+
+            FROM public.restaurant_orders
+            GROUP BY booking_id
+        ) ro ON ro.booking_id = b.id
+
+        /* -------- ROOMS -------- */
+        LEFT JOIN public.room_details rd
+            ON rd.booking_id = b.id
+            AND rd.is_cancelled = false
+
+        LEFT JOIN public.ref_rooms rr
+            ON rr.id = rd.ref_room_id
+
+        WHERE b.id = $1
+        GROUP BY
+            b.id,
+            paid.total_paid_amount,
+            ro.restaurant_total_amount,
+            ro.restaurant_paid_amount
+        `,
+            [Number(bookingId)]
+        );
+
+        if (!rows.length) return null;
+
+        const booking = rows[0];
+
+        /* -------- PRIMARY GUEST -------- */
+        const primaryGuest = await GuestsService.getPrimaryGuestByBookingId(bookingId);
+        booking.primary_guest = primaryGuest;
+
+        return booking;
     }
 
     async cancelBooking({

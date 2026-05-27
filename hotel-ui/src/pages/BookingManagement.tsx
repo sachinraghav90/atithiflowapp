@@ -709,11 +709,12 @@ export default function BookingsManagement() {
 
 
     function BookingRoomsTab({ booking }: any) {
+        const rooms = Array.isArray(booking?.rooms) ? booking.rooms : [];
 
         return (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
 
-                {booking.rooms.map((room: any) => {
+                {rooms.map((room: any) => {
 
                     const ui = getRoomDisplayData(room.room_no);
 

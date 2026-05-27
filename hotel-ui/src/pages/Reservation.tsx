@@ -892,6 +892,21 @@ export default function ReservationManagement() {
         if (b.pickup !== undefined) setPickup(!!b.pickup);
         if (b.drop !== undefined) setDrop(!!b.drop);
 
+        if (b.paid_amount !== undefined && b.paid_amount !== null) {
+            setAdvancePayment(Number(b.paid_amount));
+        }
+
+        if (b.rooms && b.rooms.length > 0) {
+            const firstRoomAcType = b.rooms[0]?.ac_type_name;
+            if (firstRoomAcType) {
+                setRoomFilters(prev => ({ ...prev, acType: firstRoomAcType }));
+            }
+            const mappedRooms = b.rooms.map((r: any) => ({ ref_room_id: Number(r.room_id) }));
+            setSelectedRooms(mappedRooms);
+            setTempSelectedRooms(mappedRooms);
+            setRoomCount(b.rooms.length);
+        }
+
         if (g) {
             setGuest(prev => ({
                 ...prev,
@@ -918,13 +933,45 @@ export default function ReservationManagement() {
                 emergency_contact: g.emergency_contact || "",
                 emergency_contact_name: g.emergency_contact_name || "",
             }));
-        }
 
-        if (b.rooms && b.rooms.length > 0) {
-            setRoomCount(b.rooms.length);
+            if (g.has_id_proof) {
+                fetch(`${import.meta.env.VITE_API_URL}/guests/${g.id}/id-proof`)
+                    .then(res => {
+                        if (!res.ok) throw new Error("ID proof fetch failed");
+                        return res.blob();
+                    })
+                    .then(blob => {
+                        const file = new File([blob], "id-proof.jpg", { type: blob.type || "image/jpeg" });
+                        setIdProofFiles(p => ({ ...p, "0": file }));
+                    })
+                    .catch(err => console.error("Failed to prefill ID proof:", err));
+            }
         }
 
     }, [duplicateBooking]);
+
+    // 🔹 Extras Per Night calculation and prefilling
+    useEffect(() => {
+        if (!duplicateBooking || !packageData?.data || !availableRooms?.rooms) return;
+
+        const b = duplicateBooking;
+        const priceBeforeTax = Number(b.price_before_tax) || 0;
+        const nights = Number(b.booking_nights) || 1;
+        const adult = Number(b.adult) || 1;
+        const basePrice = Number(packageData.data.base_price) || 0;
+
+        const roomBaseTotal = (b.rooms || []).reduce((sum: number, r: any) => {
+            const matchedRoom = availableRooms.rooms.find((ar: any) => Number(ar.id) === Number(r.room_id));
+            return sum + (Number(matchedRoom?.base_price) || 0);
+        }, 0);
+
+        const extrasNumerator = priceBeforeTax - (roomBaseTotal * nights);
+        const extrasDenominator = nights * adult;
+        if (extrasDenominator > 0) {
+            const extrasCalculated = (extrasNumerator / extrasDenominator) - basePrice;
+            setExtraPerNight(extrasCalculated > 0 ? Math.round(extrasCalculated) : "");
+        }
+    }, [duplicateBooking, packageData, availableRooms]);
 
     const handleFile = (key: string, file?: File) => {
         if (!file) return;
