@@ -229,7 +229,7 @@ export default function ReservationManagement() {
         skip: !isLoggedIn || !selectedPropertyId
     })
 
-    const { data: availableRooms, isLoading: availableRoomsLoading, isUninitialized: isAvailableRoomUninitialized } = useAvailableRoomsQuery({ propertyId: selectedPropertyId, arrivalDate, departureDate }, {
+    const { data: availableRooms, isLoading: availableRoomsLoading, isUninitialized: isAvailableRoomUninitialized, refetch: refetchAvailableRooms } = useAvailableRoomsQuery({ propertyId: selectedPropertyId, arrivalDate, departureDate, estimatedArrivalTime }, {
         skip: !isLoggedIn || !selectedPropertyId || !arrivalDate || !departureDate || !!arrivalError || !!departureError
     })
 
@@ -1152,9 +1152,9 @@ export default function ReservationManagement() {
                                         const val = toISODateOnly(date);
                                         setArrivalDate(val);
                                         
-                                        if (new Date(departureDate) < new Date(val)) {
-                                            setDepartureDate(val);
-                                        }
+                                        const nextDate = new Date(date);
+                                        nextDate.setDate(nextDate.getDate() + 1);
+                                        setDepartureDate(toISODateOnly(nextDate));
                                     }}
                                     errors={reservationErrors}
                                     setErrors={setReservationErrors}
@@ -1189,7 +1189,11 @@ export default function ReservationManagement() {
                                     errors={reservationErrors}
                                     setErrors={setReservationErrors}
                                     required
-                                    minDate={parseDate(arrivalDate) || new Date()}
+                                    minDate={(function() {
+                                        const d = parseDate(arrivalDate) || new Date();
+                                        d.setDate(d.getDate() + 1);
+                                        return d;
+                                    })()}
                                 />
 
                                 {/* BOOKING TYPE */}
@@ -1237,6 +1241,7 @@ export default function ReservationManagement() {
                                                 reservationErrors.rooms && "border-red-500"
                                             )}
                                             onClick={() => {
+                                                refetchAvailableRooms();
                                                 setRoomsModalOpen(true);
 
                                                 setReservationErrors(e => {

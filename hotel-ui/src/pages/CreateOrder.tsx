@@ -21,6 +21,7 @@ import {
     useGetDeliveryPartnersQuery,
     useGetPrimaryGuestByBookingQuery,
     useTodayInHouseBookingRoomsQuery,
+    useGetPropertyTaxQuery,
 } from "@/redux/services/hmsApi";
 import { NativeSelect } from "@/components/ui/native-select";
 import { normalizeNumberInput } from "@/utils/normalizeTextInput";
@@ -138,6 +139,10 @@ export function CreateOrder() {
     const { data: primaryGuest } = useGetPrimaryGuestByBookingQuery(order.booking_id, {
         skip: !order.booking_id || order.order_type !== "Room Service"
     })
+
+    const { data: propertyTax } = useGetPropertyTaxQuery(selectedPropertyId, {
+        skip: !isLoggedIn || !selectedPropertyId
+    });
 
     const [createOrder] = useCreateOrderMutation();
     const confirmedBookingRoomOptions = useMemo(() => {
@@ -479,6 +484,15 @@ export function CreateOrder() {
     const hasEmptyRow = items.some(i => !i.menu_item_id);
     const canAddRow = items.length === 0 || !hasEmptyRow;
     const isRoomService = order.order_type === "Room Service";
+
+    const selectedProperty = myProperties?.properties?.find((p: any) => p.id === selectedPropertyId);
+    const gstRate = propertyTax?.restaurant_gst ? Number(propertyTax.restaurant_gst) : 0;
+    const subTotal = order.total_amount || 0;
+    const cgstRate = Number((gstRate / 2).toFixed(2));
+    const sgstRate = Number((gstRate / 2).toFixed(2));
+    const cgstAmount = Number((subTotal * cgstRate / 100).toFixed(2));
+    const sgstAmount = Number((subTotal * sgstRate / 100).toFixed(2));
+    const grandTotal = Number((subTotal + cgstAmount + sgstAmount).toFixed(2));
 
     /* ============================
        UI
@@ -939,9 +953,9 @@ export function CreateOrder() {
                         </div>
 
                         {/* PILOT ADD ROW + TOTAL FOOTER */}
-                        <div className="editable-grid-footer p-4 bg-background border-slate-200 flex flex-col gap-4 min-w-[800px]">
-                            {/* Top Row: Add Row & Total */}
-                            <div className="flex items-center justify-between">
+                        <div className="editable-grid-footer p-4 bg-background border-slate-200 flex gap-6 min-w-[800px]">
+                            {/* Left Side: Actions and Notes */}
+                            <div className="flex-1 flex flex-col gap-4">
                                 <div className="flex items-center gap-4">
                                     <button
                                         type="button"
@@ -963,39 +977,53 @@ export function CreateOrder() {
                                     )}
                                 </div>
 
-                                <div className="flex items-center gap-6">
-                                    {isTotalManual && (
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="h-7 text-[10px] px-2 border-slate-300 text-slate-600"
-                                            onClick={() => {
-                                                const total = items.reduce((s, i) => s + i.item_total, 0);
-                                                setOrder(o => ({ ...o, total_amount: total }));
-                                                setIsTotalManual(false);
-                                            }}
-                                        >
-                                            Recalculate
-                                        </Button>
-                                    )}
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-sm font-medium text-slate-500">Total Amount : </span>
-                                        <span className="text-lg font-bold text-slate-900 pr-2">
-                                            ₹ {order.total_amount || 0}
-                                        </span>
-                                    </div>
+                                <div className="flex-1 flex flex-col gap-1.5">
+                                    <Label>Order Notes</Label>
+                                    <textarea
+                                        className="w-full flex-1 min-h-[60px] rounded-[3px] border border-input bg-background/50 px-3 py-2 text-sm shadow-none outline-none focus:ring-1 focus:ring-primary resize-none placeholder:text-muted-foreground/60 transition-all"
+                                        placeholder="Special instructions (e.g. no onion, spicy)..."
+                                        value={order.notes || ""}
+                                        onChange={(e) => setOrder(o => ({ ...o, notes: e.target.value }))}
+                                    />
                                 </div>
                             </div>
 
-                            {/* Bottom Row: Order Notes */}
-                            <div className="flex flex-col gap-1.5">
-                                <Label>Order Notes</Label>
-                                <textarea
-                                    className="w-full h-16 min-h-[60px] rounded-[3px] border border-input bg-background/50 px-3 py-2 text-sm shadow-none outline-none focus:ring-1 focus:ring-primary resize-none placeholder:text-muted-foreground/60 transition-all"
-                                    placeholder="Special instructions (e.g. no onion, spicy)..."
-                                    value={order.notes || ""}
-                                    onChange={(e) => setOrder(o => ({ ...o, notes: e.target.value }))}
-                                />
+                            {/* Right Side: Order Summary */}
+                            <div className="w-72 shrink-0">
+                                <div className="p-4 bg-muted/10 border border-border rounded-lg space-y-2">
+                                    <div className="flex justify-between text-sm text-muted-foreground">
+                                        <span>Sub Total</span>
+                                        <span>₹{subTotal.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm text-muted-foreground">
+                                        <span>CGST ({cgstRate}%)</span>
+                                        <span>₹{cgstAmount.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm text-muted-foreground">
+                                        <span>SGST ({sgstRate}%)</span>
+                                        <span>₹{sgstAmount.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm font-bold text-foreground pt-2 border-t border-border/50">
+                                        <span>Order Total</span>
+                                        <span>₹{grandTotal.toFixed(2)}</span>
+                                    </div>
+                                    {isTotalManual && (
+                                        <div className="pt-2 flex justify-end">
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                className="h-7 text-[10px] px-2 border-slate-300 text-slate-600"
+                                                onClick={() => {
+                                                    const total = items.reduce((s, i) => s + i.item_total, 0);
+                                                    setOrder(o => ({ ...o, total_amount: total }));
+                                                    setIsTotalManual(false);
+                                                }}
+                                            >
+                                                Recalculate
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>

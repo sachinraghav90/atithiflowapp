@@ -342,7 +342,7 @@ export const hmsApi = createApi({
           body: payload,
         }
       },
-      invalidatesTags: ["rooms-status"]
+      invalidatesTags: ["rooms-status", "AvailableRooms"]
     }),
 
     getRooms: builder.query({
@@ -612,9 +612,10 @@ export const hmsApi = createApi({
     }),
 
     availableRooms: builder.query({
-      query: ({ propertyId, arrivalDate, departureDate }) => {
+      query: ({ propertyId, arrivalDate, departureDate, estimatedArrivalTime }) => {
+        const timeParam = estimatedArrivalTime ? `&arrivalTime=${encodeURIComponent(estimatedArrivalTime)}` : "";
         return {
-          url: `/rooms/available?propertyId=${propertyId}&arrivalDate=${arrivalDate}&departureDate=${departureDate}`,
+          url: `/rooms/available?propertyId=${propertyId}&arrivalDate=${arrivalDate}&departureDate=${departureDate}${timeParam}`,
           method: "GET",
         }
       },

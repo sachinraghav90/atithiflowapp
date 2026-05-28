@@ -4,6 +4,21 @@ import { roles } from "../../utils/roles.js";
 import AuditService from "./Audit.service.js";
 import LaundrySetupServiceService from "./LaundrySetupService.service.js";
 
+const normalizeTime = (timeStr) => {
+    if (typeof timeStr !== "string") return timeStr;
+    const match = timeStr.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM|am|pm)?$/);
+    if (match) {
+        let h = parseInt(match[1], 10);
+        let m = parseInt(match[2], 10);
+        let s = match[3] ? parseInt(match[3], 10) : 0;
+        let ampm = match[4] ? match[4].toUpperCase() : null;
+        if (ampm === "PM" && h < 12) h += 12;
+        if (ampm === "AM" && h === 12) h = 0;
+        return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
+    return timeStr;
+};
+
 class Property {
     #DB;
 
@@ -232,8 +247,6 @@ class Property {
 
             const {
                 brand_name,
-                checkin_time,
-                checkout_time,
                 is_active = true,
                 room_tax_rate = 0,
                 gst = 0,
@@ -277,6 +290,9 @@ class Property {
 
                 restaurant_tables = 0,
             } = payload;
+
+            const checkin_time = payload.checkin_time ? normalizeTime(payload.checkin_time) : (payload.checkinTime ? normalizeTime(payload.checkinTime) : null);
+            const checkout_time = payload.checkout_time ? normalizeTime(payload.checkout_time) : (payload.checkoutTime ? normalizeTime(payload.checkoutTime) : null);
 
             const restaurant_gst = payload.restaurant_gst !== undefined ? payload.restaurant_gst : payload.restaurantGst;
             const laundry_gst = payload.laundry_gst !== undefined ? payload.laundry_gst : payload.laundryGst;
@@ -525,6 +541,8 @@ class Property {
                 if (key === "bookingInstructions") return "booking_instructions";
                 if (key === "restaurantGst") return "restaurant_gst";
                 if (key === "laundryGst") return "laundry_gst";
+                if (key === "checkinTime" || key === "checkInTime") return "checkin_time";
+                if (key === "checkoutTime" || key === "checkOutTime") return "checkout_time";
                 return key;
             };
 
@@ -534,7 +552,12 @@ class Property {
                 } else if (OFFICE_ADDRESS_FIELDS.includes(key)) {
                     officeAddress[key.replace("_office", "")] = value;
                 } else {
-                    propertyFields[normalizePropertyFieldKey(key)] = value;
+                    let normKey = normalizePropertyFieldKey(key);
+                    let normValue = value;
+                    if (normKey === "checkin_time" || normKey === "checkout_time") {
+                        normValue = normalizeTime(value);
+                    }
+                    propertyFields[normKey] = normValue;
                 }
             }
 

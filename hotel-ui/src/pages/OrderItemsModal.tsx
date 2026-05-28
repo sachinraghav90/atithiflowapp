@@ -312,16 +312,6 @@ export function OrderItemsModal({
                                     )}
                                     <ViewField label="Expected Delivery" value={data.expected_delivery_time ? formatAppDateTime(data.expected_delivery_time) : "—"} />
                                     <ViewField label="Order Date" value={formatAppDateTime(data.order_date)} />
-                                    {data.subtotal_amount != null ? (
-                                        <>
-                                            <ViewField label="Sub Total" value={`₹${Number(data.subtotal_amount).toFixed(2)}`} />
-                                            <ViewField label={`CGST (${Number(data.cgst_rate || 0)}%)`} value={`₹${Number(data.cgst_amount || 0).toFixed(2)}`} />
-                                            <ViewField label={`SGST (${Number(data.sgst_rate || 0)}%)`} value={`₹${Number(data.sgst_amount || 0).toFixed(2)}`} />
-                                            <ViewField label="Order Total" value={`₹${Number(data.grand_total_amount).toFixed(2)}`} />
-                                        </>
-                                    ) : (
-                                        <ViewField label="Order Total" value={`₹${Number(data.total_amount).toFixed(2)}`} />
-                                    )}
                                     {data.notes && (
                                         <ViewField label="Order Notes" value={data.notes} className="sm:col-span-2 lg:col-span-3" />
                                     )}
@@ -433,6 +423,35 @@ export function OrderItemsModal({
                                     rowKey={(item: any, index) => item.id ?? index}
                                     minWidth="540px"
                                 />
+                                {Number(data.subtotal_amount) > 0 || Number(data.grand_total_amount) > 0 ? (
+                                    <div className="flex justify-end p-4 bg-muted/10 border-t border-border">
+                                        <div className="w-64 space-y-2">
+                                            <div className="flex justify-between text-sm text-muted-foreground">
+                                                <span>Sub Total</span>
+                                                <span>₹{Number(data.subtotal_amount).toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-sm text-muted-foreground">
+                                                <span>CGST ({Number(data.cgst_rate || 0)}%)</span>
+                                                <span>₹{Number(data.cgst_amount || 0).toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-sm text-muted-foreground">
+                                                <span>SGST ({Number(data.sgst_rate || 0)}%)</span>
+                                                <span>₹{Number(data.sgst_amount || 0).toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-sm font-bold text-foreground pt-2 border-t border-border/50">
+                                                <span>Order Total</span>
+                                                <span>₹{Number(data.grand_total_amount).toFixed(2)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex justify-end p-4 bg-muted/10 border-t border-border">
+                                        <div className="w-64 flex justify-between text-sm font-bold text-foreground">
+                                            <span>Order Total</span>
+                                            <span>₹{Number(data.total_amount).toFixed(2)}</span>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </CardSectionView>
                             </div>

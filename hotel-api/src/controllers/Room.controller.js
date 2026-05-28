@@ -78,11 +78,22 @@ class RoomController {
 
     async getAvailableRooms(req, res) {
         try {
-            const { propertyId, arrivalDate, departureDate, roomType, limit = 50, offset = 0, } = req.query
-            const result = await RoomService.getAvailableRooms({ arrivalDate, departureDate, propertyId, roomType, limit, offset })
+            const { propertyId, arrivalDate, departureDate, arrivalTime, roomType, limit = 50, offset = 0, } = req.query
+            
+            if (!propertyId || isNaN(Number(propertyId))) {
+                return res.status(400).json({ message: "propertyId is required and must be numeric" })
+            }
+            if (!arrivalDate || isNaN(Date.parse(arrivalDate))) {
+                return res.status(400).json({ message: "arrivalDate is required and must be a valid date" })
+            }
+            if (!departureDate || isNaN(Date.parse(departureDate))) {
+                return res.status(400).json({ message: "departureDate is required and must be a valid date" })
+            }
+
+            const result = await RoomService.getAvailableRooms({ arrivalDate, departureDate, arrivalTime, propertyId, roomType, limit, offset })
             return res.json({ message: "Success", ...result })
         } catch (error) {
-            console.log("🚀 ~ RoomController ~ getAvailableRooms ~ error:", error)
+            console.error("🚀 ~ RoomController ~ getAvailableRooms ~ error:", error)
             return res.status(500).json({ message: "Error getting available rooms" })
         }
     }

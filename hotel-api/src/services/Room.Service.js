@@ -650,11 +650,12 @@ class RoomService {
         propertyId,
         arrivalDate,
         departureDate,
+        arrivalTime,
         roomTypeId, // optional filter
         limit = 50,
         offset = 0,
     }) {
-        const baseParams = [propertyId, arrivalDate, departureDate];
+        const baseParams = [propertyId, arrivalDate, departureDate, arrivalTime || null];
         let roomTypeFilter = "";
         if (roomTypeId) {
             baseParams.push(roomTypeId);
@@ -664,8 +665,10 @@ class RoomService {
         const availabilityQuery = `
             SELECT r.id
             FROM public.ref_rooms r
+            JOIN public.properties p ON p.id = r.property_id
             WHERE r.property_id = $1
             AND r.is_active = true
+            AND r.dirty = false
             ${roomTypeFilter}
             AND NOT EXISTS (
                 SELECT 1
@@ -673,8 +676,18 @@ class RoomService {
                 JOIN public.bookings b ON b.id = rd.booking_id
                 WHERE rd.ref_room_id = r.id
                 AND rd.is_cancelled = false
-                AND b.booking_status IN ('CONFIRMED', 'CHECKED_IN', 'NO_SHOW')
-                AND (b.estimated_arrival < $3 AND COALESCE(b.actual_departure, b.estimated_departure) > $2)
+                AND (
+                    b.booking_status IN ('CHECKED_IN', 'NO_SHOW')
+                    OR
+                    (
+                        b.booking_status = 'CONFIRMED'
+                        AND (
+                            (COALESCE(b.actual_departure, b.estimated_departure)::date + p.checkout_time) > ($2::date + COALESCE(NULLIF($4::text, '')::time, p.checkin_time))
+                            AND 
+                            (b.estimated_arrival::date + COALESCE(NULLIF(b.estimated_arrival_time::text, '')::time, p.checkin_time)) < ($3::date + p.checkout_time)
+                        )
+                    )
+                )
             )
         `;
 
@@ -718,6 +731,15 @@ class RoomService {
         arrivalDate,
         departureDate,
     }) {
+        const { rows } = await this.#DB.query(
+            `SELECT dirty FROM public.ref_rooms WHERE id = $1`,
+            [roomId]
+        );
+        
+        if (rows.length === 0 || rows[0].dirty) {
+            return false;
+        }
+
         const { rowCount } = await this.#DB.query(
             `
             SELECT 1
@@ -999,6 +1021,18 @@ class RoomService {
                 WHERE b.booking_status = 'CHECKED_OUT'
                 AND rd.is_cancelled = false
                 AND COALESCE(b.actual_departure, b.estimated_departure)::date = td.day
+            ),
+
+            no_shows AS (
+                SELECT DISTINCT
+                    rm.ref_room_id
+                FROM room_meta rm
+                JOIN room_details rd ON rd.ref_room_id = rm.ref_room_id
+                JOIN bookings b ON b.id = rd.booking_id
+                JOIN target_day td ON true
+                WHERE b.booking_status = 'NO_SHOW'
+                AND rd.is_cancelled = false
+                AND b.estimated_arrival::date = td.day
             )
 
             SELECT
@@ -1007,6 +1041,7 @@ class RoomService {
                 'checked_in', COUNT(*) FILTER (WHERE status = 'CHECKED_IN'),
                 'confirmed', COUNT(*) FILTER (WHERE status = 'BOOKED'),
                 'checked_out', (SELECT COUNT(*) FROM checking_out),
+                'no_show', (SELECT COUNT(*) FROM no_shows),
                 'free', COUNT(*) FILTER (WHERE status = 'FREE'),
                 'dirty', COUNT(*) FILTER (WHERE status = 'DIRTY')
             ) AS summary,
