@@ -628,7 +628,7 @@ class Booking {
             /* ------------------------------------------------ */
             const { rows } = await client.query(
                 `
-            SELECT id, booking_status, property_id
+            SELECT id, booking_status, property_id, estimated_arrival
             FROM public.bookings
             WHERE id = $1
             FOR UPDATE
@@ -652,6 +652,39 @@ class Booking {
                     booking_id: bookingId,
                     current_status: currentStatus
                 };
+            }
+
+            /* ------------------------------------------------ */
+            /* 🚫 RULE 1.5: Prevent CHECKIN before arrival date */
+            /* ------------------------------------------------ */
+            if (status === "CHECKED_IN") {
+                const arrivalDate = new Date(rows[0].estimated_arrival);
+                const today = actual_arrival ? new Date(actual_arrival) : new Date();
+                
+                // Compare dates (stripping time if needed, or simply compare timestamps)
+                // If the arrival date is clearly in the future (next day or later)
+                // Setting time to 00:00:00 to compare just the date parts
+                const arrivalDateOnly = new Date(arrivalDate);
+                arrivalDateOnly.setHours(0, 0, 0, 0);
+                
+                const todayOnly = new Date(today);
+                todayOnly.setHours(0, 0, 0, 0);
+
+                if (arrivalDateOnly > todayOnly) {
+                    const formattedArrivalDate = arrivalDate.toISOString().split('T')[0];
+                    const dd = String(arrivalDate.getDate()).padStart(2, '0');
+                    const mm = String(arrivalDate.getMonth() + 1).padStart(2, '0');
+                    const yy = String(arrivalDate.getFullYear()).slice(-2);
+
+                    throw {
+                        code: "EARLY_CHECKIN_NOT_ALLOWED",
+                        message: `Cannot check in before arrival date. This booking is scheduled for ${dd}/${mm}/${yy}.`,
+                        booking_id: bookingId,
+                        booking_no: `BO${String(bookingId).padStart(3, '0')}`,
+                        arrival_date: formattedArrivalDate,
+                        actual_arrival: actual_arrival || today.toISOString()
+                    };
+                }
             }
 
             /* ------------------------------------------------ */

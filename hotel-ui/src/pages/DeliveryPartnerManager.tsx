@@ -160,7 +160,7 @@ export default function DeliveryPartnerManager({
                 <SheetContent side="right" className="w-full sm:max-w-lg flex flex-col p-0 bg-background">
 
                     <SheetHeader className="px-6 py-4 border-b bg-background">
-                        <SheetTitle>Delivery Partners</SheetTitle>
+                        <SheetTitle className="text-xl font-bold">Delivery Partners</SheetTitle>
                     </SheetHeader>
 
                     <div className="flex-1 overflow-y-auto bg-background">
@@ -300,7 +300,7 @@ export default function DeliveryPartnerManager({
                 <SheetContent side="right" className="w-full sm:max-w-xl flex flex-col p-0 bg-background">
 
                     <SheetHeader className="px-6 py-4 border-b bg-background">
-                        <SheetTitle>Create delivery partner</SheetTitle>
+                        <SheetTitle className="text-xl font-bold">Create delivery partner</SheetTitle>
                     </SheetHeader>
 
                     <div className="flex-1 overflow-y-auto bg-background">

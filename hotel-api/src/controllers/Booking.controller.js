@@ -141,6 +141,17 @@ class Booking {
                 });
             }
 
+            if (err?.code === "EARLY_CHECKIN_NOT_ALLOWED" || err?.code === "CHECKIN_NOT_ALLOWED") {
+                return res.status(400).json({
+                    code: err.code,
+                    message: err.message,
+                    booking_id: err.booking_id,
+                    booking_no: err.booking_no,
+                    arrival_date: err.arrival_date,
+                    actual_arrival: err.actual_arrival
+                });
+            }
+
             return res.status(500).json({
                 message: "Failed to update booking status"
             });

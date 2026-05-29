@@ -385,7 +385,7 @@ return (
                     className="space-y-1"
                 >
                     <SheetHeader>
-                        <SheetTitle>New Enquiry</SheetTitle>
+                        <SheetTitle className="text-xl font-bold">New Enquiry</SheetTitle>
                     </SheetHeader>
 
 

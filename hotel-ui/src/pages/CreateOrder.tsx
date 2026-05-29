@@ -492,7 +492,7 @@ export function CreateOrder() {
     const sgstRate = Number((gstRate / 2).toFixed(2));
     const cgstAmount = Number((subTotal * cgstRate / 100).toFixed(2));
     const sgstAmount = Number((subTotal * sgstRate / 100).toFixed(2));
-    const grandTotal = Number((subTotal + cgstAmount + sgstAmount).toFixed(2));
+    const grandTotal = Math.round(subTotal + cgstAmount + sgstAmount);
 
     /* ============================
        UI
@@ -506,7 +506,7 @@ export function CreateOrder() {
                     className="flex min-h-0 flex-1 flex-col"
                 >
                     <SheetHeader className="px-6 py-4 border-b">
-                        <SheetTitle className="text-[#444444]">Create Order</SheetTitle>
+                        <SheetTitle className="text-xl font-bold">Create Order</SheetTitle>
                     </SheetHeader>
 
             <section className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 pb-6 pt-3">
@@ -781,7 +781,7 @@ export function CreateOrder() {
                 <div className="space-y-3">
                     <Label className="text-base font-semibold">Order Items</Label>
 
-                    <div className="editable-grid-compact grid-header-inside-table border rounded-[5px] overflow-hidden flex flex-col">
+                    <div className="editable-grid-compact grid-header-inside-table border rounded-[5px] flex flex-col">
                         <div className="grid-scroll-x overflow-y-auto w-full flex-1 min-h-0 bg-background">
                             <div className="w-full min-w-[800px]">
                                 <DataGrid>
@@ -985,6 +985,9 @@ export function CreateOrder() {
                                         value={order.notes || ""}
                                         onChange={(e) => setOrder(o => ({ ...o, notes: e.target.value }))}
                                     />
+                                    <div className="text-[9px] leading-tight text-muted-foreground/80 mt-1">
+                                        Note :- **Order Total is rounded off for billing convenience.
+                                    </div>
                                 </div>
                             </div>
 
@@ -1023,6 +1026,10 @@ export function CreateOrder() {
                                             </Button>
                                         </div>
                                     )}
+                                </div>
+                                {/* Invisible spacer to match the left-side note height and keep the boxes aligned at the bottom */}
+                                <div className="text-[9px] leading-tight opacity-0 pointer-events-none mt-1 select-none" aria-hidden="true">
+                                    Note :- **Order Total is rounded off for billing convenience.
                                 </div>
                             </div>
                         </div>

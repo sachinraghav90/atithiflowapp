@@ -424,8 +424,13 @@ export function OrderItemsModal({
                                     minWidth="540px"
                                 />
                                 {Number(data.subtotal_amount) > 0 || Number(data.grand_total_amount) > 0 ? (
-                                    <div className="flex justify-end p-4 bg-muted/10 border-t border-border">
-                                        <div className="w-64 space-y-2">
+                                    <div className="flex justify-between items-end p-4 bg-muted/10 border-t border-border">
+                                        <div className="flex-1 pb-1">
+                                            <div className="text-[9px] leading-tight text-muted-foreground/80">
+                                                Note :- **Order Total is rounded off for billing convenience.
+                                            </div>
+                                        </div>
+                                        <div className="w-64 shrink-0 space-y-2">
                                             <div className="flex justify-between text-sm text-muted-foreground">
                                                 <span>Sub Total</span>
                                                 <span>₹{Number(data.subtotal_amount).toFixed(2)}</span>
@@ -440,15 +445,22 @@ export function OrderItemsModal({
                                             </div>
                                             <div className="flex justify-between text-sm font-bold text-foreground pt-2 border-t border-border/50">
                                                 <span>Order Total</span>
-                                                <span>₹{Number(data.grand_total_amount).toFixed(2)}</span>
+                                                <span>₹{Math.round(Number(data.grand_total_amount)).toFixed(2)}</span>
                                             </div>
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="flex justify-end p-4 bg-muted/10 border-t border-border">
-                                        <div className="w-64 flex justify-between text-sm font-bold text-foreground">
-                                            <span>Order Total</span>
-                                            <span>₹{Number(data.total_amount).toFixed(2)}</span>
+                                    <div className="flex justify-between items-end p-4 bg-muted/10 border-t border-border">
+                                        <div className="flex-1 pb-1">
+                                            <div className="text-[9px] leading-tight text-muted-foreground/80">
+                                                Note :- **Order Total is rounded off for billing convenience.
+                                            </div>
+                                        </div>
+                                        <div className="w-64 shrink-0 flex flex-col justify-end gap-2">
+                                            <div className="flex justify-between text-sm font-bold text-foreground">
+                                                <span>Order Total</span>
+                                                <span>₹{Math.round(Number(data.total_amount)).toFixed(2)}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 )}

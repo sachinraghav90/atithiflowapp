@@ -199,7 +199,7 @@ class RestaurantOrderService {
             const sgst_rate = Number((gst_rate / 2).toFixed(2));
             const cgst_amount = Number((subtotal * cgst_rate / 100).toFixed(2));
             const sgst_amount = Number((subtotal * sgst_rate / 100).toFixed(2));
-            const grand_total_amount = Number((subtotal + cgst_amount + sgst_amount).toFixed(2));
+            const grand_total_amount = Math.round(subtotal + cgst_amount + sgst_amount);
             const finalTotal = grand_total_amount;
 
             // 1. Create order

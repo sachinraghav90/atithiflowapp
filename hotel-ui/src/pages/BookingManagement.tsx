@@ -587,8 +587,9 @@ export default function BookingsManagement() {
                 success: "Booking updated successfully",
                 error: {
                     render({ data }: { data: any }) {
-                        return data?.data?.message || data?.message || "Failed to update booking";
-                    }
+                        return data?.data?.message || data?.message || "Failed to update booking status";
+                    },
+                    pauseOnHover: true
                 }
             });
         } catch {
@@ -649,6 +650,21 @@ export default function BookingsManagement() {
 
         const remaining = totalAmt - totalPaid;
 
+        const formatTimeOnly = (value?: string | null) => {
+            if (!value) return "—";
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return "—";
+            return date.toLocaleTimeString("en-GB", {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true,
+            });
+        };
+
+        const arrivalTime = booking?.estimated_arrival_time
+            ? formatTimeOnly(booking.estimated_arrival_time)
+            : formatTimeOnly(booking?.actual_arrival);
+
         return (
             <div className="space-y-4">
                 <CardSectionView 
@@ -676,7 +692,7 @@ export default function BookingsManagement() {
                     <ViewField label="Status" value={formatReadableLabel(booking?.booking_status) || "—"} />
                     <ViewField label="Booking Date" value={formatToDDMMYY(booking?.booking_date)} />
                     <ViewField label="Rooms Booked" value={booking?.rooms?.length || 0} />
-                    <ViewField label="Arrival Time" value={booking?.estimated_arrival_time || "—"} />
+                    <ViewField label="Arrival Time" value={arrivalTime} />
                     <ViewField label="Checked In At" value={booking?.actual_arrival ? formatToDDMMYY(booking.actual_arrival) : "—"} />
                     <ViewField label="Comments" value={booking?.comments || "No comments"} className="sm:col-span-2 lg:col-span-3" />
                 </CardSectionView>

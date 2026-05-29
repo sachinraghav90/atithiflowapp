@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import ViewField from "@/components/ViewField";
 import { useGetLogsQuery, useGetAllRoomsMetaQuery } from "@/redux/services/hmsApi";
 import { formatAppDateTime } from "@/utils/dateFormat";
+import { formatReadableLabel } from "@/utils/formatString";
 
 /* ---------------- Types ---------------- */
 type LogItem = {
@@ -43,6 +44,13 @@ const formatKey = (key: string) =>
     key
         .replace(/_/g, " ")
         .replace(/\b\w/g, (l) => l.toUpperCase());
+
+const formatLogText = (text: string) => {
+    if (!text) return text;
+    return text.replace(/\b([A-Z_]{4,})\b/g, (match) => {
+        return formatReadableLabel(match);
+    });
+};
 
 /* ---------------- Component ---------------- */
 export default function BookingLogsEmbedded({ bookingId, propertyId }: Props) {
@@ -98,7 +106,7 @@ export default function BookingLogsEmbedded({ bookingId, propertyId }: Props) {
             return <span className="italic opacity-50">{JSON.stringify(value)}</span>;
         }
 
-        return <span className="text-foreground/90">{String(value)}</span>;
+        return <span className="text-foreground/90">{formatLogText(String(value))}</span>;
     };
 
     return (
@@ -127,7 +135,7 @@ export default function BookingLogsEmbedded({ bookingId, propertyId }: Props) {
                                     <div className="space-y-0.5">
                                         <p className="font-bold text-sm text-primary/90">{log.task_name}</p>
                                         <p className="text-[11px] text-muted-foreground/80 font-medium">
-                                            {log.comments}
+                                            {formatLogText(log.comments)}
                                         </p>
                                     </div>
 

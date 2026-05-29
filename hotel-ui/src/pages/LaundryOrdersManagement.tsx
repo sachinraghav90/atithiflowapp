@@ -1401,17 +1401,17 @@ export default function LaundryOrdersManagement() {
                 if (!open) handleCloseSheet();
                 else setSheetOpen(true);
             }}>
-                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl flex flex-col p-0 bg-background">
+                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto p-0 bg-background">
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="flex min-h-0 flex-1 flex-col"
+                        className="flex flex-col min-h-full"
                     >
                         <SheetHeader className="px-6 py-4 border-b">
-                            <SheetTitle className="text-[#444444]">Add Laundry Order Items</SheetTitle>
+                            <SheetTitle className="text-xl font-bold">Add Laundry Order Items</SheetTitle>
                         </SheetHeader>
 
-                        <div className="flex-1 overflow-y-auto px-4 pb-6 pt-3">
+                        <div className="flex-1 px-4 pb-6 pt-3">
                             <div className="space-y-4">
                                 {isMultiProperty && (
                                     <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-3">
@@ -1566,31 +1566,75 @@ export default function LaundryOrdersManagement() {
                                                     </DataGrid>
                                                 </div>
                                             </div>
-                                            <div className="bg-muted/5 border-t border-border px-4 py-3 space-y-3">
-                                                <div className="flex items-center justify-between">
-                                                    <button type="button" className="flex items-center gap-1.5 text-primary hover:underline text-sm font-semibold transition-colors" onClick={addRow}>
-                                                        <PlusCircle className="w-4 h-4" /> Add New Order Item(s)
-                                                    </button>
-                                                    <div className="flex items-center gap-3 text-sm">
-                                                        <span className="text-muted-foreground font-medium">Total Amount :</span>
-                                                        <span className="text-xl font-bold text-foreground">
-                                                            ₹{form.items.reduce((sum, item) => {
+                                            <div className="bg-muted/5 border-t border-border px-4 py-4">
+                                                <div className="flex gap-6">
+                                                    {/* Left Side: Actions & Notes */}
+                                                    <div className="flex-1 flex flex-col gap-4">
+                                                        <div>
+                                                            <button type="button" className="flex items-center gap-1.5 text-primary hover:underline text-sm font-semibold transition-colors" onClick={addRow}>
+                                                                <PlusCircle className="w-4 h-4" /> Add New Order Item(s)
+                                                            </button>
+                                                        </div>
+
+                                                        <div className="flex-1 flex flex-col gap-1.5">
+                                                            <Label>Order Notes</Label>
+                                                            <textarea
+                                                                className="w-full flex-1 min-h-[60px] rounded-[3px] border border-input bg-background/50 px-3 py-2 text-sm shadow-none outline-none focus:ring-1 focus:ring-primary resize-none placeholder:text-muted-foreground/60 transition-all"
+                                                                placeholder="Special instructions (e.g. stains, starch, extra care)..."
+                                                                value={form.comments || ""}
+                                                                onChange={(e) => setForm(prev => ({ ...prev, comments: e.target.value }))}
+                                                            />
+                                                            <div className="text-[9px] leading-tight text-muted-foreground/80 mt-1">
+                                                                Note :- **Order Total is rounded off for billing convenience.
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Right Side: Order Summary */}
+                                                    <div className="w-72 shrink-0">
+                                                        {(() => {
+                                                            const currentProperty = myProperties?.properties?.find((p: any) => Number(p.id) === Number(selectedPropertyId));
+                                                            const gstRate = Number(currentProperty?.laundry_gst || 0);
+                                                            const cgstRate = gstRate / 2;
+                                                            const sgstRate = gstRate / 2;
+                                                            
+                                                            const subTotal = form.items.reduce((sum, item) => {
                                                                 const pricing = laundryPricingItems.find((p: any) => Number(p.id) === Number(item.laundryId));
                                                                 return sum + (Number(item.itemCount || 0) * Number(pricing?.item_rate || 0));
-                                                            }, 0).toFixed(0)}
-                                                        </span>
-                                                    </div>
-                                                </div>
+                                                            }, 0);
+                                                            
+                                                            const cgstAmount = subTotal * (cgstRate / 100);
+                                                            const sgstAmount = subTotal * (sgstRate / 100);
+                                                            const grandTotal = Math.round(subTotal + cgstAmount + sgstAmount);
 
-                                                {/* Order Notes */}
-                                                <div className="space-y-1">
-                                                    <Label>Order Notes</Label>
-                                                    <textarea
-                                                        className="w-full min-h-[48px] rounded-[3px] border border-input bg-background px-3 py-1.5 text-sm shadow-none outline-none focus:ring-1 focus:ring-primary resize-none"
-                                                        placeholder="Special instructions (e.g. stains, starch, extra care)..."
-                                                        value={form.comments || ""}
-                                                        onChange={(e) => setForm(prev => ({ ...prev, comments: e.target.value }))}
-                                                    />
+                                                            return (
+                                                                <>
+                                                                    <div className="p-4 bg-muted/10 border border-border rounded-lg space-y-2">
+                                                                        <div className="flex justify-between text-sm text-muted-foreground">
+                                                                            <span>Sub Total</span>
+                                                                            <span>₹{subTotal.toFixed(2)}</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between text-sm text-muted-foreground">
+                                                                            <span>CGST ({cgstRate}%)</span>
+                                                                            <span>₹{cgstAmount.toFixed(2)}</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between text-sm text-muted-foreground">
+                                                                            <span>SGST ({sgstRate}%)</span>
+                                                                            <span>₹{sgstAmount.toFixed(2)}</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between text-sm font-bold text-foreground pt-2 border-t border-border/50">
+                                                                            <span>Order Total</span>
+                                                                            <span>₹{grandTotal.toFixed(2)}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    {/* Invisible spacer to match the left-side note height and keep the boxes aligned at the bottom */}
+                                                                    <div className="text-[9px] leading-tight opacity-0 pointer-events-none mt-1 select-none" aria-hidden="true">
+                                                                        Note :- **Order Total is rounded off for billing convenience.
+                                                                    </div>
+                                                                </>
+                                                            );
+                                                        })()}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1681,7 +1725,10 @@ export default function LaundryOrdersManagement() {
                                                     <ViewField label="Laundry Status" value={<GridBadge status={order.laundry_status} statusType="laundry" className="h-6 px-2 text-[10px]">{displayOrder.laundryStatusLabel}</GridBadge>} />
                                                     <ViewField label="Pickup Date" value={formatDateTime(order.pickup_date)} />
                                                     <ViewField label="Delivery Date" value={formatDateTime(order.delivery_date)} />
-                                                    <ViewField label="Total Amount" value={formatLaundryAmount(getLaundryOrderTotalAmount(order))} className="font-semibold text-primary" />
+                                                    <ViewField label="Sub Total" value={formatLaundryAmount(Number(order.subtotal_amount || 0))} />
+                                                    <ViewField label={`CGST (${order.cgst_rate || 0}%)`} value={formatLaundryAmount(Number(order.cgst_amount || 0))} />
+                                                    <ViewField label={`SGST (${order.sgst_rate || 0}%)`} value={formatLaundryAmount(Number(order.sgst_amount || 0))} />
+                                                    <ViewField label="Order Total" value={formatLaundryAmount(Number(order.grand_total_amount || getLaundryOrderTotalAmount(order)))} className="font-semibold text-primary" />
                                                 </CardSectionView>
                                             </div>
                                         ) : (

@@ -67,6 +67,12 @@ const styles = StyleSheet.create({
     borderBottomStyle: "dashed",
     marginVertical: 6,
   },
+  lightDivider: {
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#dddddd",
+    borderBottomStyle: "solid",
+    marginVertical: 4,
+  },
   sectionTitle: {
     fontSize: 8,
     fontFamily: "Times-Bold",
@@ -158,10 +164,10 @@ export default function RestaurantOrderSummaryPDF({ order, propertyName }: Props
   const sgstRate = order?.sgst_rate != null ? Number(order.sgst_rate) : 0;
   const cgstAmount = order?.cgst_amount != null ? Number(order.cgst_amount) : 0;
   const sgstAmount = order?.sgst_amount != null ? Number(order.sgst_amount) : 0;
-  const grandTotalAmount = order?.grand_total_amount != null ? Number(order.grand_total_amount) : Number(order?.total_amount || 0);
+  const grandTotalAmount = Math.round(order?.grand_total_amount != null ? Number(order.grand_total_amount) : Number(order?.total_amount || 0));
 
   // Calculate dynamic page height to fit the content perfectly without empty trailing space.
-  let dynamicHeight = 260; // base height (margins + headers + first 3 meta rows + totals + payment status + footnote)
+  let dynamicHeight = 280; // base height (margins + headers + first 3 meta rows + totals + payment status + footnote)
   if (showGuestMobile || showBookingId) dynamicHeight += 14;
   if (showExpectedDelivery || showDeliveryPartner) dynamicHeight += 14;
   if (hasItems) {
@@ -265,8 +271,9 @@ export default function RestaurantOrderSummaryPDF({ order, propertyName }: Props
           <Text style={styles.totalLabel}>{`SGST (${sgstRate}%):`}</Text>
           <Text style={styles.totalValue}>{money(sgstAmount)}</Text>
         </View>
+        <View style={styles.lightDivider} />
         <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Total:</Text>
+          <Text style={styles.totalLabel}>Total (Rs.):</Text>
           <Text style={styles.totalValue}>{money(grandTotalAmount)}</Text>
         </View>
         <View style={styles.divider} />
@@ -287,7 +294,12 @@ export default function RestaurantOrderSummaryPDF({ order, propertyName }: Props
           </View>
         )}
 
-        <Text style={styles.footNote}>SAVE PAPER SAVE NATURE !!{"\n"}Thank you for a delicious meal</Text>
+        <Text style={{ marginTop: 14, fontSize: 6.5, fontFamily: "Times-Roman", textAlign: "left" }}>
+          Note :- **Order Total is rounded off for billing convenience.
+        </Text>
+        <Text style={[styles.footNote, { marginTop: 10 }]}>
+          SAVE PAPER SAVE NATURE !!{"\n"}Thank you for a delicious meal
+        </Text>
       </Page>
     </Document>
   );

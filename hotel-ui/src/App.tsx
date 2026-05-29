@@ -99,7 +99,7 @@ const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ToastContainer />
+      <ToastContainer style={{ pointerEvents: 'auto', zIndex: 99999 }} />
       <TooltipProvider delayDuration={100}>
         <Toaster />
         <Sonner />

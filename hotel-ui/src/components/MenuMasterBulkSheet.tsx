@@ -160,7 +160,7 @@ export default function MenuMasterBulkSheet({
         <Sheet open={open} onOpenChange={onOpenChange}>
             <SheetContent side="right" onOpenAutoFocus={(event) => event.preventDefault()} className="w-full sm:max-w-4xl flex flex-col p-0 bg-background">
                 <SheetHeader className="px-6 py-4 border-b bg-background">
-                    <SheetTitle>Add Menu Items</SheetTitle>
+                    <SheetTitle className="text-xl font-bold">Add Menu Items</SheetTitle>
                 </SheetHeader>
 
                 <div className="flex-1 overflow-y-auto bg-background">
