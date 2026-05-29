@@ -547,6 +547,14 @@ export default function ReservationManagement() {
         setAvailableBedType(bedTypes || []);
         setAvailableAcType(acTypes || []);
         setFloors(floors || []);
+
+        if (floors) {
+            const initialCollapsed = new Set<number>();
+            floors.forEach((f: number) => {
+                if (f !== 1) initialCollapsed.add(f);
+            });
+            setCollapsedFloors(initialCollapsed);
+        }
     }, [availableRooms])
 
     useEffect(() => {
@@ -1946,7 +1954,7 @@ export default function ReservationManagement() {
 
 
 
-                            <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-center rounded-xl border border-primary/10 bg-background/70 p-3 mb-4 shadow-sm">
+                            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-center rounded-xl border border-primary/10 bg-background/70 p-3 mb-4 shadow-sm">
                                 <div className="flex items-center h-10 border border-primary/20 bg-background rounded-[3px] text-sm overflow-hidden w-full hover:border-primary/40 focus-within:ring-1 focus-within:ring-primary">
                                     <span className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-primary/20 h-full min-w-[80px] justify-center">
                                         Bed Type
@@ -1961,7 +1969,7 @@ export default function ReservationManagement() {
 
                                             disabled={allAvailableRoomIds.length === 0}
                                         >
-                                            <option value="">Select Bed type</option>
+                                            <option value="">--Please Select--</option>
                                             {availableBedType.map((type, i) => {
                                                 return <option value={type} key={i}>{type}</option>
                                             })}
@@ -1982,7 +1990,7 @@ export default function ReservationManagement() {
 
                                             disabled={allAvailableRoomIds.length === 0}
                                         >
-                                            <option value="">Select category</option>
+                                            <option value="">--Please Select--</option>
                                             {availableRoomCategory.map((category, i) => {
                                                 return <option value={category} key={i}>{category}</option>
                                             })}
@@ -2002,30 +2010,9 @@ export default function ReservationManagement() {
                                             }}
                                             disabled={allAvailableRoomIds.length === 0}
                                         >
-                                            <option value="">Select AC type</option>
+                                            <option value="">--Please Select--</option>
                                             {availableAcType.map((type, i) => {
                                                 return <option value={type} key={i}>{type}</option>
-                                            })}
-                                        </NativeSelect>
-                                    </div>
-                                </div>
-                                <div className="flex items-center h-10 border border-primary/20 bg-background rounded-[3px] text-sm overflow-hidden w-full hover:border-primary/40 focus-within:ring-1 focus-within:ring-primary">
-                                    <span className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-primary/20 h-full min-w-[80px] justify-center">
-                                        Floor
-                                    </span>
-                                    <div className="flex-1 min-w-0 h-full">
-                                        <NativeSelect
-                                            className="border-0 rounded-none h-full shadow-none focus-visible:ring-0 bg-transparent px-2"
-                                            value={roomFilters.floor}
-                                            onChange={(e) => {
-                                                setRoomFilters({ ...roomFilters, floor: e.target.value })
-                                            }}
-
-                                            disabled={floors.length === 0}
-                                        >
-                                            <option value="">Select floor</option>
-                                            {floors.map((floor, i) => {
-                                                return <option value={floor} key={i}>{floor}</option>
                                             })}
                                         </NativeSelect>
                                     </div>
@@ -2048,9 +2035,33 @@ export default function ReservationManagement() {
                                             setRoomsModalOpen(false);
                                         }}
                                     >
-                                        Save Rooms
+                                        Save Changes
                                     </Button>
                                 </div>
+                                <div className="flex items-center h-10 border border-primary/20 bg-background rounded-[3px] text-sm overflow-hidden w-full hover:border-primary/40 focus-within:ring-1 focus-within:ring-primary">
+                                    <span className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-primary/20 h-full min-w-[80px] justify-center">
+                                        Floor
+                                    </span>
+                                    <div className="flex-1 min-w-0 h-full">
+                                        <NativeSelect
+                                            className="border-0 rounded-none h-full shadow-none focus-visible:ring-0 bg-transparent px-2"
+                                            value={roomFilters.floor}
+                                            onChange={(e) => {
+                                                setRoomFilters({ ...roomFilters, floor: e.target.value })
+                                            }}
+
+                                            disabled={floors.length === 0}
+                                        >
+                                            <option value="">--Please Select--</option>
+                                            {floors.map((floor, i) => {
+                                                return <option value={floor} key={i}>{floor}</option>
+                                            })}
+                                        </NativeSelect>
+                                    </div>
+                                </div>
+                                <div className="hidden sm:block col-span-1"></div>
+                                <div className="hidden sm:block col-span-1"></div>
+                                <div className="hidden sm:block col-span-1"></div>
                             </div>
 
 

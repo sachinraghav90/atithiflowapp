@@ -670,6 +670,10 @@ class Booking {
                 JOIN public.ref_rooms r 
                     ON r.id = rd.ref_room_id
 
+                /* get current booking dates */
+                JOIN public.bookings b1
+                    ON b1.id = rd.booking_id
+
                 /* other active bookings using same rooms */
                 LEFT JOIN public.room_details rd2
                     ON rd2.ref_room_id = r.id
@@ -679,6 +683,9 @@ class Booking {
                     ON b2.id = rd2.booking_id
                    AND b2.is_active = true
                    AND b2.booking_status IN ('CONFIRMED','CHECKED_IN')
+                   /* Standard date overlap logic */
+                   AND b2.estimated_arrival < COALESCE(b1.actual_departure, b1.estimated_departure)
+                   AND COALESCE(b2.actual_departure, b2.estimated_departure) > COALESCE(b1.actual_arrival, b1.estimated_arrival)
 
                 WHERE rd.booking_id = $1
                   AND b2.id IS NOT NULL
