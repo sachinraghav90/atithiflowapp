@@ -435,15 +435,6 @@ export default function ReservationManagement() {
             }
         }
 
-        /* -------- Comments Rule -------- */
-
-        if (discount && comments.length < 20) {
-            errors.comments = {
-                type: "invalid",
-                message: "20 letters in comments are mandatory"
-            };
-        }
-
         return errors;
     };
 
@@ -506,10 +497,12 @@ export default function ReservationManagement() {
         const { booking } = await promise
         const { id } = booking
 
-        fromEnquiry && updateEnquiry({
-            id: enquiryId,
-            payload: { status: "booked", is_reserved: true, booking_id: id }
-        });
+        if (fromEnquiry) {
+            updateEnquiry({
+                id: enquiryId,
+                payload: { status: "booked", is_reserved: true, booking_id: id }
+            });
+        }
 
         resetForm()
     }
@@ -748,7 +741,9 @@ export default function ReservationManagement() {
         discountType,
         editableBasePrice,
         adult,
-        roomFilters.acType
+        roomFilters.acType,
+        availableRooms?.rooms,
+        roomTypes
     ]);
 
     useEffect(() => {
@@ -1061,7 +1056,7 @@ export default function ReservationManagement() {
                                         label="Property"
                                         field="property_id"
                                         value={{ property_id: selectedPropertyId }}
-                                        setValue={(fn: any) => {
+                                        setValue={(fn) => {
                                             const updated = fn({ property_id: selectedPropertyId });
                                             setSelectedPropertyId(Number(updated.property_id) || null);
                                         }}
@@ -1087,7 +1082,7 @@ export default function ReservationManagement() {
                                     label="Plan"
                                     field="package_id"
                                     value={{ package_id: packageId }}
-                                    setValue={(fn: any) => {
+                                    setValue={(fn) => {
                                         const updated = fn({ package_id: packageId });
                                         setPackageId(Number(updated.package_id) || null);
                                     }}
@@ -1175,7 +1170,7 @@ export default function ReservationManagement() {
                                     label="Arrival Time"
                                     field="estimatedArrivalTime"
                                     value={{ estimatedArrivalTime }}
-                                    setValue={(fn: any) => {
+                                    setValue={(fn) => {
                                         const updated = fn({ estimatedArrivalTime });
                                         setEstimatedArrivalTime(updated.estimatedArrivalTime);
                                     }}
@@ -1210,7 +1205,7 @@ export default function ReservationManagement() {
                                     label="Booking Type"
                                     field="booking_type"
                                     value={{ booking_type: bookingType }}
-                                    setValue={(fn: any) => {
+                                    setValue={(fn) => {
                                         const updated = fn({ booking_type: bookingType });
                                         setBookingType(updated.booking_type);
                                     }}
@@ -1584,7 +1579,7 @@ export default function ReservationManagement() {
                                     value={{
                                         id_type: guest.id_type || (guest.other_id_type ? "Other" : "")
                                     }}
-                                    setValue={(fn: any) => {
+                                    setValue={(fn) => {
 
                                         const updated = fn({
                                             id_type: guest.id_type || (guest.other_id_type ? "Other" : "")
@@ -1755,7 +1750,7 @@ export default function ReservationManagement() {
                                     label="Extras Per Night"
                                     field="extraPerNight"
                                     value={{ extraPerNight }}
-                                    setValue={(fn: any) => {
+                                    setValue={(fn) => {
 
                                         const updated = fn({ extraPerNight });
 
@@ -1776,7 +1771,7 @@ export default function ReservationManagement() {
                                     label="Advance Payment"
                                     field="advancePayment"
                                     value={{ advancePayment }}
-                                    setValue={(fn: any) => {
+                                    setValue={(fn) => {
 
                                         const updated = fn({ advancePayment });
 
@@ -1821,7 +1816,7 @@ export default function ReservationManagement() {
                                     label="Discount Type"
                                     field="discountType"
                                     value={{ discountType }}
-                                    setValue={(fn: any) => {
+                                    setValue={(fn) => {
 
                                         const updated = fn({ discountType });
 
@@ -1841,20 +1836,13 @@ export default function ReservationManagement() {
                                     label="Discount"
                                     field="discount"
                                     value={{ discount }}
-                                    setValue={(fn: any) => {
+                                    setValue={(fn) => {
 
                                         const updated = fn({ discount });
 
                                         setDiscount(
                                             Math.abs(+normalizeNumberInput(updated.discount))
                                         );
-
-                                        // clear comments validation
-                                        setReservationErrors(prev => {
-                                            const next = { ...prev };
-                                            delete next.comments;
-                                            return next;
-                                        });
                                     }}
                                     errors={reservationErrors}
                                     setErrors={setReservationErrors}
@@ -1866,8 +1854,7 @@ export default function ReservationManagement() {
 
                             <Field label="Comments">
                                 <textarea
-                                    className={cn("w-full min-h-[96px] rounded-[3px] border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                                        reservationErrors.comments && "border-red-500"
+                                    className={cn("w-full min-h-[96px] rounded-[3px] border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                                     )}
                                     value={comments}
                                     onChange={(e) => setComments(normalizeTextInput(e.target.value))}

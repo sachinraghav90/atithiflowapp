@@ -36,7 +36,9 @@ export const hmsApi = createApi({
     "Inventory",
     "MenuItemGroups",
     "DeliveryPartners",
-    "Audits"
+    "Audits",
+    "RoomStatus",
+    "TodayInHouse"
   ],
   endpoints: (builder) => ({
 
@@ -455,7 +457,7 @@ export const hmsApi = createApi({
       ],
     }),
 
-    updateStaffPassword: builder.mutation<any, { password: String, user_id: String }>({
+    updateStaffPassword: builder.mutation<unknown, { password: string, user_id: string }>({
       query: (payload) => {
         return {
           url: `/staff`,
@@ -491,7 +493,7 @@ export const hmsApi = createApi({
       providesTags: (_r, _e, id) => [{ type: "StaffIdProof", id }],
     }),
 
-    getStaffByProperty: builder.query<any, any>({
+    getStaffByProperty: builder.query<{ data?: { id: string }[] }, Record<string, unknown>>({
       query: ({
         page = 1,
         limit = 10,
@@ -500,7 +502,7 @@ export const hmsApi = createApi({
         status = "",
         property_id,
         export: isExport = false
-      }) => {
+      }: any) => {
         const params = new URLSearchParams();
         if (!isExport) {
           params.append("page", String(page));
@@ -522,7 +524,7 @@ export const hmsApi = createApi({
       providesTags: (result) =>
         result?.data
           ? [
-            ...result.data.map((staff: any) => ({
+            ...result.data.map((staff) => ({
               type: "Staff" as const,
               id: staff.id,
             })),
@@ -639,7 +641,7 @@ export const hmsApi = createApi({
           method: "GET",
         }
       },
-      providesTags: ["Bookings"]
+      providesTags: ["RoomStatus"]
     }),
 
     todayInHouseBookingIds: builder.query({
@@ -649,7 +651,7 @@ export const hmsApi = createApi({
           method: "GET",
         }
       },
-      providesTags: ["Bookings"]
+      providesTags: ["TodayInHouse"]
     }),
 
     todayInHouseBookingRooms: builder.query({
@@ -659,7 +661,7 @@ export const hmsApi = createApi({
           method: "GET",
         }
       },
-      providesTags: ["Bookings"]
+      providesTags: ["TodayInHouse"]
     }),
 
     createBooking: builder.mutation({
@@ -731,7 +733,16 @@ export const hmsApi = createApi({
           method: "GET",
         }
       },
-      providesTags: ["Bookings"]
+      providesTags: (result) =>
+        result?.bookings
+          ? [
+              ...result.bookings.map((booking: { id: string | number }) => ({
+                type: "Bookings" as const,
+                id: booking.id,
+              })),
+              { type: "Bookings", id: "LIST" },
+            ]
+          : [{ type: "Bookings", id: "LIST" }],
     }),
 
     exportBookings: builder.query({
@@ -764,12 +775,12 @@ export const hmsApi = createApi({
           method: "GET",
         }
       },
-      providesTags: ["Bookings"]
+      providesTags: (_result, _error, bookingId) => [{ type: "Bookings", id: bookingId }]
     }),
 
     updateBooking: builder.mutation({
       query: ({ booking_id, status, actual_arrival, actual_departure }) => {
-        const body: Record<string, any> = { status };
+        const body: Record<string, unknown> = { status };
 
         if (actual_arrival) body.actual_arrival = actual_arrival;
         if (actual_departure) body.actual_departure = actual_departure;
@@ -780,7 +791,13 @@ export const hmsApi = createApi({
           body,
         }
       },
-      invalidatesTags: ["Bookings", "Audits"]
+      invalidatesTags: (_result, _error, { booking_id }) => [
+        { type: "Bookings", id: booking_id },
+        { type: "Bookings", id: "LIST" },
+        "Audits",
+        "RoomStatus",
+        "TodayInHouse"
+      ]
     }),
 
     cancelBooking: builder.mutation({
@@ -791,7 +808,13 @@ export const hmsApi = createApi({
           body: { cancellation_fee, comments },
         }
       },
-      invalidatesTags: ["Bookings", "Audits"]
+      invalidatesTags: (_result, _error, { booking_id }) => [
+        { type: "Bookings", id: booking_id },
+        { type: "Bookings", id: "LIST" },
+        "Audits",
+        "RoomStatus",
+        "TodayInHouse"
+      ]
     }),
 
     addGuestsByBooking: builder.mutation({
@@ -825,7 +848,7 @@ export const hmsApi = createApi({
       providesTags: ["Guests"]
     }),
 
-    uploadBookingGuestImage: builder.mutation<any, { bookingId: string; file: Blob }>({
+    uploadBookingGuestImage: builder.mutation<unknown, { bookingId: string; file: Blob }>({
       query: ({ bookingId, file }) => {
         const formData = new FormData();
         formData.append("image", file, "guest-image.jpg");
@@ -874,7 +897,7 @@ export const hmsApi = createApi({
       providesTags: ["BookingGuestImage"],
     }),
 
-    deleteBookingGuestImage: builder.mutation<any, string>({
+    deleteBookingGuestImage: builder.mutation<unknown, string>({
       query: (bookingId) => {
         return {
           url: `/bookings/${bookingId}/guest-image`,
