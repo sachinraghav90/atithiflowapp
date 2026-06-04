@@ -1,9 +1,9 @@
 import { format, isValid } from "date-fns";
 
-export const APP_DATE_DISPLAY_FORMAT = "dd/MM/yy";
-export const APP_DATE_TIME_DISPLAY_FORMAT = "dd/MM/yy HH:mm";
-export const APP_DATE_INPUT_PLACEHOLDER = "DD/MM/YY";
-export const APP_DATE_TIME_INPUT_PLACEHOLDER = "DD/MM/YY HH:mm";
+export const APP_DATE_DISPLAY_FORMAT = "dd/MM/yyyy";
+export const APP_DATE_TIME_DISPLAY_FORMAT = "dd/MM/yyyy HH:mm";
+export const APP_DATE_INPUT_PLACEHOLDER = "DD/MM/YYYY";
+export const APP_DATE_TIME_INPUT_PLACEHOLDER = "DD/MM/YYYY HH:mm";
 
 type DateValue = string | number | Date | null | undefined;
 

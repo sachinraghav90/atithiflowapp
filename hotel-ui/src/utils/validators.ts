@@ -41,13 +41,9 @@ export const validateStaff = (
 
     const phone1 = staff.phone1?.trim() || "";
 
-    const parts = phone1.split(/\s+/);
-
-    const phonePart1 = parts.slice(1).join("");
-
     // ---------- REQUIRED VALIDATION ----------
 
-    if (!phonePart1) {
+    if (!phone1) {
         errors.phone1 = {
             type: "required",
             message: "Phone is required"
@@ -56,7 +52,7 @@ export const validateStaff = (
 
     // ---------- FORMAT VALIDATION ----------
 
-    else if (!phoneRegex.test(phonePart1)) {
+    else if (!phoneRegex.test(phone1)) {
         errors.phone1 = {
             type: "invalid",
             message: "Invalid Phone number"
@@ -65,22 +61,14 @@ export const validateStaff = (
 
     const phone2 = staff.phone2?.trim() || "";
 
-    const parts2 = phone2.split(/\s+/);
-
-    const phonePart2 = parts2.slice(1).join("");
-
     // ---------- REQUIRED VALIDATION ----------
 
-    if (phonePart2 && !phoneRegex.test(phonePart2)) {
+    if (phone2 && !phoneRegex.test(phone2)) {
         errors.phone2 = {
             type: "invalid",
             message: "Invalid Phone number"
         };
     }
-
-
-    if (staff.phone2?.trim() && staff.phone2.trim()?.split(" ")?.[1] && !phoneRegex.test(staff.phone2.split(" ")[1]))
-        errors.phone2 = { type: "invalid", message: "Invalid phone number" };
 
     /* ================= ROLE BASED ================= */
 
@@ -88,14 +76,9 @@ export const validateStaff = (
 
         const emergency = staff.emergency_contact?.trim() || "";
 
-        // split safely (handles multiple spaces)
-        const parts = emergency.split(/\s+/);
-
-        const phonePart = parts.slice(1).join("");
-
         // ---------- REQUIRED VALIDATION ----------
 
-        if (!phonePart) {
+        if (!emergency) {
             errors.emergency_contact = {
                 type: "required",
                 message: "Emergency phone is required"
@@ -104,7 +87,7 @@ export const validateStaff = (
 
         // ---------- FORMAT VALIDATION ----------
 
-        else if (!phoneRegex.test(phonePart)) {
+        else if (!phoneRegex.test(emergency)) {
             errors.emergency_contact = {
                 type: "invalid",
                 message: "Invalid emergency contact number"
@@ -132,13 +115,9 @@ export const validateStaff = (
 
         const emergency_contact_2 = staff.emergency_contact_2?.trim() || "";
 
-        const parts2 = emergency_contact_2.split(/\s+/);
-
-        const phonePart2 = parts2.slice(1).join("");
-
         // ---------- REQUIRED VALIDATION ----------
 
-        if (phonePart2 && !phoneRegex.test(phonePart2)) {
+        if (emergency_contact_2 && !phoneRegex.test(emergency_contact_2)) {
             errors.emergency_contact_2 = {
                 type: "invalid",
                 message: "Invalid Phone number"

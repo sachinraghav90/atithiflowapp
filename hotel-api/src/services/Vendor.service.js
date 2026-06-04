@@ -1,4 +1,5 @@
 import { getDb } from "../../utils/getDb.js";
+import AuditService from "./Audit.service.js";
 
 class VendorService {
 
@@ -160,6 +161,27 @@ class VendorService {
             ]
         );
 
+        await AuditService.log({
+            property_id,
+            event_id: rows[0].id,
+            table_name: "ref_vendors",
+            event_type: "CREATE",
+            task_name: "Create Vendor",
+            comments: "Vendor created",
+            details: JSON.stringify({
+                vendor_id: rows[0].id,
+                name,
+                pan_no,
+                gst_no,
+                address,
+                contact_no,
+                email_id,
+                vendor_type,
+                is_active: true
+            }),
+            user_id: userId
+        });
+
         return rows[0];
     }
 
@@ -174,6 +196,12 @@ class VendorService {
             vendor_type,
             is_active,
         } = payload;
+
+        const currentResult = await this.#DB.query(`SELECT * FROM public.ref_vendors WHERE id = $1`, [vendorId]);
+        if (currentResult.rowCount === 0) {
+            throw new Error("Vendor not found");
+        }
+        const currentVendor = currentResult.rows[0];
 
         const { rows } = await this.#DB.query(
             `
@@ -205,6 +233,32 @@ class VendorService {
                 vendorId,
             ]
         );
+
+        const before = {};
+        const after = {};
+        let hasChanges = false;
+        const checkFields = ['name', 'pan_no', 'gst_no', 'address', 'contact_no', 'email_id', 'vendor_type', 'is_active'];
+
+        for (const field of checkFields) {
+            if (String(currentVendor[field]) !== String(rows[0][field])) {
+                before[field] = currentVendor[field];
+                after[field] = rows[0][field];
+                hasChanges = true;
+            }
+        }
+
+        if (hasChanges) {
+            await AuditService.log({
+                property_id: currentVendor.property_id,
+                event_id: vendorId,
+                table_name: "ref_vendors",
+                event_type: "UPDATE",
+                task_name: "Update Vendor",
+                comments: "Vendor details updated",
+                details: JSON.stringify({ before, after }),
+                user_id: userId
+            });
+        }
 
         return rows[0];
     }

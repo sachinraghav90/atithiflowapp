@@ -329,17 +329,49 @@ class EnquiryService {
             }
         }
 
+        // Fetch current state
+        const currentResult = await this.#DB.query(`SELECT * FROM public.enquiries WHERE id = $1`, [enquiryId]);
+        if (currentResult.rowCount === 0) {
+            throw new Error("Enquiry not found");
+        }
+        const currentEnquiry = currentResult.rows[0];
+
+        // Diff
+        const before = {};
+        const after = {};
+        let hasChanges = false;
+
+        for (const [key, value] of Object.entries(normalizedPayload)) {
+            const oldValue = currentEnquiry[key] ?? null;
+            const newValue = value ?? null;
+            let isDifferent = false;
+            
+            if (key === 'follow_up_date' || key === 'check_in' || key === 'check_out') {
+                const d1 = oldValue ? new Date(oldValue).getTime() : null;
+                const d2 = newValue ? new Date(newValue).getTime() : null;
+                isDifferent = d1 !== d2;
+            } else {
+                isDifferent = String(oldValue) !== String(newValue);
+            }
+
+            if (isDifferent) {
+                before[key] = oldValue;
+                after[key] = newValue;
+                hasChanges = true;
+            }
+        }
+
+        if (!hasChanges) {
+            return currentEnquiry;
+        }
+
         const fields = [];
         const values = [];
         let i = 1;
 
-        for (const [key, value] of Object.entries(normalizedPayload)) {
+        for (const [key, value] of Object.entries(after)) {
             fields.push(`${key} = $${i++}`);
             values.push(value);
-        }
-
-        if (fields.length === 0) {
-            throw new Error("No fields provided for update");
         }
 
         // audit fields
@@ -358,23 +390,20 @@ class EnquiryService {
         values.push(enquiryId);
 
         const result = await this.#DB.query(query, values);
-
-        if (result.rowCount === 0) {
-            throw new Error("Enquiry not found");
-        }
-
         const updated = result.rows[0];
+
+        const isNewBooking = 'booking_id' in after && after.booking_id && !before.booking_id;
 
         await AuditService.log({
             property_id: updated.property_id,
             event_id: updated.id,
             table_name: "enquiries",
-            event_type: "UPDATE",
-            task_name: "Update Enquiry",
-            comments: "Enquiry updated",
+            event_type: isNewBooking ? "NEW_BOOKING" : "UPDATE",
+            task_name: isNewBooking ? "New Booking Created" : "Update Enquiry",
+            comments: isNewBooking ? "New booking created from enquiry" : "Enquiry updated",
             details: JSON.stringify({
-                updated_fields: Object.keys(normalizedPayload),
-                new_values: normalizedPayload
+                before,
+                after
             }),
             user_id: userId
         });

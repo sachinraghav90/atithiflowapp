@@ -50,6 +50,7 @@ import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
 import { cn } from "@/lib/utils";
+import { getFormattedAuditChanges, getAuditActionBadge } from "@/utils/auditUtils";
 
 /* ---------------- Types ---------------- */
 type KitchenItem = {
@@ -86,12 +87,26 @@ const getAuditChangeText = (details: any) => {
     const unit = entity?.unit || "";
     
     if (!before) {
-        return `Initialized with ${after?.quantity || 0} ${unit}`;
+        return (
+            <div className="text-muted-foreground">
+                <span className="font-semibold text-foreground/80">Stock:</span> Initialized with {after?.quantity || 0} {unit}
+            </div>
+        );
     }
 
     const diff = Number(after?.quantity || 0) - Number(before?.quantity || 0);
     const sign = diff >= 0 ? "+" : "";
-    return `${before.quantity} ${unit} -> ${after.quantity} ${unit} (${sign}${diff.toFixed(2)})`;
+    
+    const formattedDetails = {
+        before: {
+            "Quantity": `${before.quantity} ${unit}`
+        },
+        after: {
+            "Quantity": `${after.quantity} ${unit} (${sign}${diff.toFixed(2)})`
+        }
+    };
+    
+    return getFormattedAuditChanges(formattedDetails);
 };
 
 /* ---------------- Component ---------------- */
@@ -682,16 +697,7 @@ export default function KitchenInventory() {
                                 <AppDataGrid
                                     density="compact"
                                     columns={[
-                                        {
-                                            label: "Item ID",
-                                            headClassName: "text-center",
-                                            cellClassName: "text-center font-medium min-w-[100px]",
-                                            render: (audit: any) => (
-                                                <span className="font-medium text-primary">
-                                                    {formatModuleDisplayId("kitchen", audit.event_id)}
-                                                </span>
-                                            ),
-                                        },
+
                                         {
                                             label: "Item",
                                             headClassName: "w-[220px]",
@@ -705,11 +711,7 @@ export default function KitchenInventory() {
                                             label: "Action",
                                             headClassName: "text-center w-[140px]",
                                             cellClassName: "text-center font-medium min-w-[140px]",
-                                            render: (audit: any) => (
-                                                <span className="text-[10px] font-bold tracking-tight px-2 py-0.5 rounded bg-primary/10 text-primary">
-                                                    {getAuditActionLabel(audit)}
-                                                </span>
-                                            ),
+                                            render: (audit: any) => getAuditActionBadge(audit.event_type),
                                         },
                                         {
                                             label: "Change",
@@ -724,8 +726,8 @@ export default function KitchenInventory() {
                                             render: (audit: any) => `${audit.user_first_name} ${audit.user_last_name}`,
                                         },
                                         {
-                                            label: "Date",
-                                            headClassName: "w-[180px]",
+                                            label: "Date & Time",
+                                            headClassName: "text-white w-[180px]",
                                             cellClassName: "text-[10px] text-muted-foreground min-w-[180px]",
                                             render: (audit: any) => formatAppDateTime(audit.created_on),
                                         },
@@ -753,7 +755,7 @@ export default function KitchenInventory() {
 
             {/* SIDE SHEET */}
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto bg-background p-0">
+                <SheetContent side="right" className={cn("w-full overflow-y-auto bg-background p-0 transition-all duration-300", sheetTab === "history" ? "sm:max-w-4xl" : "sm:max-w-xl")}>
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -821,28 +823,32 @@ export default function KitchenInventory() {
                                             <div className="border border-border rounded-lg overflow-hidden bg-background shadow-sm">
                                                 <AppDataGrid
                                                     columns={[
+
                                                         { 
-                                                            label: "Action", 
-                                                            render: (log: any) => (
-                                                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary">
-                                                                    {getAuditActionLabel(log)}
-                                                                </span>
-                                                            ) 
+                                                            label: "Action",
+                                                            cellClassName: "whitespace-nowrap",
+                                                            render: (log: any) => getAuditActionBadge(log.event_type)
+                                                        },
+                                                        {
+                                                            label: "Updated By",
+                                                            cellClassName: "whitespace-nowrap",
+                                                            render: (log: any) => `${log.user_first_name || ""} ${log.user_last_name || ""}`.trim() || "System"
                                                         },
                                                         { 
-                                                            label: "Change", 
-                                                            cellClassName: "text-[11px] font-medium text-foreground/80",
-                                                            render: (log: any) => getAuditChangeText(parseAuditDetails(log.details)) 
-                                                        },
-                                                        { 
-                                                            label: "Date", 
-                                                            cellClassName: "text-[10px] text-muted-foreground",
+                                                            label: "Date & Time", 
+                                                            headClassName: "text-white", 
+                                                            cellClassName: "text-muted-foreground whitespace-nowrap min-w-[130px]",
                                                             render: (log: any) => formatAppDateTime(log.created_on) 
+                                                        },
+                                                        { 
+                                                            label: "Changes", 
+                                                            cellClassName: "min-w-[300px] py-2",
+                                                            render: (log: any) => getAuditChangeText(parseAuditDetails(log.details)) 
                                                         }
                                                     ] as ColumnDef[]}
                                                     data={auditLogs.data}
                                                     rowKey={(log: any) => log.id}
-                                                    minWidth="300px"
+                                                    minWidth="600px"
                                                     enablePagination
                                                     paginationProps={{
                                                         page: itemAuditPage,

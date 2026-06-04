@@ -12,7 +12,7 @@ import {
 import { AppDataGrid, DataGrid, DataGridHeader, DataGridRow, DataGridHead, DataGridCell, type ColumnDef } from "@/components/ui/data-grid";
 import { TableCell } from "@/components/ui/table";
 import { Building2, FilterX, Image as ImageIcon, Pencil, RefreshCcw } from "lucide-react";
-import { useAddPropertyBySuperAdminMutation, useAddPropertyMutation, useBulkUpsertPropertyFloorsMutation, useGetMeQuery, useGetPropertiesQuery, useGetPropertyBanksQuery, useGetPropertyFloorsQuery, useLazyGetUsersByPropertyAndRoleQuery, useLazyGetUsersByRoleQuery, useUpdatePropertiesMutation, useUpsertPropertyBanksMutation } from "@/redux/services/hmsApi";
+import { useAddPropertyBySuperAdminMutation, useAddPropertyMutation, useBulkUpsertPropertyFloorsMutation, useGetMeQuery, useGetPropertiesQuery, useGetPropertyBanksQuery, useGetPropertyFloorsQuery, useLazyGetUsersByPropertyAndRoleQuery, useLazyGetUsersByRoleQuery, useUpdatePropertiesMutation, useUpsertPropertyBanksMutation, useGetLogsQuery as useGetAuditLogsQuery } from "@/redux/services/hmsApi";
 import { useDebounce } from "@/hooks/use-debounce";
 import { toast } from "react-toastify";
 import { useAppSelector } from "@/redux/hook";
@@ -20,6 +20,7 @@ import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.select
 import { normalizeTextInput } from "@/utils/normalizeTextInput";
 import { useLocation, useNavigate } from "react-router-dom";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
+import { getFormattedAuditChanges, getAuditActionBadge } from "@/utils/auditUtils";
 
 import PropertyIdentity from "@/components/property-form/sections/PropertyIdentity";
 import PropertyLocation from "@/components/property-form/sections/PropertyLocation";
@@ -139,6 +140,8 @@ export default function PropertyManagement() {
     const [limit, setLimit] = useState(10);
 
     // filters
+    const [historyPage, setHistoryPage] = useState(1);
+    const [historyLimit, setHistoryLimit] = useState(20);
     const [searchInput, setSearchInput] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("");
@@ -205,6 +208,20 @@ export default function PropertyManagement() {
     const { data: propertyBanks } = useGetPropertyBanksQuery(selectedProperty?.id, {
         skip: !isLoggedIn || !selectedProperty?.id
     })
+
+    const {
+        data: auditLogs,
+        isLoading: auditLogsLoading,
+        isFetching: auditLogsFetching
+    } = useGetAuditLogsQuery({
+        tableName: "properties",
+        eventId: selectedProperty?.id,
+        page: historyPage,
+        limit: historyLimit
+    }, {
+        skip: !selectedProperty?.id || sheetTab !== "history"
+    });
+
 
     const [bulkUpsertFloors] = useBulkUpsertPropertyFloorsMutation()
     const [upsertPropertyBank] = useUpsertPropertyBanksMutation()
@@ -993,7 +1010,10 @@ export default function PropertyManagement() {
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
                 <SheetContent
                     side="right"
-                    className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background"
+                    className={cn(
+                        "w-full overflow-y-auto bg-background transition-all duration-300",
+                        sheetTab === "history" ? "sm:max-w-6xl lg:max-w-[1200px]" : "sm:max-w-4xl lg:max-w-5xl"
+                    )}
                 >
 
                     <motion.div className="space-y-5">
@@ -1180,8 +1200,82 @@ export default function PropertyManagement() {
                                 )}
 
                                 {sheetTab === "history" && (
-                                    <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
-                                        <p className="text-sm text-muted-foreground">No history logs available yet.</p>
+                                    <div className="border border-border rounded-[5px] overflow-hidden bg-background">
+                                        <AppDataGrid
+                                            density="compact"
+                                            rowKey={(log: any) => log.id}
+                                            columns={[
+
+                                                {
+                                                    label: "Action",
+                                                    cellClassName: "whitespace-nowrap",
+                                                    render: (log: any) => getAuditActionBadge(log.event_type)
+                                                },
+                                                {
+                                                    label: "Updated By",
+                                                    headClassName: "w-[160px]",
+                                                    cellClassName: "",
+                                                    render: (log: any) => (
+                                                        <div className="flex flex-col">
+                                                            <span className="font-medium text-foreground">
+                                                                {`${log.user_first_name || ""} ${log.user_last_name || ""}`.trim() || log.user_name || "System"}
+                                                            </span>
+                                                            {log.user_role && (
+                                                                <span className="text-muted-foreground capitalize">
+                                                                    {log.user_role}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    )
+                                                },
+                                                {
+                                                    label: "Date & Time",
+                                                    headClassName: "text-white w-[160px]",
+                                                    cellClassName: "whitespace-nowrap text-muted-foreground",
+                                                    render: (log: any) => {
+                                                        const d = new Date(log.created_on);
+                                                        const date = d.toLocaleDateString("en-IN", {
+                                                            day: "2-digit",
+                                                            month: "2-digit",
+                                                            year: "numeric"
+                                                        });
+                                                        return date;
+                                                    }
+                                                },
+                                                {
+                                                    label: "Changes",
+                                                    cellClassName: "py-2",
+                                                    render: (log: any) => {
+                                                        let parsed = log.details;
+                                                        if (typeof parsed === 'string') {
+                                                            try { parsed = JSON.parse(parsed); } catch { }
+                                                        }
+                                                        return (
+                                                            <div className="max-w-[400px] whitespace-normal">
+                                                                {getFormattedAuditChanges(parsed)}
+                                                            </div>
+                                                        );
+                                                    }
+                                                }
+                                            ]}
+                                            data={auditLogs?.data || []}
+                                            loading={auditLogsLoading}
+                                            emptyText="No history found for this property"
+                                            showActions={false}
+                                            enablePagination={!!auditLogs?.pagination}
+                                            paginationProps={{
+                                                page: historyPage,
+                                                totalPages: auditLogs?.pagination?.totalPages ?? 1,
+                                                setPage: setHistoryPage,
+                                                disabled: auditLogsFetching,
+                                                totalRecords: auditLogs?.pagination?.totalItems || auditLogs?.data?.length || 0,
+                                                limit: historyLimit,
+                                                onLimitChange: (value) => {
+                                                    setHistoryLimit(value);
+                                                    setHistoryPage(1);
+                                                }
+                                            }}
+                                        />
                                     </div>
                                 )}
                             </div>

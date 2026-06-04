@@ -185,6 +185,17 @@ class MenuMasterService {
         prepTime,
         userId
     }) {
+        const { rows: existingRows } = await this.#DB.query(
+            `
+            SELECT m.*, g.name AS menu_item_group 
+            FROM public.menu_master m
+            LEFT JOIN public.menu_item_groups g ON g.id = m.menu_item_group_id
+            WHERE m.id = $1
+            `,
+            [id]
+        );
+        const oldRow = existingRows[0];
+
         const { rows } = await this.#DB.query(
             `
             UPDATE public.menu_master
@@ -222,16 +233,46 @@ class MenuMasterService {
 
         const updated = rows[0];
 
-        await AuditService.log({
-            property_id: updated.property_id,
-            event_id: updated.id,
-            table_name: "menu_master",
-            event_type: "UPDATE",
-            task_name: "Update Menu Item",
-            comments: "Menu item updated",
-            details: JSON.stringify(updated),
-            user_id: userId
-        });
+        let newGroupName = oldRow?.menu_item_group;
+        if (oldRow && updated.menu_item_group_id !== oldRow.menu_item_group_id) {
+            if (updated.menu_item_group_id) {
+                const { rows: gRows } = await this.#DB.query(
+                    `SELECT name FROM public.menu_item_groups WHERE id = $1`,
+                    [updated.menu_item_group_id]
+                );
+                newGroupName = gRows[0]?.name;
+            } else {
+                newGroupName = null;
+            }
+        }
+
+        if (oldRow) {
+            const before = {};
+            const after = {};
+            let hasChanges = false;
+
+            if (itemName !== undefined && oldRow.item_name !== updated.item_name) { before.item_name = oldRow.item_name; after.item_name = updated.item_name; hasChanges = true; }
+            if (price !== undefined && Number(oldRow.price) !== Number(updated.price)) { before.price = Number(oldRow.price); after.price = Number(updated.price); hasChanges = true; }
+            if (isActive !== undefined && Boolean(oldRow.is_active) !== Boolean(updated.is_active)) { before.is_active = Boolean(oldRow.is_active); after.is_active = Boolean(updated.is_active); hasChanges = true; }
+            if (isVeg !== undefined && Boolean(oldRow.is_veg) !== Boolean(updated.is_veg)) { before.is_veg = Boolean(oldRow.is_veg); after.is_veg = Boolean(updated.is_veg); hasChanges = true; }
+            if (description !== undefined && oldRow.description !== updated.description) { before.description = oldRow.description || null; after.description = updated.description || null; hasChanges = true; }
+            if (prepTime !== undefined && oldRow.prep_time !== updated.prep_time) { before.prep_time = oldRow.prep_time || null; after.prep_time = updated.prep_time || null; hasChanges = true; }
+            if (menuItemGroupId !== undefined && oldRow.menu_item_group_id !== updated.menu_item_group_id) { before.menu_item_group = oldRow.menu_item_group || "None"; after.menu_item_group = newGroupName || "None"; hasChanges = true; }
+            if (image !== undefined) { before.image = "Old Image"; after.image = "Updated"; hasChanges = true; }
+
+            if (hasChanges) {
+                await AuditService.log({
+                    property_id: updated.property_id,
+                    event_id: updated.id,
+                    table_name: "menu_master",
+                    event_type: "Update",
+                    task_name: "Update Menu Item",
+                    comments: "Menu item updated",
+                    details: JSON.stringify({ before, after }),
+                    user_id: userId
+                });
+            }
+        }
 
         return updated;
     }

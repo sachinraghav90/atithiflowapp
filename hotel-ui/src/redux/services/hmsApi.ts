@@ -439,7 +439,7 @@ export const hmsApi = createApi({
         };
       },
 
-      invalidatesTags: [{ type: "Staff", id: "LIST" }],
+      invalidatesTags: [{ type: "Staff", id: "LIST" }, "Audits"],
     }),
 
     updateStaff: builder.mutation<any, { id: string; payload: FormData }>({
@@ -454,6 +454,7 @@ export const hmsApi = createApi({
       invalidatesTags: (_r, _e, arg) => [
         { type: "Staff", id: arg.id },
         { type: "Staff", id: "LIST" },
+        "Audits"
       ],
     }),
 
@@ -570,7 +571,7 @@ export const hmsApi = createApi({
           body: payload,
         }
       },
-      invalidatesTags: ["Package"]
+      invalidatesTags: ["Package", "Audits"]
     }),
 
     getPackagesByUser: builder.query({
@@ -590,7 +591,7 @@ export const hmsApi = createApi({
           body: payload,
         }
       },
-      invalidatesTags: ["Package"]
+      invalidatesTags: ["Package", "Audits"]
     }),
 
     updatePackagesBulk: builder.mutation({
@@ -601,7 +602,7 @@ export const hmsApi = createApi({
           body: packages,
         }
       },
-      invalidatesTags: ["Package"]
+      invalidatesTags: ["Package", "Audits"]
     }),
 
     deactivatePackage: builder.mutation({
@@ -789,6 +790,23 @@ export const hmsApi = createApi({
           url: `/bookings/${booking_id}/status`,
           method: "PATCH",
           body,
+        }
+      },
+      invalidatesTags: (_result, _error, { booking_id }) => [
+        { type: "Bookings", id: booking_id },
+        { type: "Bookings", id: "LIST" },
+        "Audits",
+        "RoomStatus",
+        "TodayInHouse"
+      ]
+    }),
+
+    changeRoom: builder.mutation({
+      query: ({ booking_id, new_rooms, reason }) => {
+        return {
+          url: `/bookings/${booking_id}/change-room`,
+          method: "PATCH",
+          body: { new_rooms, reason },
         }
       },
       invalidatesTags: (_result, _error, { booking_id }) => [
@@ -1047,7 +1065,7 @@ export const hmsApi = createApi({
           body: payload,
         }
       },
-      invalidatesTags: ["roomTypes"]
+      invalidatesTags: ["roomTypes", "Audits"]
     }),
 
     getPropertyVendors: builder.query({
@@ -1103,7 +1121,7 @@ export const hmsApi = createApi({
           body: payload
         }
       },
-      invalidatesTags: ["Vendors"]
+      invalidatesTags: ["Vendors", "Audits"]
     }),
 
     updateVendor: builder.mutation({
@@ -1114,7 +1132,7 @@ export const hmsApi = createApi({
           body: payload
         }
       },
-      invalidatesTags: ["Vendors"]
+      invalidatesTags: ["Vendors", "Audits"]
     }),
 
     getPropertyLaundryPricing: builder.query({
@@ -1143,7 +1161,7 @@ export const hmsApi = createApi({
           body: payload
         }
       },
-      invalidatesTags: ["LaundryPricing"]
+      invalidatesTags: ["LaundryPricing", "Audits"]
     }),
 
     updateLaundryPricing: builder.mutation({
@@ -1154,7 +1172,7 @@ export const hmsApi = createApi({
           body: payload
         }
       },
-      invalidatesTags: ["LaundryPricing"]
+      invalidatesTags: ["LaundryPricing", "Audits"]
     }),
 
     getPropertyLaundryOrders: builder.query({
@@ -1267,7 +1285,7 @@ export const hmsApi = createApi({
           body: payload
         }
       },
-      invalidatesTags: ["Enquiries"]
+      invalidatesTags: ["Enquiries", "Audits"]
     }),
 
     updateEnquiry: builder.mutation({
@@ -1278,7 +1296,7 @@ export const hmsApi = createApi({
           body: payload
         }
       },
-      invalidatesTags: ["Enquiries"]
+      invalidatesTags: ["Enquiries", "Audits"]
     }),
 
     getPropertyMenu: builder.query({
@@ -1319,7 +1337,7 @@ export const hmsApi = createApi({
           body: payload
         }
       },
-      invalidatesTags: ["Menu"]
+      invalidatesTags: ["Menu", "Audits"]
     }),
 
     createMenuItemBulk: builder.mutation({
@@ -1330,7 +1348,7 @@ export const hmsApi = createApi({
           body: payload
         }
       },
-      invalidatesTags: ["Menu"]
+      invalidatesTags: ["Menu", "Audits"]
     }),
 
     updateMenuItem: builder.mutation({
@@ -1341,7 +1359,7 @@ export const hmsApi = createApi({
           body: payload
         }
       },
-      invalidatesTags: ["Menu"]
+      invalidatesTags: ["Menu", "Audits"]
     }),
 
     getPropertyOrders: builder.query({
@@ -1407,7 +1425,7 @@ export const hmsApi = createApi({
           body: payload
         }
       },
-      invalidatesTags: ["Orders", "Bookings"]
+      invalidatesTags: ["Orders", "Bookings", "Audits"]
     }),
 
     updateOrderStatus: builder.mutation({
@@ -1418,7 +1436,7 @@ export const hmsApi = createApi({
           body: payload
         }
       },
-      invalidatesTags: ["Orders", "Bookings"]
+      invalidatesTags: ["Orders", "Bookings", "Audits"]
     }),
 
     updateOrderPayment: builder.mutation({
@@ -1429,7 +1447,7 @@ export const hmsApi = createApi({
           body: payload
         }
       },
-      invalidatesTags: ["Orders"]
+      invalidatesTags: ["Orders", "Audits"]
     }),
 
     getRestaurantTable: builder.query({
@@ -1642,7 +1660,7 @@ export const hmsApi = createApi({
           body
         }
       },
-      invalidatesTags: ["Inventory"]
+      invalidatesTags: ["Inventory", "Audits"]
     }),
 
     createInventoryMasterBulk: builder.mutation({
@@ -1653,7 +1671,7 @@ export const hmsApi = createApi({
           body: { items: body }
         }
       },
-      invalidatesTags: ["Inventory"]
+      invalidatesTags: ["Inventory", "Audits"]
     }),
 
     checkDuplicateInventory: builder.mutation({
@@ -1894,5 +1912,6 @@ export const {
   useTodayInHouseBookingRoomsQuery,
   useCreateMenuItemBulkMutation,
   useCheckDuplicateInventoryMutation,
+  useChangeRoomMutation,
   usePrefetch
 } = hmsApi

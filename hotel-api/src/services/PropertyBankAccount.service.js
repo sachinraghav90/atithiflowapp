@@ -1,4 +1,5 @@
 import { getDb } from "../../utils/getDb.js";
+import AuditService from "./Audit.service.js";
 
 class PropertyBankAccount {
 
@@ -23,8 +24,19 @@ class PropertyBankAccount {
             let updated = 0;
             let deleted = 0;
 
+            const oldBanks = await this.getPropertyBankAccounts(propertyId);
+            const oldMap = new Map(oldBanks.map(b => [b.id, b]));
+            const changes = {};
+
             /* ---------- DELETE ---------- */
             if (deletedBankIds.length) {
+                for (const delId of deletedBankIds) {
+                    const oldB = oldMap.get(delId);
+                    if (oldB) {
+                        changes[`Bank Account (${oldB.bank_name})`] = { old: `A/C: ${oldB.account_number}`, new: "Removed" };
+                    }
+                }
+
                 const res = await client.query(
                     `
                 DELETE FROM property_bank_accounts
@@ -40,6 +52,19 @@ class PropertyBankAccount {
             /* ---------- UPSERT ---------- */
             for (const bank of accounts) {
                 if (bank.id) {
+                    const oldB = oldMap.get(bank.id);
+                    if (oldB) {
+                        const bankChanges = [];
+                        if (oldB.bank_name !== bank.bank_name) bankChanges.push(`Bank: ${oldB.bank_name} -> ${bank.bank_name}`);
+                        if (oldB.account_number !== bank.account_number) bankChanges.push(`A/C: ${oldB.account_number} -> ${bank.account_number}`);
+                        if (oldB.account_holder_name !== bank.account_holder_name) bankChanges.push(`Holder: ${oldB.account_holder_name} -> ${bank.account_holder_name}`);
+                        if (oldB.ifsc_code !== bank.ifsc_code) bankChanges.push(`IFSC: ${oldB.ifsc_code} -> ${bank.ifsc_code}`);
+
+                        if (bankChanges.length > 0) {
+                            changes[`Bank Account (${bank.bank_name})`] = { old: "Old Details", new: bankChanges.join(", ") };
+                        }
+                    }
+
                     const res = await client.query(
                         `
                     UPDATE property_bank_accounts
@@ -66,6 +91,8 @@ class PropertyBankAccount {
 
                     updated += res.rowCount;
                 } else {
+                    changes[`Bank Account (${bank.bank_name})`] = { old: "None", new: `Added A/C: ${bank.account_number}` };
+
                     await client.query(
                         `
                     INSERT INTO property_bank_accounts (
@@ -97,25 +124,20 @@ class PropertyBankAccount {
 
             try {
                 /* ---------- AUDIT ---------- */
-                await AuditService.log({
-                    property_id: propertyId,
-                    event_id: propertyId,
-                    table_name: "property_bank_accounts",
-                    event_type: "UPSERT",
-                    task_name: "Upsert Property Bank Accounts",
-                    comments: "Property bank accounts modified",
-                    details: JSON.stringify({
+                if (Object.keys(changes).length > 0) {
+                    await AuditService.log({
                         property_id: propertyId,
-                        inserted,
-                        updated,
-                        deleted,
-                        total_received: accounts.length,
-                        deleted_ids: deletedBankIds
-                    }),
-                    user_id: userId
-                });
+                        event_id: propertyId,
+                        table_name: "properties",
+                        event_type: "UPDATE",
+                        task_name: "Update Property Bank Accounts",
+                        comments: "Property bank accounts modified",
+                        details: JSON.stringify(changes),
+                        user_id: userId
+                    });
+                }
             } catch (error) {
-
+                console.error("Audit log failed for bank accounts:", error);
             }
 
         } catch (e) {

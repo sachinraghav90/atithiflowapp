@@ -43,7 +43,7 @@ class RoomTypeRateController {
             });
         } catch (err) {
             console.log("🚀 ~ RoomTypeRateController ~ updatePricesBulk ~ err:", err)
-            return res.status(500).json({ message: "Error updating data" })
+            return res.status(500).json({ message: "Error updating data", error: err.message, stack: err.stack })
         }
     };
 

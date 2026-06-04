@@ -231,6 +231,37 @@ class Booking {
             return res.status(400).json({ message: error.message || "Failed to delete guest image" });
         }
     }
+    async changeRoom(req, res) {
+        try {
+            const bookingId = this.#validateBookingId(req.params.id);
+            if (!bookingId) return res.status(400).json({ message: "Invalid booking id" });
+
+            const { reason, new_rooms, old_rooms } = req.body;
+            if (!new_rooms || !Array.isArray(new_rooms) || new_rooms.length === 0) {
+                return res.status(400).json({ message: "New rooms are required" });
+            }
+
+            const result = await BookingService.changeRoom({
+                bookingId,
+                oldRooms: old_rooms,
+                newRooms: new_rooms,
+                reason,
+                changedBy: req.user.user_id
+            });
+
+            return res.status(200).json(result);
+        } catch (error) {
+            if (error?.code === "ROOM_NOT_AVAILABLE") {
+                return res.status(409).json({
+                    code: "ROOM_NOT_AVAILABLE",
+                    message: error.message,
+                    conflicted_rooms: error.conflicted_rooms || []
+                });
+            }
+            console.error("Booking Controller Error [changeRoom]:", error);
+            return res.status(400).json({ message: error.message || "Failed to change room" });
+        }
+    }
 }
 
 export default Object.freeze(new Booking())

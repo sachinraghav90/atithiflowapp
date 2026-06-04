@@ -26,6 +26,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 import { pdf } from "@react-pdf/renderer";
 import BookingSummaryPDF from "@/components/pdf/BookingSummaryPDF";
+import ChangeRoomModal from "@/components/booking/ChangeRoomModal";
 import { toast } from "react-toastify";
 import {
     useCancelBookingMutation,
@@ -726,9 +727,16 @@ export default function BookingsManagement() {
 
     function BookingRoomsTab({ booking }: any) {
         const rooms = Array.isArray(booking?.rooms) ? booking.rooms : [];
+        const [isChangeRoomOpen, setIsChangeRoomOpen] = useState(false);
 
         return (
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+            <div className="space-y-4">
+                <div className="flex justify-end">
+                    <Button variant="hero" onClick={() => setIsChangeRoomOpen(true)}>
+                        Change Room
+                    </Button>
+                </div>
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
 
                 {rooms.map((room: any) => {
 
@@ -758,8 +766,14 @@ export default function BookingsManagement() {
                         </div>
                     );
                 })}
+                </div>
 
-
+                <ChangeRoomModal
+                    open={isChangeRoomOpen}
+                    onClose={() => setIsChangeRoomOpen(false)}
+                    booking={booking}
+                    propertyId={booking?.property_id}
+                />
             </div>
         );
     }

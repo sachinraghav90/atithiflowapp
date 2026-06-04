@@ -14,7 +14,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { useAppSelector } from "@/redux/hook";
-import { useCreatePackageMutation, useGetMyPropertiesQuery, useGetPackageByIdQuery, useGetPackagesByPropertyQuery, useUpdatePackageMutation } from "@/redux/services/hmsApi";
+import { useCreatePackageMutation, useGetMyPropertiesQuery, useGetPackageByIdQuery, useGetPackagesByPropertyQuery, useUpdatePackageMutation, useGetLogsQuery as useGetAuditLogsQuery } from "@/redux/services/hmsApi";
 import { toast } from "react-toastify";
 import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
 import { normalizeNumberInput, normalizeTextInput } from "@/utils/normalizeTextInput";
@@ -33,6 +33,58 @@ import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { GridBadge } from "@/components/ui/grid-badge";
 import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
+import { formatAppDateTime } from "@/utils/dateFormat";
+import { getFormattedAuditChanges, getAuditActionBadge } from "@/utils/auditUtils";
+
+const getAuditChangeText = (details: any, audit: any) => {
+    if (audit.event_type === "CREATE") {
+        return (
+            <div className="text-muted-foreground">
+                <span className="font-semibold text-foreground/80">Plan:</span> Created
+            </div>
+        );
+    }
+    
+    if (!details) return "--";
+
+    const { before, after } = details;
+    
+    // For CREATE, there might only be 'after' with the initial values
+    if (!before && after) {
+        return (
+            <div className="text-muted-foreground">
+                <span className="font-semibold text-foreground/80">Plan:</span> Created
+            </div>
+        );
+    }
+    
+    if (!before || !after) {
+        // Handle flat legacy logs using the global formatter
+        if (typeof details === 'object' && Object.keys(details).length > 0) {
+            // Filter out internal fields if needed, getFormattedAuditChanges already does some filtering
+            // but we can map the keys nicely.
+            const customParsers = {
+                "package_name": (v: any) => v,
+                "base_price": (v: any) => `₹${v}`,
+            };
+            return getFormattedAuditChanges(details, customParsers);
+        }
+        return "--";
+    }
+
+    const formattedDetails: any = { before: {}, after: {} };
+
+    Object.keys(after).forEach((key) => {
+        const oldVal = before[key];
+        const newVal = after[key];
+        if (oldVal !== newVal) {
+            formattedDetails.before[key] = oldVal || "--";
+            formattedDetails.after[key] = newVal || "--";
+        }
+    });
+
+    return getFormattedAuditChanges(formattedDetails);
+};
 
 /* -------------------- Types -------------------- */
 type PackageListItem = {
@@ -102,6 +154,21 @@ export default function PackageManagement() {
     const { data: selectedPackageData, isLoading: packageLoading } = useGetPackageByIdQuery({ packageId: selectedPackageId }, {
         skip: !selectedPackageId || !isLoggedIn
     })
+
+    const [itemAuditPage, setItemAuditPage] = useState(1);
+    const itemAuditLimit = 10;
+
+    const { data: auditLogs, isFetching: isAuditLogsFetching } = useGetAuditLogsQuery(
+        {
+            tableName: "packages",
+            eventId: selectedPackageId,
+            page: itemAuditPage,
+            limit: itemAuditLimit,
+        },
+        {
+            skip: !selectedPackageId || sheetTab !== "history" || sheetOpen === false,
+        }
+    );
 
     const isSuperAdmin = useAppSelector(selectIsSuperAdmin)
     const isOwner = useAppSelector(selectIsOwner)
@@ -184,6 +251,48 @@ export default function PackageManagement() {
         }
         setSelectedPackage(selectedPackage)
     }, [selectedPackageData, packageLoading])
+
+    const auditColumns: ColumnDef<any>[] = useMemo(
+        () => [
+
+            {
+                label: "Action",
+                key: "event_type",
+                cellClassName: "whitespace-nowrap min-w-[120px]",
+                render: (row: any) => getAuditActionBadge(row.event_type),
+            },
+            { 
+                label: "Updated By", 
+                cellClassName: "whitespace-nowrap",
+                render: (log: any) => `${log.user_first_name || ""} ${log.user_last_name || ""}`.trim() || "System"
+            },
+            {
+                label: "Date & Time",
+                headClassName: "text-white",
+                key: "created_on",
+                render: (row: any) => row.created_on ? formatAppDateTime(row.created_on) : "--",
+                cellClassName: "text-muted-foreground whitespace-nowrap min-w-[130px]"
+            },
+            {
+                label: "Changes",
+                key: "details",
+                render: (row: any) => {
+                    if (!row.details) return "--";
+                    let detailsObj = row.details;
+                    if (typeof detailsObj === "string") {
+                        try {
+                            detailsObj = JSON.parse(detailsObj);
+                        } catch (e) {
+                            return "--";
+                        }
+                    }
+                    return getAuditChangeText(detailsObj, row);
+                },
+                className: "whitespace-normal break-words min-w-[300px] py-2"
+            },
+        ],
+        [itemAuditPage, itemAuditLimit, selectedPackageId]
+    );
 
     const packageRows = useMemo(() => packages?.packages ?? [], [packages?.packages]);
 
@@ -486,7 +595,7 @@ export default function PackageManagement() {
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
                 <SheetContent
                     side="right"
-                    className="w-full lg:max-w-3xl sm:max-w-2xl overflow-y-auto bg-background"
+                    className={cn("w-full overflow-y-auto bg-background transition-all duration-300", sheetTab === "history" ? "sm:max-w-4xl" : "lg:max-w-3xl sm:max-w-2xl")}
                 >
                         <motion.div
                             initial={{ opacity: 0, y: 10 }}
@@ -547,9 +656,28 @@ export default function PackageManagement() {
                                     )}
 
                                     {sheetTab === "history" && (
-                                        <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
-                                            <p className="text-sm text-muted-foreground">No history logs available yet.</p>
-                                        </div>
+                                        !auditLogs?.data?.length ? (
+                                            <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
+                                                <p className="text-sm text-muted-foreground italic">No history logs available yet.</p>
+                                            </div>
+                                        ) : (
+                                            <div className="border border-border rounded-lg overflow-hidden bg-background shadow-sm">
+                                                <AppDataGrid
+                                                    columns={auditColumns}
+                                                    data={auditLogs.data}
+                                                    isLoading={isAuditLogsFetching}
+                                                    enablePagination
+                                                    paginationProps={{
+                                                        page: itemAuditPage,
+                                                        totalPages: auditLogs.pagination?.totalPages || 1,
+                                                        setPage: setItemAuditPage,
+                                                        disabled: isAuditLogsFetching,
+                                                        totalRecords: auditLogs.pagination?.total || 0,
+                                                        limit: itemAuditLimit,
+                                                    }}
+                                                />
+                                            </div>
+                                        )
                                     )}
                                 </div>
                             ) : (

@@ -21,9 +21,11 @@ import {
     useGetPropertyVendorsQuery,
     useLazyExportPropertyVendorsQuery,
     useUpdateVendorMutation,
+    useGetLogsQuery,
 } from "@/redux/services/hmsApi";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { useAppSelector } from "@/redux/hook";
+import { formatAppDateTime } from "@/utils/dateFormat";
 import {
     selectIsOwner,
     selectIsSuperAdmin,
@@ -46,6 +48,7 @@ import { GridBadge } from "@/components/ui/grid-badge";
 import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
 import FormInput from "@/components/forms/FormInput";
+import { getFormattedAuditChanges, getAuditActionBadge } from "@/utils/auditUtils";
 
 /* ---------------- Types ---------------- */
 type Vendor = {
@@ -93,6 +96,71 @@ const buildVendorPayload = (form: VendorForm, propertyId?: number) => {
     return payload;
 };
 
+function getVendorAuditChanges(audit: any) {
+    let details = audit.details;
+    if (typeof details === "string") {
+        try {
+            details = JSON.parse(details);
+        } catch (e) {
+            // ignore
+        }
+    }
+    const before = details?.before;
+    const after = details?.after;
+
+    if (audit.event_type === "CREATE") {
+        return (
+            <div className="text-muted-foreground">
+                <span className="font-semibold text-foreground/80">Vendor:</span> Created
+            </div>
+        );
+    }
+
+    const formattedDetails: any = { before: {}, after: {} };
+
+    if (before?.name !== after?.name) {
+        formattedDetails.before["Name"] = before?.name || "—";
+        formattedDetails.after["Name"] = after?.name || "—";
+    }
+    
+    if (before?.vendor_type !== after?.vendor_type) {
+        formattedDetails.before["Vendor Type"] = before?.vendor_type || "—";
+        formattedDetails.after["Vendor Type"] = after?.vendor_type || "—";
+    }
+    
+    if (before?.pan_no !== after?.pan_no) {
+        formattedDetails.before["PAN"] = before?.pan_no || "—";
+        formattedDetails.after["PAN"] = after?.pan_no || "—";
+    }
+    
+    if (before?.gst_no !== after?.gst_no) {
+        formattedDetails.before["GST"] = before?.gst_no || "—";
+        formattedDetails.after["GST"] = after?.gst_no || "—";
+    }
+    
+    if (before?.contact_no !== after?.contact_no) {
+        formattedDetails.before["Contact No"] = before?.contact_no || "—";
+        formattedDetails.after["Contact No"] = after?.contact_no || "—";
+    }
+    
+    if (before?.email_id !== after?.email_id) {
+        formattedDetails.before["Email"] = before?.email_id || "—";
+        formattedDetails.after["Email"] = after?.email_id || "—";
+    }
+    
+    if (before?.address !== after?.address) {
+        formattedDetails.before["Address"] = before?.address || "—";
+        formattedDetails.after["Address"] = after?.address || "—";
+    }
+
+    if (before?.is_active !== after?.is_active) {
+        formattedDetails.before["Status"] = before?.is_active ? "Active" : "Inactive";
+        formattedDetails.after["Status"] = after?.is_active ? "Active" : "Inactive";
+    }
+
+    return getFormattedAuditChanges(formattedDetails);
+}
+
 /* ---------------- Component ---------------- */
 export default function VendorsManagement() {
     const [selectedPropertyId, setSelectedPropertyId] = useState<string>("");
@@ -116,6 +184,13 @@ export default function VendorsManagement() {
         resetDeps: [selectedPropertyId, searchQuery, typeFilter, statusFilter],
     });
 
+    const { 
+        page: historyPage, 
+        limit: historyLimit, 
+        setPage: setHistoryPage, 
+        handleLimitChange: handleHistoryLimitChange 
+    } = useGridPagination({ initialLimit: 10, resetDeps: [editingVendor?.id] });
+
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
     const { 
         myProperties, 
@@ -136,6 +211,16 @@ export default function VendorsManagement() {
     }, {
         skip: !isLoggedIn || !selectedPropertyId,
     });
+
+    const { data: auditLogs, isFetching: fetchingLogs } = useGetLogsQuery(
+        {
+            eventId: editingVendor?.id as string,
+            tableName: "ref_vendors",
+            page: historyPage,
+            limit: historyLimit
+        },
+        { skip: !sheetOpen || sheetTab !== "history" || !editingVendor?.id }
+    );
 
     const vendorTypeOptions = useMemo(() => {
         const types = Array.from(new Set((vendors?.data || []).map((v: Vendor) => v.vendor_type).filter(Boolean)));
@@ -500,7 +585,7 @@ export default function VendorsManagement() {
             </section>
 
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetContent side="right" className="w-full lg:max-w-4xl sm:max-w-3xl overflow-y-auto bg-background">
+                <SheetContent side="right" className={cn("w-full overflow-y-auto bg-background transition-all duration-300", sheetTab === "history" ? "sm:max-w-4xl" : "lg:max-w-4xl sm:max-w-3xl")}>
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -573,9 +658,47 @@ export default function VendorsManagement() {
                                 )}
 
                                 {sheetTab === "history" && (
-                                    <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
-                                        <p className="text-sm text-muted-foreground">No history logs available yet.</p>
-                                    </div>
+                                    <AppDataGrid
+                                        scrollable={false}
+                                        columns={[
+
+                                            {
+                                                label: "Action",
+                                                cellClassName: "whitespace-nowrap",
+                                                render: (audit: any) => getAuditActionBadge(audit.event_type)
+                                            },
+                                            {
+                                                label: "Updated By",
+                                                cellClassName: "whitespace-nowrap",
+                                                render: (audit: any) => `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim() || "System"
+                                            },
+                                            {
+                                                label: "Date & Time",
+                                                headClassName: "text-white",
+                                                cellClassName: "text-muted-foreground whitespace-nowrap min-w-[130px]",
+                                                render: (audit: any) => formatAppDateTime(audit.created_on as string)
+                                            },
+                                            {
+                                                label: "Changes",
+                                                cellClassName: "min-w-[300px] py-2",
+                                                render: (audit: any) => getVendorAuditChanges(audit)
+                                            }
+                                        ]}
+                                        data={auditLogs?.data ?? []}
+                                        loading={fetchingLogs}
+                                        emptyText="No history logs found for this vendor"
+                                        minWidth="700px"
+                                        enablePagination={!!auditLogs?.pagination}
+                                        paginationProps={{
+                                            page: historyPage,
+                                            totalPages: auditLogs?.pagination?.totalPages ?? 1,
+                                            setPage: setHistoryPage,
+                                            totalRecords: auditLogs?.pagination?.total ?? 0,
+                                            limit: historyLimit,
+                                            onLimitChange: handleHistoryLimitChange,
+                                            disabled: fetchingLogs || !auditLogs
+                                        }}
+                                    />
                                 )}
                             </div>
                         ) : (

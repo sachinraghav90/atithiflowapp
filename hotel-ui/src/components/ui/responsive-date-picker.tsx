@@ -123,6 +123,7 @@ export function ResponsiveDatePicker({
         <div className="flex flex-col bg-background">
             <Calendar
                 mode="single"
+                defaultMonth={value || undefined}
                 selected={value || undefined}
                 onSelect={(date) => {
                     if (date) {

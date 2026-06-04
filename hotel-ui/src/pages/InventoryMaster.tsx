@@ -14,6 +14,7 @@ import {
     useUpdateInventoryMasterMutation,
     useCheckDuplicateInventoryMutation,
     useLazyExportInventoryQuery,
+    useGetLogsQuery as useGetAuditLogsQuery,
 } from "@/redux/services/hmsApi";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { useAppSelector } from "@/redux/hook";
@@ -38,6 +39,57 @@ import { formatAppDate } from "@/utils/dateFormat";
 import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
 import { motion } from "framer-motion";
+import { formatAppDateTime } from "@/utils/dateFormat";
+import { getFormattedAuditChanges, getAuditActionBadge } from "@/utils/auditUtils";
+
+/* ---------------- Helpers ---------------- */
+const parseAuditDetails = (details: any) => {
+    try {
+        return typeof details === "string" ? JSON.parse(details) : details;
+    } catch {
+        return null;
+    }
+};
+
+const getAuditActionLabel = (audit: any) => {
+    const event = audit.event_type?.toUpperCase();
+    if (event === "CREATE") return "Created";
+    if (event === "UPDATE") return "Updated";
+    return event;
+};
+
+const getAuditChangeText = (details: any, inventoryTypes: any[]) => {
+    if (!details) return "--";
+    const { before, after } = details;
+    
+    if (!before) {
+        return (
+            <div className="text-muted-foreground">
+                <span className="font-semibold text-foreground/80">Item:</span> Initialized as {after?.name || "item"}
+            </div>
+        );
+    }
+
+    const formattedDetails: any = { before: {}, after: {} };
+    if (String(before.name) !== String(after.name)) {
+        formattedDetails.before["Name"] = before.name;
+        formattedDetails.after["Name"] = after.name;
+    }
+    if (String(before.inventory_type_id) !== String(after.inventory_type_id)) {
+        formattedDetails.before["Category"] = inventoryTypes.find((t: any) => String(t.id) === String(before.inventory_type_id))?.type || "Unknown";
+        formattedDetails.after["Category"] = inventoryTypes.find((t: any) => String(t.id) === String(after.inventory_type_id))?.type || "Unknown";
+    }
+    if (String(before.use_type) !== String(after.use_type)) {
+        formattedDetails.before["Use Type"] = before.use_type;
+        formattedDetails.after["Use Type"] = after.use_type;
+    }
+    if (Boolean(before.is_active) !== Boolean(after.is_active)) {
+        formattedDetails.before["Status"] = before.is_active ? 'Active' : 'Inactive';
+        formattedDetails.after["Status"] = after.is_active ? 'Active' : 'Inactive';
+    }
+
+    return getFormattedAuditChanges(formattedDetails);
+};
 
 type InventoryItem = {
     id: string;
@@ -108,6 +160,8 @@ export default function InventoryMaster() {
     const [mode, setMode] = useState<"view" | "edit" | "add" | null>(null);
     const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
     const [selected, setSelected] = useState<InventoryItem | null>(null);
+    const [itemAuditPage, setItemAuditPage] = useState(1);
+    const [itemAuditLimit, setItemAuditLimit] = useState(5);
 
     const [form, setForm] = useState<InventoryForm>({
         inventory_type_id: null,
@@ -134,6 +188,15 @@ export default function InventoryMaster() {
         skip: !isLoggedIn
     })
     const inventoryTypes = inventoryTypesData ?? [];
+
+    const { data: auditLogs } = useGetAuditLogsQuery({
+        tableName: "inventory_master",
+        eventId: selected?.id,
+        page: itemAuditPage,
+        limit: itemAuditLimit,
+    }, {
+        skip: !selected?.id || mode !== "view" || sheetTab !== "history"
+    });
 
     const {
         data: inventoryMaster,
@@ -905,7 +968,7 @@ export default function InventoryMaster() {
 
                 {/* EDIT/VIEW SHEET */}
                 <Sheet open={mode === "edit" || mode === "view"} onOpenChange={(open) => !open && setMode(null)}>
-                    <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto bg-background">
+                    <SheetContent side="right" className={cn("w-full overflow-y-auto bg-background transition-all duration-300", sheetTab === "history" ? "sm:max-w-4xl" : "sm:max-w-3xl")}>
                         <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -965,8 +1028,54 @@ export default function InventoryMaster() {
                                     )}
 
                                     {sheetTab === "history" && (
-                                        <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
-                                            <p className="text-sm text-muted-foreground text-center">No history logs available yet.</p>
+                                        <div className="space-y-3">
+                                            {!auditLogs?.data?.length ? (
+                                                <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
+                                                    <p className="text-xs text-muted-foreground italic">No recent activity logs.</p>
+                                                </div>
+                                            ) : (
+                                                <div className="border border-border rounded-lg overflow-hidden bg-background shadow-sm">
+                                                        <AppDataGrid
+                                                            columns={[
+
+                                                                { 
+                                                                    label: "Action",
+                                                                    cellClassName: "whitespace-nowrap",
+                                                                    render: (log: any) => getAuditActionBadge(log.event_type)
+                                                                },
+                                                                {
+                                                                    label: "Updated By",
+                                                                    cellClassName: "whitespace-nowrap",
+                                                                    render: (log: any) => `${log.user_first_name || ""} ${log.user_last_name || ""}`.trim() || "System"
+                                                                },
+                                                                { 
+                                                                    label: "Date & Time", 
+                                                                    headClassName: "text-white", 
+                                                                    cellClassName: "text-muted-foreground whitespace-nowrap min-w-[130px]",
+                                                                    render: (log: any) => formatAppDateTime(log.created_on) 
+                                                                },
+                                                                { 
+                                                                    label: "Changes", 
+                                                                    cellClassName: "py-2 min-w-[300px]",
+                                                                    render: (log: any) => getAuditChangeText(parseAuditDetails(log.details), inventoryTypes) 
+                                                                }
+                                                            ] as ColumnDef[]}
+                                                        data={auditLogs.data}
+                                                        rowKey={(log: any) => log.id}
+                                                        minWidth="600px"
+                                                        enablePagination
+                                                        paginationProps={{
+                                                            page: itemAuditPage,
+                                                            totalPages: auditLogs?.pagination?.totalPages ?? 1,
+                                                            setPage: setItemAuditPage,
+                                                            totalRecords: auditLogs?.pagination?.totalItems ?? auditLogs?.data?.length ?? 0,
+                                                            limit: itemAuditLimit,
+                                                            onLimitChange: (v) => { setItemAuditLimit(v); setItemAuditPage(1); },
+                                                            disabled: !auditLogs,
+                                                        }}
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>

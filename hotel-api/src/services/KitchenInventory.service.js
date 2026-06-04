@@ -36,6 +36,7 @@ class KitchenInventoryService {
                 ki.quantity,
                 ki.unit,
                 ki.created_on,
+                ki.updated_on,
 
                 im.id AS inventory_master_id,
                 im.name,
@@ -54,7 +55,7 @@ class KitchenInventoryService {
 
             WHERE ki.property_id = $1
 
-            ORDER BY it.type, im.name
+            ORDER BY COALESCE(ki.updated_on, ki.created_on) DESC
             LIMIT $2 OFFSET $3
             `,
             [propertyId, limit, offset]

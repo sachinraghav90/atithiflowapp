@@ -374,6 +374,12 @@ class RestaurantOrderService {
        UPDATE ORDER STATUS
     =========================== */
     async updateOrderStatus(id, status, userId) {
+        const { rows: existingRows } = await this.#DB.query(
+            `SELECT order_status FROM restaurant_orders WHERE id = $1`,
+            [id]
+        );
+        const oldStatus = existingRows[0]?.order_status;
+
         const { rows } = await this.#DB.query(
             `
             UPDATE restaurant_orders
@@ -389,17 +395,17 @@ class RestaurantOrderService {
 
         const order = rows[0];
 
-        if (order) {
+        if (order && oldStatus !== status) {
             await AuditService.log({
                 property_id: order.property_id,
                 event_id: id,
                 table_name: "restaurant_orders",
-                event_type: "STATUS_UPDATE",
+                event_type: "Update",
                 task_name: "Update Order Status",
                 comments: "Restaurant order status updated",
                 details: JSON.stringify({
-                    order_id: id,
-                    new_status: status
+                    before: { order_status: oldStatus },
+                    after: { order_status: status }
                 }),
                 user_id: userId
             });
@@ -412,6 +418,12 @@ class RestaurantOrderService {
        UPDATE PAYMENT STATUS
     =========================== */
     async updatePaymentStatus(id, status, userId) {
+        const { rows: existingRows } = await this.#DB.query(
+            `SELECT payment_status FROM restaurant_orders WHERE id = $1`,
+            [id]
+        );
+        const oldStatus = existingRows[0]?.payment_status;
+
         const { rows } = await this.#DB.query(
             `
             UPDATE restaurant_orders
@@ -427,17 +439,17 @@ class RestaurantOrderService {
 
         const order = rows[0];
 
-        if (order) {
+        if (order && oldStatus !== status) {
             await AuditService.log({
                 property_id: order.property_id,
                 event_id: id,
                 table_name: "restaurant_orders",
-                event_type: "PAYMENT_UPDATE",
+                event_type: "Update",
                 task_name: "Update Payment Status",
                 comments: "Restaurant payment status updated",
                 details: JSON.stringify({
-                    order_id: id,
-                    new_payment_status: status
+                    before: { payment_status: oldStatus },
+                    after: { payment_status: status }
                 }),
                 user_id: userId
             });

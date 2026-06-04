@@ -513,6 +513,8 @@ class Property {
         const client = await this.#DB.connect();
 
         try {
+            const oldProperty = await this.getById({ id });
+
             await client.query("BEGIN");
 
             const PROPERTY_ADDRESS_FIELDS = [
@@ -667,23 +669,91 @@ class Property {
 
             try {
                 /* ---------- AUDIT ---------- */
-                await AuditService.log({
-                    property_id: id,
-                    event_id: id,
-                    table_name: "properties",
-                    event_type: "UPDATE",
-                    task_name: "Update Property",
-                    comments: "Property updated",
-                    details: JSON.stringify({
+                const changes = {};
+
+                const fieldMap = {
+                    brand_name: "Property Name",
+                    address_line_1: "Address",
+                    address_line_2: "Address Line 2",
+                    city: "City",
+                    state: "State",
+                    postal_code: "Postal Code",
+                    country: "Country",
+                    phone: "Phone Number",
+                    phone2: "Phone Number 2",
+                    email: "Email Address",
+                    gst_no: "GSTIN",
+                    room_tax_rate: "Room Tax Rate %",
+                    gst: "GST Rate for Rooms",
+                    restaurant_gst: "GST Rate for Restaurant Orders",
+                    laundry_gst: "GST Rate for Laundry Orders",
+                    serial_number: "Serial Number",
+                    serial_suffix: "Serial Suffix",
+                    total_floors: "Total Floors",
+                    total_rooms: "Total Rooms",
+                    checkin_time: "Check-in Time",
+                    checkout_time: "Check-out Time",
+                    address_line_1_office: "Corporate Office Address",
+                    city_office: "Corporate City",
+                    state_office: "Corporate State",
+                    postal_code_office: "Corporate Postal Code",
+                    country_office: "Corporate Country",
+                    phone_office: "Corporate Phone",
+                    email_office: "Corporate Email",
+                    status: "Status",
+                    restaurant_tables: "Restaurant Tables"
+                };
+
+                const normalizeAuditTime = (t) => {
+                    if (!t) return "";
+                    // extract HH:MM
+                    const match = t.match(/^(\d{2}:\d{2})/);
+                    return match ? match[1] : String(t);
+                };
+
+                for (const key of Object.keys(payload)) {
+                    if (key === "image" || key === "image_mime" || key === "logo" || key === "logo_mime") {
+                        if (payload[key] && payload[key] !== oldProperty[key]) {
+                            const label = key.startsWith("logo") ? "Logo" : "Photo";
+                            changes[label] = { old: "Old File", new: "Updated" };
+                        }
+                        continue;
+                    }
+
+                    let normKey = key;
+                    if (key === "restaurantGst") normKey = "restaurant_gst";
+                    if (key === "laundryGst") normKey = "laundry_gst";
+                    if (key === "checkinTime" || key === "checkInTime") normKey = "checkin_time";
+                    if (key === "checkoutTime" || key === "checkOutTime") normKey = "checkout_time";
+
+                    let oldVal = oldProperty[normKey] ?? "";
+                    let newVal = payload[key] ?? "";
+
+                    if (normKey === "checkin_time" || normKey === "checkout_time") {
+                        oldVal = normalizeAuditTime(oldVal);
+                        newVal = normalizeAuditTime(normalizeTime(newVal));
+                    }
+
+                    if (String(oldVal) !== String(newVal)) {
+                        const label = fieldMap[normKey] || normKey;
+                        changes[label] = { old: String(oldVal), new: String(newVal) };
+                    }
+                }
+
+                if (Object.keys(changes).length > 0) {
+                    await AuditService.log({
                         property_id: id,
-                        updated_fields: Object.keys(payload),
+                        event_id: id,
+                        table_name: "properties",
+                        event_type: "UPDATE",
+                        task_name: "Update Property",
+                        comments: "Property updated",
+                        details: JSON.stringify(changes),
                         user_id: userId
-                    }),
-                    user_id: userId
-                });
-
+                    });
+                }
             } catch (error) {
-
+                console.error("Audit log failed:", error);
             }
             return { id };
 

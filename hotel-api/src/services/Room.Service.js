@@ -158,7 +158,8 @@ class RoomService {
             JOIN public.ref_rooms r
                 ON r.id = rd.ref_room_id
             WHERE rd.booking_id = $1
-              AND rd.is_cancelled = false
+              AND COALESCE(rd.is_cancelled, false) = false
+              AND COALESCE(rd.is_changed, false) = false
             ORDER BY r.room_no
         `;
 
@@ -661,31 +662,34 @@ class RoomService {
             baseParams.push(roomTypeId);
             roomTypeFilter = `AND r.room_type_id = $${baseParams.length}`;
         }
-
         const availabilityQuery = `
             SELECT r.id
             FROM public.ref_rooms r
             JOIN public.properties p ON p.id = r.property_id
             WHERE r.property_id = $1
             AND r.is_active = true
-            AND r.dirty = false
+            AND COALESCE(r.dirty, false) = false
             ${roomTypeFilter}
             AND NOT EXISTS (
                 SELECT 1
                 FROM public.room_details rd
                 JOIN public.bookings b ON b.id = rd.booking_id
                 WHERE rd.ref_room_id = r.id
-                AND rd.is_cancelled = false
+                AND COALESCE(rd.is_cancelled, false) = false
+                AND COALESCE(rd.is_changed, false) = false
                 AND (
-                    b.booking_status IN ('CHECKED_IN', 'NO_SHOW')
-                    OR
                     (
-                        b.booking_status = 'CONFIRMED'
+                        b.booking_status IN ('CONFIRMED', 'CHECKED_IN')
                         AND (
                             (COALESCE(b.actual_departure, b.estimated_departure)::date + p.checkout_time) > ($2::date + COALESCE(NULLIF($4::text, '')::time, p.checkin_time))
                             AND 
                             (b.estimated_arrival::date + COALESCE(NULLIF(b.estimated_arrival_time::text, '')::time, p.checkin_time)) < ($3::date + p.checkout_time)
                         )
+                    )
+                    OR
+                    (
+                        b.booking_status = 'CHECKED_IN'
+                        AND b.actual_departure IS NULL
                     )
                 )
             )
@@ -824,7 +828,8 @@ class RoomService {
 
     //         LEFT JOIN public.room_details rd
     //             ON rd.ref_room_id = r.id
-    //             AND rd.is_cancelled = false
+    //             AND COALESCE(rd.is_cancelled, false) = false
+    //             AND COALESCE(rd.is_changed, false) = false
 
     //         LEFT JOIN public.bookings b
     //             ON b.id = rd.booking_id
@@ -965,7 +970,8 @@ class RoomService {
                     td.day >= b.estimated_arrival::date
                     AND td.day < COALESCE(b.actual_departure, b.estimated_departure)::date
                 )
-                WHERE rd.is_cancelled = false
+                WHERE COALESCE(rd.is_cancelled, false) = false
+                  AND COALESCE(rd.is_changed, false) = false
             ),
 
             resolved AS (
@@ -1019,7 +1025,8 @@ class RoomService {
                 JOIN bookings b ON b.id = rd.booking_id
                 JOIN target_day td ON true
                 WHERE b.booking_status = 'CHECKED_OUT'
-                AND rd.is_cancelled = false
+                AND COALESCE(rd.is_cancelled, false) = false
+                AND COALESCE(rd.is_changed, false) = false
                 AND COALESCE(b.actual_departure, b.estimated_departure)::date = td.day
             ),
 
@@ -1031,7 +1038,8 @@ class RoomService {
                 JOIN bookings b ON b.id = rd.booking_id
                 JOIN target_day td ON true
                 WHERE b.booking_status = 'NO_SHOW'
-                AND rd.is_cancelled = false
+                AND COALESCE(rd.is_cancelled, false) = false
+                AND COALESCE(rd.is_changed, false) = false
                 AND b.estimated_arrival::date = td.day
             )
 
@@ -1124,7 +1132,8 @@ class RoomService {
                 SELECT 1
                 FROM public.room_details
                 WHERE booking_id = $1
-                AND is_cancelled = false
+                AND COALESCE(is_cancelled, false) = false
+                AND COALESCE(is_changed, false) = false
                 LIMIT 1
                 `,
                 [bookingId]

@@ -53,6 +53,7 @@ import { formatAppDateTime } from "@/utils/dateFormat";
 import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
 import { generateId } from "@/utils/generateId";
+import { getFormattedAuditChanges, getAuditActionBadge } from "@/utils/auditUtils";
 
 /* ---------------- Types ---------------- */
 export type LaundryStatus =
@@ -238,50 +239,76 @@ function buildLaundryOrderSummaryUrl(order: LaundryOrder, propertyId?: string | 
     return `/laundry-orders?${params.toString()}`;
 }
 
-function getLaundryAuditChanges(audit: any) {
-    const details = audit.details as Record<string, Record<string, string>> | undefined;
+function getVendorName(vendorId: string | number | null | undefined, vendors?: Array<{ id: string | number; name: string }>) {
+    if (!vendorId || !vendors) return "—";
+    const vendor = vendors.find(v => String(v.id) === String(vendorId));
+    return vendor?.name || "—";
+}
+
+function getLaundryAuditChanges(audit: any, vendors?: Array<{ id: string | number; name: string }>) {
+    let details = audit.details;
+    if (typeof details === "string") {
+        try {
+            details = JSON.parse(details);
+        } catch (e) {
+            // ignore
+        }
+    }
     const before = details?.before;
     const after = details?.after;
 
     if (audit.event_type === "CREATE") {
-        return ["Order Created"];
+        return (
+            <div className="text-muted-foreground">
+                <span className="font-semibold text-foreground/80">Order:</span> Created
+            </div>
+        );
     }
 
-    const changes: string[] = [];
+    const formattedDetails: any = { before: {}, after: {} };
 
-    if (before?.laundry_status !== after?.laundry_status) {
-        changes.push(
-            `Laundry: ${formatDisplayStatus(before?.laundry_status)} -> ${formatDisplayStatus(after?.laundry_status)}`
-        );
+    if (before?.vendor_id !== after?.vendor_id) {
+        formattedDetails.before["Vendor"] = before?.vendor_id ? getVendorName(before.vendor_id, vendors) : "—";
+        formattedDetails.after["Vendor"] = after?.vendor_id ? getVendorName(after.vendor_id, vendors) : "—";
     }
 
     if (before?.vendor_status !== after?.vendor_status) {
-        changes.push(
-            `Vendor: ${formatDisplayStatus(before?.vendor_status)} -> ${formatDisplayStatus(after?.vendor_status)}`
-        );
+        formattedDetails.before["Vendor Status"] = formatDisplayStatus(before?.vendor_status);
+        formattedDetails.after["Vendor Status"] = formatDisplayStatus(after?.vendor_status);
     }
 
-    if (before?.vendor_id !== after?.vendor_id) {
-        changes.push("Vendor Assigned");
+    if (before?.laundry_status !== after?.laundry_status) {
+        formattedDetails.before["Laundry Status"] = formatDisplayStatus(before?.laundry_status);
+        formattedDetails.after["Laundry Status"] = formatDisplayStatus(after?.laundry_status);
     }
 
     if (before?.delivery_date !== after?.delivery_date) {
-        changes.push("Delivery Date Updated");
+        formattedDetails.before["Delivery Date"] = before?.delivery_date ? formatDateTime(before.delivery_date) : "—";
+        formattedDetails.after["Delivery Date"] = after?.delivery_date ? formatDateTime(after.delivery_date) : "—";
     }
 
+    if (before?.pickup_date !== after?.pickup_date) {
+        formattedDetails.before["Pickup Date"] = before?.pickup_date ? formatDateTime(before.pickup_date) : "—";
+        formattedDetails.after["Pickup Date"] = after?.pickup_date ? formatDateTime(after.pickup_date) : "—";
+    }
+
+    return getFormattedAuditChanges(formattedDetails);
+}
+
+function getLaundryAuditChangeText(audit: any, vendors?: Array<{ id: string | number; name: string }>) {
+    const changes = getLaundryAuditChanges(audit, vendors);
+    if (changes === "--") return audit.comments || "—";
     return changes;
 }
 
-function getLaundryAuditChangeText(audit: any) {
-    return getLaundryAuditChanges(audit).join(", ");
-}
-
-function getLaundryAuditDisplay(audit: any) {
+function getLaundryAuditDisplay(audit: any, vendors?: Array<{ id: string | number; name: string }>) {
     return {
         orderLabel: formatLaundryOrderDisplayId(audit.event_id),
         actionLabel: formatDisplayStatus(audit.event_type),
-        actionClassName: "border-slate-300/80 bg-slate-100/90 text-slate-700",
-        changeText: getLaundryAuditChangeText(audit) || "--",
+        actionClassName: audit.event_type === "CREATE" 
+            ? "border-emerald-200 bg-emerald-50 text-emerald-600" 
+            : "border-amber-200 bg-amber-50 text-amber-600",
+        changeText: getLaundryAuditChangeText(audit, vendors),
         userLabel: `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim() || "--",
         dateLabel: formatDateTime(audit.created_on as string),
     };
@@ -348,6 +375,8 @@ export default function LaundryOrdersManagement() {
     const [auditPage, setAuditPage] = useState(1);
     const [ordersLimit, setOrdersLimit] = useState(10);
     const [auditLimit, setAuditLimit] = useState(10);
+    const [orderHistoryPage, setOrderHistoryPage] = useState(1);
+    const [orderHistoryLimit, setOrderHistoryLimit] = useState(10);
 
     const [editOrder, setEditOrder] = useState<any>(null);
     const [historyModal, setHistoryModal] = useState({
@@ -416,6 +445,16 @@ export default function LaundryOrdersManagement() {
     const { data: singleLog } = useGetLogsQuery({ tableName: "laundry_orders", eventId: historyModal.order?.id }, {
         skip: !isLoggedIn || !historyModal.order?.id
     })
+
+    const { data: orderAuditLogs, isLoading: orderAuditLoading } = useGetLogsQuery(
+        {
+            tableName: "laundry_orders",
+            eventId: viewItemsModal.order?.id,
+            page: orderHistoryPage,
+            limit: orderHistoryLimit,
+        },
+        { skip: !isLoggedIn || !viewItemsModal.order?.id || sheetTab !== "history" }
+    );
     const [createLaundryOrder] = useCreateLaundryOrderMutation()
     const [updateLaundryOrder] = useUpdateLaundryOrderMutation()
     const confirmedBookingRoomOptions = useMemo(() => {
@@ -821,7 +860,7 @@ export default function LaundryOrdersManagement() {
                 return false;
             }
 
-            const displayAudit = getLaundryAuditDisplay(audit);
+            const displayAudit = getLaundryAuditDisplay(audit, vendors);
 
             if (!query) {
                 return true;
@@ -831,7 +870,6 @@ export default function LaundryOrdersManagement() {
                 audit.event_id?.toString() || "",
                 displayAudit.orderLabel,
                 displayAudit.actionLabel,
-                displayAudit.changeText,
                 displayAudit.userLabel,
                 displayAudit.dateLabel,
             ];
@@ -854,57 +892,54 @@ export default function LaundryOrdersManagement() {
     }, [auditPage, auditTotalPages]);
 
     const laundryAuditColumns = useMemo<ColumnDef[]>(() => [
-        {
-            label: "Order ID",
-            cellClassName: "font-medium whitespace-nowrap",
-            render: (audit) => {
-                const displayAudit = getLaundryAuditDisplay(audit);
 
-                return (
-                    <button
-                        type="button"
-                        className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm text-left"
-                        onClick={() =>
-                            setHistoryModal({
-                                open: true,
-                                order: { id: String(audit.event_id) } as LaundryOrder,
-                            })
-                        }
-                    >
-                        {displayAudit.orderLabel}
-                    </button>
-                );
-            },
-        },
         {
             label: "Action",
             cellClassName: "whitespace-nowrap",
-            render: (audit) => {
-                const displayAudit = getLaundryAuditDisplay(audit);
+            render: (audit: any) => getAuditActionBadge(audit.event_type)
+        },
+        {
+            label: "Updated By",
+            cellClassName: "whitespace-nowrap",
+            render: (audit: any) => `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim() || "System"
+        },
+        {
+            label: "Date & Time",
+            headClassName: "text-white",
+            cellClassName: "text-muted-foreground whitespace-nowrap min-w-[130px]",
+            render: (audit: any) => formatAppDateTime(audit.created_on as string)
+        },
+        {
+            label: "Changes",
+            cellClassName: "min-w-[300px] py-2",
+            render: (audit: any) => getLaundryAuditChanges(audit, vendors)
+        }
+    ], [auditPage, auditLimit, vendors]);
 
-                return (
-                    <GridBadge tone="neutral" className={displayAudit.actionClassName}>
-                        {displayAudit.actionLabel}
-                    </GridBadge>
-                );
-            },
+    const orderAuditColumns = useMemo<ColumnDef[]>(() => [
+
+        {
+            label: "Action",
+            cellClassName: "whitespace-nowrap",
+            render: (audit: any) => getAuditActionBadge(audit.event_type)
         },
         {
-            label: "Change",
-            cellClassName: "text-muted-foreground text-sm",
-            render: (audit) => getLaundryAuditDisplay(audit).changeText,
+            label: "Updated By",
+            cellClassName: "whitespace-nowrap",
+            render: (audit: any) => `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim() || "System"
         },
         {
-            label: "User",
-            cellClassName: "text-muted-foreground whitespace-nowrap",
-            render: (audit) => getLaundryAuditDisplay(audit).userLabel,
+            label: "Date & Time",
+            headClassName: "text-white",
+            cellClassName: "text-muted-foreground whitespace-nowrap min-w-[130px]",
+            render: (audit: any) => formatAppDateTime(audit.created_on as string)
         },
         {
-            label: "Date",
-            cellClassName: "text-muted-foreground whitespace-nowrap text-xs",
-            render: (audit) => getLaundryAuditDisplay(audit).dateLabel,
-        },
-    ], []);
+            label: "Changes",
+            cellClassName: "min-w-[300px] py-2",
+            render: (audit: any) => getLaundryAuditChanges(audit, vendors)
+        }
+    ], [orderHistoryPage, orderHistoryLimit, vendors, viewItemsModal.order]);
 
     const laundryOrderColumns = useMemo<ColumnDef<LaundryOrder>[]>(() => [
         {
@@ -1087,7 +1122,7 @@ export default function LaundryOrdersManagement() {
         }
 
         const formatted = filteredAuditLogs.map((audit) => {
-            const displayAudit = getLaundryAuditDisplay(audit);
+            const displayAudit = getLaundryAuditDisplay(audit, vendors);
 
             return {
                 Order: displayAudit.orderLabel,
@@ -1566,75 +1601,68 @@ export default function LaundryOrdersManagement() {
                                                     </DataGrid>
                                                 </div>
                                             </div>
-                                            <div className="bg-muted/5 border-t border-border px-4 py-4">
-                                                <div className="flex gap-6">
-                                                    {/* Left Side: Actions & Notes */}
-                                                    <div className="flex-1 flex flex-col gap-4">
-                                                        <div>
-                                                            <button type="button" className="flex items-center gap-1.5 text-primary hover:underline text-sm font-semibold transition-colors" onClick={addRow}>
-                                                                <PlusCircle className="w-4 h-4" /> Add New Order Item(s)
-                                                            </button>
-                                                        </div>
-
-                                                        <div className="flex-1 flex flex-col gap-1.5">
-                                                            <Label>Order Notes</Label>
-                                                            <textarea
-                                                                className="w-full flex-1 min-h-[60px] rounded-[3px] border border-input bg-background/50 px-3 py-2 text-sm shadow-none outline-none focus:ring-1 focus:ring-primary resize-none placeholder:text-muted-foreground/60 transition-all"
-                                                                placeholder="Special instructions (e.g. stains, starch, extra care)..."
-                                                                value={form.comments || ""}
-                                                                onChange={(e) => setForm(prev => ({ ...prev, comments: e.target.value }))}
-                                                            />
-                                                            <div className="text-[9px] leading-tight text-muted-foreground/80 mt-1">
-                                                                Note :- **Order Total is rounded off for billing convenience.
-                                                            </div>
-                                                        </div>
+                                            <div className="bg-muted/5 border-t border-border px-4 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
+                                                {/* Left Side: Actions & Notes */}
+                                                <div className="flex-1 w-full space-y-4">
+                                                    <div>
+                                                        <button type="button" className="flex items-center gap-1.5 text-primary hover:underline text-sm font-semibold transition-colors" onClick={addRow}>
+                                                            <PlusCircle className="w-4 h-4" /> Add New Order Item(s)
+                                                        </button>
                                                     </div>
 
-                                                    {/* Right Side: Order Summary */}
-                                                    <div className="w-72 shrink-0">
-                                                        {(() => {
-                                                            const currentProperty = myProperties?.properties?.find((p: any) => Number(p.id) === Number(selectedPropertyId));
-                                                            const gstRate = Number(currentProperty?.laundry_gst || 0);
-                                                            const cgstRate = gstRate / 2;
-                                                            const sgstRate = gstRate / 2;
-                                                            
-                                                            const subTotal = form.items.reduce((sum, item) => {
-                                                                const pricing = laundryPricingItems.find((p: any) => Number(p.id) === Number(item.laundryId));
-                                                                return sum + (Number(item.itemCount || 0) * Number(pricing?.item_rate || 0));
-                                                            }, 0);
-                                                            
-                                                            const cgstAmount = subTotal * (cgstRate / 100);
-                                                            const sgstAmount = subTotal * (sgstRate / 100);
-                                                            const grandTotal = Math.round(subTotal + cgstAmount + sgstAmount);
-
-                                                            return (
-                                                                <>
-                                                                    <div className="p-4 bg-muted/10 border border-border rounded-lg space-y-2">
-                                                                        <div className="flex justify-between text-sm text-muted-foreground">
-                                                                            <span>Sub Total</span>
-                                                                            <span>₹{subTotal.toFixed(2)}</span>
-                                                                        </div>
-                                                                        <div className="flex justify-between text-sm text-muted-foreground">
-                                                                            <span>CGST ({cgstRate}%)</span>
-                                                                            <span>₹{cgstAmount.toFixed(2)}</span>
-                                                                        </div>
-                                                                        <div className="flex justify-between text-sm text-muted-foreground">
-                                                                            <span>SGST ({sgstRate}%)</span>
-                                                                            <span>₹{sgstAmount.toFixed(2)}</span>
-                                                                        </div>
-                                                                        <div className="flex justify-between text-sm font-bold text-foreground pt-2 border-t border-border/50">
-                                                                            <span>Order Total</span>
-                                                                            <span>₹{grandTotal.toFixed(2)}</span>
-                                                                        </div>
-                                                                    </div>
-                                                                    {/* Invisible spacer to match the left-side note height and keep the boxes aligned at the bottom */}
-                                                                    <div className="text-[9px] leading-tight opacity-0 pointer-events-none mt-1 select-none" aria-hidden="true">
-                                                                        Note :- **Order Total is rounded off for billing convenience.
-                                                                    </div>
-                                                                </>
-                                                            );
-                                                        })()}
+                                                    <div className="space-y-1.5 max-w-md">
+                                                        <Label>Order Notes</Label>
+                                                        <textarea
+                                                            className="w-full min-h-[60px] rounded-[3px] border border-input bg-background/50 px-3 py-2 text-sm shadow-none outline-none focus:ring-1 focus:ring-primary resize-none placeholder:text-muted-foreground/60 transition-all"
+                                                            placeholder="Special instructions (e.g. stains, starch, extra care)..."
+                                                            value={form.comments || ""}
+                                                            onChange={(e) => setForm(prev => ({ ...prev, comments: e.target.value }))}
+                                                        />
                                                     </div>
+                                                    
+                                                    <div className="text-[9px] leading-tight text-muted-foreground/80 pt-2">
+                                                        Note :- **Order Total is rounded off for billing convenience.
+                                                    </div>
+                                                </div>
+
+                                                {/* Right Side: Order Summary */}
+                                                <div className="w-64 shrink-0 space-y-2">
+                                                    {(() => {
+                                                        const currentProperty = myProperties?.properties?.find((p: any) => Number(p.id) === Number(selectedPropertyId));
+                                                        const gstRate = Number(currentProperty?.laundry_gst || 0);
+                                                        const cgstRate = gstRate / 2;
+                                                        const sgstRate = gstRate / 2;
+                                                        
+                                                        const subTotal = form.items.reduce((sum, item) => {
+                                                            const pricing = laundryPricingItems.find((p: any) => Number(p.id) === Number(item.laundryId));
+                                                            return sum + (Number(item.itemCount || 0) * Number(pricing?.item_rate || 0));
+                                                        }, 0);
+                                                        
+                                                        const cgstAmount = subTotal * (cgstRate / 100);
+                                                        const sgstAmount = subTotal * (sgstRate / 100);
+                                                        const grandTotal = Math.round(subTotal + cgstAmount + sgstAmount);
+
+                                                        return (
+                                                            <>
+                                                                <div className="flex justify-between text-sm text-muted-foreground">
+                                                                    <span>Sub Total</span>
+                                                                    <span>₹{subTotal.toFixed(2)}</span>
+                                                                </div>
+                                                                <div className="flex justify-between text-sm text-muted-foreground">
+                                                                    <span>CGST ({cgstRate}%)</span>
+                                                                    <span>₹{cgstAmount.toFixed(2)}</span>
+                                                                </div>
+                                                                <div className="flex justify-between text-sm text-muted-foreground">
+                                                                    <span>SGST ({sgstRate}%)</span>
+                                                                    <span>₹{sgstAmount.toFixed(2)}</span>
+                                                                </div>
+                                                                <div className="flex justify-between text-sm font-bold text-foreground pt-2 border-t border-border/50">
+                                                                    <span>Order Total</span>
+                                                                    <span>₹{grandTotal.toFixed(2)}</span>
+                                                                </div>
+                                                            </>
+                                                        );
+                                                    })()}
                                                 </div>
                                             </div>
                                         </div>
@@ -1659,7 +1687,7 @@ export default function LaundryOrdersManagement() {
                     setViewItemsModal({ open: false, editMode: false, order: null })
                 }
             >
-                <SheetContent side="right" className="w-full lg:max-w-4xl sm:max-w-3xl overflow-y-auto bg-background border-l border-border/50 p-4">
+                <SheetContent side="right" className={cn("w-full overflow-y-auto bg-background border-l border-border/50 p-4 transition-all duration-300", sheetTab === "history" ? "sm:max-w-4xl" : "lg:max-w-4xl sm:max-w-3xl")}>
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -1725,10 +1753,6 @@ export default function LaundryOrdersManagement() {
                                                     <ViewField label="Laundry Status" value={<GridBadge status={order.laundry_status} statusType="laundry" className="h-6 px-2 text-[10px]">{displayOrder.laundryStatusLabel}</GridBadge>} />
                                                     <ViewField label="Pickup Date" value={formatDateTime(order.pickup_date)} />
                                                     <ViewField label="Delivery Date" value={formatDateTime(order.delivery_date)} />
-                                                    <ViewField label="Sub Total" value={formatLaundryAmount(Number(order.subtotal_amount || 0))} />
-                                                    <ViewField label={`CGST (${order.cgst_rate || 0}%)`} value={formatLaundryAmount(Number(order.cgst_amount || 0))} />
-                                                    <ViewField label={`SGST (${order.sgst_rate || 0}%)`} value={formatLaundryAmount(Number(order.sgst_amount || 0))} />
-                                                    <ViewField label="Order Total" value={formatLaundryAmount(Number(order.grand_total_amount || getLaundryOrderTotalAmount(order)))} className="font-semibold text-primary" />
                                                 </CardSectionView>
                                             </div>
                                         ) : (
@@ -1897,14 +1921,62 @@ export default function LaundryOrdersManagement() {
                                                     showActions={false}
                                                     className="mt-0 border-0"
                                                 />
+                                                {(Number(order.subtotal_amount) > 0 || Number(order.grand_total_amount) > 0) && (
+                                                    <div className="flex justify-between items-end p-4 bg-muted/10 border-t border-border">
+                                                        <div className="flex-1 pb-1">
+                                                            <div className="text-[9px] leading-tight text-muted-foreground/80">
+                                                                Note :- **Order Total is rounded off for billing convenience.
+                                                            </div>
+                                                        </div>
+                                                        <div className="w-64 shrink-0 space-y-2">
+                                                            <div className="flex justify-between text-sm text-muted-foreground">
+                                                                <span>Sub Total</span>
+                                                                <span>{formatLaundryAmount(Number(order.subtotal_amount || 0))}</span>
+                                                            </div>
+                                                            <div className="flex justify-between text-sm text-muted-foreground">
+                                                                <span>CGST ({order.cgst_rate || 0}%)</span>
+                                                                <span>{formatLaundryAmount(Number(order.cgst_amount || 0))}</span>
+                                                            </div>
+                                                            <div className="flex justify-between text-sm text-muted-foreground">
+                                                                <span>SGST ({order.sgst_rate || 0}%)</span>
+                                                                <span>{formatLaundryAmount(Number(order.sgst_amount || 0))}</span>
+                                                            </div>
+                                                            <div className="flex justify-between text-sm font-bold text-foreground pt-2 border-t border-border/50">
+                                                                <span>Order Total</span>
+                                                                <span>{formatLaundryAmount(Number(order.grand_total_amount || getLaundryOrderTotalAmount(order)))}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         </CardSectionView>
                                             </div>
                                         )}
 
                                         {sheetTab === "history" && (
-                                            <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
-                                                <p className="text-sm text-muted-foreground text-center">No history logs available yet.</p>
+                                            <div className="border border-border rounded-[3px] bg-background">
+                                                <AppDataGrid
+                                                    density="compact"
+                                                    columns={orderAuditColumns}
+                                                    data={orderAuditLogs?.data || []}
+                                                    loading={orderAuditLoading}
+                                                    emptyText="No history logs available yet."
+                                                    className="mt-0"
+                                                    minWidth="600px"
+                                                    enablePagination={!!orderAuditLogs?.pagination}
+                                                    paginationProps={{
+                                                        page: orderHistoryPage,
+                                                        totalPages: orderAuditLogs?.pagination?.totalPages ?? 1,
+                                                        setPage: setOrderHistoryPage,
+                                                        disabled: !orderAuditLogs,
+                                                        totalRecords: orderAuditLogs?.pagination?.totalItems ?? orderAuditLogs?.pagination?.total ?? orderAuditLogs?.data?.length ?? 0,
+                                                        limit: orderHistoryLimit,
+                                                        onLimitChange: (val) => {
+                                                            setOrderHistoryLimit(val);
+                                                            setOrderHistoryPage(1);
+                                                        },
+                                                    }}
+                                                />
                                             </div>
                                         )}
                                     </div>
@@ -2003,8 +2075,8 @@ export default function LaundryOrdersManagement() {
                                 </p>
                             )}
 
-                            {singleLog?.data?.map(log => {
-                                const changes = getLaundryAuditChanges(log);
+                            {singleLog?.data?.map((log: any) => {
+                                const changes = getLaundryAuditChanges(log, vendors);
 
                                 return (
                                     <div key={log.id} className="border rounded-lg p-5 space-y-4 bg-muted/5">

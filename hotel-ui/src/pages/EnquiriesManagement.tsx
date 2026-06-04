@@ -16,6 +16,7 @@ import {
     useLazyExportPropertyEnquiriesQuery,
     useUpdateEnquiryMutation,
     useGetStaffByPropertyQuery,
+    useGetLogsQuery as useGetAuditLogsQuery,
 } from "@/redux/services/hmsApi";
 import { useAppSelector } from "@/redux/hook";
 import { cn } from "@/lib/utils";
@@ -37,6 +38,7 @@ import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
 import { formatAppDate, formatAppDateTime, parseAppDate, toDatetimeLocalValue } from "@/utils/dateFormat";
 import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
+import { getFormattedAuditChanges, getAuditActionBadge } from "@/utils/auditUtils";
 
 type EnquiryStatus =
     | "open"
@@ -133,6 +135,49 @@ function getEnquiryDisplay(enquiry: Enquiry) {
     };
 }
 
+function getAuditActionLabel(log: any) {
+    return getAuditActionBadge(log.event_type);
+}
+
+function getAuditChangeText(log: any) {
+    if (log.event_type === "CREATE" || log.event_type === "NEW_BOOKING") {
+        return (
+            <div className="text-muted-foreground">
+                <span className="font-semibold text-foreground/80">Enquiry:</span> {log.event_type === "NEW_BOOKING" ? "New Booking Created" : "Created"}
+            </div>
+        );
+    }
+
+    try {
+        const details = typeof log.details === "string" ? JSON.parse(log.details) : log.details;
+        if (!details || (!details.before && !details.after)) return log.comments || "—";
+
+        const formattedDetails: any = { before: {}, after: {} };
+        const { before, after } = details;
+
+        if (before.status !== after.status) {
+            formattedDetails.before["Lead Status"] = formatEnquiryStatus(before.status);
+            formattedDetails.after["Lead Status"] = formatEnquiryStatus(after.status);
+        }
+        if (before.follow_up_date !== after.follow_up_date) {
+            formattedDetails.before["Follow-up Date & Time"] = before.follow_up_date ? formatAppDateTime(before.follow_up_date) : "None";
+            formattedDetails.after["Follow-up Date & Time"] = after.follow_up_date ? formatAppDateTime(after.follow_up_date) : "None";
+        }
+        if (before.comment !== after.comment) {
+            formattedDetails.before["Internal Progress Notes"] = before.comment || "None";
+            formattedDetails.after["Internal Progress Notes"] = after.comment || "None";
+        }
+        if (before.booking_id !== after.booking_id) {
+            formattedDetails.before["Booking"] = before.booking_id ? `BO${before.booking_id}` : "None";
+            formattedDetails.after["Booking"] = after.booking_id ? `BO${after.booking_id}` : "None";
+        }
+
+        return getFormattedAuditChanges(formattedDetails);
+    } catch (e) {
+        return log.comments || "—";
+    }
+}
+
 export default function EnquiriesManagement() {
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
     const [page, setPage] = useState(1);
@@ -141,6 +186,8 @@ export default function EnquiriesManagement() {
     const [editMode, setEditMode] = useState(false);
     const [selected, setSelected] = useState<Enquiry | null>(null);
     const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
+    const [historyPage, setHistoryPage] = useState(1);
+    const [historyLimit, setHistoryLimit] = useState(25);
 
     const [status, setStatus] = useState<EnquiryStatus>("open");
     const [followUpDate, setFollowUpDate] = useState("");
@@ -190,6 +237,16 @@ export default function EnquiriesManagement() {
     }, {
         skip: !isLoggedIn || !selectedPropertyId
     })
+
+    const { data: auditLogs, isLoading: auditLoading } = useGetAuditLogsQuery(
+        {
+            tableName: "enquiries",
+            eventId: selected?.id,
+            page: historyPage,
+            limit: historyLimit,
+        },
+        { skip: !selected?.id || sheetTab !== "history" }
+    );
 
     const [getAllEnquiries, { isFetching: exportingEnquiries }] = useLazyExportPropertyEnquiriesQuery()
     const [updateEnquiry] = useUpdateEnquiryMutation()
@@ -370,6 +427,34 @@ export default function EnquiriesManagement() {
         },
     ], []);
 
+    const auditColumns = useMemo<ColumnDef<any>[]>(() => [
+
+        {
+            label: "Action",
+            cellClassName: "whitespace-nowrap",
+            render: (log) => getAuditActionBadge(log.event_type),
+        },
+        {
+            label: "Updated By",
+            cellClassName: "whitespace-nowrap",
+            render: (log) => {
+                const name = `${log.user_first_name || ""} ${log.user_last_name || ""}`.trim();
+                return name || staffMap[log.user_id] || "System";
+            },
+        },
+        {
+            label: "Date & Time",
+            headClassName: "text-white",
+            cellClassName: "text-muted-foreground whitespace-nowrap min-w-[130px]",
+            render: (log) => formatAppDateTime(log.created_on),
+        },
+        {
+            label: "Changes",
+            cellClassName: "min-w-[300px] py-2",
+            render: (log) => getAuditChangeText(log),
+        },
+    ], [historyPage, historyLimit, staffMap, selected]);
+
     return (
         <div className="flex flex-col">
             <section className="p-6 lg:p-8 space-y-6">
@@ -518,7 +603,7 @@ export default function EnquiriesManagement() {
 
             {/* Manage Sheet */}
             <Sheet open={open} onOpenChange={setOpen}>
-                <SheetContent side="right" className="w-full lg:max-w-4xl sm:max-w-3xl overflow-y-auto bg-background">
+                <SheetContent side="right" className={cn("w-full overflow-y-auto bg-background transition-all duration-300", sheetTab === "history" ? "sm:max-w-4xl" : "lg:max-w-4xl sm:max-w-3xl")}>
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -615,8 +700,29 @@ export default function EnquiriesManagement() {
                                 )}
 
                                 {sheetTab === "history" && (
-                                    <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
-                                        <p className="text-sm text-muted-foreground">No history logs available yet.</p>
+                                    <div className="border border-border rounded-[3px] bg-background">
+                                        <AppDataGrid
+                                            density="compact"
+                                            columns={auditColumns}
+                                            data={auditLogs?.data || []}
+                                            loading={auditLoading}
+                                            emptyText="No history available for this enquiry"
+                                            className="mt-0"
+                                            minWidth="600px"
+                                            enablePagination={!!auditLogs?.pagination}
+                                            paginationProps={{
+                                                page: historyPage,
+                                                totalPages: auditLogs?.pagination?.totalPages ?? 1,
+                                                setPage: setHistoryPage,
+                                                disabled: !auditLogs,
+                                                totalRecords: auditLogs?.pagination?.totalItems ?? auditLogs?.pagination?.total ?? auditLogs?.data?.length ?? 0,
+                                                limit: historyLimit,
+                                                onLimitChange: (val) => {
+                                                    setHistoryLimit(val);
+                                                    setHistoryPage(1);
+                                                },
+                                            }}
+                                        />
                                     </div>
                                 )}
                             </div>

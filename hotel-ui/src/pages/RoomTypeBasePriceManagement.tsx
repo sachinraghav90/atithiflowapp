@@ -11,7 +11,7 @@ import {
 import { NativeSelect } from "@/components/ui/native-select";
 import { useAppSelector } from "@/redux/hook";
 import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
-import { useGetMyPropertiesQuery, useGetRoomTypesQuery, useLazyExportRoomTypesQuery, useUpdateRoomTypesMutation } from "@/redux/services/hmsApi";
+import { useGetMyPropertiesQuery, useGetRoomTypesQuery, useLazyExportRoomTypesQuery, useUpdateRoomTypesMutation, useGetLogsQuery as useGetAuditLogsQuery } from "@/redux/services/hmsApi";
 import { toast } from "react-toastify";
 import { normalizeNumberInput } from "@/utils/normalizeTextInput";
 import { useLocation } from "react-router-dom";
@@ -32,9 +32,10 @@ import {
     SheetTitle,
 } from "@/components/ui/sheet";
 import { motion } from "framer-motion";
-import { formatAppDate } from "@/utils/dateFormat";
+import { formatAppDate, formatAppDateTime } from "@/utils/dateFormat";
 import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
+import { getFormattedAuditChanges, getAuditActionBadge } from "@/utils/auditUtils";
 
 /* ---------------- Types ---------------- */
 type RateRow = {
@@ -44,6 +45,55 @@ type RateRow = {
     ac_type_name: string;
     base_price: string;
     system_generated?: boolean;
+};
+
+/* ---------------- Helpers ---------------- */
+const parseAuditDetails = (details: any) => {
+    try {
+        return typeof details === "string" ? JSON.parse(details) : details;
+    } catch {
+        return null;
+    }
+};
+
+const getAuditActionLabel = (audit: any) => {
+    return getAuditActionBadge(audit.event_type);
+};
+
+const getAuditChangeText = (details: any, audit: any) => {
+    if (audit.event_type === "CREATE") {
+        return (
+            <div className="text-muted-foreground">
+                <span className="font-semibold text-foreground/80">Room Type:</span> Created
+            </div>
+        );
+    }
+    
+    if (!details) return "--";
+
+    const { before, after } = details;
+    if (!before || !after) return "--";
+
+    const formattedDetails: any = { before: {}, after: {} };
+
+    if (before["Room Category Name"] && after["Room Category Name"] && before["Room Category Name"] !== after["Room Category Name"]) {
+        formattedDetails.before["Room Category Name"] = before["Room Category Name"];
+        formattedDetails.after["Room Category Name"] = after["Room Category Name"];
+    }
+    if (before["Bed Type"] && after["Bed Type"] && before["Bed Type"] !== after["Bed Type"]) {
+        formattedDetails.before["Bed Type"] = before["Bed Type"];
+        formattedDetails.after["Bed Type"] = after["Bed Type"];
+    }
+    if (before["AC Type"] && after["AC Type"] && before["AC Type"] !== after["AC Type"]) {
+        formattedDetails.before["AC Type"] = before["AC Type"];
+        formattedDetails.after["AC Type"] = after["AC Type"];
+    }
+    if (before["Base Price"] && after["Base Price"] && before["Base Price"] !== after["Base Price"]) {
+        formattedDetails.before["Base Price"] = `₹${String(before["Base Price"]).replace(/^₹+/, "").trim()}`;
+        formattedDetails.after["Base Price"] = `₹${String(after["Base Price"]).replace(/^₹+/, "").trim()}`;
+    }
+
+    return getFormattedAuditChanges(formattedDetails);
 };
 
 /* ---------------- Component ---------------- */
@@ -70,8 +120,11 @@ export default function RoomTypeBasePriceManagement() {
     useEffect(() => {
         if (sheetOpen) {
             setSheetTab("summary");
+            setItemAuditPage(1);
         }
     }, [sheetOpen]);
+    const [itemAuditPage, setItemAuditPage] = useState(1);
+    const [itemAuditLimit, setItemAuditLimit] = useState(5);
     const [selectedRow, setSelectedRow] = useState<RateRow | null>(null);
     const [formPrice, setFormPrice] = useState("");
     const [formCategory, setFormCategory] = useState("");
@@ -99,7 +152,16 @@ export default function RoomTypeBasePriceManagement() {
         search: searchQuery
     }, {
         skip: !isLoggedIn || !propertyId
-    })
+    });
+
+    const { data: auditLogs } = useGetAuditLogsQuery({
+        tableName: "room_type_rates",
+        eventId: selectedRow?.id,
+        page: itemAuditPage,
+        limit: itemAuditLimit,
+    }, {
+        skip: !selectedRow?.id || !sheetOpen || sheetTab !== "history"
+    });
 
     const [getExportData, { isFetching: isExporting }] = useLazyExportRoomTypesQuery();
 
@@ -469,9 +531,9 @@ export default function RoomTypeBasePriceManagement() {
                         density="compact"
                     columns={[
                         {
-                            label: "Room ID",
-                            headClassName: "text-center",
-                            cellClassName: "text-center font-medium min-w-[90px]",
+                            label: "Room Category ID",
+                            headClassName: "text-center w-[140px]",
+                            cellClassName: "text-center font-medium w-[140px]",
                             render: (r: RateRow) => (
                                 <button
                                     type="button"
@@ -559,7 +621,7 @@ export default function RoomTypeBasePriceManagement() {
             </section>
 
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
+                <SheetContent side="right" className={cn("w-full overflow-y-auto transition-all duration-300", sheetTab === "history" ? "sm:max-w-4xl" : "sm:max-w-xl")}>
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -568,7 +630,7 @@ export default function RoomTypeBasePriceManagement() {
                         <SheetHeader>
                             <div className="space-y-1">
                                 <SheetTitle className="text-xl font-bold">
-                                    {mode === "view" ? `Room Category [${selectedRow?.id ? formatModuleDisplayId("room", selectedRow.id) : "..."}]` : "Edit Configuration"}
+                                    {mode === "view" ? `Room Category [#${selectedRow?.id ? formatModuleDisplayId("room", selectedRow.id) : "..."}]` : "Edit Configuration"}
                                 </SheetTitle>
                                <p className="text-xs text-muted-foreground font-medium tracking-wide">
                                     {mode === "view" ? "Room category details and pricing" : "Modify base price and room details"}
@@ -620,8 +682,54 @@ export default function RoomTypeBasePriceManagement() {
                                 )}
 
                                 {sheetTab === "history" && (
-                                    <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
-                                        <p className="text-sm text-muted-foreground text-center">No history logs available yet.</p>
+                                    <div className="space-y-3">
+                                        {!auditLogs?.data?.length ? (
+                                            <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
+                                                <p className="text-xs text-muted-foreground italic">No recent activity logs.</p>
+                                            </div>
+                                        ) : (
+                                            <div className="border border-border rounded-lg overflow-hidden bg-background shadow-sm">
+                                                <AppDataGrid
+                                                    columns={[
+
+                                                        { 
+                                                            label: "Action", 
+                                                            cellClassName: "whitespace-nowrap min-w-[120px]",
+                                                            render: (log: any) => getAuditActionBadge(log.event_type)
+                                                        },
+                                                        { 
+                                                            label: "Updated By", 
+                                                            cellClassName: "whitespace-nowrap",
+                                                            render: (log: any) => `${log.user_first_name || ""} ${log.user_last_name || ""}`.trim() || "System"
+                                                        },
+                                                        { 
+                                                            label: "Date & Time", 
+                                                            headClassName: "text-white", 
+                                                            cellClassName: "text-muted-foreground whitespace-nowrap min-w-[130px]",
+                                                            render: (log: any) => formatAppDateTime(log.created_on) 
+                                                        },
+                                                        { 
+                                                            label: "Changes", 
+                                                            cellClassName: "min-w-[300px] py-2",
+                                                            render: (log: any) => getAuditChangeText(parseAuditDetails(log.details), log) 
+                                                        }
+                                                    ] as ColumnDef[]}
+                                                    data={auditLogs.data}
+                                                    rowKey={(log: any) => log.id}
+                                                    minWidth="600px"
+                                                    enablePagination
+                                                    paginationProps={{
+                                                        page: itemAuditPage,
+                                                        totalPages: auditLogs?.pagination?.totalPages ?? 1,
+                                                        setPage: setItemAuditPage,
+                                                        totalRecords: auditLogs?.pagination?.totalItems ?? auditLogs?.data?.length ?? 0,
+                                                        limit: itemAuditLimit,
+                                                        onLimitChange: (v) => { setItemAuditLimit(v); setItemAuditPage(1); },
+                                                        disabled: !auditLogs,
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>

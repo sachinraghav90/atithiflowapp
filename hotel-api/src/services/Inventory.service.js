@@ -1,4 +1,5 @@
 import { getDb } from "../../utils/getDb.js";
+import AuditService from "./Audit.service.js";
 
 const INVENTORY_UPDATE_FIELDS = [
     { column: "property_id", aliases: ["property_id", "propertyId"] },
@@ -175,37 +176,24 @@ class InventoryService {
 
         const result = await this.#DB.query(query, values);
 
-        return result.rows[0];
-    }
-
-    /* =====================================================
-       CREATE inventory
-    ===================================================== */
-    async createInventory(payload, userId) {
-
-        const query = `
-            INSERT INTO public.inventory_master (
-                property_id,
-                inventory_type_id,
-                use_type,
-                name,
-                unit,
-                created_by
-            )
-            VALUES ($1,$2,$3,$4,$5,$6)
-            RETURNING *;
-        `;
-
-        const values = [
-            payload.property_id,
-            payload.inventory_type_id,
-            payload.use_type,
-            payload.name,
-            payload.unit ?? null,
-            userId
-        ];
-
-        const result = await this.#DB.query(query, values);
+        if (result.rows[0]) {
+            const newItem = result.rows[0];
+            AuditService.log({
+                property_id: newItem.property_id,
+                event_id: newItem.id,
+                table_name: "inventory_master",
+                event_type: "Create",
+                user_id: userId,
+                details: JSON.stringify({
+                    after: {
+                        name: newItem.name,
+                        inventory_type_id: newItem.inventory_type_id,
+                        use_type: newItem.use_type,
+                        is_active: newItem.is_active
+                    }
+                })
+            }).catch(e => console.error("Audit log failed:", e));
+        }
 
         return result.rows[0];
     }
@@ -255,6 +243,26 @@ class InventoryService {
         ];
 
         const result = await this.#DB.query(query, values);
+
+        if (result.rows && result.rows.length > 0) {
+            Promise.all(result.rows.map(row => 
+                AuditService.log({
+                    property_id: row.property_id,
+                    event_id: row.id,
+                    table_name: "inventory_master",
+                    event_type: "Create",
+                    user_id: userId,
+                    details: JSON.stringify({
+                        after: {
+                            name: row.name,
+                            inventory_type_id: row.inventory_type_id,
+                            use_type: row.use_type,
+                            is_active: row.is_active
+                        }
+                    })
+                })
+            )).catch(e => console.error("Bulk audit log failed:", e));
+        }
 
         return result.rows;
     }
@@ -418,6 +426,32 @@ class InventoryService {
         values.push(inventoryId);
 
         const result = await this.#DB.query(query, values);
+
+        if (result.rows[0]) {
+            const updatedItem = result.rows[0];
+            const before = {};
+            const after = {};
+            let hasChanges = false;
+            
+            ["name", "inventory_type_id", "use_type", "is_active"].forEach(key => {
+                if (String(existing[key]) !== String(updatedItem[key])) {
+                    before[key] = existing[key];
+                    after[key] = updatedItem[key];
+                    hasChanges = true;
+                }
+            });
+
+            if (hasChanges) {
+                AuditService.log({
+                    property_id: updatedItem.property_id,
+                    event_id: updatedItem.id,
+                    table_name: "inventory_master",
+                    event_type: "Update",
+                    user_id: userId,
+                    details: JSON.stringify({ before, after })
+                }).catch(e => console.error("Audit log failed:", e));
+            }
+        }
 
         return result.rows[0];
     }

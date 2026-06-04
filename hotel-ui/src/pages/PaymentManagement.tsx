@@ -230,7 +230,8 @@ export default function PaymentsManagement() {
                                     render: (p: PaymentRow) => formatModuleDisplayId("booking", p.booking_id),
                                 },
                                 {
-                                    label: "Date",
+                                    label: "Date & Time",
+                                    headClassName: "text-white",
                                     cellClassName: "text-xs text-muted-foreground whitespace-nowrap",
                                     render: (p: PaymentRow) => formatDate(p.payment_date),
                                 },

@@ -31,6 +31,9 @@ router.route("/:id/cancel")
 router.route("/:id/status")
     .patch(supabaseAuth, requireRole(roles.ALL), BookingController.updateBookingStatus.bind(BookingController))
 
+router.route("/:id/change-room")
+    .patch(supabaseAuth, requireRole(roles.ALL), BookingController.changeRoom.bind(BookingController))
+
 router.route("/:id/guests")
     .get(supabaseAuth, requireRole(roles.ALL), GuestsController.getGuestsByBooking.bind(GuestsController))
     .post(supabaseAuth, requireRole(roles.ALL), upload.array("id_proofs"), GuestsController.upsertGuestsByBooking.bind(GuestsController))

@@ -57,7 +57,8 @@ class Booking {
                         JOIN public.ref_rooms rr_search
                             ON rr_search.id = rd_search.ref_room_id
                         WHERE rd_search.booking_id = b.id
-                            AND rd_search.is_cancelled = false
+                            AND COALESCE(rd_search.is_cancelled, false) = false
+                            AND COALESCE(rd_search.is_changed, false) = false
                             AND rr_search.room_no ILIKE $${idx + 1}
                     )
                 )`)
@@ -73,7 +74,8 @@ class Booking {
                         JOIN public.ref_rooms rr_search
                             ON rr_search.id = rd_search.ref_room_id
                         WHERE rd_search.booking_id = b.id
-                            AND rd_search.is_cancelled = false
+                            AND COALESCE(rd_search.is_cancelled, false) = false
+                            AND COALESCE(rd_search.is_changed, false) = false
                             AND rr_search.room_no ILIKE $${idx}
                     )
                 )`)
@@ -149,7 +151,8 @@ class Booking {
             FROM public.bookings b
             LEFT JOIN public.room_details rd
                 ON rd.booking_id = b.id
-                AND rd.is_cancelled = false
+                AND COALESCE(rd.is_cancelled, false) = false
+                AND COALESCE(rd.is_changed, false) = false
 
             LEFT JOIN public.ref_rooms rr ON rr.id = rd.ref_room_id
             ${whereClause}
@@ -295,7 +298,8 @@ class Booking {
                 JOIN public.ref_rooms rr
                   ON rr.id = rd.ref_room_id
                 WHERE rd.ref_room_id = $2
-                  AND rd.is_cancelled = false
+                  AND COALESCE(rd.is_cancelled, false) = false
+                  AND COALESCE(rd.is_changed, false) = false
                   AND b.booking_status IN ('CONFIRMED', 'CHECKED_IN')
                   AND (
                         b.estimated_arrival < $4
@@ -494,7 +498,8 @@ class Booking {
         /* -------- ROOMS -------- */
         LEFT JOIN public.room_details rd
             ON rd.booking_id = b.id
-            AND rd.is_cancelled = false
+            AND COALESCE(rd.is_cancelled, false) = false
+            AND COALESCE(rd.is_changed, false) = false
 
         LEFT JOIN public.ref_rooms rr
             ON rr.id = rd.ref_room_id
@@ -889,7 +894,8 @@ class Booking {
 
             JOIN public.room_details rd
                 ON rd.booking_id = b.id
-                AND rd.is_cancelled = false
+                AND COALESCE(rd.is_cancelled, false) = false
+                AND COALESCE(rd.is_changed, false) = false
 
             JOIN public.ref_rooms rr
                 ON rr.id = rd.ref_room_id
@@ -1032,6 +1038,8 @@ class Booking {
             FROM public.bookings b
             LEFT JOIN public.room_details rd
                 ON rd.booking_id = b.id
+                AND COALESCE(rd.is_cancelled, false) = false
+                AND COALESCE(rd.is_changed, false) = false
 
             LEFT JOIN public.ref_rooms rr
                 ON rr.id = rd.ref_room_id
@@ -1111,6 +1119,204 @@ class Booking {
         );
         return { message: "Guest image deleted successfully" };
     }
+    async changeRoom({ bookingId, oldRooms, newRooms, reason, changedBy }) {
+        const client = await this.#DB.connect();
+
+        try {
+            await client.query("BEGIN");
+
+            /* 1. Lock Booking */
+            const { rows: bookingRows } = await client.query(
+                `
+                SELECT id, property_id, booking_status, estimated_arrival, estimated_departure, actual_arrival, actual_departure
+                FROM public.bookings
+                WHERE id = $1
+                FOR UPDATE
+                `,
+                [Number(bookingId)]
+            );
+
+            if (!bookingRows.length) throw new Error("Booking not found");
+            const booking = bookingRows[0];
+
+            if (['CANCELLED', 'CHECKED_OUT'].includes(booking.booking_status)) {
+                throw new Error(`Cannot change room for booking in ${booking.booking_status} status`);
+            }
+
+            /* 2. Get old active rooms for audit log */
+            let oldRoomIds = [];
+            if (oldRooms && Array.isArray(oldRooms) && oldRooms.length > 0) {
+                oldRoomIds = oldRooms.map(r => r.ref_room_id || r.id || r);
+            }
+
+            if (oldRoomIds.length > 0 && oldRoomIds.length !== newRooms.length) {
+                throw new Error(`Please select exactly ${oldRoomIds.length} replacement room(s) for the removed assigned room(s).`);
+            }
+
+            let oldRoomsQuery = `
+                SELECT rd.ref_room_id, rr.room_no, rtr.ac_type_name, rtr.room_category_name, rtr.bed_type_name, rr.floor_number
+                FROM public.room_details rd
+                JOIN public.ref_rooms rr ON rr.id = rd.ref_room_id
+                LEFT JOIN public.room_type_rates rtr ON rr.room_type_id = rtr.id
+                WHERE rd.booking_id = $1
+                  AND COALESCE(rd.is_cancelled, false) = false
+                  AND COALESCE(rd.is_changed, false) = false
+            `;
+            const oldRoomsParams = [Number(bookingId)];
+
+            if (oldRoomIds.length > 0) {
+                oldRoomsQuery += ` AND rd.ref_room_id = ANY($2::bigint[])`;
+                oldRoomsParams.push(oldRoomIds);
+            }
+
+            const { rows: fetchedOldRooms } = await client.query(oldRoomsQuery, oldRoomsParams);
+
+            if (fetchedOldRooms.length === 0) {
+                throw new Error("No active rooms found to change for this booking");
+            }
+
+            /* 3. Check conflicts for new rooms */
+            const conflictArrival = booking.actual_arrival || booking.estimated_arrival;
+            const conflictDeparture = booking.actual_departure || booking.estimated_departure;
+
+            for (const room of newRooms) {
+                const { rows: conflicts } = await client.query(
+                    `
+                    SELECT 
+                        r.id AS room_id,
+                        r.room_no,
+                        rd2.booking_id AS active_booking_id,
+                        b2.booking_status AS active_booking_status
+                    FROM public.ref_rooms r 
+                    LEFT JOIN public.room_details rd2
+                        ON rd2.ref_room_id = r.id
+                        AND rd2.booking_id != $1
+                        AND COALESCE(rd2.is_cancelled, false) = false
+                        AND COALESCE(rd2.is_changed, false) = false
+                    LEFT JOIN public.bookings b2
+                        ON b2.id = rd2.booking_id
+                        AND b2.is_active = true
+                        AND b2.booking_status IN ('CONFIRMED','CHECKED_IN')
+                        AND b2.estimated_arrival < $3::timestamptz
+                        AND COALESCE(b2.actual_departure, b2.estimated_departure) > $2::timestamptz
+                    WHERE r.id = $4
+                      AND b2.id IS NOT NULL
+                    `,
+                    [
+                        bookingId,
+                        conflictArrival,
+                        conflictDeparture,
+                        room.ref_room_id
+                    ]
+                );
+
+                if (conflicts.length) {
+                    throw {
+                        code: "ROOM_NOT_AVAILABLE",
+                        message: "One or more newly selected rooms are not available",
+                        booking_id: bookingId,
+                        conflicted_rooms: conflicts
+                    };
+                }
+            }
+
+            /* 4. Mark existing active rooms as changed */
+            let updateQuery = `
+                UPDATE public.room_details
+                SET is_changed = true, updated_on = now(), updated_by = $2
+                WHERE booking_id = $1
+                  AND COALESCE(is_cancelled, false) = false
+                  AND COALESCE(is_changed, false) = false
+            `;
+            const updateParams = [Number(bookingId), changedBy];
+
+            if (oldRoomIds.length > 0) {
+                updateQuery += ` AND ref_room_id = ANY($3::bigint[])`;
+                updateParams.push(oldRoomIds);
+            }
+
+            await client.query(updateQuery, updateParams);
+
+            /* 4b. Mark the old rooms as dirty in ref_rooms so they aren't instantly re-bookable */
+            if (fetchedOldRooms.length > 0) {
+                const fetchedIds = fetchedOldRooms.map(r => r.ref_room_id);
+                await client.query(
+                    `
+                    UPDATE public.ref_rooms
+                    SET dirty = true, updated_on = now(), updated_by = $1
+                    WHERE id = ANY($2::bigint[])
+                    `,
+                    [changedBy, fetchedIds]
+                );
+            }
+
+            /* 5. Insert new rooms */
+            for (const room of newRooms) {
+                await client.query(
+                    `
+                    INSERT INTO public.room_details (
+                        booking_id,
+                        ref_room_id,
+                        room_type,
+                        room_status,
+                        is_cancelled,
+                        is_changed,
+                        created_by
+                    )
+                    VALUES ($1, $2, $3, 'BOOKED', false, false, $4)
+                    `,
+                    [
+                        booking.id,
+                        room.ref_room_id,
+                        room.room_type || null,
+                        changedBy
+                    ]
+                );
+            }
+
+            /* 6. Fetch new rooms full details for audit log */
+            const newRoomIds = newRooms.map(r => r.ref_room_id);
+            const { rows: newRoomsDetails } = await client.query(
+                `
+                SELECT rr.id as ref_room_id, rr.room_no, rtr.ac_type_name, rtr.room_category_name, rtr.bed_type_name, rr.floor_number
+                FROM public.ref_rooms rr
+                LEFT JOIN public.room_type_rates rtr ON rr.room_type_id = rtr.id
+                WHERE rr.id = ANY($1::bigint[])
+                `,
+                [newRoomIds]
+            );
+
+            /* 7. Audit Log */
+            try {
+                await AuditService.log({
+                    property_id: booking.property_id,
+                    event_id: booking.id,
+                    table_name: "bookings",
+                    event_type: "ROOM_CHANGE",
+                    task_name: "Room Changed",
+                    comments: reason || "Room change requested",
+                    details: JSON.stringify({
+                        reason,
+                        old_rooms: fetchedOldRooms,
+                        new_rooms: newRoomsDetails
+                    }),
+                    user_id: changedBy
+                });
+            } catch (err) {
+                console.error("Audit log failed for room change:", err);
+            }
+
+            await client.query("COMMIT");
+
+            return { message: "Room changed successfully" };
+        } catch (err) {
+            await client.query("ROLLBACK");
+            throw err;
+        } finally {
+            client.release();
+        }
+    }
 }
 
 export default Object.freeze(new Booking())
+

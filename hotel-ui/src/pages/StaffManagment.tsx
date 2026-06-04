@@ -16,7 +16,7 @@ import {
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect } from "@/components/ui/grid-toolbar";
 import { FilterX, Download, Image as ImageIcon, KeyRound, Pencil, Phone, RefreshCcw } from "lucide-react";
-import { useAddStaffMutation, useCreateUserMutation, useGetAllRolesQuery, useGetMyPropertiesQuery, useGetStaffByPropertyQuery, useLazyGetStaffByPropertyQuery, useLazyGetStaffByIdQuery, useUpdateStaffMutation, useUpdateStaffPasswordMutation, useGetPropertyAddressByUserQuery } from "@/redux/services/hmsApi";
+import { useAddStaffMutation, useCreateUserMutation, useGetAllRolesQuery, useGetMyPropertiesQuery, useGetStaffByPropertyQuery, useLazyGetStaffByPropertyQuery, useLazyGetStaffByIdQuery, useUpdateStaffMutation, useUpdateStaffPasswordMutation, useGetPropertyAddressByUserQuery, useGetLogsQuery as useGetAuditLogsQuery } from "@/redux/services/hmsApi";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { toast } from "react-toastify";
 import { useAppSelector } from "@/redux/hook";
@@ -38,12 +38,14 @@ import { formatReadableLabel } from "@/utils/formatString";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { apiToast } from "@/utils/apiToastPromise";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
+import { getFormattedAuditChanges, getAuditActionBadge } from "@/utils/auditUtils";
 import { cn } from "@/lib/utils";
 import { getStatusColor } from "@/constants/statusColors";
 import { GridBadge } from "@/components/ui/grid-badge";
 import { useGridPagination } from "@/hooks/useGridPagination";
 import { exportToExcel } from "@/utils/exportToExcel";
-import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
+
 import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
 import { formatAppDate } from "@/utils/dateFormat";
@@ -157,6 +159,21 @@ type FormError = {
     message: string;
 };
 
+const stripIndiaCountryCode = (value?: string | null) => {
+    if (!value) return "";
+    const digits = String(value).replace(/\D/g, "");
+
+    if (digits.length === 12 && digits.startsWith("91")) {
+        return digits.slice(2);
+    }
+
+    if (digits.length === 10) {
+        return digits;
+    }
+
+    return digits;
+};
+
 export default function StaffManagement() {
     const [sheetOpen, setSheetOpen] = useState(false);
     const [mode, setMode] = useState<"add" | "edit" | "view">("add");
@@ -214,6 +231,13 @@ export default function StaffManagement() {
     const { data: roles } = useGetAllRolesQuery(undefined, {
         skip: !isLoggedIn
     })
+
+    const [itemAuditPage, setItemAuditPage] = useState(1);
+    const [itemAuditLimit, setItemAuditLimit] = useState(10);
+    const { data: staffAuditData, isLoading: staffAuditLoading, isFetching: staffAuditFetching } = useGetAuditLogsQuery(
+        { tableName: "staff", eventId: staff?.id, page: itemAuditPage, limit: itemAuditLimit },
+        { skip: !staff?.id || sheetTab !== "history" }
+    );
 
     useEffect(() => {
         if (sheetOpen) return
@@ -281,7 +305,8 @@ export default function StaffManagement() {
 
             setFormErrors(errors);
 
-            if (Object.keys(errors).length > 0) {
+            const hasErrors = Object.keys(errors).length > 0;
+            if (hasErrors) {
                 toast.error("Please fill all the fields correctly"); // show first error
                 return;
             }
@@ -301,8 +326,16 @@ export default function StaffManagement() {
                     key === "image" ||
                     key === "id_proof" ||
                     key === "roles" ||
+                    key === "phone" ||
+                    key === "phone1" ||
+                    key === "phone2" ||
+                    key === "emergency_contact" ||
                     key === "emergency_contact_2" ||
-                    key === "phone2"
+                    key === "phone1_country_code" ||
+                    key === "phone2_country_code" ||
+                    key === "emergency_contact_country_code" ||
+                    key === "emergency_contact_2_country_code" ||
+                    key === "phone_country_code"
                 ) {
                     return
                 }
@@ -324,8 +357,22 @@ export default function StaffManagement() {
                 fd.append("id_proof_mime", staff.id_proof.type)
             }
 
-            if (staff.phone2?.split(" ")[1]) fd.append("phone2", staff.phone2)
-            if (staff.emergency_contact_2?.split(" ")[1]) fd.append("emergency_contact_2", staff.emergency_contact_2)
+            // Manually append phone numbers with their respective country codes
+            if (staff.phone1?.trim()) {
+                fd.append("phone1", `${staff.phone1_country_code || "+91"} ${staff.phone1.trim()}`);
+            }
+            if (staff.phone?.trim()) {
+                fd.append("phone", `${staff.phone_country_code || "+91"} ${staff.phone.trim()}`);
+            }
+            if (staff.phone2?.trim()) {
+                fd.append("phone2", `${staff.phone2_country_code || "+91"} ${staff.phone2.trim()}`);
+            }
+            if (staff.emergency_contact?.trim()) {
+                fd.append("emergency_contact", `${staff.emergency_contact_country_code || "+91"} ${staff.emergency_contact.trim()}`);
+            }
+            if (staff.emergency_contact_2?.trim()) {
+                fd.append("emergency_contact_2", `${staff.emergency_contact_2_country_code || "+91"} ${staff.emergency_contact_2.trim()}`);
+            }
 
             const promise =
                 mode === "add"
@@ -497,6 +544,11 @@ export default function StaffManagement() {
             setStaff({
                 ...STAFF_INITIAL_VALUE,
                 ...fullStaff,
+                phone: stripIndiaCountryCode(fullStaff.phone || fullStaff.phone1),
+                phone1: stripIndiaCountryCode(fullStaff.phone1),
+                phone2: stripIndiaCountryCode(fullStaff.phone2),
+                emergency_contact: stripIndiaCountryCode(fullStaff.emergency_contact),
+                emergency_contact_2: stripIndiaCountryCode(fullStaff.emergency_contact_2),
                 role_ids: fullStaff.roles?.length
                     ? [String(fullStaff.roles[0].id)]
                     : [],
@@ -601,7 +653,42 @@ export default function StaffManagement() {
                 </GridBadge>
             ),
         },
-    ], []);
+    ], [roles?.roles]);
+
+    const auditColumns: ColumnDef<any>[] = useMemo(() => [
+
+        {
+            label: "Action",
+            cellClassName: "whitespace-nowrap",
+            render: (row) => getAuditActionBadge(row.event_type)
+        },
+        {
+            label: "Updated By",
+            render: (row) => `${row.user_first_name || ""} ${row.user_last_name || ""}`.trim() || "--",
+            cellClassName: "whitespace-nowrap"
+        },
+        {
+            label: "Date & Time",
+            headClassName: "text-white",
+            render: (row) => formatAppDate(row.created_on, true),
+            cellClassName: "text-muted-foreground whitespace-nowrap"
+        },
+        {
+            label: "Changes",
+            cellClassName: "py-2",
+            render: (row) => {
+                let parsed = row.details;
+                if (typeof parsed === 'string') {
+                    try { parsed = JSON.parse(parsed); } catch { }
+                }
+                return (
+                    <div className="max-w-[400px] whitespace-normal">
+                        {getFormattedAuditChanges(parsed)}
+                    </div>
+                );
+            }
+        }
+    ], [itemAuditPage, itemAuditLimit, staff?.id]);
 
     return (
         <div className="flex flex-col">
@@ -928,8 +1015,25 @@ export default function StaffManagement() {
                                 )}
 
                                 {sheetTab === "history" && (
-                                    <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
-                                        <p className="text-sm text-muted-foreground">No history logs available yet.</p>
+                                    <div className="h-[600px] bg-background border border-border rounded-[3px] overflow-hidden">
+                                        <AppDataGrid
+                                            columns={auditColumns}
+                                            data={staffAuditData?.data || []}
+                                            isLoading={staffAuditLoading}
+                                            enablePagination={!!staffAuditData?.pagination}
+                                            paginationProps={{
+                                                page: itemAuditPage,
+                                                totalPages: staffAuditData?.pagination?.totalPages || 1,
+                                                setPage: setItemAuditPage,
+                                                disabled: staffAuditLoading || staffAuditFetching || !staffAuditData,
+                                                totalRecords: staffAuditData?.pagination?.total || 0,
+                                                limit: itemAuditLimit,
+                                                onLimitChange: (l) => {
+                                                    setItemAuditLimit(l);
+                                                    setItemAuditPage(1);
+                                                },
+                                            }}
+                                        />
                                     </div>
                                 )}
                             </div>

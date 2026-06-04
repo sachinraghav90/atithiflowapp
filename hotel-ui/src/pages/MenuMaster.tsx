@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { Switch } from "@/components/ui/switch";
 import { NativeSelect } from "@/components/ui/native-select";
 import { MenuItemSelect } from "@/components/MenuItemSelect";
-import { useCreateMenuItemBulkMutation, useCreateMenuItemGroupMutation, useCreateMenuItemMutation, useGetMenuItemGroupsLightQuery, useGetMenuItemGroupsQuery, useGetPropertyMenuLightQuery, useGetPropertyMenuQuery, useUpdateMenuItemGroupMutation, useUpdateMenuItemMutation } from "@/redux/services/hmsApi";
+import { useCreateMenuItemBulkMutation, useCreateMenuItemGroupMutation, useCreateMenuItemMutation, useGetMenuItemGroupsLightQuery, useGetMenuItemGroupsQuery, useGetPropertyMenuLightQuery, useGetPropertyMenuQuery, useUpdateMenuItemGroupMutation, useUpdateMenuItemMutation, useGetLogsQuery as useGetAuditLogsQuery } from "@/redux/services/hmsApi";
 import { useAppSelector } from "@/redux/hook";
 import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
 import { normalizeNumberInput } from "@/utils/normalizeTextInput";
@@ -24,10 +24,77 @@ import { GridBadge } from "@/components/ui/grid-badge";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
+import { formatAppDateTime } from "@/utils/dateFormat";
 import { toast } from "react-toastify";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
+import { getFormattedAuditChanges, getAuditActionBadge } from "@/utils/auditUtils";
+
+/* ---------------- Helpers ---------------- */
+const parseAuditDetails = (details: any) => {
+    try {
+        return typeof details === "string" ? JSON.parse(details) : details;
+    } catch {
+        return null;
+    }
+};
+
+const getAuditActionLabel = (audit: any) => {
+    return getAuditActionBadge(audit.event_type);
+};
+
+const getAuditChangeText = (details: any, audit: any) => {
+    if (audit.event_type === "CREATE") {
+        return (
+            <div className="text-muted-foreground">
+                <span className="font-semibold text-foreground/80">Menu Item:</span> Created
+            </div>
+        );
+    }
+    
+    if (!details) return "--";
+
+    const { before, after } = details;
+    if (!before || !after) return "--";
+
+    const formattedDetails: any = { before: {}, after: {} };
+
+    if (before.item_name !== undefined && before.item_name !== after.item_name) {
+        formattedDetails.before["Item Name"] = before.item_name;
+        formattedDetails.after["Item Name"] = after.item_name;
+    }
+    if (before.price !== undefined && before.price !== after.price) {
+        formattedDetails.before["Price"] = `₹${String(before.price ?? "").replace(/^₹+/, "").trim()}`;
+        formattedDetails.after["Price"] = `₹${String(after.price ?? "").replace(/^₹+/, "").trim()}`;
+    }
+    if (before.prep_time !== undefined && before.prep_time !== after.prep_time) {
+        formattedDetails.before["Prep Time"] = before.prep_time || "None";
+        formattedDetails.after["Prep Time"] = after.prep_time || "None";
+    }
+    if (before.menu_item_group !== undefined && before.menu_item_group !== after.menu_item_group) {
+        formattedDetails.before["Menu Group"] = before.menu_item_group || "None";
+        formattedDetails.after["Menu Group"] = after.menu_item_group || "None";
+    }
+    if (before.is_active !== undefined && before.is_active !== after.is_active) {
+        formattedDetails.before["Active"] = before.is_active ? "Yes" : "No";
+        formattedDetails.after["Active"] = after.is_active ? "Yes" : "No";
+    }
+    if (before.is_veg !== undefined && before.is_veg !== after.is_veg) {
+        formattedDetails.before["Pure Veg"] = before.is_veg ? "Yes" : "No";
+        formattedDetails.after["Pure Veg"] = after.is_veg ? "Yes" : "No";
+    }
+    if (before.description !== undefined && before.description !== after.description) {
+        formattedDetails.before["Description"] = before.description || "None";
+        formattedDetails.after["Description"] = after.description || "None";
+    }
+    if (before.image !== undefined && before.image !== after.image) {
+        formattedDetails.before["Item Image"] = "Previous";
+        formattedDetails.after["Item Image"] = "Updated";
+    }
+
+    return getFormattedAuditChanges(formattedDetails);
+};
 
 type MenuItem = {
     id: string;
@@ -148,6 +215,8 @@ export default function MenuMaster() {
     const [groupEditState, setGroupEditState] = useState({});
     const [bulkOpen, setBulkOpen] = useState(false);
     const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
+    const [itemAuditPage, setItemAuditPage] = useState(1);
+    const [itemAuditLimit, setItemAuditLimit] = useState(5);
     const [isDescExpanded, setIsDescExpanded] = useState(false);
 
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
@@ -175,6 +244,15 @@ export default function MenuMaster() {
     const { data: menuGroupsLight } = useGetMenuItemGroupsLightQuery({ propertyId: selectedPropertyId }, {
         skip: !isLoggedIn || !selectedPropertyId
     })
+
+    const { data: auditLogs } = useGetAuditLogsQuery({
+        tableName: "menu_master",
+        eventId: selected?.id,
+        page: itemAuditPage,
+        limit: itemAuditLimit,
+    }, {
+        skip: !selected?.id || mode !== "view" || sheetTab !== "history"
+    });
 
     const [createMenuItem] = useCreateMenuItemMutation()
     const [updateMenuItem] = useUpdateMenuItemMutation()
@@ -650,7 +728,7 @@ export default function MenuMaster() {
 
             {/* VIEW / EDIT / ADD SHEET */}
             <Sheet open={!!mode} onOpenChange={() => setMode(null)}>
-                <SheetContent side="right" className="w-full lg:max-w-4xl sm:max-w-3xl overflow-y-auto bg-background">
+                <SheetContent side="right" className={cn("w-full overflow-y-auto bg-background transition-all duration-300", sheetTab === "history" ? "sm:max-w-4xl" : "lg:max-w-4xl sm:max-w-3xl")}>
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -762,8 +840,53 @@ export default function MenuMaster() {
                                 )}
 
                                 {sheetTab === "history" && (
-                                    <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
-                                        <p className="text-sm text-muted-foreground">No history logs available yet.</p>
+                                    <div className="space-y-3">
+                                        {!auditLogs?.data?.length ? (
+                                            <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
+                                                <p className="text-xs text-muted-foreground italic">No recent activity logs.</p>
+                                            </div>
+                                        ) : (
+                                            <div className="border border-border rounded-lg overflow-hidden bg-background shadow-sm">
+                                                <AppDataGrid
+                                                    columns={[
+
+                                                        { 
+                                                            label: "Action", 
+                                                            render: (log: any) => getAuditActionBadge(log.event_type)
+                                                        },
+                                                        { 
+                                                            label: "Updated By", 
+                                                            cellClassName: "whitespace-nowrap",
+                                                            render: (log: any) => `${log.user_first_name || ""} ${log.user_last_name || ""}`.trim() || "System"
+                                                        },
+                                                        { 
+                                                            label: "Date & Time", 
+                                                            headClassName: "text-white", 
+                                                            cellClassName: "text-[10px] text-muted-foreground whitespace-nowrap min-w-[130px]",
+                                                            render: (log: any) => formatAppDateTime(log.created_on) 
+                                                        },
+                                                        { 
+                                                            label: "Changes", 
+                                                            cellClassName: "text-[11px] font-medium text-foreground/80 break-words min-w-[300px]",
+                                                            render: (log: any) => getAuditChangeText(parseAuditDetails(log.details), log) 
+                                                        }
+                                                    ] as ColumnDef[]}
+                                                    data={auditLogs.data}
+                                                    rowKey={(log: any) => log.id}
+                                                    minWidth="600px"
+                                                    enablePagination
+                                                    paginationProps={{
+                                                        page: itemAuditPage,
+                                                        totalPages: auditLogs?.pagination?.totalPages ?? 1,
+                                                        setPage: setItemAuditPage,
+                                                        totalRecords: auditLogs?.pagination?.totalItems ?? auditLogs?.data?.length ?? 0,
+                                                        limit: itemAuditLimit,
+                                                        onLimitChange: (v) => { setItemAuditLimit(v); setItemAuditPage(1); },
+                                                        disabled: !auditLogs,
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>

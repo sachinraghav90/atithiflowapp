@@ -70,20 +70,30 @@ export default function BookingLogsEmbedded({ bookingId, propertyId }: Props) {
         setLogs(data.data); // no pagination, direct render
     }, [data]);
 
-    const renderValue = (key: string, value: any) => {
-        if (key.toLowerCase() === "rooms" && Array.isArray(value)) {
+    const renderValue = (key: string, value: unknown) => {
+        const isRoomKey = ["rooms", "old rooms", "new rooms", "old_rooms", "new_rooms"].includes(key.toLowerCase());
+
+        if (isRoomKey && Array.isArray(value)) {
             return (
                 <div className="flex flex-wrap gap-1.5 mt-0.5">
-                    {value.map((roomNo: any) => {
-                        const meta = roomsMeta?.find((r: any) => String(r.room_no) === String(roomNo));
+                    {value.map((v: unknown, i: number) => {
+                        const vObj = typeof v === "object" && v !== null ? v as Record<string, unknown> : null;
+                        const roomNo = vObj ? vObj.room_no : v;
+                        if (!roomNo) return null;
+
+                        const meta = roomsMeta?.find((r: Record<string, unknown>) => String(r.room_no) === String(roomNo));
+                        const floorNo = (vObj && vObj.floor_number) 
+                            ? vObj.floor_number 
+                            : (meta as Record<string, unknown>)?.floor_number;
+
                         return (
                             <div 
-                                key={roomNo} 
+                                key={i} 
                                 className="flex flex-col items-center justify-center min-w-[40px] px-2 py-1 bg-primary/5 border border-primary/20 rounded-[3px] shadow-sm"
                             >
                                 <span className="text-[10px] font-bold text-primary">{roomNo}</span>
-                                {meta?.floor_number && (
-                                    <span className="text-[8px] text-muted-foreground leading-none">F{meta.floor_number}</span>
+                                {floorNo && (
+                                    <span className="text-[8px] text-muted-foreground leading-none">F{floorNo}</span>
                                 )}
                             </div>
                         );
@@ -95,9 +105,17 @@ export default function BookingLogsEmbedded({ bookingId, propertyId }: Props) {
         if (Array.isArray(value)) {
             return (
                 <div className="flex flex-wrap gap-1">
-                    {value.map((v, i) => (
-                        <Badge key={i} variant="secondary" className="text-[10px] px-1.5 h-4">{String(v)}</Badge>
-                    ))}
+                    {value.map((v, i) => {
+                        let text = String(v);
+                        if (typeof v === "object" && v !== null) {
+                            text = JSON.stringify(v);
+                        }
+                        return (
+                            <Badge key={i} variant="secondary" className="text-[10px] px-1.5 h-4 bg-primary/10 text-primary border-primary/20">
+                                {text}
+                            </Badge>
+                        );
+                    })}
                 </div>
             );
         }
@@ -135,7 +153,9 @@ export default function BookingLogsEmbedded({ bookingId, propertyId }: Props) {
                                     <div className="space-y-0.5">
                                         <p className="font-bold text-sm text-primary/90">{log.task_name}</p>
                                         <p className="text-[11px] text-muted-foreground/80 font-medium">
-                                            {formatLogText(log.comments)}
+                                            {log.event_type === 'ROOM_CHANGE' 
+                                                ? "New room is allocated" 
+                                                : formatLogText(log.comments)}
                                         </p>
                                     </div>
 
@@ -162,14 +182,25 @@ export default function BookingLogsEmbedded({ bookingId, propertyId }: Props) {
                                     {detailsObj && (
                                         <div className="rounded-[3px] border border-border/50 bg-muted/5 p-4">
                                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-4">
-                                                {Object.entries(detailsObj).map(([key, value]) => (
-                                                    <ViewField
-                                                        key={key}
-                                                        label={formatKey(key)}
-                                                        value={renderValue(key, value)}
-                                                        valueClassName="text-xs"
-                                                    />
-                                                ))}
+                                                {Object.entries(detailsObj).map(([key, value]) => {
+                                                    let displayLabel = formatKey(key);
+                                                    if (log.event_type === 'ROOM_CHANGE') {
+                                                        if (key.toLowerCase() === 'old_rooms' || key.toLowerCase() === 'old rooms') {
+                                                            displayLabel = 'Old Assigned Rooms';
+                                                        }
+                                                        if (key.toLowerCase() === 'new_rooms' || key.toLowerCase() === 'new rooms') {
+                                                            displayLabel = 'New Assigned Rooms';
+                                                        }
+                                                    }
+                                                    return (
+                                                        <ViewField
+                                                            key={key}
+                                                            label={displayLabel}
+                                                            value={renderValue(key, value)}
+                                                            valueClassName="text-xs"
+                                                        />
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     )}

@@ -38,14 +38,16 @@ class PackageService {
             property_id: propertyId,
             event_id: rows[0].id,
             table_name: "packages",
-            event_type: "CREATE",
+            event_type: "Create",
             task_name: "Create Package",
             comments: "Package created",
             details: JSON.stringify({
-                package_id: rows[0].id,
-                package_name: packageName,
-                base_price: basePrice,
-                is_active: isActive
+                after: {
+                    "Plan Name": packageName,
+                    "Description": description || "No description",
+                    "Base Price": `₹${Number(basePrice).toFixed(2)}`,
+                    "Status": isActive ? "Active" : "Inactive"
+                }
             }),
             user_id: createdBy
         });
@@ -271,6 +273,11 @@ class PackageService {
             throw new Error("Package id is required");
         }
 
+        const oldPkg = await this.getPackageById(id);
+        if (!oldPkg) {
+            throw new Error("Package not found");
+        }
+
         const fields = [];
         const values = [];
         let idx = 1;
@@ -319,21 +326,43 @@ class PackageService {
             throw new Error("Package not found");
         }
 
-        await AuditService.log({
-            property_id: rows[0].property_id,
-            event_id: rows[0].id,
-            table_name: "packages",
-            event_type: "UPDATE",
-            task_name: "Update Package",
-            comments: "Package updated",
-            details: JSON.stringify({
-                package_id: rows[0].id,
-                package_name: rows[0].package_name,
-                base_price: rows[0].base_price,
-                is_active: rows[0].is_active
-            }),
-            user_id: updatedBy
-        });
+        const before = {};
+        const after = {};
+        let hasChanges = false;
+
+        if (packageName !== undefined && oldPkg.package_name !== packageName) {
+            before["Plan Name"] = oldPkg.package_name;
+            after["Plan Name"] = packageName;
+            hasChanges = true;
+        }
+        if (description !== undefined && oldPkg.description !== description) {
+            before["Description"] = oldPkg.description || "No description";
+            after["Description"] = description || "No description";
+            hasChanges = true;
+        }
+        if (basePrice !== undefined && Number(oldPkg.base_price) !== Number(basePrice)) {
+            before["Base Price"] = `₹${Number(oldPkg.base_price).toFixed(2)}`;
+            after["Base Price"] = `₹${Number(basePrice).toFixed(2)}`;
+            hasChanges = true;
+        }
+        if (isActive !== undefined && Boolean(oldPkg.is_active) !== Boolean(isActive)) {
+            before["Status"] = oldPkg.is_active ? "Active" : "Inactive";
+            after["Status"] = isActive ? "Active" : "Inactive";
+            hasChanges = true;
+        }
+
+        if (hasChanges) {
+            await AuditService.log({
+                property_id: rows[0].property_id,
+                event_id: rows[0].id,
+                table_name: "packages",
+                event_type: "Update",
+                task_name: "Update Package",
+                comments: "Package updated",
+                details: JSON.stringify({ before, after }),
+                user_id: updatedBy
+            });
+        }
 
         return rows[0];
     }
@@ -360,6 +389,12 @@ class PackageService {
         }
 
         if (!ids.length) return [];
+
+        const { rows: oldRows } = await this.#DB.query(
+            `SELECT id, base_price, is_active FROM public.packages WHERE id = ANY($1::bigint[])`,
+            [ids]
+        );
+        const oldRowsMap = new Map(oldRows.map(r => [Number(r.id), r]));
 
         const { rows } = await this.#DB.query(
             `
@@ -393,6 +428,41 @@ class PackageService {
                 propertyId  // $5
             ]
         );
+
+        for (const row of rows) {
+            const oldRow = oldRowsMap.get(Number(row.id));
+            if (!oldRow) continue;
+
+            const requestedRate = packages.find(p => Number(p.id) === Number(row.id));
+
+            const before = {};
+            const after = {};
+            let hasChanges = false;
+
+            if (requestedRate && requestedRate.base_price !== undefined && Number(oldRow.base_price) !== Number(row.base_price)) {
+                before["Base Price"] = `₹${Number(oldRow.base_price).toFixed(2)}`;
+                after["Base Price"] = `₹${Number(row.base_price).toFixed(2)}`;
+                hasChanges = true;
+            }
+            if (requestedRate && requestedRate.is_active !== undefined && Boolean(oldRow.is_active) !== Boolean(row.is_active)) {
+                before["Status"] = oldRow.is_active ? "Active" : "Inactive";
+                after["Status"] = row.is_active ? "Active" : "Inactive";
+                hasChanges = true;
+            }
+
+            if (hasChanges) {
+                await AuditService.log({
+                    property_id: propertyId,
+                    event_id: row.id,
+                    table_name: "packages",
+                    event_type: "Update",
+                    task_name: "Update Package",
+                    comments: "Package updated",
+                    details: JSON.stringify({ before, after }),
+                    user_id: userId
+                });
+            }
+        }
 
         return rows;
     }

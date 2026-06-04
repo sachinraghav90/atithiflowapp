@@ -7,7 +7,8 @@ import {
     useGetOrderByIdQuery,
     useGetPropertyByIdQuery,
     useUpdateOrderPaymentMutation,
-    useUpdateOrderStatusMutation
+    useUpdateOrderStatusMutation,
+    useGetLogsQuery as useGetAuditLogsQuery
 } from "@/redux/services/hmsApi";
 import { NativeSelect } from "@/components/ui/native-select";
 import { toast } from "react-toastify";
@@ -23,10 +24,52 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { cn } from "@/lib/utils";
 import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
+import { getFormattedAuditChanges, getAuditActionBadge } from "@/utils/auditUtils";
 
 
 const ORDER_STATUSES = ["New", "Preparing", "Ready", "Delivered", "Cancelled"];
 const PAYMENT_STATUSES = ["Pending", "Paid", "Failed", "Refunded"];
+
+/* ---------------- Helpers ---------------- */
+const parseAuditDetails = (details: any) => {
+    try {
+        return typeof details === "string" ? JSON.parse(details) : details;
+    } catch {
+        return null;
+    }
+};
+
+const getAuditActionLabel = (audit: any) => {
+    return getAuditActionBadge(audit.event_type);
+};
+
+const getAuditChangeText = (details: any, audit: any) => {
+    if (audit.event_type === "CREATE") {
+        return (
+            <div className="text-muted-foreground">
+                <span className="font-semibold text-foreground/80">Order:</span> Created
+            </div>
+        );
+    }
+    
+    if (!details) return "--";
+
+    const { before, after } = details;
+    if (!before || !after) return "--";
+
+    const formattedDetails: any = { before: {}, after: {} };
+
+    if (before.order_status && after.order_status && String(before.order_status) !== String(after.order_status)) {
+        formattedDetails.before["Order Status"] = before.order_status;
+        formattedDetails.after["Order Status"] = after.order_status;
+    }
+    if (before.payment_status && after.payment_status && String(before.payment_status) !== String(after.payment_status)) {
+        formattedDetails.before["Payment Status"] = before.payment_status;
+        formattedDetails.after["Payment Status"] = after.payment_status;
+    }
+
+    return getFormattedAuditChanges(formattedDetails);
+};
 
 const formatOrderDisplayId = (orderId: string | number) =>
     formatModuleDisplayId("order", orderId);
@@ -49,6 +92,8 @@ export function OrderItemsModal({
     const [draftPaymentStatus, setDraftPaymentStatus] = useState("");
     const [previewImage, setPreviewImage] = useState<{ url: string; name: string } | null>(null);
     const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
+    const [itemAuditPage, setItemAuditPage] = useState(1);
+    const [itemAuditLimit, setItemAuditLimit] = useState(5);
 
     useEffect(() => {
         if (open) {
@@ -69,6 +114,15 @@ export function OrderItemsModal({
 
     const [updateOrderStatus] = useUpdateOrderStatusMutation();
     const [updateOrderPayment] = useUpdateOrderPaymentMutation();
+
+    const { data: auditLogs } = useGetAuditLogsQuery({
+        tableName: "restaurant_orders",
+        eventId: orderId,
+        page: itemAuditPage,
+        limit: itemAuditLimit,
+    }, {
+        skip: !orderId || !open || sheetTab !== "history"
+    });
 
     useEffect(() => {
         if (!data) return;
@@ -199,7 +253,7 @@ export function OrderItemsModal({
 
     return (
         <Sheet open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
-            <SheetContent side="right" onOpenAutoFocus={(e) => e.preventDefault()} className="w-full lg:max-w-4xl sm:max-w-3xl overflow-y-auto bg-background outline-none focus:outline-none focus-visible:outline-none">
+            <SheetContent side="right" onOpenAutoFocus={(e) => e.preventDefault()} className={cn("w-full overflow-y-auto bg-background outline-none focus:outline-none focus-visible:outline-none transition-all duration-300", sheetTab === "history" ? "sm:max-w-4xl" : "lg:max-w-4xl sm:max-w-3xl")}>
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -470,8 +524,54 @@ export function OrderItemsModal({
                         )}
 
                         {sheetTab === "history" && (
-                            <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
-                                <p className="text-sm text-muted-foreground text-center">No history logs available yet.</p>
+                            <div className="space-y-3">
+                                {!auditLogs?.data?.length ? (
+                                    <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
+                                        <p className="text-xs text-muted-foreground italic">No recent activity logs.</p>
+                                    </div>
+                                ) : (
+                                    <div className="border border-border rounded-lg overflow-hidden bg-background shadow-sm">
+                                        <AppDataGrid
+                                            columns={[
+
+                                                { 
+                                                    label: "Action", 
+                                                    cellClassName: "whitespace-nowrap min-w-[120px]",
+                                                    render: (log: any) => getAuditActionBadge(log.event_type)
+                                                },
+                                                { 
+                                                    label: "Updated By", 
+                                                    cellClassName: "whitespace-nowrap",
+                                                    render: (log: any) => `${log.user_first_name || ""} ${log.user_last_name || ""}`.trim() || "System"
+                                                },
+                                                { 
+                                                    label: "Date & Time", 
+                                                    headClassName: "text-white", 
+                                                    cellClassName: "text-muted-foreground whitespace-nowrap min-w-[130px]",
+                                                    render: (log: any) => formatAppDateTime(log.created_on) 
+                                                },
+                                                { 
+                                                    label: "Changes", 
+                                                    cellClassName: "min-w-[300px] py-2",
+                                                    render: (log: any) => getAuditChangeText(parseAuditDetails(log.details), log) 
+                                                }
+                                            ] as ColumnDef[]}
+                                            data={auditLogs.data}
+                                            rowKey={(log: any) => log.id}
+                                            minWidth="600px"
+                                            enablePagination
+                                            paginationProps={{
+                                                page: itemAuditPage,
+                                                totalPages: auditLogs?.pagination?.totalPages ?? 1,
+                                                setPage: setItemAuditPage,
+                                                totalRecords: auditLogs?.pagination?.totalItems ?? auditLogs?.data?.length ?? 0,
+                                                limit: itemAuditLimit,
+                                                onLimitChange: (v) => { setItemAuditLimit(v); setItemAuditPage(1); },
+                                                disabled: !auditLogs,
+                                            }}
+                                        />
+                                    </div>
+                                )}
                             </div>
                         )}
 

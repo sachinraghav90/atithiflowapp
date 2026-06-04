@@ -426,8 +426,8 @@ export default function RoomStatusBoard() {
 
             {/* Dirty Rooms Sheet */}
             <Sheet open={isDirtySheetOpen} onOpenChange={setIsDirtySheetOpen}>
-                <SheetContent side="right" className="w-full sm:max-w-md flex flex-col p-0 bg-background">
-                    <div className="flex min-h-0 flex-1 flex-col">
+                <SheetContent side="right" className="w-full sm:max-w-md p-0 bg-background overflow-y-auto">
+                    <div className="flex flex-col min-h-full">
                         <SheetHeader className="px-6 py-4 border-b shrink-0">
                             <SheetTitle className="text-[#444444]">Manage Dirty Rooms</SheetTitle>
                             <p className="text-xs text-muted-foreground font-medium tracking-wide mt-1">
@@ -435,7 +435,7 @@ export default function RoomStatusBoard() {
                             </p>
                         </SheetHeader>
                         
-                        <section className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 pb-6 pt-6">
+                        <section className="flex flex-1 flex-col gap-6 px-6 pb-6 pt-6">
                             <div className="flex justify-end gap-3 shrink-0">
                                 <Button size="sm" variant="heroOutline" onClick={handleCleanAll}>
                                     Clean All
@@ -469,15 +469,16 @@ export default function RoomStatusBoard() {
                                 )}
                             </div>
 
-                            <div className="flex justify-end gap-3 pt-4 border-t border-border shrink-0 mt-auto">
-                                <Button variant="heroOutline" onClick={() => setIsDirtySheetOpen(false)}>
-                                    Cancel
-                                </Button>
-                                <Button variant="hero" onClick={handleSaveDirtyStatus} disabled={isUpdatingDirty}>
-                                    {isUpdatingDirty ? "Saving..." : "Save"}
-                                </Button>
-                            </div>
                         </section>
+                        
+                        <div className="px-6 py-4 border-t bg-background shrink-0 flex justify-end gap-3 mt-auto">
+                            <Button variant="heroOutline" onClick={() => setIsDirtySheetOpen(false)}>
+                                Cancel
+                            </Button>
+                            <Button variant="hero" onClick={handleSaveDirtyStatus} disabled={isUpdatingDirty}>
+                                {isUpdatingDirty ? "Saving..." : "Save"}
+                            </Button>
+                        </div>
                     </div>
                 </SheetContent>
             </Sheet>

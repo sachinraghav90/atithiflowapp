@@ -14,7 +14,9 @@ import {
 import { cn } from "@/lib/utils";
 import { useAppSelector } from "@/redux/hook";
 import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
-import { useCreateLaundryPricingMutation, useGetPropertyLaundryPricingQuery, useUpdateLaundryPricingMutation } from "@/redux/services/hmsApi";
+import { useCreateLaundryPricingMutation, useGetPropertyLaundryPricingQuery, useUpdateLaundryPricingMutation, useGetLogsQuery } from "@/redux/services/hmsApi";
+import { formatAppDateTime } from "@/utils/dateFormat";
+import { formatReadableLabel } from "@/utils/formatString";
 import { normalizeNumberInput, normalizeTextInput } from "@/utils/normalizeTextInput";
 import { usePermission } from "@/rbac/usePermission";
 import { useLocation } from "react-router-dom";
@@ -33,6 +35,7 @@ import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { GridBadge } from "@/components/ui/grid-badge";
 import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
+import { getFormattedAuditChanges, getAuditActionBadge } from "@/utils/auditUtils";
 
 /* ---------------- Types ---------------- */
 type LaundryItem = {
@@ -94,6 +97,51 @@ const STATUS_OPTIONS = [
     { label: "Inactive", value: "false" },
 ];
 
+function getLaundryPricingAuditChanges(audit: any) {
+    let details = audit.details;
+    if (typeof details === "string") {
+        try {
+            details = JSON.parse(details);
+        } catch (e) {
+            // ignore
+        }
+    }
+    const before = details?.before;
+    const after = details?.after;
+
+    if (audit.event_type === "CREATE") {
+        return (
+            <div className="text-muted-foreground">
+                <span className="font-semibold text-foreground/80">Pricing:</span> Created
+            </div>
+        );
+    }
+
+    const formattedDetails: any = { before: {}, after: {} };
+
+    if (before?.item_name !== after?.item_name) {
+        formattedDetails.before["Item Name"] = before?.item_name || "—";
+        formattedDetails.after["Item Name"] = after?.item_name || "—";
+    }
+
+    if (before?.item_rate !== after?.item_rate) {
+        formattedDetails.before["Rate (₹)"] = `₹${String(before?.item_rate ?? "—").replace(/^₹+/, "").trim()}`;
+        formattedDetails.after["Rate (₹)"] = `₹${String(after?.item_rate ?? "—").replace(/^₹+/, "").trim()}`;
+    }
+
+    if (before?.is_active !== after?.is_active) {
+        formattedDetails.before["Status"] = before?.is_active ? "Active" : "Inactive";
+        formattedDetails.after["Status"] = after?.is_active ? "Active" : "Inactive";
+    }
+
+    if (before?.description !== after?.description) {
+        formattedDetails.before["Description"] = before?.description || "—";
+        formattedDetails.after["Description"] = after?.description || "—";
+    }
+
+    return getFormattedAuditChanges(formattedDetails);
+}
+
 /* ---------------- Component ---------------- */
 export default function LaundryPricingManagement() {
     /* ---------------- State ---------------- */
@@ -119,6 +167,9 @@ export default function LaundryPricingManagement() {
     const [statusFilter, setStatusFilter] = useState("");
     const [formErrors, setFormErrors] = useState<Record<string, string>>({});
     const [submitted, setSubmitted] = useState(false);
+    
+    const [historyPage, setHistoryPage] = useState(1);
+    const [historyLimit, setHistoryLimit] = useState(10);
 
     const { page, limit, setPage, resetPage, handleLimitChange } = useGridPagination({
         initialLimit: 10,
@@ -149,6 +200,16 @@ export default function LaundryPricingManagement() {
     }, {
         skip: !isLoggedIn || !selectedPropertyId
     })
+    
+    const { data: auditLogs, isLoading: auditLoading } = useGetLogsQuery(
+        {
+            tableName: "laundry",
+            eventId: selectedItem?.id,
+            page: historyPage,
+            limit: historyLimit,
+        },
+        { skip: !isLoggedIn || !selectedItem?.id || sheetTab !== "history" }
+    );
     const allLaundryItems = data?.data?.data || [];
 
     const [createLaundryPrice] = useCreateLaundryPricingMutation()
@@ -411,6 +472,31 @@ export default function LaundryPricingManagement() {
         },
     ], [items]);
 
+    const auditColumns = useMemo<ColumnDef[]>(() => [
+
+        {
+            label: "Action",
+            cellClassName: "whitespace-nowrap",
+            render: (audit: any) => getAuditActionBadge(audit.event_type)
+        },
+        {
+            label: "Updated By",
+            cellClassName: "whitespace-nowrap",
+            render: (audit: any) => `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim() || "System"
+        },
+        {
+            label: "Date & Time",
+            headClassName: "text-white",
+            cellClassName: "text-muted-foreground whitespace-nowrap min-w-[130px]",
+            render: (audit: any) => formatAppDateTime(audit.created_on as string)
+        },
+        {
+            label: "Changes",
+            cellClassName: "min-w-[300px] py-2",
+            render: (audit: any) => getLaundryPricingAuditChanges(audit)
+        }
+    ], [historyPage, historyLimit, selectedItem]);
+
     /* ---------------- UI ---------------- */
     return (
         <div className="flex flex-col bg-background">
@@ -562,8 +648,8 @@ export default function LaundryPricingManagement() {
                     side="right"
                     onOpenAutoFocus={(event) => event.preventDefault()}
                     className={cn(
-                        "w-full overflow-y-auto bg-background",
-                        mode === "bulk_add" ? "sm:max-w-4xl" : "lg:max-w-3xl sm:max-w-2xl"
+                        "w-full overflow-y-auto bg-background transition-all duration-300",
+                        mode === "bulk_add" ? "sm:max-w-4xl" : sheetTab === "history" ? "sm:max-w-4xl" : "lg:max-w-3xl sm:max-w-2xl"
                     )}
                 >
                     <motion.div
@@ -629,8 +715,29 @@ export default function LaundryPricingManagement() {
                                 )}
 
                                 {sheetTab === "history" && (
-                                    <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
-                                        <p className="text-sm text-muted-foreground">No history logs available yet.</p>
+                                    <div className="border border-border rounded-[3px] bg-background">
+                                        <AppDataGrid
+                                            density="compact"
+                                            columns={auditColumns}
+                                            data={auditLogs?.data || []}
+                                            loading={auditLoading}
+                                            emptyText="No history logs available yet."
+                                            className="mt-0"
+                                            minWidth="600px"
+                                            enablePagination={!!auditLogs?.pagination}
+                                            paginationProps={{
+                                                page: historyPage,
+                                                totalPages: auditLogs?.pagination?.totalPages ?? 1,
+                                                setPage: setHistoryPage,
+                                                disabled: !auditLogs,
+                                                totalRecords: auditLogs?.pagination?.totalItems ?? auditLogs?.pagination?.total ?? auditLogs?.data?.length ?? 0,
+                                                limit: historyLimit,
+                                                onLimitChange: (val) => {
+                                                    setHistoryLimit(val);
+                                                    setHistoryPage(1);
+                                                },
+                                            }}
+                                        />
                                     </div>
                                 )}
                             </div>

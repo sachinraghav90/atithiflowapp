@@ -1,4 +1,5 @@
 import { getDb } from "../../utils/getDb.js";
+import AuditService from "./Audit.service.js";
 
 class Staff {
     #DB;
@@ -364,6 +365,58 @@ class Staff {
             }
 
             await client.query("COMMIT");
+
+            try {
+                await AuditService.log({
+                    property_id: staffPayload.property_id || null,
+                    event_id: staffId,
+                    table_name: "staff",
+                    event_type: "Create",
+                    task_name: "Create Staff",
+                    comments: "Staff created",
+                    details: JSON.stringify({
+                        after: {
+                            "First Name": staffPayload.first_name,
+                            "Middle Name": staffPayload.middle_name,
+                            "Last Name": staffPayload.last_name,
+                            "Gender": staffPayload.gender,
+                            "Marital Status": staffPayload.marital_status,
+                            "Employment Type": staffPayload.employment_type,
+                            "Email": staffPayload.email,
+                            "Phone": staffPayload.phone1,
+                            "Alternate Phone": staffPayload.phone2,
+                            "Emergency Contact Name": staffPayload.emergency_contact_name,
+                            "Emergency Contact Relation": staffPayload.emergency_contact_relation,
+                            "Emergency Contact Phone": staffPayload.emergency_contact,
+                            "Secondary Contact Name": staffPayload.emergency_contact_name_2,
+                            "Secondary Contact Relation": staffPayload.emergency_contact_relation_2,
+                            "Secondary Contact Phone": staffPayload.emergency_contact_2,
+                            "ID Proof Type": staffPayload.id_proof_type,
+                            "ID Number": staffPayload.id_number,
+                            "Blood Group": staffPayload.blood_group,
+                            "Designation": staffPayload.designation,
+                            "Department": staffPayload.department,
+                            "Hire Date": staffPayload.hire_date,
+                            "Leave Days": staffPayload.leave_days,
+                            "DOB": staffPayload.dob,
+                            "Shift Pattern": staffPayload.shift_pattern,
+                            "Status": staffPayload.status,
+                            "Nationality": staffPayload.nationality,
+                            "Country": staffPayload.country,
+                            "Address": address,
+                            "Staff Photo": image ? "Updated" : undefined,
+                            "ID Proof / Uploaded File": idProof ? "Updated" : undefined
+                        }
+                    }),
+                    user_id: userId,
+                    client // use the provided client since we just committed on it? 
+                    // Wait, client is already released? No, release is in finally block.
+                    // But we committed, so the transaction is over. Passing client is safe.
+                });
+            } catch (auditErr) {
+                console.error("Staff Create Audit Log Error:", auditErr);
+            }
+
             return rows[0];
 
         } catch (err) {
@@ -379,6 +432,8 @@ class Staff {
     /* ------------------------------------------------------------------ */
 
     async update(id, payload, files, updated_by, client) {
+        const oldStaff = await this.getById(id);
+
         const STAFF_FIELDS = [
             "salutation", "first_name", "middle_name", "last_name", "gender",
             "marital_status", "employment_type", "email",
@@ -449,6 +504,84 @@ class Staff {
                 `,
                 [id, payload.address, updated_by]
             );
+        }
+
+        try {
+            if (oldStaff) {
+                const after = {};
+                const before = {};
+                const checkAndAdd = (label, oldVal, newVal, isDate = false) => {
+                    let cmpOld = oldVal;
+                    let cmpNew = newVal;
+                    
+                    if (isDate) {
+                        if (cmpOld) {
+                            try { cmpOld = new Date(cmpOld).toISOString().split('T')[0]; } catch(e){}
+                        }
+                        if (cmpNew) {
+                            try { cmpNew = new Date(cmpNew).toISOString().split('T')[0]; } catch(e){}
+                        }
+                    }
+
+                    // Only log if provided in payload and different
+                    if (newVal !== undefined && cmpOld !== cmpNew) {
+                        before[label] = cmpOld || "-";
+                        after[label] = cmpNew || "-";
+                    }
+                };
+
+                checkAndAdd("First Name", oldStaff.first_name, payload.first_name);
+                checkAndAdd("Middle Name", oldStaff.middle_name, payload.middle_name);
+                checkAndAdd("Last Name", oldStaff.last_name, payload.last_name);
+                checkAndAdd("Gender", oldStaff.gender, payload.gender);
+                checkAndAdd("Marital Status", oldStaff.marital_status, payload.marital_status);
+                checkAndAdd("Employment Type", oldStaff.employment_type, payload.employment_type);
+                checkAndAdd("Email", oldStaff.email, payload.email);
+                checkAndAdd("Phone", oldStaff.phone1, payload.phone1);
+                checkAndAdd("Alternate Phone", oldStaff.phone2, payload.phone2);
+                checkAndAdd("Emergency Contact Name", oldStaff.emergency_contact_name, payload.emergency_contact_name);
+                checkAndAdd("Emergency Contact Relation", oldStaff.emergency_contact_relation, payload.emergency_contact_relation);
+                checkAndAdd("Emergency Contact Phone", oldStaff.emergency_contact, payload.emergency_contact);
+                checkAndAdd("Secondary Contact Name", oldStaff.emergency_contact_name_2, payload.emergency_contact_name_2);
+                checkAndAdd("Secondary Contact Relation", oldStaff.emergency_contact_relation_2, payload.emergency_contact_relation_2);
+                checkAndAdd("Secondary Contact Phone", oldStaff.emergency_contact_2, payload.emergency_contact_2);
+                checkAndAdd("ID Proof Type", oldStaff.id_proof_type, payload.id_proof_type);
+                checkAndAdd("ID Number", oldStaff.id_number, payload.id_number);
+                checkAndAdd("Blood Group", oldStaff.blood_group, payload.blood_group);
+                checkAndAdd("Designation", oldStaff.designation, payload.designation);
+                checkAndAdd("Department", oldStaff.department, payload.department);
+                checkAndAdd("Hire Date", oldStaff.hire_date, payload.hire_date, true);
+                checkAndAdd("DOB", oldStaff.dob, payload.dob, true);
+                checkAndAdd("Status", oldStaff.status, payload.status);
+                checkAndAdd("Nationality", oldStaff.nationality, payload.nationality);
+                checkAndAdd("Country", oldStaff.country, payload.country);
+                checkAndAdd("Address", oldStaff.address, payload.address);
+
+                if (files?.image) {
+                    before["Staff Photo"] = "-";
+                    after["Staff Photo"] = "Updated";
+                }
+                if (files?.id_proof) {
+                    before["ID Proof / Uploaded File"] = "-";
+                    after["ID Proof / Uploaded File"] = "Updated";
+                }
+
+                if (Object.keys(after).length > 0) {
+                    await AuditService.log({
+                        property_id: payload.property_id || oldStaff.property_id || null,
+                        event_id: id,
+                        table_name: "staff",
+                        event_type: "Update",
+                        task_name: "Update Staff",
+                        comments: "Staff updated",
+                        details: JSON.stringify({ before, after }),
+                        user_id: updated_by,
+                        client // pass client as this is part of transaction
+                    });
+                }
+            }
+        } catch (auditErr) {
+            console.error("Staff Update Audit Log Error:", auditErr);
         }
     }
 

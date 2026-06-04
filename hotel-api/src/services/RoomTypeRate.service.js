@@ -1,4 +1,5 @@
 import { getDb } from "../../utils/getDb.js";
+import AuditService from "./Audit.service.js";
 
 class RoomTypeRateService {
 
@@ -152,7 +153,6 @@ class RoomTypeRateService {
         // Normalize & validate
         const ids = [];
         const prices = [];
-
         for (const r of rates) {
             if (!r.id || r.base_price === undefined) continue;
 
@@ -161,6 +161,12 @@ class RoomTypeRateService {
         }
 
         if (!ids.length) return [];
+
+        const { rows: oldRows } = await this.#DB.query(
+            `SELECT id, room_category_name, bed_type_name, ac_type_name, base_price FROM room_type_rates WHERE id = ANY($1::bigint[])`,
+            [ids]
+        );
+        const oldRowsMap = new Map(oldRows.map(r => [Number(r.id), r]));
 
         const { rows } = await this.#DB.query(
             `
@@ -192,6 +198,51 @@ class RoomTypeRateService {
                 propertyId
             ]
         );
+
+        for (const row of rows) {
+            const oldRow = oldRowsMap.get(Number(row.id));
+            if (!oldRow) continue;
+
+            const requestedRate = rates.find(r => Number(r.id) === Number(row.id));
+
+            const before = {};
+            const after = {};
+            let hasChanges = false;
+
+            if (requestedRate && requestedRate.room_category_name && oldRow.room_category_name !== requestedRate.room_category_name) {
+                before["Room Category Name"] = oldRow.room_category_name;
+                after["Room Category Name"] = requestedRate.room_category_name;
+                hasChanges = true;
+            }
+            if (requestedRate && requestedRate.bed_type_name && oldRow.bed_type_name !== requestedRate.bed_type_name) {
+                before["Bed Type"] = oldRow.bed_type_name;
+                after["Bed Type"] = requestedRate.bed_type_name;
+                hasChanges = true;
+            }
+            if (requestedRate && requestedRate.ac_type_name && oldRow.ac_type_name !== requestedRate.ac_type_name) {
+                before["AC Type"] = oldRow.ac_type_name;
+                after["AC Type"] = requestedRate.ac_type_name;
+                hasChanges = true;
+            }
+            if (Number(oldRow.base_price) !== Number(row.base_price)) {
+                before["Base Price"] = `₹${Number(oldRow.base_price).toFixed(2)}`;
+                after["Base Price"] = `₹${Number(row.base_price).toFixed(2)}`;
+                hasChanges = true;
+            }
+
+            if (hasChanges) {
+                await AuditService.log({
+                    property_id: propertyId,
+                    event_id: row.id,
+                    table_name: "room_type_rates",
+                    event_type: "Update",
+                    task_name: "Update Room Category",
+                    comments: "Room Category updated",
+                    details: JSON.stringify({ before, after }),
+                    user_id: userId
+                });
+            }
+        }
 
         return rows;
     }

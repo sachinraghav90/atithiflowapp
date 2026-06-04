@@ -218,6 +218,10 @@ class LaundryService {
 
         const ids = updates.map(u => u.id);
 
+        // Fetch current state for audit
+        const currentResult = await this.#DB.query(`SELECT * FROM public.laundry WHERE id = ANY($1::bigint[])`, [ids]);
+        const currentMap = new Map(currentResult.rows.map(r => [String(r.id), r]));
+
         const names = updates.map(u => u.itemName ?? null);
         const descriptions = updates.map(u => u.description ?? null);
         const rates = updates.map(u => u.itemRate ?? null);
@@ -255,6 +259,42 @@ class LaundryService {
             isActive,
             userId
         ]);
+
+        // Record Audit Logs
+        await Promise.all(
+            rows.map(afterRow => {
+                const beforeRow = currentMap.get(String(afterRow.id));
+                if (!beforeRow) return Promise.resolve();
+
+                const before = {};
+                const after = {};
+                let hasChanges = false;
+
+                const checkFields = ['item_name', 'description', 'item_rate', 'is_active'];
+                for (const field of checkFields) {
+                    if (String(beforeRow[field]) !== String(afterRow[field])) {
+                        before[field] = beforeRow[field];
+                        after[field] = afterRow[field];
+                        hasChanges = true;
+                    }
+                }
+
+                if (hasChanges) {
+                    return AuditService.log({
+                        property_id: afterRow.property_id,
+                        event_id: afterRow.id,
+                        table_name: "laundry",
+                        event_type: "UPDATE",
+                        task_name: "Update Laundry Item",
+                        comments: "Laundry item updated",
+                        details: JSON.stringify({ before, after }),
+                        user_id: userId
+                    });
+                }
+
+                return Promise.resolve();
+            })
+        );
 
         return rows;
     }
