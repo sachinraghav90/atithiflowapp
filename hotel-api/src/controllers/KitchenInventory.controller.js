@@ -37,6 +37,35 @@ class KitchenInventoryController {
     }
 
     /* =====================================================
+       CHECK DUPLICATES KITCHEN INVENTORY
+    ===================================================== */
+
+    async checkDuplicates(req, res) {
+        try {
+            const { items } = req.body;
+
+            if (!items || !Array.isArray(items)) {
+                return res.status(400).json({
+                    message: "Items array is required"
+                });
+            }
+
+            const duplicates = await KitchenInventoryService.checkDuplicates(items);
+
+            return res.status(200).json({
+                duplicates
+            });
+
+        } catch (err) {
+            console.error("KitchenInventoryController ~ checkDuplicates ~ error:", err);
+
+            return res.status(500).json({
+                message: err.message || "Internal server error"
+            });
+        }
+    }
+
+    /* =====================================================
        CREATE kitchen inventory entry
     ===================================================== */
 
@@ -75,7 +104,7 @@ class KitchenInventoryController {
 
             if (error.code === "23505") {
                 return res.status(409).json({
-                    message: "Inventory already exists for this item"
+                    message: "Item already present inside stock list"
                 });
             }
 
@@ -116,7 +145,7 @@ class KitchenInventoryController {
 
             if (error.code === "23505") {
                 return res.status(409).json({
-                    message: "Inventory already exists for this item"
+                    message: "Item already present inside stock list"
                 });
             }
 
@@ -175,7 +204,7 @@ class KitchenInventoryController {
 
             if (error.code === "23505") {
                 return res.status(409).json({
-                    message: "Inventory already exists for this item"
+                    message: "Item already present inside stock list"
                 });
             }
 

@@ -17,6 +17,8 @@ const router = express.Router()
 
 router.get("/", supabaseAuth, KitchenInventoryController.getByPropertyId.bind(KitchenInventoryController));
 
+router.post("/check-duplicates", supabaseAuth, KitchenInventoryController.checkDuplicates.bind(KitchenInventoryController));
+
 router.post("/", supabaseAuth, KitchenInventoryController.create.bind(KitchenInventoryController));
 
 router.post("/bulk", supabaseAuth, KitchenInventoryController.bulkAdjustStock.bind(KitchenInventoryController));

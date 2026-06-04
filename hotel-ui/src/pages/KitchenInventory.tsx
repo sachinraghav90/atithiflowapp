@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ValidationTooltip } from "@/components/ui/validation-tooltip";
 import {
     Sheet,
     SheetContent,
@@ -10,6 +11,8 @@ import {
 } from "@/components/ui/sheet";
 import { NativeSelect } from "@/components/ui/native-select";
 import { MenuItemSelect } from "@/components/MenuItemSelect";
+import { Switch } from "@/components/ui/switch";
+
 import { useAppSelector } from "@/redux/hook";
 import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
 import { 
@@ -18,7 +21,8 @@ import {
     useGetLogsByTableQuery,
     useAdjustStockMutation as useUpdateKitchenInventoryMutation, 
     useGetInventoryQuery as useGetInventoryMasterQuery, 
-    useCreateInventoryMutation as useCreateKitchenInventoryMutation 
+    useCreateInventoryMutation as useCreateKitchenInventoryMutation,
+    useCheckDuplicateKitchenInventoryMutation
 } from "@/redux/services/hmsApi";
 import { toast } from "react-toastify";
 import { normalizeNumberInput } from "@/utils/normalizeTextInput";
@@ -33,7 +37,7 @@ import {
     Plus, 
     History, 
 } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
 import { 
     GridToolbar, 
@@ -65,6 +69,14 @@ type KitchenItem = {
 };
 
 /* ---------------- Helpers ---------------- */
+export const formatDisplayQuantity = (quantity: any, unit: string) => {
+    if (quantity == null || quantity === "") return quantity;
+    if (unit?.toLowerCase() === "nos") {
+        return Number(quantity).toString();
+    }
+    return quantity;
+};
+
 const parseAuditDetails = (details: any) => {
     try {
         return typeof details === "string" ? JSON.parse(details) : details;
@@ -74,7 +86,7 @@ const parseAuditDetails = (details: any) => {
 };
 
 const getAuditActionLabel = (audit: any) => {
-    const event = audit.event_type?.toUpperCase();
+    const event = audit.event_type;
     if (event === "CREATE") return "Stock Added";
     if (event === "UPDATE") return "Stock Updated";
     if (event === "ADJUST") return "Stock Adjusted";
@@ -89,7 +101,7 @@ const getAuditChangeText = (details: any) => {
     if (!before) {
         return (
             <div className="text-muted-foreground">
-                <span className="font-semibold text-foreground/80">Stock:</span> Initialized with {after?.quantity || 0} {unit}
+                <span className="font-semibold text-foreground/80">Stock:</span> Initialized with {formatDisplayQuantity(after?.quantity || 0, unit)} {unit}
             </div>
         );
     }
@@ -99,10 +111,10 @@ const getAuditChangeText = (details: any) => {
     
     const formattedDetails = {
         before: {
-            "Quantity": `${before.quantity} ${unit}`
+            "Quantity": `${formatDisplayQuantity(before.quantity, unit)} ${unit}`
         },
         after: {
-            "Quantity": `${after.quantity} ${unit} (${sign}${diff.toFixed(2)})`
+            "Quantity": `${formatDisplayQuantity(after.quantity, unit)} ${unit} (${sign}${diff.toFixed(2)})`
         }
     };
     
@@ -139,6 +151,7 @@ export default function KitchenInventory() {
     const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
     const [bulkOpen, setBulkOpen] = useState(false);
     const [mode, setMode] = useState<"view" | "edit" | "add">("view");
+    const [stockUpdateMode, setStockUpdateMode] = useState<"update" | "add">("update");
     const [selectedItem, setSelectedItem] = useState<KitchenItem | null>(null);
 
     const [editForm, setEditForm] = useState({
@@ -210,6 +223,34 @@ export default function KitchenInventory() {
 
     const [adjustStock] = useUpdateKitchenInventoryMutation();
     const [createKitchenItem] = useCreateKitchenInventoryMutation();
+    const [checkDuplicateKitchenInventory] = useCheckDuplicateKitchenInventoryMutation();
+
+    const checkDuplicateInApi = async (inventory_master_id: number | null, unit: string) => {
+        if (!inventory_master_id || !unit) return;
+        
+        try {
+            const payload = [{
+                property_id: selectedPropertyId,
+                inventory_master_id,
+                unit
+            }];
+            const result = await checkDuplicateKitchenInventory(payload).unwrap();
+            
+            if (result?.duplicates?.[0]) {
+                setCreateErrors((prev: any) => ({ ...prev, inventory_master_id: "Item already present inside stock list" }));
+            } else {
+                setCreateErrors((prev: any) => {
+                    const next = { ...prev };
+                    if (next.inventory_master_id === "Item already present inside stock list" || next.inventory_master_id === "Inventory already exists for this item") {
+                        delete next.inventory_master_id;
+                    }
+                    return next;
+                });
+            }
+        } catch (error) {
+            console.error("Failed to check duplicate", error);
+        }
+    };
 
     const inventoryUnitOptions = useMemo(() => {
         const units = (kitchenInventory?.data ?? []).map((item: KitchenItem) => item.unit).filter(Boolean);
@@ -296,16 +337,40 @@ export default function KitchenInventory() {
             comments: ""
         });
         setMode(m);
+        setStockUpdateMode("update");
         setSheetTab("summary");
         setSheetOpen(true);
     };
 
     const saveEdit = async () => {
         if (!selectedItem) return;
+
+        const currentStock = Number(selectedItem.quantity);
+        const inputQuantity = Number(editForm.quantity);
+        let deltaQuantity = 0;
+
+        if (stockUpdateMode === "add") {
+            if (inputQuantity <= 0) {
+                toast.error("Please enter stock quantity greater than 0.");
+                return;
+            }
+            deltaQuantity = inputQuantity;
+        } else {
+            if (inputQuantity < 0) {
+                toast.error("Quantity cannot be negative");
+                return;
+            }
+            if (inputQuantity === currentStock) {
+                toast.info("No change in stock.");
+                return;
+            }
+            deltaQuantity = inputQuantity - currentStock;
+        }
+
         const payload = {
             property_id: selectedPropertyId,
             inventory_master_id: selectedItem.inventory_master_id,
-            quantity: editForm.quantity,
+            quantity: deltaQuantity,
             unit: editForm.unit,
             comments: editForm.comments
         };
@@ -322,10 +387,31 @@ export default function KitchenInventory() {
     };
 
     const createItem = async () => {
-        const errors: any = {};
-        if (!createForm.inventory_master_id) errors.inventory_master_id = "Please select an item";
+        // Start with existing errors to preserve API validation results
+        const errors: any = { ...createErrors };
+
+        if (!createForm.inventory_master_id) {
+            errors.inventory_master_id = "Please select an item";
+        } else {
+            // Local fallback check (with safe type coercion for BigInts returned as strings)
+            const isDuplicate = createForm.unit && (kitchenInventory?.data || []).some(
+                (item: KitchenItem) => 
+                    Number(item.inventory_master_id) === Number(createForm.inventory_master_id) && 
+                    String(item.unit || "") === String(createForm.unit || "")
+            );
+            
+            if (isDuplicate) {
+                errors.inventory_master_id = "Item already present inside stock list";
+            } else if (errors.inventory_master_id !== "Item already present inside stock list") {
+                delete errors.inventory_master_id;
+            }
+        }
+
         if (!createForm.quantity || createForm.quantity <= 0) errors.quantity = "Enter a valid quantity";
+        else delete errors.quantity;
+
         if (!createForm.unit) errors.unit = "Please select a unit";
+        else delete errors.unit;
 
         if (Object.keys(errors).length > 0) {
             setCreateErrors(errors);
@@ -337,17 +423,24 @@ export default function KitchenInventory() {
             ...createForm
         };
 
-        const promise = createKitchenItem(payload).unwrap();
-        toast.promise(promise, {
-            pending: "Adding inventory item...",
-            success: "Item added successfully",
-            error: "Failed to add item"
-        });
+        try {
+            await createKitchenItem(payload).unwrap();
+            toast.success("Item added successfully");
+            setSheetOpen(false);
+            setCreateForm({ inventory_master_id: null, quantity: 0, unit: "", comments: "" });
+            setCreateErrors({});
+        } catch (err: any) {
+            const msg = err?.data?.message || err?.message || "";
+            const lowerMsg = String(msg).toLowerCase();
+            const isDuplicateError = lowerMsg.includes("already exists") || lowerMsg.includes("duplicate") || lowerMsg.includes("already present");
 
-        await promise;
-        setSheetOpen(false);
-        setCreateForm({ inventory_master_id: null, quantity: 0, unit: "", comments: "" });
-        setCreateErrors({});
+            if (isDuplicateError) {
+                setCreateErrors((prev: any) => ({ ...prev, inventory_master_id: msg || "Item already present inside stock list" }));
+            } else {
+                console.error("Create item error:", err);
+                toast.error(msg || "Failed to add item");
+            }
+        }
     };
 
     const resetInventoryFilters = () => {
@@ -389,7 +482,7 @@ export default function KitchenInventory() {
             "Item ID": formatModuleDisplayId("kitchen", item.id),
             "Name": item.name,
             "Type": item.inventory_type,
-            "Stock": item.quantity,
+            "Stock": formatDisplayQuantity(item.quantity, item.unit || ""),
             "Unit": item.unit || "--",
             "Reorder": item.reorder_level || 0,
             "Status": item.is_active ? "Active" : "Inactive",
@@ -448,6 +541,8 @@ export default function KitchenInventory() {
                         {permission?.can_create && (
                             <Button variant="hero" onClick={() => {
                                 setMode("add");
+                                setCreateForm({ inventory_master_id: null, quantity: 0, unit: "", comments: "" });
+                                setCreateErrors({});
                                 setSheetOpen(true);
                             }}>
                                 <Plus className="h-4 w-4 mr-2" />Add Item
@@ -585,7 +680,7 @@ export default function KitchenInventory() {
                                                 const lowStock = Number(item.quantity) <= (item.reorder_level || 0);
                                                 return (
                                                     <span className={cn("px-2 py-0.5 rounded text-xs font-bold", lowStock ? "bg-red-50 text-red-600 border border-red-100" : "bg-muted/30 text-foreground")}>
-                                                        {item.quantity}
+                                                        {formatDisplayQuantity(item.quantity, item.unit || "")}
                                                     </span>
                                                 );
                                             },
@@ -615,7 +710,7 @@ export default function KitchenInventory() {
                                                     <Pencil className="w-3.5 h-3.5 mx-auto" />
                                                 </Button>
                                             </TooltipTrigger>
-                                            <TooltipContent>Update Item</TooltipContent>
+                                            <TooltipContent>Add/Update Stock</TooltipContent>
                                         </Tooltip>
                                     )}
                                     enablePagination
@@ -699,6 +794,15 @@ export default function KitchenInventory() {
                                     columns={[
 
                                         {
+                                            label: "Item ID",
+                                            headClassName: "text-center w-[120px]",
+                                            cellClassName: "text-center font-medium text-primary min-w-[120px]",
+                                            render: (audit: any) => {
+                                                const itemId = audit.event_id || selectedItem?.id;
+                                                return itemId ? formatModuleDisplayId("kitchen", itemId) : "—";
+                                            },
+                                        },
+                                        {
                                             label: "Item",
                                             headClassName: "w-[220px]",
                                             cellClassName: "font-semibold text-foreground min-w-[220px]",
@@ -716,7 +820,7 @@ export default function KitchenInventory() {
                                         {
                                             label: "Change",
                                             headClassName: "w-[320px]",
-                                            cellClassName: "min-w-[320px] whitespace-normal text-xs text-primary/80 font-medium",
+                                            cellClassName: "min-w-[320px] whitespace-normal text-primary/80 font-medium",
                                             render: (audit: any) => getAuditChangeText(parseAuditDetails(audit.details)),
                                         },
                                         {
@@ -728,7 +832,7 @@ export default function KitchenInventory() {
                                         {
                                             label: "Date & Time",
                                             headClassName: "text-white w-[180px]",
-                                            cellClassName: "text-[10px] text-muted-foreground min-w-[180px]",
+                                            cellClassName: "text-muted-foreground min-w-[180px]",
                                             render: (audit: any) => formatAppDateTime(audit.created_on),
                                         },
                                     ] as ColumnDef[]}
@@ -755,7 +859,7 @@ export default function KitchenInventory() {
 
             {/* SIDE SHEET */}
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetContent side="right" className={cn("w-full overflow-y-auto bg-background p-0 transition-all duration-300", sheetTab === "history" ? "sm:max-w-4xl" : "sm:max-w-xl")}>
+                <SheetContent side="right" onOpenAutoFocus={(e) => e.preventDefault()} className={cn("w-full overflow-y-auto bg-background p-0 transition-all duration-300", sheetTab === "history" ? "sm:max-w-4xl" : mode === "edit" ? "sm:max-w-2xl" : "sm:max-w-xl")}>
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -806,7 +910,7 @@ export default function KitchenInventory() {
                                         <ViewField label="Item Name" value={selectedItem.name} className="sm:col-span-2" />
                                         <ViewField label="Category" value={selectedItem.inventory_type} />
                                         <ViewField label="Reorder Level" value={selectedItem.reorder_level} />
-                                        <ViewField label="Current Stock" value={`${selectedItem.quantity} ${selectedItem.unit}`} />
+                                        <ViewField label="Current Stock" value={`${formatDisplayQuantity(selectedItem.quantity, selectedItem.unit || "")} ${selectedItem.unit || ""}`} />
                                         <ViewField label="Status" value={selectedItem.is_active ? "Active" : "Inactive"} />
                                     </CardSectionView>
                                 )}
@@ -824,6 +928,14 @@ export default function KitchenInventory() {
                                                 <AppDataGrid
                                                     columns={[
 
+                                                        {
+                                                            label: "Item ID",
+                                                            cellClassName: "whitespace-nowrap font-medium text-primary",
+                                                            render: (log: any) => {
+                                                                const itemId = log.event_id || selectedItem?.id;
+                                                                return itemId ? formatModuleDisplayId("kitchen", itemId) : "—";
+                                                            }
+                                                        },
                                                         { 
                                                             label: "Action",
                                                             cellClassName: "whitespace-nowrap",
@@ -874,17 +986,41 @@ export default function KitchenInventory() {
                             {mode === "edit" && selectedItem && (
                                 <div className="space-y-5">
                                 <div className="rounded-[5px] border border-primary/50 bg-background p-5 shadow-sm space-y-5 [&>h3+*]:!mt-4">
-                                    <h3 className="text-sm font-semibold text-primary/90">
-                                        Update Stock Levels
+                                    <h3 className="text-sm font-semibold text-primary/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                        <span>{stockUpdateMode === "add" ? "Add Stock Quantity" : "Update Stock Quantity"}</span>
+                                        <div className="flex items-center gap-3 shrink-0">
+                                            <TooltipProvider delayDuration={200}>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <div>
+                                                            <Switch 
+                                                                checked={stockUpdateMode === "add"}
+                                                                onCheckedChange={(checked) => {
+                                                                    const newMode = checked ? "add" : "update";
+                                                                    setStockUpdateMode(newMode);
+                                                                    setEditForm(f => ({ ...f, quantity: newMode === "add" ? 0 : Number(selectedItem.quantity) }));
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>Toggle to Add or Update</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        </div>
                                     </h3>
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="space-y-1 sm:col-span-2 mb-2">
                                             <Label className="text-foreground">Item Name</Label>
                                             <div className="text-sm font-semibold text-foreground/90">{selectedItem.name}</div>
+                                            {stockUpdateMode === "add" && (
+                                                <div className="text-[11px] text-muted-foreground mt-1">Current Stock: <strong className="text-foreground">{formatDisplayQuantity(selectedItem.quantity, selectedItem.unit || "")} {selectedItem.unit || ""}</strong></div>
+                                            )}
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-foreground">Target Quantity *</Label>
+                                            <Label className="text-foreground">{stockUpdateMode === "add" ? "Add Quantity *" : "Quantity *"}</Label>
                                             <Input
                                                 type="text"
                                                 className="h-10 focus-visible:ring-1 focus-visible:ring-primary font-semibold"
@@ -908,7 +1044,7 @@ export default function KitchenInventory() {
                                         </div>
 
                                         <div className="space-y-2 sm:col-span-2">
-                                            <Label className="text-foreground">Audit Comments</Label>
+                                            <Label className="text-foreground">{stockUpdateMode === "add" ? "Comments" : "Audit Comments"}</Label>
                                             <textarea
                                                 className="w-full min-h-[100px] border border-border bg-background rounded-[3px] p-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary resize-none"
                                                 placeholder="Explain the reason for this manual update..."
@@ -919,11 +1055,15 @@ export default function KitchenInventory() {
                                             <div className="text-[10px] text-right text-muted-foreground font-bold">{editForm.comments.length}/255</div>
                                         </div>
                                     </div>
+                                   
+                                
                                 </div>
 
-                                <div className="flex justify-end gap-3 pt-6 border-t border-border mt-4">
+                               
+
+                                <div className="flex justify-end gap-3 pt-6 border-t border-border">
                                     <Button variant="heroOutline" onClick={() => setSheetOpen(false)}>Cancel</Button>
-                                    <Button variant="hero" onClick={saveEdit}>Update</Button>
+                                    <Button variant="hero" onClick={saveEdit}>{stockUpdateMode === "add" ? "Add Stock" : "Update Stock"}</Button>
                                 </div>
                                 </div>
                             )}
@@ -956,26 +1096,46 @@ export default function KitchenInventory() {
                                     <div className="space-y-4">
                                         <div>
                                             <Label className="text-foreground">Inventory Item *</Label>
-                                            <NativeSelect
-                                                className={`w-full h-10 rounded-[3px] px-3 border bg-background mt-1 ${createErrors.inventory_master_id ? "border-red-500" : "border-border"}`}
-                                                value={createForm.inventory_master_id ?? ""}
-                                                onChange={(e) => setCreateForm(f => ({ ...f, inventory_master_id: Number(e.target.value) }))}
-                                            >
-                                                <option value="" disabled>-- Please Select --</option>
-                                                {masterInventory?.filter(item => item.is_active).map(item => (
-                                                    <option key={item.id} value={item.id}>{item.name}</option>
-                                                ))}
-                                            </NativeSelect>
-                                            {createErrors.inventory_master_id && <p className="text-xs text-red-500 mt-1">{createErrors.inventory_master_id}</p>}
+                                            <ValidationTooltip isValid={!createErrors.inventory_master_id} message={createErrors.inventory_master_id}>
+                                                <NativeSelect
+                                                    className={`w-full h-10 rounded-[3px] px-3 border bg-background mt-1 ${createErrors.inventory_master_id ? "border-red-500" : "border-border"}`}
+                                                    value={createForm.inventory_master_id ?? ""}
+                                                    onChange={(e) => {
+                                                        const selectedId = Number(e.target.value);
+                                                        setCreateForm(f => ({ ...f, inventory_master_id: selectedId }));
+                                                        setCreateErrors((prev: any) => {
+                                                            const next = { ...prev };
+                                                            delete next.inventory_master_id;
+                                                            return next;
+                                                        });
+                                                        checkDuplicateInApi(selectedId, createForm.unit);
+                                                    }}
+                                                >
+                                                    <option value="" disabled>-- Please Select --</option>
+                                                    {masterInventory?.filter(item => item.is_active).map(item => (
+                                                        <option key={item.id} value={item.id}>{item.name}</option>
+                                                    ))}
+                                                </NativeSelect>
+                                            </ValidationTooltip>
                                         </div>
 
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div className="space-y-2">
-                                                <Label className="text-foreground">Target Quantity *</Label>
+                                                <Label className="text-foreground">Quantity *</Label>
                                                 <Input
                                                     className={`h-10 focus-visible:ring-1 focus-visible:ring-primary font-semibold ${createErrors.quantity ? "border-red-500" : ""}`}
                                                     value={createForm.quantity}
-                                                    onChange={(e) => setCreateForm(f => ({ ...f, quantity: +normalizeNumberInput(e.target.value) }))}
+                                                    onChange={(e) => {
+                                                        const val = +normalizeNumberInput(e.target.value);
+                                                        setCreateForm(f => ({ ...f, quantity: val }));
+                                                        if (val > 0) {
+                                                            setCreateErrors((prev: any) => {
+                                                                const next = { ...prev };
+                                                                delete next.quantity;
+                                                                return next;
+                                                            });
+                                                        }
+                                                    }}
                                                 />
                                                 {createErrors.quantity && <p className="text-xs text-red-500 mt-1">{createErrors.quantity}</p>}
                                             </div>
@@ -985,7 +1145,16 @@ export default function KitchenInventory() {
                                                 <NativeSelect
                                                     className={`w-full h-10 rounded-[3px] px-2 border bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary ${createErrors.unit ? "border-red-500" : "border-border"}`}
                                                     value={createForm.unit ?? ""}
-                                                    onChange={(e) => setCreateForm(f => ({ ...f, unit: e.target.value }))}
+                                                    onChange={(e) => {
+                                                        const selectedUnit = e.target.value;
+                                                        setCreateForm(f => ({ ...f, unit: selectedUnit }));
+                                                        setCreateErrors((prev: any) => {
+                                                            const next = { ...prev };
+                                                            delete next.unit;
+                                                            return next;
+                                                        });
+                                                        checkDuplicateInApi(createForm.inventory_master_id, selectedUnit);
+                                                    }}
                                                 >
                                                     <option value="" disabled>Select unit</option>
                                                     {availableUnits.map(u => (
@@ -1011,8 +1180,8 @@ export default function KitchenInventory() {
                                 </div>
 
                                 <div className="flex justify-end gap-3 pt-6 border-t border-border mt-4">
-                                    <Button variant="heroOutline" onClick={() => setSheetOpen(false)}>Cancel</Button>
-                                    <Button variant="hero" onClick={createItem}>Create Item</Button>
+                                    <Button type="button" variant="heroOutline" onClick={() => setSheetOpen(false)}>Cancel</Button>
+                                    <Button type="button" variant="hero" onClick={createItem}>Create Item</Button>
                                 </div>
                                 </div>
                             )}

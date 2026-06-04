@@ -84,6 +84,37 @@ class KitchenInventoryService {
     }
 
     /* =====================================================
+       CHECK DUPLICATES KITCHEN INVENTORY
+    ===================================================== */
+    async checkDuplicates(items) {
+        if (!Array.isArray(items) || items.length === 0) {
+            return [];
+        }
+
+        const duplicates = await Promise.all(
+            items.map(async (item) => {
+                if (!item.property_id || !item.inventory_master_id || !item.unit) return false;
+                
+                const { rows } = await this.#DB.query(
+                    `
+                    SELECT id
+                    FROM public.kitchen_inventory
+                    WHERE property_id = $1
+                      AND inventory_master_id = $2
+                      AND unit = $3
+                    LIMIT 1;
+                    `,
+                    [item.property_id, item.inventory_master_id, item.unit]
+                );
+                
+                return rows.length > 0;
+            })
+        );
+        
+        return duplicates;
+    }
+
+    /* =====================================================
        CREATE kitchen stock entry
     ===================================================== */
     async create({

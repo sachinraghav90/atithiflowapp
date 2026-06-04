@@ -48,6 +48,10 @@ export const baseQueryWithErrorHandler: BaseQueryFn<
                 console.warn("403 - Forbidden", { message });
                 break;
 
+            case 409:
+                // Handled by individual components (e.g., duplicates)
+                break;
+
             case 500:
                 console.error("500 - Server error", {
                     message,

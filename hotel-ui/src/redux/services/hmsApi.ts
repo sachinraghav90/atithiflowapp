@@ -1684,6 +1684,16 @@ export const hmsApi = createApi({
       }
     }),
 
+    checkDuplicateKitchenInventory: builder.mutation({
+      query: (items) => {
+        return {
+          url: `/kitchen/check-duplicates`,
+          method: "POST",
+          body: { items }
+        }
+      }
+    }),
+
     updateInventoryMaster: builder.mutation({
       query: ({ body, id }) => {
         return {
@@ -1912,6 +1922,7 @@ export const {
   useTodayInHouseBookingRoomsQuery,
   useCreateMenuItemBulkMutation,
   useCheckDuplicateInventoryMutation,
+  useCheckDuplicateKitchenInventoryMutation,
   useChangeRoomMutation,
   usePrefetch
 } = hmsApi
