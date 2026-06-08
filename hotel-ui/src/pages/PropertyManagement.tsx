@@ -11,8 +11,8 @@ import {
 } from "@/components/ui/sheet";
 import { AppDataGrid, DataGrid, DataGridHeader, DataGridRow, DataGridHead, DataGridCell, type ColumnDef } from "@/components/ui/data-grid";
 import { TableCell } from "@/components/ui/table";
-import { Building2, FilterX, Image as ImageIcon, Pencil, RefreshCcw } from "lucide-react";
-import { useAddPropertyBySuperAdminMutation, useAddPropertyMutation, useBulkUpsertPropertyFloorsMutation, useGetMeQuery, useGetPropertiesQuery, useGetPropertyBanksQuery, useGetPropertyFloorsQuery, useLazyGetUsersByPropertyAndRoleQuery, useLazyGetUsersByRoleQuery, useUpdatePropertiesMutation, useUpsertPropertyBanksMutation, useGetLogsQuery as useGetAuditLogsQuery } from "@/redux/services/hmsApi";
+import { Building2, FilterX, Image as ImageIcon, Pencil, RefreshCcw, Download } from "lucide-react";
+import { useAddPropertyBySuperAdminMutation, useAddPropertyMutation, useBulkUpsertPropertyFloorsMutation, useGetMeQuery, useGetPropertiesQuery, useGetPropertyBanksQuery, useGetPropertyFloorsQuery, useLazyGetUsersByPropertyAndRoleQuery, useLazyGetUsersByRoleQuery, useUpdatePropertiesMutation, useUpsertPropertyBanksMutation, useGetLogsQuery as useGetAuditLogsQuery, useGetLogsByTableQuery } from "@/redux/services/hmsApi";
 import { useDebounce } from "@/hooks/use-debounce";
 import { toast } from "react-toastify";
 import { useAppSelector } from "@/redux/hook";
@@ -20,7 +20,9 @@ import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.select
 import { normalizeTextInput } from "@/utils/normalizeTextInput";
 import { useLocation, useNavigate } from "react-router-dom";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
-import { getFormattedAuditChanges, getAuditActionBadge } from "@/utils/auditUtils";
+import { getFormattedAuditChanges, getAuditActionBadge, getAuditChangePlainText, formatAuditActionText } from "@/utils/auditUtils";
+import { formatAppDateTime } from "@/utils/dateFormat";
+import { exportToExcel } from "@/utils/exportToExcel";
 
 import PropertyIdentity from "@/components/property-form/sections/PropertyIdentity";
 import PropertyLocation from "@/components/property-form/sections/PropertyLocation";
@@ -133,6 +135,15 @@ export default function PropertyManagement() {
     const [mode, setMode] = useState<"add" | "edit" | "view">("add");
     const [sheetOpen, setSheetOpen] = useState(false);
     const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
+    const [activeTab, setActiveTab] = useState<"properties" | "audit">("properties");
+
+    // History tab state
+    const [mainAuditPage, setMainAuditPage] = useState(1);
+    const [mainAuditLimit, setMainAuditLimit] = useState(10);
+    const [historySearchInput, setHistorySearchInput] = useState("");
+    const [historySearchQuery, setHistorySearchQuery] = useState("");
+    const [historyActionFilter, setHistoryActionFilter] = useState("");
+
     const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
 
     // pagination
@@ -222,6 +233,89 @@ export default function PropertyManagement() {
         skip: !selectedProperty?.id || sheetTab !== "history"
     });
 
+    const {
+        data: propertyAuditLogs,
+        isLoading: propertyLogsLoading,
+        isFetching: propertyLogsFetching,
+        refetch: refetchPropertyLogs
+    } = useGetLogsByTableQuery({
+        tableName: "properties",
+        page: mainAuditPage,
+        limit: mainAuditLimit,
+    }, {
+        skip: !isLoggedIn || activeTab !== "audit"
+    });
+
+    const filteredHistoryLogs = useMemo(() => {
+        let rows = propertyAuditLogs?.data ?? [];
+        const q = historySearchQuery.toLowerCase();
+        
+        if (q) {
+            rows = rows.filter((audit: any) => {
+                return (
+                    formatModuleDisplayId("property", audit.event_id).toLowerCase().includes(q) ||
+                    String(audit.user_first_name || "").toLowerCase().includes(q) ||
+                    String(audit.user_last_name || "").toLowerCase().includes(q)
+                );
+            });
+        }
+
+        if (historyActionFilter) {
+            rows = rows.filter((audit: any) => audit.event_type === historyActionFilter);
+        }
+
+        return rows;
+    }, [propertyAuditLogs, historySearchQuery, historyActionFilter]);
+
+    const historyTotalRecords = propertyAuditLogs?.pagination?.totalItems ?? filteredHistoryLogs.length;
+    const historyTotalPages = propertyAuditLogs?.pagination?.totalPages ?? 1;
+    const paginatedHistoryLogs = filteredHistoryLogs;
+
+    const historyActionOptions = ["CREATE", "UPDATE", "DELETE"];
+
+    const resetHistoryFilters = () => {
+        setHistorySearchInput("");
+        setHistorySearchQuery("");
+        setHistoryActionFilter("");
+        setMainAuditPage(1);
+    };
+
+    const refreshHistoryGrid = async () => {
+        const toastId = toast.loading("Refreshing history logs...");
+        try {
+            await refetchPropertyLogs();
+            toast.dismiss(toastId);
+            toast.success("History logs refreshed");
+        } catch {
+            toast.dismiss(toastId);
+            toast.error("Failed to refresh history logs");
+        }
+    };
+
+    const exportHistoryLogs = () => {
+        if (!filteredHistoryLogs.length) return toast.info("No history rows to export");
+        const formatted = filteredHistoryLogs.map((audit: any) => {
+            let details: any = null;
+            try {
+                details = typeof audit.details === "string" ? JSON.parse(audit.details) : audit.details;
+            } catch {}
+            
+            let changeText = "--";
+            if (details) {
+                changeText = getAuditChangePlainText(details);
+            }
+
+            return {
+                "Property ID": formatModuleDisplayId("property", audit.event_id),
+                "Action": formatAuditActionText(audit.event_type),
+                "Change": changeText,
+                "User": `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim() || audit.user_name || "System",
+                "Date & Time": formatAppDateTime(audit.created_on),
+            };
+        });
+        exportToExcel(formatted, "Property-History.xlsx");
+        toast.success("Export completed");
+    };
 
     const [bulkUpsertFloors] = useBulkUpsertPropertyFloorsMutation()
     const [upsertPropertyBank] = useUpsertPropertyBanksMutation()
@@ -828,7 +922,7 @@ export default function PropertyManagement() {
 
     return (
         <div className="flex flex-col">
-            <section className="p-6 lg:p-8 space-y-6">
+            <section className="p-4 lg:p-6 space-y-4">
                 <div className="flex items-center justify-between w-full">
                     <div className="flex flex-col">
                         <h1 className="text-2xl font-bold leading-tight">Properties</h1>
@@ -852,6 +946,34 @@ export default function PropertyManagement() {
                     </Button>}
 
                 </div>
+
+                <div className="border-b border-border flex">
+                    <button
+                        onClick={() => setActiveTab("properties")}
+                        className={cn(
+                            "px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px]",
+                            activeTab === "properties"
+                                ? "border-primary text-primary"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        Properties
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("audit")}
+                        className={cn(
+                            "px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px]",
+                            activeTab === "audit"
+                                ? "border-primary text-primary"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        History
+                    </button>
+                </div>
+
+                {activeTab === "properties" && (
+
                 <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
                     <div className="w-full">
                         <GridToolbar className="border-b-0">
@@ -859,8 +981,7 @@ export default function PropertyManagement() {
                                 <GridToolbarSearch
                                     value={searchInput}
                                     onChange={setSearchInput}
-                                    onSearch={() => setSearchQuery(searchInput)}
-                                    placeholder="Search property name, city, state..."
+                                    onSearch={() => setSearchQuery(searchInput)}
                                 />
 
                                 <GridToolbarSelect
@@ -1005,7 +1126,133 @@ export default function PropertyManagement() {
                         />
                     </div>
                 </div>
+                )}
+
+                {activeTab === "audit" && (
+                    <div className="flex-1">
+                        <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
+                            <div className="w-full">
+                                <GridToolbar className="border-b-0">
+                                    <GridToolbarRow className="gap-2">
+                                        <GridToolbarSearch
+                                            value={historySearchInput}
+                                            onChange={setHistorySearchInput}
+                                            onSearch={() => {
+                                                setHistorySearchQuery(historySearchInput.trim());
+                                                setMainAuditPage(1);
+                                            }}
+                                        />
+
+                                        <GridToolbarSelect
+                                            label="Action"
+                                            value={historyActionFilter}
+                                            onChange={(value) => {
+                                                setHistoryActionFilter(value);
+                                                setMainAuditPage(1);
+                                            }}
+                                            options={[
+                                                { label: "All", value: "" },
+                                                ...historyActionOptions.map((action) => ({
+                                                    label: action,
+                                                    value: action,
+                                                })),
+                                            ]}
+                                        />
+
+                                        <GridToolbarSpacer />
+                                        
+                                        <GridToolbarActions
+                                            className="gap-1 justify-end"
+                                            actions={[
+                                                {
+                                                    key: "export",
+                                                    label: "Export History",
+                                                    icon: <Download className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: exportHistoryLogs,
+                                                },
+                                                {
+                                                    key: "reset",
+                                                    label: "Reset Filters",
+                                                    icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: resetHistoryFilters,
+                                                },
+                                                {
+                                                    key: "refresh",
+                                                    label: "Refresh Data",
+                                                    icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: refreshHistoryGrid,
+                                                    disabled: propertyLogsFetching,
+                                                },
+                                            ]}
+                                        />
+                                    </GridToolbarRow>
+                                </GridToolbar>
+                            </div>
+                            <div className="px-2 pb-2">
+                                <AppDataGrid
+                                    data={paginatedHistoryLogs}
+                                    loading={propertyLogsLoading}
+                                    rowKey={(audit: any) => audit.id}
+                                    emptyText="No history logs found."
+                                    showActions={false}
+                                    enablePagination={true}
+                                    paginationProps={{
+                                        page: mainAuditPage,
+                                        setPage: setMainAuditPage,
+                                        totalPages: historyTotalPages,
+                                        disabled: propertyLogsFetching,
+                                        totalRecords: historyTotalRecords,
+                                        limit: mainAuditLimit,
+                                        onLimitChange: (limit) => {
+                                            setMainAuditLimit(limit);
+                                            setMainAuditPage(1);
+                                        }
+                                    }}
+                                    columns={[
+                                        {
+                                            label: "Property ID",
+                                            headClassName: "text-center w-[120px]",
+                                            cellClassName: "text-center font-medium text-primary min-w-[120px]",
+                                            render: (audit: any) => audit.event_id ? formatModuleDisplayId("property", audit.event_id) : "—",
+                                        },
+                                        {
+                                            label: "Action",
+                                            headClassName: "text-center w-[140px]",
+                                            cellClassName: "text-center font-medium min-w-[140px]",
+                                            render: (audit: any) => getAuditActionBadge(audit.event_type),
+                                        },
+                                        {
+                                            label: "Change",
+                                            headClassName: "w-[320px]",
+                                            cellClassName: "min-w-[320px] whitespace-normal text-primary/80 font-medium",
+                                            render: (audit: any) => {
+                                                let parsed = audit.details;
+                                                if (typeof parsed === 'string') {
+                                                    try { parsed = JSON.parse(parsed); } catch { }
+                                                }
+                                                return getFormattedAuditChanges(parsed);
+                                            },
+                                        },
+                                        {
+                                            label: "User",
+                                            headClassName: "w-[180px]",
+                                            cellClassName: "text-muted-foreground min-w-[180px]",
+                                            render: (audit: any) => `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim() || audit.user_name || "System",
+                                        },
+                                        {
+                                            label: "Date & Time",
+                                            headClassName: "text-white w-[180px]",
+                                            cellClassName: "text-muted-foreground min-w-[180px]",
+                                            render: (audit: any) => formatAppDateTime(audit.created_on),
+                                        },
+                                    ] as ColumnDef[]}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
             </section>
+
 
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
                 <SheetContent
@@ -1230,8 +1477,8 @@ export default function PropertyManagement() {
                                                 },
                                                 {
                                                     label: "Date & Time",
-                                                    headClassName: "text-white w-[160px]",
-                                                    cellClassName: "whitespace-nowrap text-muted-foreground",
+                                                    headClassName: "text-white w-[180px]",
+                                                    cellClassName: "text-muted-foreground min-w-[180px]",
                                                     render: (log: any) => {
                                                         const d = new Date(log.created_on);
                                                         const date = d.toLocaleDateString("en-IN", {

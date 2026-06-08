@@ -10,7 +10,8 @@ import { selectCanAccessDeliveryFeatures, selectCanCreateOrders } from "@/redux/
 import {
     useLazyExportPropertyOrdersQuery,
     useGetPropertyOrdersQuery,
-    usePrefetch
+    usePrefetch,
+    useGetLogsByTableQuery
 } from "@/redux/services/hmsApi";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { OrderItemsModal } from "./OrderItemsModal";
@@ -26,6 +27,15 @@ import { MenuItemSelect } from "@/components/MenuItemSelect";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { GridBadge } from "@/components/ui/grid-badge";
 import { formatAppDateTime } from "@/utils/dateFormat";
+import { getFormattedAuditChanges, getAuditActionBadge, getAuditChangePlainText } from "@/utils/auditUtils";
+
+const parseAuditDetails = (details: any) => {
+    if (!details) return null;
+    if (typeof details === "string") {
+        try { return JSON.parse(details); } catch { return null; }
+    }
+    return details;
+};
 
 const ORDER_STATUSES = ["New", "Preparing", "Ready", "Delivered", "Cancelled"];
 const PAYMENT_STATUSES = ["Pending", "Paid", "Failed", "Refunded"];
@@ -68,6 +78,16 @@ export function OrdersManagement() {
     const [searchInput, setSearchInput] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
 
+    const [activeTab, setActiveTab] = useState<"Orders" | "History">("Orders");
+    const [historySearchInput, setHistorySearchInput] = useState("");
+    const [historySearchQuery, setHistorySearchQuery] = useState("");
+    const [historyActionFilter, setHistoryActionFilter] = useState("");
+
+    const { page: historyPage, limit: historyLimit, setPage: setHistoryPage, handleLimitChange: handleHistoryLimitChange } = useGridPagination({
+        initialLimit: 10,
+        resetDeps: [selectedPropertyId, historySearchQuery, historyActionFilter],
+    });
+
     const [sheetOpen, setSheetOpen] = useState(false);
     const [createOpen, setCreateOpen] = useState(false);
     const { page, limit, setPage, resetPage, handleLimitChange } = useGridPagination({
@@ -107,6 +127,37 @@ export function OrdersManagement() {
         },
         { skip: !isLoggedIn || !selectedPropertyId }
     );
+
+    /* ============================
+       AUDIT LOGS QUERY
+    ============================ */
+    const { data: auditLogs, isLoading: logsLoading, isFetching: logsFetching, refetch: refetchAuditLogs } = useGetLogsByTableQuery({
+        tableName: "restaurant_orders",
+        propertyId: selectedPropertyId,
+        page: historyPage,
+        limit: historyLimit,
+        action: historyActionFilter || undefined,
+        search: historySearchQuery || undefined
+    }, {
+        skip: activeTab !== "History" || !selectedPropertyId,
+    });
+    const filteredAuditLogs = useMemo(() => {
+        let rows = auditLogs?.data ?? [];
+        if (historySearchQuery) {
+            const query = historySearchQuery.toLowerCase();
+            rows = rows.filter((log: any) => {
+                const searchFields = [
+                    log.event_id?.toString() || "",
+                    log.event_id ? formatModuleDisplayId("or", log.event_id) : "",
+                    log.event_type || "",
+                    `${log.user_first_name || ""} ${log.user_last_name || ""}`.trim() || "System"
+                ];
+                return searchFields.some((field) => field.toLowerCase().includes(query));
+            });
+        }
+        return rows;
+    }, [auditLogs?.data, historySearchQuery]);
+
 
 
     /* ============================
@@ -170,6 +221,22 @@ export function OrdersManagement() {
         }
     };
 
+    const exportHistoryLogs = () => {
+        if (!auditLogs?.data?.length) return toast.info("No history rows to export");
+        const formatted = auditLogs.data.map((audit: any) => {
+            const details = parseAuditDetails(audit.details);
+            return {
+                "Order ID": audit.event_id ? formatOrderDisplayId(audit.event_id) : "—",
+                ACTION: audit.event_type,
+                CHANGE: getAuditChangePlainText(details),
+                USER: `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim(),
+                DATE: formatAppDateTime(audit.created_on),
+            };
+        });
+        exportToExcel(formatted, "Restaurant-Orders-History.xlsx");
+        toast.success("Export completed");
+    };
+
     useEffect(() => {
         setPage(1);
     }, [selectedPropertyId, statusFilter, paymentFilter, searchQuery]);
@@ -197,12 +264,25 @@ export function OrdersManagement() {
         }
     };
 
+    const refreshHistoryTable = async () => {
+        if (logsFetching) return;
+        const toastId = toast.loading("Refreshing history...");
+        try {
+            await refetchAuditLogs();
+            toast.dismiss(toastId);
+            toast.success("History refreshed");
+        } catch {
+            toast.dismiss(toastId);
+            toast.error("Failed to refresh history");
+        }
+    };
+
 
     const orderColumns = useMemo<ColumnDef<Order>[]>(() => [
         {
             label: "Order ID",
-            headClassName: "text-center",
-            cellClassName: "text-center font-medium",
+            headClassName: "text-center w-[120px]",
+            cellClassName: "text-center font-medium text-primary min-w-[120px]",
             render: (order) => (
                 <button
                     type="button"
@@ -262,9 +342,42 @@ export function OrdersManagement() {
         },
     ], [prefetchOrder]);
 
+    const historyColumns = useMemo<ColumnDef<any>[]>(() => [
+        {
+            label: "Order ID",
+            headClassName: "text-center w-[120px]",
+            cellClassName: "text-center font-medium text-primary min-w-[120px]",
+            render: (audit: any) => audit.event_id ? formatOrderDisplayId(audit.event_id) : "—",
+        },
+        {
+            label: "Action",
+            headClassName: "text-center w-[140px]",
+            cellClassName: "text-center font-medium min-w-[140px]",
+            render: (audit: any) => getAuditActionBadge(audit.event_type),
+        },
+        {
+            label: "Change",
+            headClassName: "w-[320px]",
+            cellClassName: "min-w-[320px] whitespace-normal text-primary/80 font-medium",
+            render: (audit: any) => getFormattedAuditChanges(parseAuditDetails(audit.details)),
+        },
+        {
+            label: "User",
+            headClassName: "w-[180px]",
+            cellClassName: "text-muted-foreground min-w-[180px]",
+            render: (audit: any) => `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim(),
+        },
+        {
+            label: "Date & Time",
+            headClassName: "text-white w-[180px]",
+            cellClassName: "text-muted-foreground min-w-[180px]",
+            render: (audit: any) => formatAppDateTime(audit.created_on),
+        },
+    ], []);
+
     return (
         <div className="flex flex-col">
-            <section className="p-4 lg:p-6 space-y-5">
+            <section className="p-4 lg:p-6 space-y-4">
                 <div className="flex items-center justify-between w-full">
                     <div className="flex flex-col">
                         <h1 className="text-2xl font-bold leading-tight">Restaurant Orders</h1>
@@ -328,6 +441,33 @@ export function OrdersManagement() {
                     </div>
                 </div>
 
+                {/* Tabs */}
+                <div className="border-b border-border flex">
+                    <button
+                        onClick={() => setActiveTab("Orders")}
+                        className={cn(
+                            "px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px]",
+                            activeTab === "Orders"
+                                ? "border-primary text-primary"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        Orders
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("History")}
+                        className={cn(
+                            "px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px]",
+                            activeTab === "History"
+                                ? "border-primary text-primary"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        History
+                    </button>
+                </div>
+
+                {activeTab === "Orders" && (
                 <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
                     <div className="w-full">
                         <GridToolbar className="border-b-0">
@@ -433,6 +573,93 @@ export function OrdersManagement() {
                         />
                     </div>
                 </div>
+                )}
+
+                {activeTab === "History" && (
+                    <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
+                        <div className="w-full">
+                            <GridToolbar className="border-b-0">
+                                <GridToolbarRow className="gap-2">
+                                    <GridToolbarSearch
+                                        value={historySearchInput}
+                                        onChange={(val) => {
+                                            setHistorySearchInput(val);
+                                            if (!val.trim()) setHistorySearchQuery("");
+                                        }}
+                                        onSearch={() => {
+                                            setHistorySearchQuery(historySearchInput.trim());
+                                            setHistoryPage(1);
+                                        }}
+                                    />
+                                    <GridToolbarSelect
+                                        label="Action"
+                                        value={historyActionFilter}
+                                        onChange={(val) => {
+                                            setHistoryActionFilter(val);
+                                            setHistoryPage(1);
+                                        }}
+                                        options={[
+                                            { label: "All", value: "" },
+                                            { label: "Create", value: "CREATE" },
+                                            { label: "Update", value: "UPDATE" },
+                                            { label: "Delete", value: "DELETE" },
+                                        ]}
+                                    />
+                                    <GridToolbarActions
+                                        className="gap-1 justify-end"
+                                        actions={[
+                                            {
+                                                key: "export",
+                                                label: "Export History",
+                                                icon: <Download className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                onClick: exportHistoryLogs,
+                                            },
+                                            {
+                                                key: "reset",
+                                                label: "Reset Filters",
+                                                icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                onClick: () => {
+                                                    setHistorySearchInput("");
+                                                    setHistorySearchQuery("");
+                                                    setHistoryActionFilter("");
+                                                    setHistoryPage(1);
+                                                },
+                                            },
+                                            {
+                                                key: "refresh",
+                                                label: "Refresh Data",
+                                                icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                onClick: refreshHistoryTable,
+                                                disabled: logsFetching,
+                                            },
+                                        ]}
+                                    />
+                                </GridToolbarRow>
+                            </GridToolbar>
+                        </div>
+                        <div className="px-2 pb-2">
+                            <AppDataGrid
+                                density="compact"
+                                columns={historyColumns}
+                                data={filteredAuditLogs}
+                                rowKey={(log: any) => log.id}
+                                loading={logsLoading || logsFetching || isInitializing}
+                                emptyText="No audit logs found"
+                                minWidth="860px"
+                                enablePagination={Boolean(auditLogs?.pagination)}
+                                paginationProps={auditLogs?.pagination ? {
+                                    page: historyPage,
+                                    totalPages: auditLogs.pagination.totalPages,
+                                    setPage: setHistoryPage,
+                                    disabled: logsFetching,
+                                    totalRecords: auditLogs.pagination.totalItems ?? auditLogs.data?.length ?? 0,
+                                    limit: historyLimit,
+                                    onLimitChange: handleHistoryLimitChange,
+                                } : undefined}
+                            />
+                        </div>
+                    </div>
+                )}
             </section>
 
             <OrderItemsModal

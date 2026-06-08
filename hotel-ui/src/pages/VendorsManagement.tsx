@@ -22,6 +22,7 @@ import {
     useLazyExportPropertyVendorsQuery,
     useUpdateVendorMutation,
     useGetLogsQuery,
+    useGetLogsByTableQuery,
 } from "@/redux/services/hmsApi";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { useAppSelector } from "@/redux/hook";
@@ -48,7 +49,7 @@ import { GridBadge } from "@/components/ui/grid-badge";
 import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
 import FormInput from "@/components/forms/FormInput";
-import { getFormattedAuditChanges, getAuditActionBadge } from "@/utils/auditUtils";
+import { getFormattedAuditChanges, getAuditActionBadge, getAuditChangePlainText, formatAuditActionText } from "@/utils/auditUtils";
 
 /* ---------------- Types ---------------- */
 type Vendor = {
@@ -232,6 +233,97 @@ export default function VendorsManagement() {
     const [createVendor] = useCreateVendorMutation()
     const [updateVendor] = useUpdateVendorMutation()
 
+    const [activeTab, setActiveTab] = useState<"vendors" | "audit">("vendors");
+
+    // Main History Tab State
+    const [mainAuditPage, setMainAuditPage] = useState(1);
+    const [mainAuditLimit, setMainAuditLimit] = useState(10);
+    const [historySearchInput, setHistorySearchInput] = useState("");
+    const [historySearchQuery, setHistorySearchQuery] = useState("");
+    const [historyActionFilter, setHistoryActionFilter] = useState("");
+
+    const {
+        data: globalAuditLogs,
+        isLoading: globalAuditLogsLoading,
+        isFetching: globalAuditLogsFetching,
+        refetch: refetchGlobalAuditLogs
+    } = useGetLogsByTableQuery({
+        tableName: "ref_vendors",
+        page: mainAuditPage,
+        limit: mainAuditLimit,
+    }, {
+        skip: !isLoggedIn || activeTab !== "audit"
+    });
+
+    const paginatedHistoryLogs = useMemo(() => {
+        let rows = globalAuditLogs?.data ?? [];
+        if (historySearchQuery) {
+            const lowerQuery = historySearchQuery.toLowerCase();
+            rows = rows.filter((r: any) =>
+                r.event_type?.toLowerCase().includes(lowerQuery) ||
+                r.user_name?.toLowerCase().includes(lowerQuery) ||
+                r.user_first_name?.toLowerCase().includes(lowerQuery) ||
+                (r.event_id && formatModuleDisplayId("vendor", r.event_id).toLowerCase().includes(lowerQuery))
+            );
+        }
+        if (historyActionFilter) {
+            rows = rows.filter((r: any) => r.event_type?.toUpperCase() === historyActionFilter.toUpperCase());
+        }
+        return rows;
+    }, [globalAuditLogs?.data, historySearchQuery, historyActionFilter]);
+
+    const historyTotalRecords = globalAuditLogs?.pagination?.totalItems ?? globalAuditLogs?.pagination?.total ?? 0;
+    const historyTotalPages = globalAuditLogs?.pagination?.totalPages ?? 1;
+
+    const historyActionOptions = useMemo(() => {
+        return ["CREATE", "UPDATE", "DELETE"];
+    }, []);
+
+    const resetHistoryFilters = () => {
+        setHistorySearchInput("");
+        setHistorySearchQuery("");
+        setHistoryActionFilter("");
+        setMainAuditPage(1);
+    };
+
+    const refreshHistoryGrid = async () => {
+        if (globalAuditLogsFetching) return;
+        const toastId = toast.loading("Refreshing history...");
+        try {
+            await refetchGlobalAuditLogs();
+            toast.dismiss(toastId);
+            toast.success("History refreshed");
+        } catch {
+            toast.dismiss(toastId);
+            toast.error("Failed to refresh history");
+        }
+    };
+
+    const exportHistoryLogs = () => {
+        if (!paginatedHistoryLogs.length) return toast.info("No history rows to export");
+        const formatted = paginatedHistoryLogs.map((audit: any) => {
+            let details: any = null;
+            try {
+                details = typeof audit.details === "string" ? JSON.parse(audit.details) : audit.details;
+            } catch {}
+            
+            let changeText = "--";
+            if (details) {
+                changeText = getAuditChangePlainText(details);
+            }
+
+            return {
+                "Vendor ID": formatModuleDisplayId("vendor", audit.event_id),
+                "Action": formatAuditActionText(audit.event_type),
+                "Change": changeText,
+                "User": `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim() || audit.user_name || "System",
+                "Date & Time": formatAppDateTime(audit.created_on),
+            };
+        });
+        exportToExcel(formatted, "Vendors-History.xlsx");
+        toast.success("Export completed");
+    };
+
 
     /* ---------------- Handlers ---------------- */
     const openAdd = () => {
@@ -387,7 +479,7 @@ export default function VendorsManagement() {
     /* ---------------- UI ---------------- */
     return (
         <div className="flex flex-col bg-background">
-            <section className="flex flex-col p-6 lg:p-8 gap-6">
+            <section className="p-4 lg:p-6 space-y-4">
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold leading-tight">Vendors</h1>
@@ -426,7 +518,32 @@ export default function VendorsManagement() {
                     </div>
                 </div>
 
+                <div className="border-b border-border flex">
+                    <button
+                        onClick={() => setActiveTab("vendors")}
+                        className={cn(
+                            "px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px]",
+                            activeTab === "vendors"
+                                ? "border-primary text-primary"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        Vendors
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("audit")}
+                        className={cn(
+                            "px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px]",
+                            activeTab === "audit"
+                                ? "border-primary text-primary"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        History
+                    </button>
+                </div>
 
+                {activeTab === "vendors" && (
                 <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
                     <div className="w-full">
                         <GridToolbar className="border-b-0">
@@ -579,9 +696,132 @@ export default function VendorsManagement() {
                         limit,
                         onLimitChange: handleLimitChange
                     }}
-                />
+                        />
                     </div>
                     </div>
+                )}
+
+                {activeTab === "audit" && (
+                    <div className="flex-1">
+                        <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
+                            <div className="w-full">
+                                <GridToolbar className="border-b-0">
+                                    <GridToolbarRow className="gap-2">
+                                        <GridToolbarSearch
+                                            value={historySearchInput}
+                                            onChange={setHistorySearchInput}
+                                            onSearch={() => {
+                                                setHistorySearchQuery(historySearchInput.trim());
+                                                setMainAuditPage(1);
+                                            }}
+                                        />
+
+                                        <GridToolbarSelect
+                                            label="Action"
+                                            value={historyActionFilter}
+                                            onChange={(value) => {
+                                                setHistoryActionFilter(value);
+                                                setMainAuditPage(1);
+                                            }}
+                                            options={[
+                                                { label: "All", value: "" },
+                                                ...historyActionOptions.map((action) => ({
+                                                    label: action,
+                                                    value: action,
+                                                })),
+                                            ]}
+                                        />
+
+                                        <GridToolbarActions
+                                            className="gap-1 justify-end"
+                                            actions={[
+                                                {
+                                                    key: "export",
+                                                    label: "Export History",
+                                                    icon: <Download className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: exportHistoryLogs,
+                                                },
+                                                {
+                                                    key: "reset",
+                                                    label: "Reset Filters",
+                                                    icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: resetHistoryFilters,
+                                                },
+                                                {
+                                                    key: "refresh",
+                                                    label: "Refresh Data",
+                                                    icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: refreshHistoryGrid,
+                                                    disabled: globalAuditLogsFetching,
+                                                },
+                                            ]}
+                                        />
+                                    </GridToolbarRow>
+                                </GridToolbar>
+                            </div>
+                            <div className="px-2 pb-2">
+                                <AppDataGrid
+                                    data={paginatedHistoryLogs}
+                                    loading={globalAuditLogsLoading}
+                                    rowKey={(audit: any) => audit.id}
+                                    emptyText="No history logs found."
+                                    showActions={false}
+                                    enablePagination={true}
+                                    paginationProps={{
+                                        page: mainAuditPage,
+                                        setPage: setMainAuditPage,
+                                        totalPages: historyTotalPages,
+                                        disabled: globalAuditLogsFetching,
+                                        totalRecords: historyTotalRecords,
+                                        limit: mainAuditLimit,
+                                        onLimitChange: (limit) => {
+                                            setMainAuditLimit(limit);
+                                            setMainAuditPage(1);
+                                        }
+                                    }}
+                                    columns={[
+                                        {
+                                            label: "Vendor ID",
+                                            headClassName: "text-center w-[120px]",
+                                            cellClassName: "text-center font-medium text-primary min-w-[120px]",
+                                            render: (audit: any) => audit.event_id ? formatModuleDisplayId("vendor", audit.event_id) : "—",
+                                        },
+                                        {
+                                            label: "Action",
+                                            headClassName: "text-center w-[140px]",
+                                            cellClassName: "text-center font-medium min-w-[140px]",
+                                            render: (audit: any) => getAuditActionBadge(audit.event_type),
+                                        },
+                                        {
+                                            label: "Change",
+                                            headClassName: "w-[320px]",
+                                            cellClassName: "min-w-[320px] whitespace-normal text-primary/80 font-medium",
+                                            render: (audit: any) => {
+                                                let parsed = audit.details;
+                                                if (typeof parsed === 'string') {
+                                                    try { parsed = JSON.parse(parsed); } catch { }
+                                                }
+                                                return getFormattedAuditChanges(parsed);
+                                            },
+                                        },
+                                        {
+                                            label: "User",
+                                            headClassName: "w-[180px]",
+                                            cellClassName: "text-muted-foreground min-w-[180px]",
+                                            render: (audit: any) => `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim() || audit.user_name || "System",
+                                        },
+                                        {
+                                            label: "Date & Time",
+                                            headClassName: "text-white w-[180px]",
+                                            cellClassName: "text-muted-foreground min-w-[180px]",
+                                            render: (audit: any) => formatAppDateTime(audit.created_on),
+                                        },
+                                    ] as ColumnDef[]}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
             </section>
 
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
@@ -674,8 +914,8 @@ export default function VendorsManagement() {
                                             },
                                             {
                                                 label: "Date & Time",
-                                                headClassName: "text-white",
-                                                cellClassName: "text-muted-foreground whitespace-nowrap min-w-[130px]",
+                                                headClassName: "text-white w-[180px]",
+                                                cellClassName: "text-muted-foreground min-w-[180px]",
                                                 render: (audit: any) => formatAppDateTime(audit.created_on as string)
                                             },
                                             {

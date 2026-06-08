@@ -53,7 +53,7 @@ import { formatAppDateTime } from "@/utils/dateFormat";
 import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
 import { generateId } from "@/utils/generateId";
-import { getFormattedAuditChanges, getAuditActionBadge } from "@/utils/auditUtils";
+import { getFormattedAuditChanges, getAuditActionBadge, getAuditChangePlainText } from "@/utils/auditUtils";
 
 /* ---------------- Types ---------------- */
 export type LaundryStatus =
@@ -245,7 +245,7 @@ function getVendorName(vendorId: string | number | null | undefined, vendors?: A
     return vendor?.name || "—";
 }
 
-function getLaundryAuditChanges(audit: any, vendors?: Array<{ id: string | number; name: string }>) {
+function getLaundryAuditChanges(audit: any, vendors?: Array<{ id: string | number; name: string }>, plainText = false) {
     let details = audit.details;
     if (typeof details === "string") {
         try {
@@ -258,6 +258,7 @@ function getLaundryAuditChanges(audit: any, vendors?: Array<{ id: string | numbe
     const after = details?.after;
 
     if (audit.event_type === "CREATE") {
+        if (plainText) return "Order: Created";
         return (
             <div className="text-muted-foreground">
                 <span className="font-semibold text-foreground/80">Order:</span> Created
@@ -292,11 +293,14 @@ function getLaundryAuditChanges(audit: any, vendors?: Array<{ id: string | numbe
         formattedDetails.after["Pickup Date"] = after?.pickup_date ? formatDateTime(after.pickup_date) : "—";
     }
 
+    if (plainText) {
+        return getAuditChangePlainText(formattedDetails);
+    }
     return getFormattedAuditChanges(formattedDetails);
 }
 
-function getLaundryAuditChangeText(audit: any, vendors?: Array<{ id: string | number; name: string }>) {
-    const changes = getLaundryAuditChanges(audit, vendors);
+function getLaundryAuditChangeText(audit: any, vendors?: Array<{ id: string | number; name: string }>, plainText = false) {
+    const changes = getLaundryAuditChanges(audit, vendors, plainText);
     if (changes === "--") return audit.comments || "—";
     return changes;
 }
@@ -868,6 +872,7 @@ export default function LaundryOrdersManagement() {
 
             const searchFields = [
                 audit.event_id?.toString() || "",
+                audit.event_id ? formatModuleDisplayId("laundry_order", audit.event_id) : "",
                 displayAudit.orderLabel,
                 displayAudit.actionLabel,
                 displayAudit.userLabel,
@@ -892,27 +897,35 @@ export default function LaundryOrdersManagement() {
     }, [auditPage, auditTotalPages]);
 
     const laundryAuditColumns = useMemo<ColumnDef[]>(() => [
-
+        {
+            label: "Order ID",
+            headClassName: "text-center w-[120px]",
+            cellClassName: "text-center font-medium text-primary min-w-[120px]",
+            render: (audit: any) => formatModuleDisplayId("laundry_order", audit.event_id),
+        },
         {
             label: "Action",
-            cellClassName: "whitespace-nowrap",
+            headClassName: "text-center w-[140px]",
+            cellClassName: "text-center font-medium min-w-[140px]",
             render: (audit: any) => getAuditActionBadge(audit.event_type)
         },
         {
-            label: "Updated By",
-            cellClassName: "whitespace-nowrap",
+            label: "Change",
+            headClassName: "w-[320px]",
+            cellClassName: "min-w-[320px] whitespace-normal text-primary/80 font-medium",
+            render: (audit: any) => getLaundryAuditChanges(audit, vendors)
+        },
+        {
+            label: "User",
+            headClassName: "w-[180px]",
+            cellClassName: "text-muted-foreground min-w-[180px]",
             render: (audit: any) => `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim() || "System"
         },
         {
             label: "Date & Time",
-            headClassName: "text-white",
-            cellClassName: "text-muted-foreground whitespace-nowrap min-w-[130px]",
+            headClassName: "text-white w-[180px]",
+            cellClassName: "text-muted-foreground min-w-[180px]",
             render: (audit: any) => formatAppDateTime(audit.created_on as string)
-        },
-        {
-            label: "Changes",
-            cellClassName: "min-w-[300px] py-2",
-            render: (audit: any) => getLaundryAuditChanges(audit, vendors)
         }
     ], [auditPage, auditLimit, vendors]);
 
@@ -920,32 +933,35 @@ export default function LaundryOrdersManagement() {
 
         {
             label: "Action",
-            cellClassName: "whitespace-nowrap",
+            headClassName: "text-center w-[140px]",
+            cellClassName: "text-center font-medium min-w-[140px]",
             render: (audit: any) => getAuditActionBadge(audit.event_type)
         },
         {
-            label: "Updated By",
-            cellClassName: "whitespace-nowrap",
+            label: "Change",
+            headClassName: "w-[320px]",
+            cellClassName: "min-w-[320px] whitespace-normal text-primary/80 font-medium",
+            render: (audit: any) => getLaundryAuditChanges(audit, vendors)
+        },
+        {
+            label: "User",
+            headClassName: "w-[180px]",
+            cellClassName: "text-muted-foreground min-w-[180px]",
             render: (audit: any) => `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim() || "System"
         },
         {
             label: "Date & Time",
-            headClassName: "text-white",
-            cellClassName: "text-muted-foreground whitespace-nowrap min-w-[130px]",
+            headClassName: "text-white w-[180px]",
+            cellClassName: "text-muted-foreground min-w-[180px]",
             render: (audit: any) => formatAppDateTime(audit.created_on as string)
-        },
-        {
-            label: "Changes",
-            cellClassName: "min-w-[300px] py-2",
-            render: (audit: any) => getLaundryAuditChanges(audit, vendors)
         }
     ], [orderHistoryPage, orderHistoryLimit, vendors, viewItemsModal.order]);
 
     const laundryOrderColumns = useMemo<ColumnDef<LaundryOrder>[]>(() => [
         {
             label: "Order ID",
-            headClassName: "text-center",
-            cellClassName: "text-center font-medium min-w-[90px]",
+            headClassName: "text-center w-[120px]",
+            cellClassName: "text-center font-medium text-primary min-w-[120px]",
             render: (order: LaundryOrder) => (
                 <button
                     type="button"
@@ -1123,11 +1139,12 @@ export default function LaundryOrdersManagement() {
 
         const formatted = filteredAuditLogs.map((audit) => {
             const displayAudit = getLaundryAuditDisplay(audit, vendors);
+            const plainChangeText = getLaundryAuditChangeText(audit, vendors, true);
 
             return {
                 Order: displayAudit.orderLabel,
                 Action: displayAudit.actionLabel,
-                Change: displayAudit.changeText,
+                Change: plainChangeText,
                 User: displayAudit.userLabel,
                 Date: displayAudit.dateLabel,
             };
@@ -1139,7 +1156,7 @@ export default function LaundryOrdersManagement() {
     /* ---------------- UI ---------------- */
     return (
         <div className="flex flex-col bg-background">
-            <section className="flex flex-col p-6 lg:p-8 gap-4">
+            <section className="p-4 lg:p-6 space-y-4">
                     <div className="flex items-center justify-between w-full">
                         <div className="flex flex-col">
                             <h1 className="text-2xl font-bold leading-tight">Laundry Orders</h1>
@@ -1181,29 +1198,29 @@ export default function LaundryOrdersManagement() {
                         </div>
                     </div>
 
-                    <div className="border-b border-border flex shrink-0">
-                        <div
+                    <div className="border-b border-border flex">
+                        <button
                             onClick={() => setActiveTab("orders")}
                             className={cn(
-                                "px-4 py-3 text-sm font-medium cursor-pointer border-b-2 transition",
+                                "px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px]",
                                 activeTab === "orders"
-                                    ? "border-primary text-foreground"
+                                    ? "border-primary text-primary"
                                     : "border-transparent text-muted-foreground hover:text-foreground"
                             )}
                         >
                             Orders
-                        </div>
-                        <div
+                        </button>
+                        <button
                             onClick={() => setActiveTab("audit")}
                             className={cn(
-                                "px-4 py-3 text-sm font-medium cursor-pointer border-b-2 transition",
+                                "px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px]",
                                 activeTab === "audit"
-                                    ? "border-primary text-foreground"
+                                    ? "border-primary text-primary"
                                     : "border-transparent text-muted-foreground hover:text-foreground"
                             )}
                         >
                             History
-                        </div>
+                        </button>
                     </div>
 
                 {activeTab === "orders" && (
@@ -1347,7 +1364,13 @@ export default function LaundryOrdersManagement() {
                                 <GridToolbarRow className="gap-2">
                                     <GridToolbarSearch
                                         value={auditSearchInput}
-                                        onChange={setAuditSearchInput}
+                                        onChange={(val) => {
+                                            setAuditSearchInput(val);
+                                            if (!val.trim()) {
+                                                setAuditSearchQuery("");
+                                                setAuditPage(1);
+                                            }
+                                        }}
                                         onSearch={() => {
                                             setAuditSearchQuery(auditSearchInput.trim());
                                             setAuditPage(1);

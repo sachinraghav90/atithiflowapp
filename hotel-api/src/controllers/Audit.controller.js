@@ -26,13 +26,20 @@ class AuditController {
     async getByTable(req, res) {
         try {
             const { tableName } = req.params;
-            const { limit, page, propertyId } = req.query;
+            const { limit, page, propertyId, search, action } = req.query;
 
             if (!tableName) {
                 return res.status(400).json({ message: "tableName is required" });
             }
 
-            const logs = await AuditService.getByTableName({ tableName, limit, page, propertyId });
+            const logs = await AuditService.getByTableName({ 
+                tableName, 
+                limit, 
+                page, 
+                propertyId,
+                search,
+                action
+            });
             return res.json(logs);
         } catch (error) {
             return sendErrorResponse(res, error, {

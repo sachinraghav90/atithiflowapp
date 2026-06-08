@@ -102,6 +102,7 @@ const isPrintableValue = (val: any): boolean => {
 const styles = StyleSheet.create({
   page: {
     padding: 24,
+    paddingBottom: 60,
     fontFamily: "Helvetica",
     backgroundColor: "#ffffff",
     color: "#0f172a",
@@ -109,9 +110,9 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
     borderBottomWidth: 1,
-    borderBottomColor: "#e0f2fe",
+    borderBottomColor: "#cbd5e1",
     paddingBottom: 8,
     marginBottom: 12,
   },
@@ -127,6 +128,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
     letterSpacing: 0,
     textTransform: "none",
+    textAlign: "center",
   },
   bookingIdBox: {
     alignItems: "flex-end",
@@ -186,13 +188,13 @@ const styles = StyleSheet.create({
     paddingTop: 2,
   },
   label: {
-    fontSize: 7,
+    fontSize: 8,
     fontWeight: "bold",
     color: "#0369a1",
     width: "35%",
   },
   value: {
-    fontSize: 8,
+    fontSize: 9,
     color: "#1e293b",
     width: "65%",
     textAlign: "right",
@@ -210,7 +212,7 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   guestName: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: "bold",
     color: "#1e293b",
   },
@@ -251,13 +253,13 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   infoLabel: {
-    fontSize: 7,
+    fontSize: 8,
     fontWeight: "bold",
     color: "#0369a1",
     marginBottom: 2,
   },
   infoValue: {
-    fontSize: 8,
+    fontSize: 9,
     color: "#1e293b",
   },
   commentsBox: {
@@ -267,13 +269,13 @@ const styles = StyleSheet.create({
     borderTopColor: "#f1f5f9",
   },
   commentsLabel: {
-    fontSize: 7,
+    fontSize: 8,
     fontWeight: "bold",
     color: "#0369a1",
     marginBottom: 2,
   },
   commentsValue: {
-    fontSize: 7.5,
+    fontSize: 8.5,
     color: "#475569",
     lineHeight: 1.2,
   },
@@ -288,13 +290,13 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   tableHeaderCell: {
-    fontSize: 7,
+    fontSize: 8,
     fontWeight: "bold",
     color: "#0369a1",
     flex: 1,
   },
   tableHeaderCellRight: {
-    fontSize: 7,
+    fontSize: 8,
     fontWeight: "bold",
     color: "#0369a1",
     flex: 1,
@@ -307,19 +309,19 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   tableCell: {
-    fontSize: 8,
+    fontSize: 9,
     color: "#334155",
     flex: 1,
   },
   tableCellRight: {
-    fontSize: 8,
+    fontSize: 9,
     color: "#0f172a",
     flex: 1,
     textAlign: "right",
     fontWeight: "bold",
   },
   noDataText: {
-    fontSize: 8,
+    fontSize: 9,
     color: "#94a3b8",
     textAlign: "center",
     marginTop: 20,
@@ -367,49 +369,51 @@ const styles = StyleSheet.create({
   },
   billingRowBalance: {
     flexDirection: "row",
-    backgroundColor: "#0f172a",
+    backgroundColor: "#ffffff",
+    borderTopWidth: 2,
+    borderTopColor: "#0f172a",
     paddingVertical: 6,
     paddingHorizontal: 8,
   },
   billingLabel: {
-    fontSize: 8,
+    fontSize: 9,
     color: "#334155",
     flex: 2,
   },
   billingLabelHighlight: {
-    fontSize: 8,
+    fontSize: 9,
     color: "#1e293b",
     fontWeight: "bold",
     flex: 2,
   },
   billingLabelGrandTotal: {
-    fontSize: 8,
+    fontSize: 9,
     color: "#0f172a",
     fontWeight: "bold",
     flex: 2,
   },
   billingLabelBalance: {
-    fontSize: 9,
-    color: "#ffffff",
+    fontSize: 10,
+    color: "#0f172a",
     fontWeight: "bold",
     flex: 2,
   },
   billingValue: {
-    fontSize: 8,
+    fontSize: 9,
     color: "#0f172a",
     flex: 1,
     textAlign: "right",
     fontWeight: "bold",
   },
   billingValueDiscount: {
-    fontSize: 8,
+    fontSize: 9,
     color: "#047857",
     flex: 1,
     textAlign: "right",
   },
   billingValueBalance: {
-    fontSize: 9,
-    color: "#ffffff",
+    fontSize: 10,
+    color: "#0f172a",
     fontWeight: "bold",
     flex: 1,
     textAlign: "right",
@@ -419,9 +423,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   footer: {
-    marginTop: 20,
+    position: "absolute",
+    bottom: 24,
+    left: 24,
+    right: 24,
     borderTopWidth: 1,
-    borderTopColor: "#f1f5f9",
+    borderTopColor: "#cbd5e1",
     paddingTop: 8,
   },
   footerText: {
@@ -505,10 +512,9 @@ export default function BookingSummaryPDF({
     <Document>
       <Page size="A4" style={styles.page}>
         {/* Header */}
-        <View style={styles.header}>
+        <View style={styles.header} fixed>
           <View>
             <Text style={styles.propertyTitle}>{propertyBrandName}</Text>
-            <Text style={styles.propertyAddress}>{safeText(propertyAddress)}</Text>
           </View>
           <View style={styles.bookingIdBox}>
             <Text style={styles.bookingId}>BOOKING #{formattedBookingId}</Text>
@@ -645,10 +651,15 @@ export default function BookingSummaryPDF({
                 .replace(/\s+/g, " ")
                 .trim();
               const isLastGuest = index === guests.length - 1;
+              const isEven = index % 2 === 0;
               return (
                 <View
                   key={g.id || index}
-                  style={[styles.card, isLastGuest ? { marginBottom: 12 } : null]}
+                  style={[
+                    styles.card,
+                    isLastGuest ? { marginBottom: 12 } : null,
+                    !isEven ? { backgroundColor: "#f8fafc" } : null,
+                  ]}
                 >
                   <View style={styles.guestNameBox}>
                     <View style={styles.guestDot} />
@@ -894,18 +905,18 @@ export default function BookingSummaryPDF({
         </View>
 
         {!!instructionsPlainText && (
-          <View style={styles.sectionContainer} break>
+          <View style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>Booking Instructions</Text>
-            <View style={styles.card}>
-              <Text style={[styles.commentsValue, { fontSize: 8, lineHeight: 1.5 }]}>
-                {instructionsPlainText}
-              </Text>
-            </View>
+            <Text style={[styles.commentsValue, { fontSize: 8, lineHeight: 1.5 }]}>
+              {instructionsPlainText}
+            </Text>
           </View>
         )}
 
         {/* Footer */}
-       
+        <View style={styles.footer} fixed>
+          <Text style={styles.propertyAddress}>{safeText(propertyAddress)}</Text>
+        </View>
       </Page>
     </Document>
   );

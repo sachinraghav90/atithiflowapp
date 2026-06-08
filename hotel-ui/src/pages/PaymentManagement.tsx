@@ -137,7 +137,6 @@ export default function PaymentsManagement() {
                                 <GridToolbarSearch
                                     value={searchQuery}
                                     onChange={setSearchQuery}
-                                    placeholder="Search payments..."
                                 />
                                 <GridToolbarSelect
                                     label="Method"

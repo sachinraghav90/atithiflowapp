@@ -131,6 +131,10 @@ export function ResponsiveDatePicker({
                         if (value) {
                             newDate.setHours(value.getHours())
                             newDate.setMinutes(value.getMinutes())
+                        } else if (showTime) {
+                            const now = new Date()
+                            newDate.setHours(now.getHours())
+                            newDate.setMinutes(now.getMinutes())
                         }
                         onChange(newDate)
                     } else {

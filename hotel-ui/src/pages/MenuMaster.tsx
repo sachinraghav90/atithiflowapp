@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { Switch } from "@/components/ui/switch";
 import { NativeSelect } from "@/components/ui/native-select";
 import { MenuItemSelect } from "@/components/MenuItemSelect";
-import { useCreateMenuItemBulkMutation, useCreateMenuItemGroupMutation, useCreateMenuItemMutation, useGetMenuItemGroupsLightQuery, useGetMenuItemGroupsQuery, useGetPropertyMenuLightQuery, useGetPropertyMenuQuery, useUpdateMenuItemGroupMutation, useUpdateMenuItemMutation, useGetLogsQuery as useGetAuditLogsQuery } from "@/redux/services/hmsApi";
+import { useCreateMenuItemBulkMutation, useCreateMenuItemGroupMutation, useCreateMenuItemMutation, useGetMenuItemGroupsLightQuery, useGetMenuItemGroupsQuery, useGetPropertyMenuLightQuery, useGetPropertyMenuQuery, useUpdateMenuItemGroupMutation, useUpdateMenuItemMutation, useGetLogsQuery as useGetAuditLogsQuery, useGetLogsByTableQuery } from "@/redux/services/hmsApi";
 import { useAppSelector } from "@/redux/hook";
 import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
 import { normalizeNumberInput } from "@/utils/normalizeTextInput";
@@ -29,7 +29,7 @@ import { toast } from "react-toastify";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
-import { getFormattedAuditChanges, getAuditActionBadge } from "@/utils/auditUtils";
+import { getFormattedAuditChanges, getAuditActionBadge, getAuditChangePlainText as getBaseAuditChangeText, formatAuditActionText } from "@/utils/auditUtils";
 
 /* ---------------- Helpers ---------------- */
 const parseAuditDetails = (details: any) => {
@@ -44,9 +44,9 @@ const getAuditActionLabel = (audit: any) => {
     return getAuditActionBadge(audit.event_type);
 };
 
-const getAuditChangeText = (details: any, audit: any) => {
+const getAuditChangeText = (details: any, audit: any, isPlainText = false) => {
     if (audit.event_type === "CREATE") {
-        return (
+        return isPlainText ? "Menu Item: Created" : (
             <div className="text-muted-foreground">
                 <span className="font-semibold text-foreground/80">Menu Item:</span> Created
             </div>
@@ -55,9 +55,15 @@ const getAuditChangeText = (details: any, audit: any) => {
     
     if (!details) return "--";
 
-    const { before, after } = details;
-    if (!before || !after) return "--";
+    if (!details.before || !details.after) {
+        // Fallback for flat objects (Create/Delete) or broken test records where before is null
+        const fallbackDetails = (!details.before && details.after && typeof details.after === 'object') 
+            ? details.after 
+            : details;
+        return isPlainText ? getBaseAuditChangeText(fallbackDetails) : getFormattedAuditChanges(fallbackDetails);
+    }
 
+    const { before, after } = details;
     const formattedDetails: any = { before: {}, after: {} };
 
     if (before.item_name !== undefined && before.item_name !== after.item_name) {
@@ -93,7 +99,7 @@ const getAuditChangeText = (details: any, audit: any) => {
         formattedDetails.after["Item Image"] = "Updated";
     }
 
-    return getFormattedAuditChanges(formattedDetails);
+    return isPlainText ? getBaseAuditChangeText(formattedDetails) : getFormattedAuditChanges(formattedDetails);
 };
 
 type MenuItem = {
@@ -184,6 +190,12 @@ export default function MenuMaster() {
     const [limit, setLimit] = useState(10);
     const [searchInput, setSearchInput] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
+    const [activeTab, setActiveTab] = useState<"items" | "history">("items");
+    const [auditPage, setAuditPage] = useState(1);
+    const [auditLimit, setAuditLimit] = useState(10);
+    const [auditSearchInput, setAuditSearchInput] = useState("");
+    const [auditSearchQuery, setAuditSearchQuery] = useState("");
+    const [auditActionFilter, setAuditActionFilter] = useState("");
     const [groupFilter, setGroupFilter] = useState("");
     const [typeFilter, setTypeFilter] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
@@ -229,7 +241,15 @@ export default function MenuMaster() {
         isLoading: myPropertiesLoading 
     } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
 
-    const { data: menuData, isLoading, isFetching, refetch } = useGetPropertyMenuQuery({ page: 1, limit: 1000, propertyId: selectedPropertyId }, {
+    const { data: menuData, isLoading, isFetching, refetch } = useGetPropertyMenuQuery({ 
+        propertyId: selectedPropertyId,
+        page, 
+        limit,
+        search: searchQuery.trim(),
+        group: groupFilter,
+        type: typeFilter,
+        status: statusFilter
+    }, {
         skip: !isLoggedIn || !selectedPropertyId
     })
 
@@ -252,6 +272,17 @@ export default function MenuMaster() {
         limit: itemAuditLimit,
     }, {
         skip: !selected?.id || mode !== "view" || sheetTab !== "history"
+    });
+
+    const { data: globalAuditLogs, isFetching: globalAuditFetching, refetch: refetchGlobalLogs } = useGetLogsByTableQuery({
+        tableName: "menu_master",
+        propertyId: selectedPropertyId,
+        page: auditPage,
+        limit: auditLimit,
+        search: auditSearchQuery,
+        action: auditActionFilter,
+    }, {
+        skip: !isLoggedIn || !selectedPropertyId || activeTab !== "history"
     });
 
     const [createMenuItem] = useCreateMenuItemMutation()
@@ -303,36 +334,12 @@ export default function MenuMaster() {
 
     const menuRows = useMemo(() => menuData?.data ?? [], [menuData?.data]);
     
-    const cleanSearchQuery = searchQuery.trim();
-
-    const filteredMenuItems = useMemo(() => {
-        const rows = menuRows;
-        const query = cleanSearchQuery.toLowerCase();
-
-        return rows.filter((item: MenuItem) => {
-            const matchesSearch = !query || [
-                item.item_name,
-                item.description || "",
-                formatModuleDisplayId("menu", item.id)
-            ].some(field => String(field).toLowerCase().includes(query));
-
-            const matchesGroup = !groupFilter || item.menu_item_group === groupFilter;
-            const matchesType = !typeFilter || (typeFilter === "veg" ? item.is_veg : !item.is_veg);
-            const matchesStatus = !statusFilter || (statusFilter === "active" ? item.is_active : !item.is_active);
-
-            return matchesSearch && matchesGroup && matchesType && matchesStatus;
-        });
-    }, [menuRows, cleanSearchQuery, groupFilter, typeFilter, statusFilter]);
-
-    const totalRecords = filteredMenuItems.length;
-    const totalPages = Math.max(1, Math.ceil(totalRecords / limit));
-    const paginatedMenuItems = useMemo(() => {
-        const start = (page - 1) * limit;
-        return filteredMenuItems.slice(start, start + limit);
-    }, [filteredMenuItems, page, limit]);
+    const totalRecords = menuData?.pagination?.total ?? 0;
+    const totalPages = menuData?.pagination?.totalPages ?? 1;
+    const paginatedMenuItems = menuRows;
 
     useEffect(() => {
-        if (page > totalPages) {
+        if (page > totalPages && totalPages > 0) {
             setPage(totalPages);
         }
     }, [page, totalPages]);
@@ -379,6 +386,64 @@ export default function MenuMaster() {
 
         exportToExcel(formatted, "Menu-Items.xlsx");
         toast.success("Export completed");
+    };
+
+    const filteredAuditLogs = useMemo(() => {
+        let rows = globalAuditLogs?.data ?? [];
+        if (auditSearchQuery) {
+            const query = auditSearchQuery.toLowerCase();
+            rows = rows.filter((log: any) => {
+                const searchFields = [
+                    log.event_id?.toString() || "",
+                    log.event_id ? formatModuleDisplayId("menu", log.event_id) : "",
+                    log.event_type || "",
+                    `${log.user_first_name || ""} ${log.user_last_name || ""}`.trim() || "System"
+                ];
+                return searchFields.some((field) => field.toLowerCase().includes(query));
+            });
+        }
+        return rows;
+    }, [globalAuditLogs?.data, auditSearchQuery]);
+
+    const exportAuditLogsSheet = () => {
+        if (!filteredAuditLogs.length) {
+            toast.info("No audit logs to export");
+            return;
+        }
+
+        const formatted = filteredAuditLogs.map((log: any) => {
+            const userName = `${log.user_first_name || ""} ${log.user_last_name || ""}`.trim() || "System";
+            return {
+                "Menu ID": formatModuleDisplayId("menu", log.event_id),
+                "Action": formatAuditActionText(log.event_type),
+                "Change": getAuditChangeText(parseAuditDetails(log.details), log, true),
+                "User": userName,
+                "Date & Time": formatAppDateTime(log.created_on),
+            };
+        });
+
+        exportToExcel(formatted, "MenuItemsAuditLogs.xlsx");
+        toast.success("History exported successfully");
+    };
+
+    const resetHistoryFilters = () => {
+        setAuditSearchInput("");
+        setAuditSearchQuery("");
+        setAuditActionFilter("");
+        setAuditPage(1);
+    };
+
+    const refreshHistoryGrid = async () => {
+        if (globalAuditFetching) return;
+        const toastId = toast.loading("Refreshing history...");
+        try {
+            await refetchGlobalLogs();
+            toast.dismiss(toastId);
+            toast.success("History refreshed");
+        } catch {
+            toast.dismiss(toastId);
+            toast.error("Failed to refresh");
+        }
     };
 
     const openView = (item: MenuItem) => {
@@ -450,22 +515,22 @@ export default function MenuMaster() {
 
     return (
         <div className="flex flex-col bg-background">
-            <section className="p-6 lg:p-8 space-y-6">
+            <section className="p-4 lg:p-6 space-y-4">
 
                 {/* Header */}
-                <div className="flex items-center justify-between w-full">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 
                     {/* LEFT SIDE */}
-                    <div className="shrink-0">
-                        <h1 className="text-2xl font-bold">Menu Items</h1>
-                        <p className="text-sm text-muted-foreground mt-1">
+                    <div className="flex flex-col">
+                        <h1 className="text-2xl font-bold leading-tight">Menu Items</h1>
+                        <p className="text-sm text-muted-foreground">
                             Manage restaurant menu items
                         </p>
                     </div>
 
 
                     {/* RIGHT SIDE */}
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex items-center gap-3">
 
                         {(isSuperAdmin || isOwner) && (
                             <div className="flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
@@ -526,8 +591,33 @@ export default function MenuMaster() {
 
                 </div>
 
+                <div className="border-b border-border flex">
+                    <button
+                        onClick={() => setActiveTab("items")}
+                        className={cn(
+                            "px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px]",
+                            activeTab === "items"
+                                ? "border-primary text-primary"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        Items
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("history")}
+                        className={cn(
+                            "px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px]",
+                            activeTab === "history"
+                                ? "border-primary text-primary"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        History
+                    </button>
+                </div>
 
-                <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0 shadow-sm">
+                {activeTab === "items" && (
+                <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
                     <div className="w-full">
                         <GridToolbar className="border-b-0">
                             <GridToolbarRow className="gap-2">
@@ -624,8 +714,8 @@ export default function MenuMaster() {
                             columns={[
                                 {
                                     label: "Menu ID",
-                                    headClassName: "text-center",
-                                    cellClassName: "text-center font-medium min-w-[90px]",
+                                    headClassName: "text-center w-[120px]",
+                                    cellClassName: "text-center font-medium text-primary min-w-[120px]",
                                     render: (item: MenuItem) => (
                                         <button
                                             type="button"
@@ -723,6 +813,118 @@ export default function MenuMaster() {
                         />
                     </div>
                 </div>
+                )}
+
+                {activeTab === "history" && (
+                    <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
+                        <div className="w-full">
+                            <GridToolbar className="border-b-0">
+                                <GridToolbarRow className="gap-2">
+                                    <GridToolbarSearch
+                                        value={auditSearchInput}
+                                        onChange={(val) => {
+                                            setAuditSearchInput(val);
+                                            if (!val.trim()) setAuditSearchQuery("");
+                                        }}
+                                        onSearch={() => {
+                                            setAuditSearchQuery(auditSearchInput.trim());
+                                            setAuditPage(1);
+                                        }}
+                                    />
+                                    <GridToolbarSelect
+                                        label="Action"
+                                        value={auditActionFilter}
+                                        onChange={(val) => {
+                                            setAuditActionFilter(val);
+                                            setAuditPage(1);
+                                        }}
+                                        options={[
+                                            { label: "All", value: "" },
+                                            { label: "Create", value: "CREATE" },
+                                            { label: "Update", value: "UPDATE" },
+                                            { label: "Delete", value: "DELETE" },
+                                        ]}
+                                    />
+                                    <GridToolbarActions
+                                        className="gap-1 justify-end"
+                                        actions={[
+                                            {
+                                                key: "export",
+                                                label: "Export History",
+                                                icon: <Download className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                onClick: exportAuditLogsSheet,
+                                            },
+                                            {
+                                                key: "reset",
+                                                label: "Reset Filters",
+                                                icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                onClick: resetHistoryFilters,
+                                            },
+                                            {
+                                                key: "refresh",
+                                                label: "Refresh History",
+                                                icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                onClick: refreshHistoryGrid,
+                                                disabled: globalAuditFetching,
+                                            },
+                                        ]}
+                                    />
+                                </GridToolbarRow>
+                            </GridToolbar>
+                        </div>
+                        <div className="px-2 pb-2">
+                            <AppDataGrid
+                                density="compact"
+                                columns={[
+                                    {
+                                        label: "Menu ID",
+                                        headClassName: "text-center w-[120px]",
+                                        cellClassName: "text-center font-medium text-primary min-w-[120px]",
+                                        render: (log: any) => formatModuleDisplayId("menu", log.event_id)
+                                    },
+                                    { 
+                                        label: "Action", 
+                                        headClassName: "text-center w-[140px]",
+            cellClassName: "text-center font-medium min-w-[140px]",
+                                        render: (log: any) => getAuditActionBadge(log.event_type)
+                                    },
+                                    { 
+                                        label: "Change", 
+                                        headClassName: "w-[320px]",
+            cellClassName: "min-w-[320px] whitespace-normal text-primary/80 font-medium",
+                                        render: (log: any) => getAuditChangeText(parseAuditDetails(log.details), log) 
+                                    },
+                                    { 
+                                        label: "User", 
+                                        headClassName: "w-[180px]",
+            cellClassName: "text-muted-foreground min-w-[180px]",
+                                        render: (log: any) => `${log.user_first_name || ""} ${log.user_last_name || ""}`.trim() || "System"
+                                    },
+                                    { 
+                                        label: "Date & Time", 
+                                        headClassName: "text-white w-[180px]",
+            cellClassName: "text-muted-foreground min-w-[180px]",
+                                        render: (log: any) => formatAppDateTime(log.created_on) 
+                                    }
+                                ] as ColumnDef[]}
+                                data={filteredAuditLogs}
+                                loading={globalAuditFetching}
+                                emptyText="No history logs found"
+                                minWidth="800px"
+                                enablePagination
+                                paginationProps={{
+                                    page: auditPage,
+                                    totalPages: globalAuditLogs?.pagination?.totalPages ?? 1,
+                                    setPage: setAuditPage,
+                                    totalRecords: globalAuditLogs?.pagination?.total ?? globalAuditLogs?.data?.length ?? 0,
+                                    limit: auditLimit,
+                                    onLimitChange: (v) => { setAuditLimit(v); setAuditPage(1); },
+                                    disabled: globalAuditFetching,
+                                }}
+                            />
+                        </div>
+                    </div>
+                )}
             </section>
 
 
@@ -856,18 +1058,19 @@ export default function MenuMaster() {
                                                         },
                                                         { 
                                                             label: "Updated By", 
-                                                            cellClassName: "whitespace-nowrap",
+                                                            headClassName: "text-center w-[140px]",
+            cellClassName: "text-center font-medium min-w-[140px]",
                                                             render: (log: any) => `${log.user_first_name || ""} ${log.user_last_name || ""}`.trim() || "System"
                                                         },
                                                         { 
                                                             label: "Date & Time", 
-                                                            headClassName: "text-white", 
-                                                            cellClassName: "text-[10px] text-muted-foreground whitespace-nowrap min-w-[130px]",
+                                                            headClassName: "text-white w-[180px]", 
+                                                            cellClassName: "text-muted-foreground min-w-[180px]",
                                                             render: (log: any) => formatAppDateTime(log.created_on) 
                                                         },
                                                         { 
                                                             label: "Changes", 
-                                                            cellClassName: "text-[11px] font-medium text-foreground/80 break-words min-w-[300px]",
+                                                            cellClassName: "text-[11px] font-medium text-foreground/80 break-words min-w-[300px] max-w-[350px]",
                                                             render: (log: any) => getAuditChangeText(parseAuditDetails(log.details), log) 
                                                         }
                                                     ] as ColumnDef[]}
@@ -879,7 +1082,7 @@ export default function MenuMaster() {
                                                         page: itemAuditPage,
                                                         totalPages: auditLogs?.pagination?.totalPages ?? 1,
                                                         setPage: setItemAuditPage,
-                                                        totalRecords: auditLogs?.pagination?.totalItems ?? auditLogs?.data?.length ?? 0,
+                                                        totalRecords: auditLogs?.pagination?.total ?? auditLogs?.data?.length ?? 0,
                                                         limit: itemAuditLimit,
                                                         onLimitChange: (v) => { setItemAuditLimit(v); setItemAuditPage(1); },
                                                         disabled: !auditLogs,

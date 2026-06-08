@@ -15,6 +15,7 @@ import {
     useCheckDuplicateInventoryMutation,
     useLazyExportInventoryQuery,
     useGetLogsQuery as useGetAuditLogsQuery,
+    useGetLogsByTableQuery,
 } from "@/redux/services/hmsApi";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { useAppSelector } from "@/redux/hook";
@@ -40,7 +41,7 @@ import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
 import { motion } from "framer-motion";
 import { formatAppDateTime } from "@/utils/dateFormat";
-import { getFormattedAuditChanges, getAuditActionBadge } from "@/utils/auditUtils";
+import { getFormattedAuditChanges, getAuditActionBadge, getAuditChangePlainText, formatAuditActionText } from "@/utils/auditUtils";
 
 /* ---------------- Helpers ---------------- */
 const parseAuditDetails = (details: any) => {
@@ -159,9 +160,18 @@ export default function InventoryMaster() {
 
     const [mode, setMode] = useState<"view" | "edit" | "add" | null>(null);
     const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
+    const [activeTab, setActiveTab] = useState<"inventory" | "audit">("inventory");
     const [selected, setSelected] = useState<InventoryItem | null>(null);
     const [itemAuditPage, setItemAuditPage] = useState(1);
     const [itemAuditLimit, setItemAuditLimit] = useState(5);
+
+    // History tab state
+    const [mainAuditPage, setMainAuditPage] = useState(1);
+    const [mainAuditLimit, setMainAuditLimit] = useState(10);
+    const [historySearchInput, setHistorySearchInput] = useState("");
+    const [historySearchQuery, setHistorySearchQuery] = useState("");
+    const [historyActionFilter, setHistoryActionFilter] = useState("");
+
 
     const [form, setForm] = useState<InventoryForm>({
         inventory_type_id: null,
@@ -214,6 +224,97 @@ export default function InventoryMaster() {
     }, {
         skip: !isLoggedIn || !selectedPropertyId
     })
+
+    const {
+        data: inventoryAuditLogs,
+        isLoading: inventoryLogsLoading,
+        isFetching: inventoryLogsFetching,
+        refetch: refetchInventoryLogs
+    } = useGetLogsByTableQuery({
+        tableName: "inventory_master",
+        propertyId: selectedPropertyId,
+        page: mainAuditPage,
+        limit: mainAuditLimit,
+    }, {
+        skip: !isLoggedIn || !selectedPropertyId || activeTab !== "audit"
+    });
+
+    const filteredHistoryLogs = useMemo(() => {
+        let rows = inventoryAuditLogs?.data ?? [];
+        const q = historySearchQuery.toLowerCase();
+        
+        if (q) {
+            rows = rows.filter((audit: any) => {
+                return (
+                    formatModuleDisplayId("inventory", audit.event_id).toLowerCase().includes(q) ||
+                    String(audit.user_first_name || "").toLowerCase().includes(q) ||
+                    String(audit.user_last_name || "").toLowerCase().includes(q)
+                );
+            });
+        }
+
+        if (historyActionFilter) {
+            rows = rows.filter((audit: any) => audit.event_type === historyActionFilter);
+        }
+
+        return rows;
+    }, [inventoryAuditLogs, historySearchQuery, historyActionFilter]);
+
+    const historyTotalRecords = inventoryAuditLogs?.pagination?.totalItems ?? filteredHistoryLogs.length;
+    const historyTotalPages = inventoryAuditLogs?.pagination?.totalPages ?? 1;
+    const paginatedHistoryLogs = filteredHistoryLogs;
+
+    const historyActionOptions = ["CREATE", "UPDATE", "DELETE"];
+
+    const resetHistoryFilters = () => {
+        setHistorySearchInput("");
+        setHistorySearchQuery("");
+        setHistoryActionFilter("");
+        setMainAuditPage(1);
+    };
+
+    const refreshHistoryGrid = async () => {
+        const toastId = toast.loading("Refreshing history logs...");
+        try {
+            await refetchInventoryLogs();
+            toast.dismiss(toastId);
+            toast.success("History logs refreshed");
+        } catch {
+            toast.dismiss(toastId);
+            toast.error("Failed to refresh history logs");
+        }
+    };
+
+    const exportHistoryLogs = () => {
+        if (!filteredHistoryLogs.length) return toast.info("No history rows to export");
+        const formatted = filteredHistoryLogs.map((audit: any) => {
+            let details: any = null;
+            try {
+                details = typeof audit.details === "string" ? JSON.parse(audit.details) : audit.details;
+            } catch {}
+            
+            let changeText = "--";
+            if (details) {
+                // Pass inventoryTypes if the detail has inventory_type_id so it maps it nicely, 
+                // but getAuditChangePlainText takes customParsers. 
+                // For simplicity, we can pass a custom parser for inventory_type_id
+                changeText = getAuditChangePlainText(details, {
+                    inventory_type_id: (id) => inventoryTypes.find((t: any) => String(t.id) === String(id))?.type || "Unknown",
+                    is_active: (v) => v ? 'Active' : 'Inactive'
+                });
+            }
+
+            return {
+                "Inventory ID": formatModuleDisplayId("inventory", audit.event_id),
+                "Action": formatAuditActionText(audit.event_type),
+                "Change": changeText,
+                "User": `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim() || audit.user_name || "System",
+                "Date & Time": formatAppDateTime(audit.created_on),
+            };
+        });
+        exportToExcel(formatted, "Inventory-History.xlsx");
+        toast.success("Export completed");
+    };
 
     const [createInventoryMaster] = useCreateInventoryMasterMutation()
     const [createInventoryMasterBulk] = useCreateInventoryMasterBulkMutation()
@@ -595,6 +696,32 @@ export default function InventoryMaster() {
                     </div>
                 </div>
 
+                <div className="border-b border-border flex">
+                    <button
+                        onClick={() => setActiveTab("inventory")}
+                        className={cn(
+                            "px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px]",
+                            activeTab === "inventory"
+                                ? "border-primary text-primary"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        Inventory
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("audit")}
+                        className={cn(
+                            "px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px]",
+                            activeTab === "audit"
+                                ? "border-primary text-primary"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        History
+                    </button>
+                </div>
+
+                {activeTab === "inventory" && (
                 <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
                     <div className="w-full">
                         <GridToolbar className="border-b-0">
@@ -787,21 +914,147 @@ export default function InventoryMaster() {
                         />
                     </div>
                 </div>
+                )}
+
+                {activeTab === "audit" && (
+                    <div className="flex-1">
+                        <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
+                            <div className="w-full">
+                                <GridToolbar className="border-b-0">
+                                    <GridToolbarRow className="gap-2">
+                                        <GridToolbarSearch
+                                            value={historySearchInput}
+                                            onChange={setHistorySearchInput}
+                                            onSearch={() => {
+                                                setHistorySearchQuery(historySearchInput.trim());
+                                                setMainAuditPage(1);
+                                            }}
+
+                                        />
+
+                                        <GridToolbarSelect
+                                            label="Action"
+                                            value={historyActionFilter}
+                                            onChange={(value) => {
+                                                setHistoryActionFilter(value);
+                                                setMainAuditPage(1);
+                                            }}
+                                            options={[
+                                                { label: "All", value: "" },
+                                                ...historyActionOptions.map((action) => ({
+                                                    label: action,
+                                                    value: action,
+                                                })),
+                                            ]}
+                                        />
+
+                                        <GridToolbarSpacer />
+                                        
+                                        <GridToolbarActions
+                                            className="gap-1 justify-end"
+                                            actions={[
+                                                {
+                                                    key: "export",
+                                                    label: "Export History",
+                                                    icon: <Download className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: exportHistoryLogs,
+                                                },
+                                                {
+                                                    key: "reset",
+                                                    label: "Reset Filters",
+                                                    icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: resetHistoryFilters,
+                                                },
+                                                {
+                                                    key: "refresh",
+                                                    label: "Refresh Data",
+                                                    icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: refreshHistoryGrid,
+                                                    disabled: inventoryLogsFetching,
+                                                },
+                                            ]}
+                                        />
+                                    </GridToolbarRow>
+                                </GridToolbar>
+                            </div>
+                            <div className="px-2 pb-2">
+                                <AppDataGrid
+                                    data={paginatedHistoryLogs}
+                                    loading={inventoryLogsLoading}
+                                    rowKey={(audit: any) => audit.id}
+                                    emptyText="No history logs found."
+                                    showActions={false}
+                                    enablePagination={true}
+                                    paginationProps={{
+                                        page: mainAuditPage,
+                                        setPage: setMainAuditPage,
+                                        totalPages: historyTotalPages,
+                                        disabled: inventoryLogsFetching,
+                                        totalRecords: historyTotalRecords,
+                                        limit: mainAuditLimit,
+                                        onLimitChange: (limit) => {
+                                            setMainAuditLimit(limit);
+                                            setMainAuditPage(1);
+                                        }
+                                    }}
+                                    columns={[
+                                        {
+                                            label: "Inventory ID",
+                                            headClassName: "text-center w-[120px]",
+                                            cellClassName: "text-center font-medium text-primary min-w-[120px]",
+                                            render: (audit: any) => audit.event_id ? formatModuleDisplayId("inventory", audit.event_id) : "—",
+                                        },
+                                        {
+                                            label: "Action",
+                                            headClassName: "text-center w-[140px]",
+                                            cellClassName: "text-center font-medium min-w-[140px]",
+                                            render: (audit: any) => getAuditActionBadge(audit.event_type),
+                                        },
+                                        {
+                                            label: "Change",
+                                            headClassName: "w-[320px]",
+                                            cellClassName: "min-w-[320px] whitespace-normal text-primary/80 font-medium",
+                                            render: (audit: any) => {
+                                                let parsed = audit.details;
+                                                if (typeof parsed === 'string') {
+                                                    try { parsed = JSON.parse(parsed); } catch { }
+                                                }
+                                                return getAuditChangeText(parsed, inventoryTypes);
+                                            },
+                                        },
+                                        {
+                                            label: "User",
+                                            headClassName: "w-[180px]",
+                                            cellClassName: "text-muted-foreground min-w-[180px]",
+                                            render: (audit: any) => `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim() || audit.user_name || "System",
+                                        },
+                                        {
+                                            label: "Date & Time",
+                                            headClassName: "text-white w-[180px]",
+                                            cellClassName: "text-muted-foreground min-w-[180px]",
+                                            render: (audit: any) => formatAppDateTime(audit.created_on),
+                                        },
+                                    ] as ColumnDef[]}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* BULK ADD SHEET */}
                 <Sheet open={mode === "add"} onOpenChange={(open) => !open && setMode(null)}>
                     <SheetContent side="right" onOpenAutoFocus={(event) => event.preventDefault()} className="w-full sm:max-w-4xl flex flex-col p-0">
-                        <SheetHeader className="px-6 py-4 border-b">
+                        <SheetHeader className="px-6 py-4 border-b -mb-[2px]">
                             <SheetTitle className="text-xl font-bold">Add Inventory Items</SheetTitle>
                         </SheetHeader>
 
-                        <div className="flex-1 overflow-y-auto">
-                            <div className="px-6 pb-6 pt-3 space-y-6">
+                        <div className="flex-1 overflow-y-auto px-3">
+                            <div className="sticky top-0 z-10 bg-background  mb-4">
                                 { (isSuperAdmin || isOwner) && (
-                                    <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-1 -mt-1 -mb-2">
+                                    <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background    mb-2">
                                         <Label>Property</Label>
                                         <NativeSelect
-                                            className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
+                                            className="w-full h-10 rounded-[3px] border border-border bg-background text-sm"
                                             value={selectedPropertyId ?? ""}
                                             onChange={(e) => setSelectedPropertyId(e.target.value)}
                                         >
@@ -818,7 +1071,7 @@ export default function InventoryMaster() {
 
 
 
-                                <div className="editable-grid-compact border rounded-[5px] overflow-hidden flex flex-col">
+                                <div className="editable-grid-compact border rounded-[5px] overflow-hidden flex flex-col mb-3 mt-0.5 ">
                                     <div className="overflow-x-auto w-full bg-background border-b border-border">
                                         <div className="w-full min-w-[700px]">
                                             <DataGrid>
@@ -862,7 +1115,6 @@ export default function InventoryMaster() {
                                                                                 void ensureBulkDuplicateInventory([nextRow]);
                                                                             }
                                                                         }}
-                                                                        placeholder="--Please Select--"
                                                                     />
                                                                 </ValidationTooltip>
                                                             </DataGridCell>
@@ -942,10 +1194,10 @@ export default function InventoryMaster() {
                                             </DataGrid>
                                         </div>
                                     </div>
-                                    <div className="editable-grid-footer p-3 bg-muted/10">
-                                        <button
+                                    <div className="editable-grid-footer p-3 bg-muted/10  ">
+                                        <button 
                                             type="button"
-                                            className="flex items-center gap-1.5 text-primary hover:underline text-sm font-semibold transition-colors"
+                                            className="flex items-center gap-1.5 text-primary hover:underline text-sm font-semibold transition-colors "
                                             onClick={addBulkRow}
                                         >
                                             <PlusCircle className="w-4 h-4" /> Add New Inventory Item(s)
@@ -953,8 +1205,8 @@ export default function InventoryMaster() {
                                     </div>
                                 </div>
                             </div>
-
-                            <div className="p-6 border-t bg-muted/20 flex justify-end gap-3">
+                            
+                            <div className="-mx-3 px-6 py-4 border-t border-border bg-muted/20 flex justify-end gap-3">
                                 <Button variant="heroOutline" onClick={() => setMode(null)}>
                                     Cancel
                                 </Button>

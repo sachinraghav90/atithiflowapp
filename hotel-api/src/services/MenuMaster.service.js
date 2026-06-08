@@ -13,9 +13,45 @@ class MenuMasterService {
        GET BY PROPERTY (PAGINATED)
     =============================== */
 
-    async getByProperty({ propertyId, page = 1, limit = 10 }) {
+    async getByProperty({ propertyId, page = 1, limit = 10, search = "", status = "", type = "", group = "" }) {
 
         const offset = (page - 1) * limit;
+
+        const whereConditions = ["m.property_id = $1"];
+        const params = [propertyId];
+
+        if (search) {
+            params.push(`%${search}%`);
+            const pIdx = params.length;
+            const searchIdMatch = search.match(/^#?ME(\d+)$/i) || search.match(/^#?ME0+(\d+)$/i) || search.match(/^(\d+)$/i);
+            if (searchIdMatch) {
+                params.push(Number(searchIdMatch[1]));
+                whereConditions.push(`(m.item_name ILIKE $${pIdx} OR m.description ILIKE $${pIdx} OR m.id = $${params.length})`);
+            } else {
+                whereConditions.push(`(m.item_name ILIKE $${pIdx} OR m.description ILIKE $${pIdx})`);
+            }
+        }
+
+        if (status) {
+            params.push(status === "active");
+            whereConditions.push(`m.is_active = $${params.length}`);
+        }
+
+        if (type) {
+            params.push(type === "veg");
+            whereConditions.push(`m.is_veg = $${params.length}`);
+        }
+
+        if (group) {
+            if (group === "None") {
+                whereConditions.push(`m.menu_item_group_id IS NULL`);
+            } else {
+                params.push(group);
+                whereConditions.push(`g.name = $${params.length}`);
+            }
+        }
+
+        const whereClause = "WHERE " + whereConditions.join(" AND ");
 
         const { rows } = await this.#DB.query(
             `
@@ -35,20 +71,22 @@ class MenuMasterService {
             FROM public.menu_master m
             LEFT JOIN public.menu_item_groups g
                 ON g.id = m.menu_item_group_id
-            WHERE m.property_id = $1
+            ${whereClause}
             ORDER BY m.id DESC
-            LIMIT $2 OFFSET $3
+            LIMIT $${params.length + 1} OFFSET $${params.length + 2}
             `,
-            [propertyId, limit, offset]
+            [...params, limit, offset]
         );
 
         const { rows: countRows } = await this.#DB.query(
             `
             SELECT COUNT(*)::int AS total
-            FROM public.menu_master
-            WHERE property_id = $1
+            FROM public.menu_master m
+            LEFT JOIN public.menu_item_groups g
+                ON g.id = m.menu_item_group_id
+            ${whereClause}
             `,
-            [propertyId]
+            params
         );
 
         return {
@@ -161,7 +199,16 @@ class MenuMasterService {
             event_type: "CREATE",
             task_name: "Create Menu Item",
             comments: "Menu item created",
-            details: JSON.stringify(created),
+            details: JSON.stringify({
+                item_name: created.item_name,
+                price: created.price,
+                prep_time: created.prep_time,
+                menu_item_group_id: created.menu_item_group_id,
+                is_active: created.is_active,
+                is_veg: created.is_veg,
+                description: created.description,
+                ...(image !== undefined && image !== null ? { item_image: "Image Uploaded" } : {})
+            }),
             user_id: userId
         });
 
@@ -281,32 +328,35 @@ class MenuMasterService {
        DELETE
     =============================== */
 
-    async deleteById(id, userId) {
+  async deleteById(id, userId) {
 
-        const { rows, rowCount } = await this.#DB.query(
-            `
-            DELETE FROM public.menu_master
-            WHERE id = $1
-            RETURNING id, property_id, item_name
-            `,
-            [id]
-        );
+    const { rows, rowCount } = await this.#DB.query(
+        `
+        DELETE FROM public.menu_master
+        WHERE id = $1
+        RETURNING id, property_id, item_name, image IS NOT NULL AS has_image
+        `,
+        [id]
+    );
 
-        if (!rowCount) return false;
+    if (!rowCount) return false;
 
-        await AuditService.log({
-            property_id: rows[0].property_id,
-            event_id: rows[0].id,
-            table_name: "menu_master",
-            event_type: "DELETE",
-            task_name: "Delete Menu Item",
-            comments: "Menu item deleted",
-            details: JSON.stringify(rows[0]),
-            user_id: userId
-        });
+    await AuditService.log({
+        property_id: rows[0].property_id,
+        event_id: rows[0].id,
+        table_name: "menu_master",
+        event_type: "DELETE",
+        task_name: "Delete Menu Item",
+        comments: "Menu item deleted",
+        details: JSON.stringify({
+            item_name: rows[0].item_name,
+            ...(rows[0].has_image ? { item_image: "Image Removed" } : {})
+        }),
+        user_id: userId
+    });
 
-        return true;
-    }
+    return true;
+}
 
     /* =====================================
     GET MENU ITEMS BY GROUP ID
@@ -439,7 +489,16 @@ class MenuMasterService {
                     event_type: "CREATE",
                     task_name: "Bulk Create Menu Item",
                     comments: `Menu item created: ${created.item_name}`,
-                    details: JSON.stringify(created),
+                    details: JSON.stringify({
+                        item_name: created.item_name,
+                        price: created.price,
+                        prep_time: created.prep_time,
+                        menu_item_group_id: created.menu_item_group_id,
+                        is_active: created.is_active,
+                        is_veg: created.is_veg,
+                        description: created.description,
+                        ...(image !== undefined && image !== null ? { item_image: "Image Uploaded" } : {})
+                    }),
                     user_id: userId
                 });
 

@@ -14,7 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAppSelector } from "@/redux/hook";
 import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
-import { useCreateLaundryPricingMutation, useGetPropertyLaundryPricingQuery, useUpdateLaundryPricingMutation, useGetLogsQuery } from "@/redux/services/hmsApi";
+import { useCreateLaundryPricingMutation, useGetPropertyLaundryPricingQuery, useUpdateLaundryPricingMutation, useGetLogsQuery, useGetLogsByTableQuery } from "@/redux/services/hmsApi";
 import { formatAppDateTime } from "@/utils/dateFormat";
 import { formatReadableLabel } from "@/utils/formatString";
 import { normalizeNumberInput, normalizeTextInput } from "@/utils/normalizeTextInput";
@@ -35,7 +35,7 @@ import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { GridBadge } from "@/components/ui/grid-badge";
 import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
-import { getFormattedAuditChanges, getAuditActionBadge } from "@/utils/auditUtils";
+import { getFormattedAuditChanges, getAuditActionBadge, formatAuditActionText, getAuditChangePlainText } from "@/utils/auditUtils";
 
 /* ---------------- Types ---------------- */
 type LaundryItem = {
@@ -97,19 +97,9 @@ const STATUS_OPTIONS = [
     { label: "Inactive", value: "false" },
 ];
 
-function getLaundryPricingAuditChanges(audit: any) {
-    let details = audit.details;
-    if (typeof details === "string") {
-        try {
-            details = JSON.parse(details);
-        } catch (e) {
-            // ignore
-        }
-    }
-    const before = details?.before;
-    const after = details?.after;
-
+function getLaundryPricingAuditChanges(audit: any, plainText = false) {
     if (audit.event_type === "CREATE") {
+        if (plainText) return "Pricing: Created";
         return (
             <div className="text-muted-foreground">
                 <span className="font-semibold text-foreground/80">Pricing:</span> Created
@@ -117,29 +107,21 @@ function getLaundryPricingAuditChanges(audit: any) {
         );
     }
 
-    const formattedDetails: any = { before: {}, after: {} };
-
-    if (before?.item_name !== after?.item_name) {
-        formattedDetails.before["Item Name"] = before?.item_name || "—";
-        formattedDetails.after["Item Name"] = after?.item_name || "—";
+    let details = audit.details;
+    if (typeof details === "string") {
+        try { details = JSON.parse(details); } catch (e) { }
     }
-
-    if (before?.item_rate !== after?.item_rate) {
-        formattedDetails.before["Rate (₹)"] = `₹${String(before?.item_rate ?? "—").replace(/^₹+/, "").trim()}`;
-        formattedDetails.after["Rate (₹)"] = `₹${String(after?.item_rate ?? "—").replace(/^₹+/, "").trim()}`;
+    
+    const valueFormatters = {
+        "item_rate": (v: any) => `₹${String(v).replace(/^₹+/, "").trim()}`,
+        "is_active": (v: any) => (v ? "Active" : "Inactive"),
+        "Rate (₹)": (v: any) => `₹${String(v).replace(/^₹+/, "").trim()}`,
+    };
+    
+    if (plainText) {
+        return getAuditChangePlainText(details, valueFormatters);
     }
-
-    if (before?.is_active !== after?.is_active) {
-        formattedDetails.before["Status"] = before?.is_active ? "Active" : "Inactive";
-        formattedDetails.after["Status"] = after?.is_active ? "Active" : "Inactive";
-    }
-
-    if (before?.description !== after?.description) {
-        formattedDetails.before["Description"] = before?.description || "—";
-        formattedDetails.after["Description"] = after?.description || "—";
-    }
-
-    return getFormattedAuditChanges(formattedDetails);
+    return getFormattedAuditChanges(details, valueFormatters);
 }
 
 /* ---------------- Component ---------------- */
@@ -176,9 +158,86 @@ export default function LaundryPricingManagement() {
         resetDeps: [selectedPropertyId, statusFilter, searchQuery],
     });
 
+    const [mainTab, setMainTab] = useState<"pricing" | "audit">("pricing");
+    const [mainAuditPage, setMainAuditPage] = useState(1);
+    const [mainAuditLimit, setMainAuditLimit] = useState(10);
+    const [historySearchInput, setHistorySearchInput] = useState("");
+    const [historySearchQuery, setHistorySearchQuery] = useState("");
+    const [historyActionFilter, setHistoryActionFilter] = useState("");
+
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
     const isSuperAdmin = useAppSelector(selectIsSuperAdmin)
     const isOwner = useAppSelector(selectIsOwner)
+
+    const {
+        data: globalAuditLogs,
+        isLoading: globalAuditLogsLoading,
+        isFetching: globalAuditLogsFetching,
+        refetch: refetchGlobalAuditLogs
+    } = useGetLogsByTableQuery({
+        tableName: "laundry",
+        page: mainAuditPage,
+        limit: mainAuditLimit,
+    }, {
+        skip: !isLoggedIn || mainTab !== "audit"
+    });
+
+    const paginatedHistoryLogs = useMemo(() => {
+        let rows = globalAuditLogs?.data ?? [];
+        if (historySearchQuery) {
+            const lowerQuery = historySearchQuery.toLowerCase();
+            rows = rows.filter((r: any) =>
+                r.event_type?.toLowerCase().includes(lowerQuery) ||
+                r.user_name?.toLowerCase().includes(lowerQuery) ||
+                r.user_first_name?.toLowerCase().includes(lowerQuery) ||
+                (r.event_id && formatModuleDisplayId("laundry_pricing", r.event_id).toLowerCase().includes(lowerQuery))
+            );
+        }
+        if (historyActionFilter) {
+            rows = rows.filter((r: any) => r.event_type?.toUpperCase() === historyActionFilter.toUpperCase());
+        }
+        return rows;
+    }, [globalAuditLogs?.data, historySearchQuery, historyActionFilter]);
+
+    const historyTotalRecords = globalAuditLogs?.pagination?.totalItems ?? globalAuditLogs?.pagination?.total ?? 0;
+    const historyTotalPages = globalAuditLogs?.pagination?.totalPages ?? 1;
+
+    const historyActionOptions = useMemo(() => ["CREATE", "UPDATE", "DELETE"], []);
+
+    const resetHistoryFilters = () => {
+        setHistorySearchInput("");
+        setHistorySearchQuery("");
+        setHistoryActionFilter("");
+        setMainAuditPage(1);
+    };
+
+    const refreshHistoryGrid = async () => {
+        if (globalAuditLogsFetching) return;
+        const toastId = toast.loading("Refreshing history...");
+        try {
+            await refetchGlobalAuditLogs();
+            toast.dismiss(toastId);
+            toast.success("History refreshed");
+        } catch {
+            toast.dismiss(toastId);
+            toast.error("Failed to refresh history");
+        }
+    };
+
+    const exportHistoryLogs = () => {
+        if (!paginatedHistoryLogs.length) return toast.info("No history rows to export");
+        const formatted = paginatedHistoryLogs.map((audit: any) => {
+            return {
+                "Laundry ID": formatModuleDisplayId("laundry_pricing", audit.event_id),
+                "Action": formatAuditActionText(audit.event_type),
+                "Change": getLaundryPricingAuditChanges(audit, true),
+                "User": `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim() || audit.user_name || "System",
+                "Date & Time": formatAppDateTime(audit.created_on),
+            };
+        });
+        exportToExcel(formatted, "Laundry-Pricing-History.xlsx");
+        toast.success("Export completed");
+    };
 
     const { 
         myProperties, 
@@ -500,7 +559,7 @@ export default function LaundryPricingManagement() {
     /* ---------------- UI ---------------- */
     return (
         <div className="flex flex-col bg-background">
-            <section className="flex flex-col p-6 lg:p-8 gap-6">
+            <section className="p-4 lg:p-6 space-y-4">
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold leading-tight">Laundry Pricing</h1>
@@ -541,6 +600,32 @@ export default function LaundryPricingManagement() {
                     </div>
                 </div>
 
+                <div className="border-b border-border flex">
+                    <button
+                        onClick={() => setMainTab("pricing")}
+                        className={cn(
+                            "px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px]",
+                            mainTab === "pricing"
+                                ? "border-primary text-primary"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        Pricing
+                    </button>
+                    <button
+                        onClick={() => setMainTab("audit")}
+                        className={cn(
+                            "px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px]",
+                            mainTab === "audit"
+                                ? "border-primary text-primary"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        History
+                    </button>
+                </div>
+
+                {mainTab === "pricing" && (
                 <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
                     <div className="w-full">
                         <GridToolbar className="border-b-0">
@@ -640,6 +725,123 @@ export default function LaundryPricingManagement() {
                         />
                     </div>
                 </div>
+                )}
+
+                {mainTab === "audit" && (
+                    <div className="flex-1">
+                        <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
+                            <div className="w-full">
+                                <GridToolbar className="border-b-0">
+                                    <GridToolbarRow className="gap-2">
+                                        <GridToolbarSearch
+                                            value={historySearchInput}
+                                            onChange={setHistorySearchInput}
+                                            onSearch={() => {
+                                                setHistorySearchQuery(historySearchInput.trim());
+                                                setMainAuditPage(1);
+                                            }}
+                                        />
+
+                                        <GridToolbarSelect
+                                            label="Action"
+                                            value={historyActionFilter}
+                                            onChange={(value) => {
+                                                setHistoryActionFilter(value);
+                                                setMainAuditPage(1);
+                                            }}
+                                            options={[
+                                                { label: "All", value: "" },
+                                                ...historyActionOptions.map((action) => ({
+                                                    label: action,
+                                                    value: action,
+                                                })),
+                                            ]}
+                                        />
+
+                                        <GridToolbarActions
+                                            className="gap-1 justify-end"
+                                            actions={[
+                                                {
+                                                    key: "export",
+                                                    label: "Export History",
+                                                    icon: <Download className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: exportHistoryLogs,
+                                                },
+                                                {
+                                                    key: "reset",
+                                                    label: "Reset Filters",
+                                                    icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: resetHistoryFilters,
+                                                },
+                                                {
+                                                    key: "refresh",
+                                                    label: "Refresh Data",
+                                                    icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: refreshHistoryGrid,
+                                                    disabled: globalAuditLogsFetching,
+                                                },
+                                            ]}
+                                        />
+                                    </GridToolbarRow>
+                                </GridToolbar>
+                            </div>
+                            <div className="px-2 pb-2">
+                                <AppDataGrid
+                                    data={paginatedHistoryLogs}
+                                    loading={globalAuditLogsLoading}
+                                    rowKey={(audit: any) => audit.id}
+                                    emptyText="No history logs found."
+                                    showActions={false}
+                                    enablePagination={true}
+                                    paginationProps={{
+                                        page: mainAuditPage,
+                                        setPage: setMainAuditPage,
+                                        totalPages: historyTotalPages,
+                                        disabled: globalAuditLogsFetching,
+                                        totalRecords: historyTotalRecords,
+                                        limit: mainAuditLimit,
+                                        onLimitChange: (limit) => {
+                                            setMainAuditLimit(limit);
+                                            setMainAuditPage(1);
+                                        }
+                                    }}
+                                    columns={[
+                                        {
+                                            label: "Laundry ID",
+                                            headClassName: "text-center w-[120px]",
+                                            cellClassName: "text-center font-medium text-primary min-w-[120px]",
+                                            render: (audit: any) => audit.event_id ? formatModuleDisplayId("laundry_pricing", audit.event_id) : "—",
+                                        },
+                                        {
+                                            label: "Action",
+                                            headClassName: "text-center w-[140px]",
+                                            cellClassName: "text-center font-medium min-w-[140px]",
+                                            render: (audit: any) => getAuditActionBadge(audit.event_type),
+                                        },
+                                        {
+                                            label: "Change",
+                                            headClassName: "w-[320px]",
+                                            cellClassName: "min-w-[320px] whitespace-normal text-primary/80 font-medium",
+                                            render: (audit: any) => getLaundryPricingAuditChanges(audit, false),
+                                        },
+                                        {
+                                            label: "User",
+                                            headClassName: "w-[180px]",
+                                            cellClassName: "text-muted-foreground min-w-[180px]",
+                                            render: (audit: any) => `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim() || audit.user_name || "System",
+                                        },
+                                        {
+                                            label: "Date & Time",
+                                            headClassName: "text-white w-[180px]",
+                                            cellClassName: "text-muted-foreground min-w-[180px]",
+                                            render: (audit: any) => formatAppDateTime(audit.created_on),
+                                        },
+                                    ] as ColumnDef<any>[]}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
             </section>
 
             {/* Combined View/Add/Edit/Bulk Sheet */}
@@ -754,7 +956,6 @@ export default function LaundryPricingManagement() {
                                             <Label className="text-foreground" htmlFor="item-name">Item Name *</Label>
                                             <Input
                                                 id="item-name"
-                                                placeholder="e.g. Dry Cleaning"
                                                 className={cn("h-11 bg-background border-primary/20 shadow-none focus-visible:ring-1 focus-visible:ring-primary", submitted && formErrors.item_name && "border-red-500")}
                                                 value={form.item_name}
                                                 onChange={(e) => {

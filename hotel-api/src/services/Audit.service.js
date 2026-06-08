@@ -142,7 +142,9 @@ class AuditService {
         tableName,
         propertyId,
         page = 1,
-        limit = 20
+        limit = 10,
+        search = "",
+        action = ""
     }) {
 
         if (!tableName) throw new Error("tableName is required");
@@ -153,7 +155,7 @@ class AuditService {
 
         const safeLimit = Number.isFinite(Number(limit))
             ? Math.min(Math.max(Number(limit), 1), 100)
-            : 20;
+            : 10;
 
         const offset = (safePage - 1) * safeLimit;
 
@@ -167,6 +169,43 @@ class AuditService {
         if (propertyId) {
             filters.push(`a.property_id = $${paramIndex++}`);
             values.push(propertyId);
+        }
+
+        if (action && action !== "All") {
+            filters.push(`a.event_type ILIKE $${paramIndex++}`);
+            values.push(action);
+        }
+
+        if (search) {
+            const normalizedSearch = search.trim();
+            const formattedIdMatch = normalizedSearch.match(/^[A-Za-z]{2,4}0*(\d+)$/i);
+            const isNumericIdSearch = /^\d+$/.test(normalizedSearch);
+
+            if (formattedIdMatch || isNumericIdSearch) {
+                const rawId = formattedIdMatch ? formattedIdMatch[1] : normalizedSearch;
+                // Exclude a.details::text for formatted IDs to prevent base64 string collisions
+                const detailsSearch = !formattedIdMatch ? `a.details::text ILIKE $${paramIndex} OR ` : '';
+                filters.push(`(
+                    a.comments ILIKE $${paramIndex} OR 
+                    s.first_name ILIKE $${paramIndex} OR 
+                    s.last_name ILIKE $${paramIndex} OR 
+                    ${detailsSearch}
+                    a.event_id::text ILIKE $${paramIndex} OR
+                    a.event_id::text = $${paramIndex + 1}::text
+                )`);
+                values.push(`%${search}%`, String(rawId));
+                paramIndex += 2;
+            } else {
+                filters.push(`(
+                    a.comments ILIKE $${paramIndex} OR 
+                    s.first_name ILIKE $${paramIndex} OR 
+                    s.last_name ILIKE $${paramIndex} OR 
+                    a.details::text ILIKE $${paramIndex} OR 
+                    a.event_id::text ILIKE $${paramIndex}
+                )`);
+                values.push(`%${search}%`);
+                paramIndex++;
+            }
         }
 
         const whereClause = filters.join(" AND ");

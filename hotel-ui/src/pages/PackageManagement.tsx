@@ -14,7 +14,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { useAppSelector } from "@/redux/hook";
-import { useCreatePackageMutation, useGetMyPropertiesQuery, useGetPackageByIdQuery, useGetPackagesByPropertyQuery, useUpdatePackageMutation, useGetLogsQuery as useGetAuditLogsQuery } from "@/redux/services/hmsApi";
+import { useCreatePackageMutation, useGetMyPropertiesQuery, useGetPackageByIdQuery, useGetPackagesByPropertyQuery, useUpdatePackageMutation, useGetLogsQuery as useGetAuditLogsQuery, useGetLogsByTableQuery } from "@/redux/services/hmsApi";
 import { toast } from "react-toastify";
 import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
 import { normalizeNumberInput, normalizeTextInput } from "@/utils/normalizeTextInput";
@@ -34,7 +34,7 @@ import { GridBadge } from "@/components/ui/grid-badge";
 import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
 import { formatAppDateTime } from "@/utils/dateFormat";
-import { getFormattedAuditChanges, getAuditActionBadge } from "@/utils/auditUtils";
+import { getFormattedAuditChanges, getAuditActionBadge, getAuditChangePlainText, formatAuditActionText } from "@/utils/auditUtils";
 
 const getAuditChangeText = (details: any, audit: any) => {
     if (audit.event_type === "CREATE") {
@@ -124,6 +124,98 @@ export default function PackageManagement() {
         resetDeps: [selectedPropertyId, statusFilter, typeFilter, searchQuery],
     });
 
+    const [mainTab, setMainTab] = useState<"packages" | "audit">("packages");
+    const [mainAuditPage, setMainAuditPage] = useState(1);
+    const [mainAuditLimit, setMainAuditLimit] = useState(10);
+    const [historySearchInput, setHistorySearchInput] = useState("");
+    const [historySearchQuery, setHistorySearchQuery] = useState("");
+    const [historyActionFilter, setHistoryActionFilter] = useState("");
+
+    const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
+
+    const {
+        data: globalAuditLogs,
+        isLoading: globalAuditLogsLoading,
+        isFetching: globalAuditLogsFetching,
+        refetch: refetchGlobalAuditLogs
+    } = useGetLogsByTableQuery({
+        tableName: "packages",
+        page: mainAuditPage,
+        limit: mainAuditLimit,
+    }, {
+        skip: !isLoggedIn || mainTab !== "audit"
+    });
+
+    const paginatedHistoryLogs = useMemo(() => {
+        let rows = globalAuditLogs?.data ?? [];
+        if (historySearchQuery) {
+            const lowerQuery = historySearchQuery.toLowerCase();
+            rows = rows.filter((r: any) =>
+                r.event_type?.toLowerCase().includes(lowerQuery) ||
+                r.user_name?.toLowerCase().includes(lowerQuery) ||
+                r.user_first_name?.toLowerCase().includes(lowerQuery) ||
+                (r.event_id && formatModuleDisplayId("package", r.event_id).toLowerCase().includes(lowerQuery))
+            );
+        }
+        if (historyActionFilter) {
+            rows = rows.filter((r: any) => r.event_type?.toUpperCase() === historyActionFilter.toUpperCase());
+        }
+        return rows;
+    }, [globalAuditLogs?.data, historySearchQuery, historyActionFilter]);
+
+    const historyTotalRecords = globalAuditLogs?.pagination?.totalItems ?? globalAuditLogs?.pagination?.total ?? 0;
+    const historyTotalPages = globalAuditLogs?.pagination?.totalPages ?? 1;
+
+    const historyActionOptions = useMemo(() => ["CREATE", "UPDATE", "DELETE"], []);
+
+    const resetHistoryFilters = () => {
+        setHistorySearchInput("");
+        setHistorySearchQuery("");
+        setHistoryActionFilter("");
+        setMainAuditPage(1);
+    };
+
+    const refreshHistoryGrid = async () => {
+        if (globalAuditLogsFetching) return;
+        const toastId = toast.loading("Refreshing history...");
+        try {
+            await refetchGlobalAuditLogs();
+            toast.dismiss(toastId);
+            toast.success("History refreshed");
+        } catch {
+            toast.dismiss(toastId);
+            toast.error("Failed to refresh history");
+        }
+    };
+
+    const exportHistoryLogs = () => {
+        if (!paginatedHistoryLogs.length) return toast.info("No history rows to export");
+        const formatted = paginatedHistoryLogs.map((audit: any) => {
+            let details: any = null;
+            try {
+                details = typeof audit.details === "string" ? JSON.parse(audit.details) : audit.details;
+            } catch {}
+            
+            let changeText = "--";
+            if (details) {
+                changeText = getAuditChangePlainText(details, {
+                    "package_name": (v: any) => v,
+                    "base_price": (v: any) => `₹${v}`,
+                });
+            }
+
+            return {
+                "Plan ID": formatModuleDisplayId("package", audit.event_id),
+                "Action": formatAuditActionText(audit.event_type),
+                "Change": changeText,
+                "User": `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim() || audit.user_name || "System",
+                "Date & Time": formatAppDateTime(audit.created_on),
+            };
+        });
+        exportToExcel(formatted, "Plans-History.xlsx");
+        toast.success("Export completed");
+    };
+
     const [selectedPackage, setSelectedPackage] = useState<PackageDetail>({
         package_name: "",
         description: "",
@@ -132,7 +224,6 @@ export default function PackageManagement() {
         system_generated: false
     });
     const [selectedPackageId, setSelectedPackageId] = useState(0)
-    const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
 
     const {
         data: packages,
@@ -288,7 +379,7 @@ export default function PackageManagement() {
                     }
                     return getAuditChangeText(detailsObj, row);
                 },
-                className: "whitespace-normal break-words min-w-[300px] py-2"
+                className: "whitespace-normal break-words min-w-[300px] max-w-[350px] py-2"
             },
         ],
         [itemAuditPage, itemAuditLimit, selectedPackageId]
@@ -418,7 +509,7 @@ export default function PackageManagement() {
 
     return (
         <div className="flex flex-col">
-            <section className="p-6 lg:p-8 space-y-6">
+            <section className="p-4 lg:p-6 space-y-4">
                 {/* Header */}
                 <div className="flex items-center justify-between w-full">
                     <div className="flex flex-col">
@@ -468,6 +559,32 @@ export default function PackageManagement() {
 
                 </div>
 
+                <div className="border-b border-border flex">
+                    <button
+                        onClick={() => setMainTab("packages")}
+                        className={cn(
+                            "px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px]",
+                            mainTab === "packages"
+                                ? "border-primary text-primary"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        Plans
+                    </button>
+                    <button
+                        onClick={() => setMainTab("audit")}
+                        className={cn(
+                            "px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px]",
+                            mainTab === "audit"
+                                ? "border-primary text-primary"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        History
+                    </button>
+                </div>
+
+                {mainTab === "packages" && (
                 <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
                     <div className="w-full">
                         <GridToolbar className="border-b-0">
@@ -484,8 +601,7 @@ export default function PackageManagement() {
                                     onSearch={() => {
                                         setSearchQuery(searchInput.trim());
                                         resetPage();
-                                    }}
-                                    placeholder="Search plans..."
+                                    }}
                                 />
 
                                 <GridToolbarSelect
@@ -590,6 +706,132 @@ export default function PackageManagement() {
                     </div>
 
                 </div>
+                )}
+
+                {mainTab === "audit" && (
+                    <div className="flex-1">
+                        <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
+                            <div className="w-full">
+                                <GridToolbar className="border-b-0">
+                                    <GridToolbarRow className="gap-2">
+                                        <GridToolbarSearch
+                                            value={historySearchInput}
+                                            onChange={setHistorySearchInput}
+                                            onSearch={() => {
+                                                setHistorySearchQuery(historySearchInput.trim());
+                                                setMainAuditPage(1);
+                                            }}
+                                        />
+
+                                        <GridToolbarSelect
+                                            label="Action"
+                                            value={historyActionFilter}
+                                            onChange={(value) => {
+                                                setHistoryActionFilter(value);
+                                                setMainAuditPage(1);
+                                            }}
+                                            options={[
+                                                { label: "All", value: "" },
+                                                ...historyActionOptions.map((action) => ({
+                                                    label: action,
+                                                    value: action,
+                                                })),
+                                            ]}
+                                        />
+
+                                        <GridToolbarActions
+                                            className="gap-1 justify-end"
+                                            actions={[
+                                                {
+                                                    key: "export",
+                                                    label: "Export History",
+                                                    icon: <Download className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: exportHistoryLogs,
+                                                },
+                                                {
+                                                    key: "reset",
+                                                    label: "Reset Filters",
+                                                    icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: resetHistoryFilters,
+                                                },
+                                                {
+                                                    key: "refresh",
+                                                    label: "Refresh Data",
+                                                    icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: refreshHistoryGrid,
+                                                    disabled: globalAuditLogsFetching,
+                                                },
+                                            ]}
+                                        />
+                                    </GridToolbarRow>
+                                </GridToolbar>
+                            </div>
+                            <div className="px-2 pb-2">
+                                <AppDataGrid
+                                    data={paginatedHistoryLogs}
+                                    loading={globalAuditLogsLoading}
+                                    rowKey={(audit: any) => audit.id}
+                                    emptyText="No history logs found."
+                                    showActions={false}
+                                    enablePagination={true}
+                                    paginationProps={{
+                                        page: mainAuditPage,
+                                        setPage: setMainAuditPage,
+                                        totalPages: historyTotalPages,
+                                        disabled: globalAuditLogsFetching,
+                                        totalRecords: historyTotalRecords,
+                                        limit: mainAuditLimit,
+                                        onLimitChange: (limit) => {
+                                            setMainAuditLimit(limit);
+                                            setMainAuditPage(1);
+                                        }
+                                    }}
+                                    columns={[
+                                        {
+                                            label: "Plan ID",
+                                            headClassName: "text-center w-[120px]",
+                                            cellClassName: "text-center font-medium text-primary min-w-[120px]",
+                                            render: (audit: any) => audit.event_id ? formatModuleDisplayId("package", audit.event_id) : "—",
+                                        },
+                                        {
+                                            label: "Action",
+                                            headClassName: "text-center w-[140px]",
+                                            cellClassName: "text-center font-medium min-w-[140px]",
+                                            render: (audit: any) => getAuditActionBadge(audit.event_type),
+                                        },
+                                        {
+                                            label: "Change",
+                                            headClassName: "w-[320px]",
+                                            cellClassName: "min-w-[320px] whitespace-normal text-primary/80 font-medium",
+                                            render: (audit: any) => {
+                                                let parsed = audit.details;
+                                                if (typeof parsed === 'string') {
+                                                    try { parsed = JSON.parse(parsed); } catch { }
+                                                }
+                                                return getFormattedAuditChanges(parsed, {
+                                                    "package_name": (v: any) => v,
+                                                    "base_price": (v: any) => `₹${v}`,
+                                                });
+                                            },
+                                        },
+                                        {
+                                            label: "User",
+                                            headClassName: "w-[180px]",
+                                            cellClassName: "text-muted-foreground min-w-[180px]",
+                                            render: (audit: any) => `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim() || audit.user_name || "System",
+                                        },
+                                        {
+                                            label: "Date & Time",
+                                            headClassName: "text-white w-[180px]",
+                                            cellClassName: "text-muted-foreground min-w-[180px]",
+                                            render: (audit: any) => formatAppDateTime(audit.created_on),
+                                        },
+                                    ] as ColumnDef<any>[]}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
             </section>
 
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
@@ -717,7 +959,6 @@ export default function PackageManagement() {
                                                     <Input
                                                         className={cn("h-10", submitted && formErrors.package_name ? "border-red-500" : "")}
                                                         value={selectedPackage?.package_name}
-                                                        placeholder="e.g. Continental Plan (CP)"
                                                         onChange={(e) => {
                                                             const next = e.target.value;
                                                             if (isWithinCharLimit(next, 50)) {

@@ -17,6 +17,7 @@ import {
     useUpdateEnquiryMutation,
     useGetStaffByPropertyQuery,
     useGetLogsQuery as useGetAuditLogsQuery,
+    useGetLogsByTableQuery,
 } from "@/redux/services/hmsApi";
 import { useAppSelector } from "@/redux/hook";
 import { cn } from "@/lib/utils";
@@ -27,7 +28,7 @@ import { toast } from "react-toastify";
 import { useLocation, useNavigate } from "react-router-dom";
 import { usePermission } from "@/rbac/usePermission";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
-import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect } from "@/components/ui/grid-toolbar";
+import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarRangePicker } from "@/components/ui/grid-toolbar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Download, FilterX, Pencil, Plus, RefreshCcw, User, Phone, MapPin, Calendar, Clock, ClipboardList, Info, Building2, Package, Globe, UserCheck, DollarSign, ListTodo, Activity } from "lucide-react";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
@@ -38,7 +39,7 @@ import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
 import { formatAppDate, formatAppDateTime, parseAppDate, toDatetimeLocalValue } from "@/utils/dateFormat";
 import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
-import { getFormattedAuditChanges, getAuditActionBadge } from "@/utils/auditUtils";
+import { getFormattedAuditChanges, getAuditChangeText, getAuditActionBadge, formatAuditActionText } from "@/utils/auditUtils";
 
 type EnquiryStatus =
     | "open"
@@ -131,7 +132,7 @@ function getEnquiryDisplay(enquiry: Enquiry) {
         checkInLabel: formatEnquiryDate(enquiry.check_in),
         checkOutLabel: formatEnquiryDate(enquiry.check_out),
         statusLabel: formatEnquiryStatus(enquiry.status),
-        followUpLabel: formatEnquiryDate(enquiry.follow_up_date),
+        followUpLabel: enquiry.follow_up_date ? formatAppDateTime(enquiry.follow_up_date) : "--",
     };
 }
 
@@ -139,11 +140,13 @@ function getAuditActionLabel(log: any) {
     return getAuditActionBadge(log.event_type);
 }
 
-function getAuditChangeText(log: any) {
+function getAuditChangeText(log: any, plainText = false) {
     if (log.event_type === "CREATE" || log.event_type === "NEW_BOOKING") {
+        const text = log.event_type === "NEW_BOOKING" ? "New Booking Created" : "Created";
+        if (plainText) return `Enquiry: ${text}`;
         return (
             <div className="text-muted-foreground">
-                <span className="font-semibold text-foreground/80">Enquiry:</span> {log.event_type === "NEW_BOOKING" ? "New Booking Created" : "Created"}
+                <span className="font-semibold text-foreground/80">Enquiry:</span> {text}
             </div>
         );
     }
@@ -172,6 +175,9 @@ function getAuditChangeText(log: any) {
             formattedDetails.after["Booking"] = after.booking_id ? `BO${after.booking_id}` : "None";
         }
 
+        if (plainText) {
+            return getAuditChangePlainText(formattedDetails);
+        }
         return getFormattedAuditChanges(formattedDetails);
     } catch (e) {
         return log.comments || "—";
@@ -188,6 +194,14 @@ export default function EnquiriesManagement() {
     const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
     const [historyPage, setHistoryPage] = useState(1);
     const [historyLimit, setHistoryLimit] = useState(25);
+
+    const [activeTab, setActiveTab] = useState<"enquiry" | "audit">("enquiry");
+    const [auditSearchInput, setAuditSearchInput] = useState("");
+    const [auditSearchQuery, setAuditSearchQuery] = useState("");
+    const [auditActionFilter, setAuditActionFilter] = useState("");
+    const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([null, null]);
+    const [auditPage, setAuditPage] = useState(1);
+    const [auditLimit, setAuditLimit] = useState(10);
 
     const [status, setStatus] = useState<EnquiryStatus>("open");
     const [followUpDate, setFollowUpDate] = useState("");
@@ -233,9 +247,11 @@ export default function EnquiriesManagement() {
         page,
         limit,
         search: searchQuery,
-        status: statusFilter
+        status: statusFilter,
+        fromDate: dateRange[0] ? dateRange[0].toISOString() : undefined,
+        toDate: dateRange[1] ? dateRange[1].toISOString() : undefined,
     }, {
-        skip: !isLoggedIn || !selectedPropertyId
+        skip: !isLoggedIn || !selectedPropertyId || isInitializing
     })
 
     const { data: auditLogs, isLoading: auditLoading } = useGetAuditLogsQuery(
@@ -248,12 +264,76 @@ export default function EnquiriesManagement() {
         { skip: !selected?.id || sheetTab !== "history" }
     );
 
+    const { data: globalAuditLogs, isFetching: globalAuditFetching, refetch: refetchGlobalLogs } = useGetLogsByTableQuery({
+        tableName: "enquiries",
+        propertyId: selectedPropertyId,
+        page: 1,
+        limit: 1000
+    }, {
+        skip: !isLoggedIn || !selectedPropertyId || activeTab !== "audit"
+    });
+
+    const filteredAuditLogs = useMemo(() => {
+        let logs = globalAuditLogs?.data || [];
+        if (auditActionFilter) {
+            logs = logs.filter((log: any) => log.event_type === auditActionFilter);
+        }
+        if (auditSearchQuery) {
+            const query = auditSearchQuery.toLowerCase();
+            logs = logs.filter((log: any) => {
+                const idMatch = formatModuleDisplayId("enquiry", log.event_id).toLowerCase().includes(query);
+                const userMatch = (staffMap[log.user_id] || log.user_first_name || "").toLowerCase().includes(query);
+                return idMatch || userMatch;
+            });
+        }
+        return logs;
+    }, [globalAuditLogs?.data, auditActionFilter, auditSearchQuery, staffMap]);
+
+    const paginatedAuditLogs = useMemo(() => {
+        const start = (auditPage - 1) * auditLimit;
+        return filteredAuditLogs.slice(start, start + auditLimit);
+    }, [filteredAuditLogs, auditPage, auditLimit]);
+
+    const exportHistoryLogs = () => {
+        if (!filteredAuditLogs.length) {
+            toast.info("No audit logs to export");
+            return;
+        }
+
+        const formatted = filteredAuditLogs.map((log: any) => {
+            const userName = `${log.user_first_name || ""} ${log.user_last_name || ""}`.trim() || staffMap[log.user_id] || "System";
+            return {
+                "Enquiry ID": formatModuleDisplayId("enquiry", log.event_id),
+                "Action": formatAuditActionText(log.event_type),
+                "Change": getAuditChangeText(log, true),
+                "User": userName,
+                "Date & Time": formatAppDateTime(log.created_on),
+            };
+        });
+
+        exportToExcel(formatted, "EnquiriesAuditLogs.xlsx");
+        toast.success("History exported successfully");
+    };
+
+    const refreshHistoryGrid = async () => {
+        if (globalAuditFetching) return;
+        const toastId = toast.loading("Refreshing history...");
+        try {
+            await refetchGlobalLogs();
+            toast.dismiss(toastId);
+            toast.success("History refreshed");
+        } catch {
+            toast.dismiss(toastId);
+            toast.error("Failed to refresh history");
+        }
+    };
+
     const [getAllEnquiries, { isFetching: exportingEnquiries }] = useLazyExportPropertyEnquiriesQuery()
     const [updateEnquiry] = useUpdateEnquiryMutation()
 
     useEffect(() => {
         setPage(1);
-    }, [selectedPropertyId, searchQuery, statusFilter]);
+    }, [selectedPropertyId, searchQuery, statusFilter, dateRange]);
 
     const exportEnquiriesSheet = async () => {
         if (exportingEnquiries) return;
@@ -271,6 +351,8 @@ export default function EnquiriesManagement() {
                 propertyId: selectedPropertyId,
                 status: statusFilter,
                 search: searchQuery,
+                fromDate: dateRange[0] ? dateRange[0].toISOString() : undefined,
+                toDate: dateRange[1] ? dateRange[1].toISOString() : undefined,
             }).unwrap();
 
             if (!res?.data?.length) {
@@ -342,7 +424,15 @@ export default function EnquiriesManagement() {
         setSearchInput("");
         setSearchQuery("");
         setStatusFilter("");
+        setDateRange([null, null]);
         setPage(1);
+    };
+
+    const resetHistoryFiltersHandler = () => {
+        setAuditSearchInput("");
+        setAuditSearchQuery("");
+        setAuditActionFilter("");
+        setAuditPage(1);
     };
 
     const refreshTable = async () => {
@@ -363,8 +453,8 @@ export default function EnquiriesManagement() {
     const enquiryColumns = useMemo<ColumnDef<Enquiry>[]>(() => [
         {
             label: "Enquiry ID",
-            headClassName: "text-center",
-            cellClassName: "text-center font-medium min-w-[90px]",
+            headClassName: "text-center w-[120px]",
+            cellClassName: "text-center font-medium text-primary min-w-[120px]",
             render: (enquiry) => (
                 <button
                     type="button"
@@ -431,7 +521,8 @@ export default function EnquiriesManagement() {
 
         {
             label: "Action",
-            cellClassName: "whitespace-nowrap",
+            headClassName: "text-center w-[140px]",
+            cellClassName: "text-center font-medium min-w-[140px]",
             render: (log) => getAuditActionBadge(log.event_type),
         },
         {
@@ -444,8 +535,8 @@ export default function EnquiriesManagement() {
         },
         {
             label: "Date & Time",
-            headClassName: "text-white",
-            cellClassName: "text-muted-foreground whitespace-nowrap min-w-[130px]",
+            headClassName: "text-white w-[180px]",
+            cellClassName: "text-muted-foreground min-w-[180px]",
             render: (log) => formatAppDateTime(log.created_on),
         },
         {
@@ -457,7 +548,7 @@ export default function EnquiriesManagement() {
 
     return (
         <div className="flex flex-col">
-            <section className="p-6 lg:p-8 space-y-6">
+            <section className="p-4 lg:p-6 space-y-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex flex-col">
                         <h1 className="text-2xl font-bold leading-tight">Enquiries</h1>
@@ -500,6 +591,32 @@ export default function EnquiriesManagement() {
                     </div>
                 </div>
 
+                <div className="border-b border-border flex">
+                    <button
+                            onClick={() => setActiveTab("enquiry")}
+                            className={cn(
+                                "px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px]",
+                                activeTab === "enquiry"
+                                    ? "border-primary text-primary"
+                                    : "border-transparent text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            Enquiries
+                        </button>
+                    <button
+                            onClick={() => setActiveTab("audit")}
+                            className={cn(
+                                "px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px]",
+                                activeTab === "audit"
+                                    ? "border-primary text-primary"
+                                    : "border-transparent text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            History
+                        </button>
+                </div>
+
+                {activeTab === "enquiry" && (
                 <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
                     <div className="w-full">
                         <GridToolbar className="border-b-0">
@@ -526,7 +643,17 @@ export default function EnquiriesManagement() {
                                     ]}
                                 />
 
-                                <div className="w-full" /> {/* Empty col 3 */}
+                                <GridToolbarRangePicker
+                                    startDate={dateRange[0]}
+                                    endDate={dateRange[1]}
+                                    onChange={(dates) => {
+                                        setDateRange(dates);
+                                        setPage(1);
+                                    }}
+                                    startLabel="From"
+                                    endLabel="To"
+                                    className="w-full"
+                                />
 
                                 <GridToolbarActions
                                     className="gap-1 justify-end"
@@ -599,6 +726,129 @@ export default function EnquiriesManagement() {
                         />
                     </div>
                 </div>
+                )}
+
+                {activeTab === "audit" && (
+                    <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
+                        <div className="w-full">
+                            <GridToolbar className="border-b-0">
+                                <GridToolbarRow className="gap-2">
+                                    <GridToolbarSearch
+                                        value={auditSearchInput}
+                                        onChange={(v) => {
+                                            setAuditSearchInput(v);
+                                            if (!v.trim()) {
+                                                setAuditSearchQuery("");
+                                                setAuditPage(1);
+                                            }
+                                        }}
+                                        onSearch={() => {
+                                            setAuditSearchQuery(auditSearchInput.trim());
+                                            setAuditPage(1);
+                                        }}
+                                    />
+                                    <GridToolbarSelect
+                                        label="Action"
+                                        value={auditActionFilter}
+                                        onChange={(v) => {
+                                            setAuditActionFilter(v);
+                                            setAuditPage(1);
+                                        }}
+                                        options={[
+                                            { label: "All", value: "" },
+                                            { label: "CREATE", value: "CREATE" },
+                                            { label: "UPDATE", value: "UPDATE" },
+                                            { label: "DELETE", value: "DELETE" },
+                                        ]}
+                                    />
+                                    <div className="w-full" />
+                                    <GridToolbarActions
+                                        className="gap-1 justify-end"
+                                        actions={[
+                                            {
+                                                key: "export",
+                                                label: "Export History",
+                                                icon: <Download className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                onClick: exportHistoryLogs,
+                                            },
+                                            {
+                                                key: "reset",
+                                                label: "Reset Filters",
+                                                icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                onClick: resetHistoryFiltersHandler,
+                                            },
+                                            {
+                                                key: "refresh",
+                                                label: "Refresh Data",
+                                                icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                onClick: refreshHistoryGrid,
+                                            },
+                                        ]}
+                                    />
+                                </GridToolbarRow>
+                            </GridToolbar>
+                        </div>
+
+                        <div className="px-2 pb-2">
+                            <AppDataGrid
+                                density="compact"
+                                columns={[
+                                    {
+                                        label: "Enquiry ID",
+                                        headClassName: "text-center w-[120px]",
+                                        cellClassName: "text-center font-medium text-primary min-w-[120px]",
+                                        render: (log) => formatModuleDisplayId("enquiry", log.event_id),
+                                    },
+                                    {
+                                        label: "Action",
+                                        headClassName: "text-center w-[140px]",
+            cellClassName: "text-center font-medium min-w-[140px]",
+                                        render: (log) => getAuditActionBadge(log.event_type),
+                                    },
+                                    {
+                                        label: "Change",
+                                        headClassName: "w-[320px]",
+            cellClassName: "min-w-[320px] whitespace-normal text-primary/80 font-medium",
+                                        render: (log) => getAuditChangeText(log),
+                                    },
+                                    {
+                                        label: "User",
+                                        headClassName: "w-[180px]",
+            cellClassName: "text-muted-foreground min-w-[180px]",
+                                        render: (log) => {
+                                            const name = `${log.user_first_name || ""} ${log.user_last_name || ""}`.trim();
+                                            return name || staffMap[log.user_id] || "System";
+                                        },
+                                    },
+                                    {
+                                        label: "Date & Time",
+                                        headClassName: "text-white w-[180px]",
+                                        cellClassName: "text-muted-foreground min-w-[180px]",
+                                        render: (log) => formatAppDateTime(log.created_on),
+                                    },
+                                ]}
+                                data={paginatedAuditLogs}
+                                loading={globalAuditFetching}
+                                emptyText="No history records found"
+                                minWidth="800px"
+                                className="mt-0"
+                                enablePagination
+                                paginationProps={{
+                                    page: auditPage,
+                                    totalPages: Math.ceil(filteredAuditLogs.length / auditLimit) || 1,
+                                    setPage: setAuditPage,
+                                    disabled: globalAuditFetching,
+                                    totalRecords: filteredAuditLogs.length,
+                                    limit: auditLimit,
+                                    onLimitChange: (value) => {
+                                        setAuditLimit(value);
+                                        setAuditPage(1);
+                                    },
+                                }}
+                            />
+                        </div>
+                    </div>
+                )}
             </section>
 
             {/* Manage Sheet */}
@@ -772,7 +1022,6 @@ export default function EnquiriesManagement() {
                                             value={comment}
                                             onChange={(e) => setComment(e.target.value)}
                                             maxLength={500}
-                                            placeholder="Document follow-up outcomes, special requests, or internal progress notes here..."
                                         />
                                         <div className="text-[10px] font-bold text-muted-foreground/60 text-right">
                                             {comment.length}/500

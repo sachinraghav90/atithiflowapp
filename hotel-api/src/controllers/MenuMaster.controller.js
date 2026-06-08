@@ -7,7 +7,7 @@ class MenuMasterController {
      */
     async getByProperty(req, res) {
         try {
-            const { page, limit } = req.query;
+            const { page, limit, search, status, type, group } = req.query;
             const { propertyId } = req.params
 
             if (!propertyId) {
@@ -20,6 +20,10 @@ class MenuMasterController {
                 propertyId: Number(propertyId),
                 page: Number(page) || 1,
                 limit: Number(limit) || 10,
+                search: search || "",
+                status: status || "",
+                type: type || "",
+                group: group || ""
             });
 
             return res.status(200).json(result);
@@ -201,7 +205,7 @@ class MenuMasterController {
     async deleteById(req, res) {
         try {
             const { id } = req.params;
-            const userId = req.user.user_id
+            const userId = req.user?.user_id
 
             const deleted =
                 await MenuMasterService.deleteById(

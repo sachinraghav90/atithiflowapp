@@ -510,7 +510,7 @@ export default function KitchenInventory() {
     /* ---------------- UI ---------------- */
     return (
         <div className="flex flex-col">
-            <section className="flex flex-col p-6 lg:p-8 gap-6">
+            <section className="p-4 lg:p-6 space-y-4">
                 {/* Header */}
                 <div className="flex justify-between items-center shrink-0">
                     <div>
@@ -802,15 +802,7 @@ export default function KitchenInventory() {
                                                 return itemId ? formatModuleDisplayId("kitchen", itemId) : "—";
                                             },
                                         },
-                                        {
-                                            label: "Item",
-                                            headClassName: "w-[220px]",
-                                            cellClassName: "font-semibold text-foreground min-w-[220px]",
-                                            render: (audit: any) => {
-                                                const details = parseAuditDetails(audit.details);
-                                                return details?.entity?.inventory_name || "—";
-                                            },
-                                        },
+
                                         {
                                             label: "Action",
                                             headClassName: "text-center w-[140px]",
@@ -876,7 +868,7 @@ export default function KitchenInventory() {
                             </div>
                         </SheetHeader>
 
-                        <div className="px-6 pb-6 pt-3">
+                        <div className="px-6 pb-6 pt-4">
                             {mode === "view" && selectedItem && (
                                 <div className="space-y-6">
                                 {/* Sheet Tabs */}
@@ -948,8 +940,8 @@ export default function KitchenInventory() {
                                                         },
                                                         { 
                                                             label: "Date & Time", 
-                                                            headClassName: "text-white", 
-                                                            cellClassName: "text-muted-foreground whitespace-nowrap min-w-[130px]",
+                                                            headClassName: "text-white w-[180px]", 
+                                                            cellClassName: "text-muted-foreground min-w-[180px]",
                                                             render: (log: any) => formatAppDateTime(log.created_on) 
                                                         },
                                                         { 
@@ -1071,7 +1063,7 @@ export default function KitchenInventory() {
                             {mode === "add" && (
                                 <div className="space-y-4">
                                 {(isSuperAdmin || isOwner) && (
-                                    <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-1 -mt-1 -mb-2">
+                                    <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background">
                                         <Label>Property</Label>
                                         <NativeSelect
                                             className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
@@ -1179,7 +1171,7 @@ export default function KitchenInventory() {
                                     </div>
                                 </div>
 
-                                <div className="flex justify-end gap-3 pt-6 border-t border-border mt-4">
+                                <div className="-mx-6 -mb-6 px-6 py-4 border-t border-border bg-muted/20 flex justify-end gap-3 mt-4">
                                     <Button type="button" variant="heroOutline" onClick={() => setSheetOpen(false)}>Cancel</Button>
                                     <Button type="button" variant="hero" onClick={createItem}>Create Item</Button>
                                 </div>

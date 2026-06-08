@@ -1243,7 +1243,7 @@ export const hmsApi = createApi({
     }),
 
     getPropertyEnquiries: builder.query({
-      query: ({ propertyId, page, limit = 10, search = "", status = "" }) => {
+      query: ({ propertyId, page, limit = 10, search = "", status = "", fromDate = "", toDate = "" }) => {
         const params = new URLSearchParams({
           propertyId: String(propertyId),
           page: String(page),
@@ -1251,6 +1251,8 @@ export const hmsApi = createApi({
         });
         if (search) params.append("search", search);
         if (status) params.append("status", status);
+        if (fromDate) params.append("fromDate", fromDate);
+        if (toDate) params.append("toDate", toDate);
 
         return {
           url: `/enquiries?${params.toString()}`,
@@ -1261,7 +1263,7 @@ export const hmsApi = createApi({
     }),
 
     exportPropertyEnquiries: builder.query({
-      query: ({ propertyId, search = "", status = "" }) => {
+      query: ({ propertyId, search = "", status = "", fromDate = "", toDate = "" }) => {
         const params = new URLSearchParams({
           propertyId: String(propertyId),
           export: "true",
@@ -1269,6 +1271,8 @@ export const hmsApi = createApi({
         });
         if (search) params.append("search", search);
         if (status) params.append("status", status);
+        if (fromDate) params.append("fromDate", fromDate);
+        if (toDate) params.append("toDate", toDate);
 
         return {
           url: `/enquiries?${params.toString()}`,
@@ -1300,9 +1304,18 @@ export const hmsApi = createApi({
     }),
 
     getPropertyMenu: builder.query({
-      query: ({ propertyId, page, limit = 10 }) => {
+      query: ({ propertyId, page = 1, limit = 10, search = "", status = "", type = "", group = "" }) => {
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: String(limit)
+        });
+        if (search) params.append("search", search);
+        if (status) params.append("status", status);
+        if (type) params.append("type", type);
+        if (group) params.append("group", group);
+
         return {
-          url: `/menu/property/${propertyId}?page=${page}&limit=${limit}`,
+          url: `/menu/property/${propertyId}?${params.toString()}`,
           method: "GET",
         }
       },
@@ -1585,9 +1598,17 @@ export const hmsApi = createApi({
     }),
 
     getLogsByTable: builder.query({
-      query: ({ tableName, page, propertyId, limit = 20 }) => {
+      query: ({ tableName, page, propertyId, limit = 20, search = "", action = "" }) => {
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: String(limit)
+        });
+        if (propertyId) params.append("propertyId", String(propertyId));
+        if (search) params.append("search", search);
+        if (action) params.append("action", action);
+
         return {
-          url: `/audits/table/${tableName}?page=${page}&limit=${limit}&propertyId=${propertyId}`,
+          url: `/audits/table/${tableName}?${params.toString()}`,
           method: "GET",
         }
       },
