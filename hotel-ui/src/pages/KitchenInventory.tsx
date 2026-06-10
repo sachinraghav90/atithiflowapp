@@ -460,12 +460,12 @@ export default function KitchenInventory() {
 
     const refreshInventoryGrid = () => {
         if (kitchenInventoryFetching) return;
-        apiToast(refetchInventory(), "Inventory refreshed");
+        apiToast(refetchInventory(), "Data refreshed");
     };
 
     const refreshHistoryGrid = () => {
         if (logsFetching) return;
-        apiToast(refetchLogs(), "History logs refreshed");
+        apiToast(refetchLogs(), "Data refreshed");
     };
 
     const apiToast = (promise: any, successMsg: string) => {

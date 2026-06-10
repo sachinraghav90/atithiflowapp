@@ -509,11 +509,11 @@ export function CreateOrder() {
                         <SheetTitle className="text-xl font-bold">Create Order</SheetTitle>
                     </SheetHeader>
 
-            <section className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 pb-6 pt-3">
+            <section className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 pb-6 pt-4">
 
                 {/* Property */}
                 {(isSuperAdmin || isOwner) && (
-                    <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-1 -mt-1 -mb-2">
+                    <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-1">
                         <Label>Property</Label>
                         <NativeSelect
                             className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
@@ -1036,7 +1036,7 @@ export function CreateOrder() {
                     </div>
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                <div className="-mx-6 -mb-6 px-6 py-4 border-t border-border bg-muted/20 flex justify-end gap-3">
                     <Button
                         variant="heroOutline"
                         onClick={handleCloseSheet}

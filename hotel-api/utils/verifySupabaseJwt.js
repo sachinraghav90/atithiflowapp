@@ -4,7 +4,10 @@ export async function verifySupabaseJwt(token) {
     const { data, error } = await supabase.client().auth.getUser(token);
     
     if (error || !data?.user) {
-        console.error("Supabase Auth Error:", error);
+        // Prevent alarming stack traces for normal token expirations
+        if (error && error.code !== 'bad_jwt') {
+            console.error("Supabase Auth Error:", error.message || error);
+        }
         throw new Error("Invalid or expired token");
     }
 

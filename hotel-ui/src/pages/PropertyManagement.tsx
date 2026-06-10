@@ -281,14 +281,14 @@ export default function PropertyManagement() {
     };
 
     const refreshHistoryGrid = async () => {
-        const toastId = toast.loading("Refreshing history logs...");
+        const toastId = toast.loading("Refreshing data...");
         try {
             await refetchPropertyLogs();
             toast.dismiss(toastId);
-            toast.success("History logs refreshed");
+            toast.success("Data refreshed");
         } catch {
             toast.dismiss(toastId);
-            toast.error("Failed to refresh history logs");
+            toast.error("Failed to refresh data");
         }
     };
 
@@ -908,15 +908,15 @@ export default function PropertyManagement() {
     };
 
     const refreshTable = async () => {
-        const toastId = toast.loading("Refreshing properties...");
+        const toastId = toast.loading("Refreshing data...");
 
         try {
             await refetchProperties();
             toast.dismiss(toastId);
-            toast.success("Properties refreshed");
+            toast.success("Data refreshed");
         } catch {
             toast.dismiss(toastId);
-            toast.error("Failed to refresh properties");
+            toast.error("Failed to refresh data");
         }
     };
 
@@ -981,7 +981,8 @@ export default function PropertyManagement() {
                                 <GridToolbarSearch
                                     value={searchInput}
                                     onChange={setSearchInput}
-                                    onSearch={() => setSearchQuery(searchInput)}
+                                    onSearch={() => setSearchQuery(searchInput)}
+
                                 />
 
                                 <GridToolbarSelect
@@ -1140,7 +1141,8 @@ export default function PropertyManagement() {
                                             onSearch={() => {
                                                 setHistorySearchQuery(historySearchInput.trim());
                                                 setMainAuditPage(1);
-                                            }}
+                                            }}
+
                                         />
 
                                         <GridToolbarSelect
@@ -1258,14 +1260,14 @@ export default function PropertyManagement() {
                 <SheetContent
                     side="right"
                     className={cn(
-                        "w-full overflow-y-auto bg-background transition-all duration-300",
+                        "w-full overflow-y-auto bg-background p-0 transition-all duration-300",
                         sheetTab === "history" ? "sm:max-w-6xl lg:max-w-[1200px]" : "sm:max-w-4xl lg:max-w-5xl"
                     )}
                 >
 
-                    <motion.div className="space-y-5">
+                    <motion.div className="flex flex-col">
 
-                        <SheetHeader className="mb-6">
+                        <SheetHeader className="px-6 py-4 border-b border-border relative">
                             <div className="space-y-1">
                                 <SheetTitle className="text-xl font-bold text-foreground">
                                     {mode === "add" || mode === "edit"
@@ -1283,6 +1285,7 @@ export default function PropertyManagement() {
                             </div>
                         </SheetHeader>
 
+                        <div className="px-6 pb-6 pt-4 flex-1 space-y-5">
                         {viewMode ? (
                             <div className="space-y-4">
                                 <div className="border-b border-border flex">
@@ -1619,46 +1622,46 @@ export default function PropertyManagement() {
                                 />
                             </>
                         )}
+
+                        {/* ================= ACTION FOOTER ================= */}
+
+                        <div className="-mx-6 -mb-6 px-6 py-4 border-t border-border bg-muted/20 flex justify-end gap-3 mt-4">
+
+                            {/* Cancel always available */}
+                            <Button
+                                variant="heroOutline"
+                                onClick={() => setSheetOpen(false)}
+                            >
+                                {viewMode ? "Close" : "Cancel"}
+                            </Button>
+
+                            {/* VIEW MODE BUTTON */}
+
+
+                            {/* CREATE BUTTON */}
+                            {mode === "add" && permission?.can_create && (
+                                <Button
+                                    variant="hero"
+                                    onClick={handleSubmitProperty}
+                                >
+                                    Create Property
+                                </Button>
+                            )}
+
+                            {/* UPDATE BUTTON */}
+                            {mode === "edit" && permission?.can_create && (
+                                <Button
+                                    variant="hero"
+                                    disabled={!isDirty}
+                                    onClick={handleSubmitProperty}
+                                >
+                                    Update
+                                </Button>
+                            )}
+
+                        </div>
+                        </div>
                     </motion.div>
-                    {/* ================= ACTION FOOTER ================= */}
-
-                    <div className="flex justify-end gap-3 pt-4 border-t border-border/50 mt-6">
-
-                        {/* Cancel always available */}
-                        <Button
-                            variant="heroOutline"
-                            onClick={() => setSheetOpen(false)}
-                        >
-                            {viewMode ? "Close" : "Cancel"}
-                        </Button>
-
-                        {/* VIEW MODE BUTTON */}
-
-
-                        {/* CREATE BUTTON */}
-                        {mode === "add" && permission?.can_create && (
-                            <Button
-                                variant="hero"
-                                onClick={handleSubmitProperty}
-                            >
-                                Create Property
-                            </Button>
-                        )}
-
-                        {/* UPDATE BUTTON */}
-                        {mode === "edit" && permission?.can_create && (
-                            <Button
-                                variant="hero"
-                                disabled={!isDirty}
-                                onClick={handleSubmitProperty}
-                            >
-                                Update
-                            </Button>
-                        )}
-
-                    </div>
-
-
                 </SheetContent>
             </Sheet>
         </div>

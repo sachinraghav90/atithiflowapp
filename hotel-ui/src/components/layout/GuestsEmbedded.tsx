@@ -26,8 +26,7 @@ import SearchSelectPopover from "./SearchSelectPopover";
 import PhonePrefixSelect from "@/components/forms/PhonePrefixSelect";
 import { formatAppDate, parseAppDate, toISODateOnly } from "@/utils/dateFormat";
 import WebcamCapture from "@/components/common/WebcamCapture";
-import { X } from "lucide-react";
-import { Camera } from "lucide-react";
+import { X, Camera, Crown } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 /* ---------------- Types ---------------- */
@@ -456,9 +455,12 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                     >
                         {/* Guest Header */}
                         <div className="flex items-center justify-between border-b border-border/30 pb-2">
-                            <p className="text-sm font-semibold text-primary/90">
-                                Guest {index + 1}
-                            </p>
+                            <div className="flex items-center gap-1.5">
+                                {index === 0 && <Crown className="h-4 w-4 text-amber-500 fill-amber-500/20" />}
+                                <p className="text-sm font-semibold text-primary/90">
+                                    Guest {index + 1}
+                                </p>
+                            </div>
                             <Button
                                 size="sm"
                                 variant="ghost"
@@ -752,7 +754,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                         </div>
 
                         {/* View ID Proof button (only if existing guest) */}
-                        {(g.has_id_proof && g.id) || hasSavedGuestImage ? (
+                        {(g.has_id_proof && g.id) || index === 0 ? (
                             <div className="mt-2 flex items-center gap-2">
                                 <Button
                                     size="sm"
@@ -766,10 +768,30 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                 >
                                     View ID Proof
                                 </Button>
-                                {hasSavedGuestImage && (
-                                    <Button size="sm" variant="heroOutline" className="h-8" onClick={() => setImagePreviewOpen(true)}>
+                                {index === 0 && hasSavedGuestImage && (
+                                    <Button size="sm" variant="heroOutline" className="h-8" onClick={() => setCaptureModalOpen(true)}>
                                         View Image
                                     </Button>
+                                )}
+                                {index === 0 && !hasSavedGuestImage && (
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    size="sm"
+                                                    variant="heroOutline"
+                                                    className="h-8 w-8 rounded-[4px] p-0"
+                                                    onClick={() => setCaptureModalOpen(true)}
+                                                    aria-label="Capture image"
+                                                >
+                                                    <Camera className="h-4 w-4" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="top" align="center" className="text-xs">
+                                                Capture Guest Image
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
                                 )}
                             </div>
                         ) : null}
@@ -787,34 +809,37 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                         {/* Name Header */}
                         <div className="flex items-center justify-between border-b border-border/50 bg-primary/5 px-5 py-3">
                             <div className="flex items-center gap-2">
-                                {hasSavedGuestImage && guestImagePreview && (
+                                {i === 0 && hasSavedGuestImage && guestImagePreview && (
                                     <img src={guestImagePreview} alt="Guest" className="h-8 w-8 rounded object-cover border border-border" />
                                 )}
+                                {i === 0 && <Crown className="h-4 w-4 text-amber-500 fill-amber-500/20 -mt-0.5" />}
                                 <h3 className="text-sm font-bold text-foreground tracking-tight">
                                     {g.salutation} {g.first_name} {g.middle_name} {g.last_name}
                                 </h3>
                             </div>
 
                             <div className="flex items-center gap-2">
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                size="sm"
-                                                variant="heroOutline"
-                                                className="h-7 w-7 rounded-[4px] p-0"
-                                                onClick={() => setCaptureModalOpen(true)}
-                                                aria-label="Capture image"
-                                            >
-                                                <Camera className="h-4 w-4" />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="top" align="center" className="text-xs">
-                                            Capture Guest Image
-                                        </TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
-                                {hasSavedGuestImage && (
+                                {i === 0 && (
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    size="sm"
+                                                    variant="heroOutline"
+                                                    className="h-7 w-7 rounded-[4px] p-0"
+                                                    onClick={() => setCaptureModalOpen(true)}
+                                                    aria-label="Capture image"
+                                                >
+                                                    <Camera className="h-4 w-4" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="top" align="center" className="text-xs">
+                                                Capture Guest Image
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                )}
+                                {i === 0 && hasSavedGuestImage && (
                                     <Button size="sm" variant="heroOutline" className="h-7 rounded-[4px] px-3 text-[11px] font-semibold" onClick={() => setImagePreviewOpen(true)}>
                                         View Image
                                     </Button>

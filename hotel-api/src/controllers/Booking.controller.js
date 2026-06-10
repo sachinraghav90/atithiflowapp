@@ -236,14 +236,14 @@ class Booking {
             const bookingId = this.#validateBookingId(req.params.id);
             if (!bookingId) return res.status(400).json({ message: "Invalid booking id" });
 
-            const { reason, new_rooms, old_rooms } = req.body;
+            const { reason, new_rooms } = req.body;
             if (!new_rooms || !Array.isArray(new_rooms) || new_rooms.length === 0) {
                 return res.status(400).json({ message: "New rooms are required" });
             }
 
             const result = await BookingService.changeRoom({
                 bookingId,
-                oldRooms: old_rooms,
+                oldRooms: req.body.old_rooms,
                 newRooms: new_rooms,
                 reason,
                 changedBy: req.user.user_id

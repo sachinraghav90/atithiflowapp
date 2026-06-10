@@ -667,16 +667,17 @@ export default function RoomsByFloor() {
                     resetAddSheetState();
                 }}
             >
-                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
+                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background p-0">
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="space-y-1"
+                        className="flex flex-col h-full"
                     >
-                        <SheetHeader>
+                        <SheetHeader className="px-6 py-4 border-b border-border relative">
                             <SheetTitle className="text-xl font-bold">{addFlowMode === "floor" ? "Add Floor" : "Add Room"}</SheetTitle>
                         </SheetHeader>
 
+                        <div className="px-6 pb-6 pt-4 flex-1 overflow-y-auto">
                         {addFlowMode === "room" ? (
                             <div className="space-y-4">
                                 <p className="text-xs text-muted-foreground font-medium tracking-wide">
@@ -839,7 +840,7 @@ export default function RoomsByFloor() {
                             </div>
                         )}
 
-                        <div className="pt-6 border-t flex justify-end gap-3 mt-6">
+                        <div className="-mx-6 -mb-6 px-6 py-4 border-t border-border bg-muted/20 flex justify-end gap-3 mt-4">
                         <Button
                             variant="heroOutline"
                             onClick={resetAddSheetState}
@@ -899,6 +900,7 @@ export default function RoomsByFloor() {
                                 : addFlowMode === "floor" ? "Save" : "Add Room"}
                         </Button>
 
+                        </div>
                         </div>
                     </motion.div>
                 </SheetContent>

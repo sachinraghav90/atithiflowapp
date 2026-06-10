@@ -10,6 +10,7 @@ import {
     SheetContent,
     SheetHeader,
     SheetTitle,
+    SheetClose,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useAppSelector } from "@/redux/hook";
@@ -23,7 +24,7 @@ import { useLocation } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import { AppDataGrid, DataGrid, DataGridHeader, DataGridRow, DataGridHead, DataGridCell, type ColumnDef } from "@/components/ui/data-grid";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
-import { FilterX, RefreshCcw, Download, Pencil, Trash2, Plus, PlusCircle, ClipboardList } from "lucide-react";
+import { FilterX, RefreshCcw, Download, Pencil, Trash2, Plus, PlusCircle, ClipboardList, X } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ValidationTooltip } from "@/components/ui/validation-tooltip";
 import { toast } from "react-toastify";
@@ -213,14 +214,14 @@ export default function LaundryPricingManagement() {
 
     const refreshHistoryGrid = async () => {
         if (globalAuditLogsFetching) return;
-        const toastId = toast.loading("Refreshing history...");
+        const toastId = toast.loading("Refreshing data...");
         try {
             await refetchGlobalAuditLogs();
             toast.dismiss(toastId);
-            toast.success("History refreshed");
+            toast.success("Data refreshed");
         } catch {
             toast.dismiss(toastId);
-            toast.error("Failed to refresh history");
+            toast.error("Failed to refresh data");
         }
     };
 
@@ -440,13 +441,14 @@ export default function LaundryPricingManagement() {
 
     const refreshTable = async () => {
         if (laundryFetching) return;
-        const toastId = toast.loading("Refreshing laundry pricing...");
+        const toastId = toast.loading("Refreshing data...");
         try {
             await refetchLaundryPricing();
             toast.dismiss(toastId);
-            toast.success("Laundry pricing refreshed");
+            toast.success("Data refreshed");
         } catch {
             toast.dismiss(toastId);
+            toast.error("Failed to refresh data");
         }
     };
 
@@ -739,7 +741,8 @@ export default function LaundryPricingManagement() {
                                             onSearch={() => {
                                                 setHistorySearchQuery(historySearchInput.trim());
                                                 setMainAuditPage(1);
-                                            }}
+                                            }}
+
                                         />
 
                                         <GridToolbarSelect
@@ -850,16 +853,13 @@ export default function LaundryPricingManagement() {
                     side="right"
                     onOpenAutoFocus={(event) => event.preventDefault()}
                     className={cn(
-                        "w-full overflow-y-auto bg-background transition-all duration-300",
+                        "w-full flex flex-col p-0 bg-background transition-all duration-300",
                         mode === "bulk_add" ? "sm:max-w-4xl" : sheetTab === "history" ? "sm:max-w-4xl" : "lg:max-w-3xl sm:max-w-2xl"
                     )}
+                    hideClose
                 >
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="space-y-6"
-                    >
-                        <SheetHeader className="mb-6">
+                    <div className="flex-1 overflow-y-auto bg-background">
+                        <SheetHeader className="px-6 py-4 border-b border-border bg-background relative">
                             <div className="space-y-1">
                                 <SheetTitle className="text-xl font-bold">
                                     {mode === "view" ? "Laundry Pricing" : mode === "edit" ? "Update Laundry Pricing" : "Add Laundry Items"}
@@ -873,7 +873,18 @@ export default function LaundryPricingManagement() {
                                     {mode === "view" ? "Detailed Information about laundry item" : mode === "edit" ? "Modify Existing Laundry Item Rate and Details" : "Register New Laundry Items and Rates"}
                                 </p>
                             </div>
+                            <SheetClose className="absolute right-4 top-4 rounded-md border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none h-5 w-5 flex items-center justify-center shadow-sm z-50">
+                                <X className="h-4 w-4 stroke-[2.5]" />
+                                <span className="sr-only">Close</span>
+                            </SheetClose>
                         </SheetHeader>
+
+                        <div className="px-6 pb-4 pt-4">
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="space-y-6"
+                            >
 
                         {mode === "view" && selectedItem && (
                             <div className="space-y-4">
@@ -1158,7 +1169,10 @@ export default function LaundryPricingManagement() {
                             </div>
                         )}
 
-                        <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                            </motion.div>
+                        </div>
+
+                        <div className="px-6 py-4 border-t border-border bg-background flex justify-end gap-3">
                             <Button
                                 variant="heroOutline"
                                 onClick={() => setSheetOpen(false)}
@@ -1174,7 +1188,7 @@ export default function LaundryPricingManagement() {
                                 </Button>
                             )}
                         </div>
-                    </motion.div>
+                    </div>
                 </SheetContent>
             </Sheet>
         </div>

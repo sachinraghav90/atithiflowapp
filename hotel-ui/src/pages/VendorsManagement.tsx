@@ -14,6 +14,7 @@ import {
     SheetContent,
     SheetHeader,
     SheetTitle,
+    SheetClose,
 } from "@/components/ui/sheet";
 import {
     useCreateVendorMutation,
@@ -38,7 +39,7 @@ import { usePermission } from "@/rbac/usePermission";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { useGridPagination } from "@/hooks/useGridPagination";
-import { FilterX, Pencil, RefreshCcw, Download, Plus } from "lucide-react";
+import { FilterX, Pencil, RefreshCcw, Download, Plus, X } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
@@ -288,14 +289,14 @@ export default function VendorsManagement() {
 
     const refreshHistoryGrid = async () => {
         if (globalAuditLogsFetching) return;
-        const toastId = toast.loading("Refreshing history...");
+        const toastId = toast.loading("Refreshing data...");
         try {
             await refetchGlobalAuditLogs();
             toast.dismiss(toastId);
-            toast.success("History refreshed");
+            toast.success("Data refreshed");
         } catch {
             toast.dismiss(toastId);
-            toast.error("Failed to refresh history");
+            toast.error("Failed to refresh data");
         }
     };
 
@@ -436,15 +437,15 @@ export default function VendorsManagement() {
 
     const refreshTable = async () => {
         if (isFetching) return;
-        const toastId = toast.loading("Refreshing vendors...");
+        const toastId = toast.loading("Refreshing data...");
 
         try {
             await refetchVendors();
             toast.dismiss(toastId);
-            toast.success("Vendors refreshed");
+            toast.success("Data refreshed");
         } catch {
             toast.dismiss(toastId);
-            toast.error("Failed to refresh vendors");
+            toast.error("Failed to refresh data");
         }
     };
 
@@ -713,7 +714,8 @@ export default function VendorsManagement() {
                                             onSearch={() => {
                                                 setHistorySearchQuery(historySearchInput.trim());
                                                 setMainAuditPage(1);
-                                            }}
+                                            }}
+
                                         />
 
                                         <GridToolbarSelect
@@ -825,13 +827,16 @@ export default function VendorsManagement() {
             </section>
 
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetContent side="right" className={cn("w-full overflow-y-auto bg-background transition-all duration-300", sheetTab === "history" ? "sm:max-w-4xl" : "lg:max-w-4xl sm:max-w-3xl")}>
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="space-y-1"
-                    >
-                        <SheetHeader className="mb-6">
+                <SheetContent 
+                    side="right" 
+                    className={cn(
+                        "w-full flex flex-col p-0 bg-background transition-all duration-300", 
+                        sheetTab === "history" ? "sm:max-w-4xl" : "lg:max-w-4xl sm:max-w-3xl"
+                    )}
+                    hideClose
+                >
+                    <div className="flex-1 overflow-y-auto bg-background">
+                        <SheetHeader className="px-6 py-4 border-b border-border bg-background relative">
                             <div className="space-y-1">
                                 <SheetTitle className="text-xl font-bold">
                                     {mode === "add" || mode === "edit"
@@ -847,7 +852,18 @@ export default function VendorsManagement() {
                                             : "Comprehensive Overview of Vendor Relationship"}
                                 </p>
                             </div>
+                            <SheetClose className="absolute right-4 top-4 rounded-md border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none h-5 w-5 flex items-center justify-center shadow-sm z-50">
+                                <X className="h-4 w-4 stroke-[2.5]" />
+                                <span className="sr-only">Close</span>
+                            </SheetClose>
                         </SheetHeader>
+
+                        <div className="px-6 pb-6 pt-4">
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="space-y-1"
+                            >
 
                         {mode === "view" ? (
                             <div className="space-y-4">
@@ -942,7 +958,7 @@ export default function VendorsManagement() {
                                 )}
                             </div>
                         ) : (
-                            <div className="space-y-5 mt-6">
+                            <div className="space-y-4">
                                 {(isSuperAdmin || isOwner) && mode === "add" && (
                                     <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-1 -mt-1 -mb-2">
                                         <Label>Property</Label>
@@ -962,7 +978,7 @@ export default function VendorsManagement() {
                                     </div>
                                 )}
 
-                                <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-5 [&>h3+*]:!mt-4">
+                                <div className="rounded-[5px] border border-primary/50 bg-background p-5 shadow-sm space-y-5 [&>h3+*]:!mt-4">
                                     <h3 className="text-sm font-semibold text-primary/90">
                                         Vendor Details
                                     </h3>
@@ -1071,7 +1087,10 @@ export default function VendorsManagement() {
                             </div>
                         )}
 
-                        <div className="flex justify-end gap-3 pt-6 border-t border-border mt-6">
+                            </motion.div>
+                        </div>
+
+                        <div className="px-6 py-4 border-t border-border bg-background flex justify-end gap-3">
                             {mode === "view" ? (
                                 <Button
                                     variant="heroOutline"
@@ -1098,7 +1117,7 @@ export default function VendorsManagement() {
                                 </>
                             )}
                         </div>
-                    </motion.div>
+                    </div>
                 </SheetContent>
             </Sheet>
         </div>

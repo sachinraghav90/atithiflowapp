@@ -25,12 +25,13 @@ import {
     CommandInput,
     CommandItem,
 } from "@/components/ui/command";
-import { ChevronDown, ChevronUp, RotateCcw, Check } from "lucide-react";
+import { ChevronDown, ChevronUp, RotateCcw, Check, X } from "lucide-react";
 import {
     Sheet,
     SheetContent,
     SheetHeader,
     SheetTitle,
+    SheetClose,
 } from "@/components/ui/sheet";
 import { motion } from "framer-motion";
 import FormInput from "@/components/forms/FormInput";
@@ -1026,15 +1027,22 @@ export default function ReservationManagement() {
     /* -------------------- UI -------------------- */
     return (
         <Sheet open onOpenChange={(nextOpen) => !nextOpen && navigate("/bookings")}>
-            <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="space-y-1"
-                >
-                    <SheetHeader >
+            <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl flex flex-col p-0 bg-background" hideClose>
+                <div className="flex-1 overflow-y-auto bg-background">
+                    <SheetHeader className="px-6 py-4 border-b border-border bg-background relative">
                         <SheetTitle className="text-xl font-bold">New Booking</SheetTitle>
+                        <SheetClose className="absolute right-4 top-4 rounded-md border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none h-5 w-5 flex items-center justify-center shadow-sm z-50">
+                            <X className="h-4 w-4 stroke-[2.5]" />
+                            <span className="sr-only">Close</span>
+                        </SheetClose>
                     </SheetHeader>
+
+                    <div className="px-6 pb-4 pt-4">
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="space-y-1"
+                        >
 
                     {/* =================== BOOKING FORM =================== */}
                     {fromEnquiry && (
@@ -1902,8 +1910,10 @@ export default function ReservationManagement() {
                                 <span>₹{billingDetails.priceAfterTax.toFixed(2)}</span>
                             </div>
                         </CardSection>
-
-                        <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                        </div>
+                            </motion.div>
+                        </div>
+                        <div className="px-6 py-4 border-t border-border bg-background flex justify-end gap-3 mt-4">
                             <Button
                                 variant="heroOutline"
                                 onClick={() => navigate("/bookings")}
@@ -1923,21 +1933,28 @@ export default function ReservationManagement() {
                 <Sheet open={roomsModalOpen} onOpenChange={setRoomsModalOpen}>
                     <SheetContent
                         side="right"
-                        className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background p-0"
+                        className="w-full lg:max-w-5xl sm:max-w-4xl flex flex-col p-0 bg-background"
                         overlayClassName="bg-transparent"
+                        hideClose
                     >
-                        <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="flex flex-col"
-                        >
-                            <SheetHeader className="px-6 py-4 border-b">
+                        <div className="flex-1 overflow-y-auto bg-background">
+                            <SheetHeader className="px-6 py-4 border-b border-border bg-background relative">
                                 <SheetTitle className="text-lg font-semibold">
                                     Available Rooms
                                 </SheetTitle>
+                                <SheetClose className="absolute right-4 top-4 rounded-md border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none h-5 w-5 flex items-center justify-center shadow-sm z-50">
+                                    <X className="h-4 w-4 stroke-[2.5]" />
+                                    <span className="sr-only">Close</span>
+                                </SheetClose>
                             </SheetHeader>
 
-                        <section className="p-6 lg:p-3 bg-muted/20">
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="flex flex-col"
+                            >
+
+                        <section className="p-6 lg:p-4 bg-muted/20">
 
 
 
@@ -2156,8 +2173,10 @@ export default function ReservationManagement() {
                                 ))}
                             </div>
                         </section>
+                            </motion.div>
+                        </div>
 
-                        <div className="border-t border-border px-6 py-4 flex justify-end bg-background shrink-0">
+                        <div className="px-6 py-4 border-t border-border bg-background flex justify-end gap-3">
                             <Button 
                                 variant="heroOutline" 
                                 className="px-8"
@@ -2166,12 +2185,9 @@ export default function ReservationManagement() {
                                 Close
                             </Button>
                         </div>
-                        </motion.div>
                     </SheetContent>
                 </Sheet>
 
-
-                </motion.div>
             </SheetContent>
         </Sheet>
     );

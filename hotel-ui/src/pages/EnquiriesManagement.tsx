@@ -317,14 +317,14 @@ export default function EnquiriesManagement() {
 
     const refreshHistoryGrid = async () => {
         if (globalAuditFetching) return;
-        const toastId = toast.loading("Refreshing history...");
+        const toastId = toast.loading("Refreshing data...");
         try {
             await refetchGlobalLogs();
             toast.dismiss(toastId);
-            toast.success("History refreshed");
+            toast.success("Data refreshed");
         } catch {
             toast.dismiss(toastId);
-            toast.error("Failed to refresh history");
+            toast.error("Failed to refresh data");
         }
     };
 
@@ -544,7 +544,7 @@ export default function EnquiriesManagement() {
             cellClassName: "min-w-[300px] py-2",
             render: (log) => getAuditChangeText(log),
         },
-    ], [historyPage, historyLimit, staffMap, selected]);
+    ], [staffMap]);
 
     return (
         <div className="flex flex-col">
@@ -745,7 +745,8 @@ export default function EnquiriesManagement() {
                                         onSearch={() => {
                                             setAuditSearchQuery(auditSearchInput.trim());
                                             setAuditPage(1);
-                                        }}
+                                        }}
+
                                     />
                                     <GridToolbarSelect
                                         label="Action"
@@ -859,7 +860,8 @@ export default function EnquiriesManagement() {
                         animate={{ opacity: 1, y: 0 }}
                         className="space-y-1"
                     >
-                        <SheetHeader className="pb-4">
+                       
+                            <SheetHeader className="px-6 py-4 -mx-6 mb-3 border-b">
                             <div className="space-y-0.5">
                                 <SheetTitle className="text-xl font-bold">
                                     {editMode ? "Update Enquiry" : "Enquiry"}
@@ -889,7 +891,7 @@ export default function EnquiriesManagement() {
                                 <button
                                     onClick={() => setSheetTab("history")}
                                     className={cn(
-                                        "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
+                                        "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 ",
                                         sheetTab === "history"
                                             ? "border-primary text-primary"
                                             : "border-transparent text-muted-foreground hover:text-foreground"
@@ -982,7 +984,7 @@ export default function EnquiriesManagement() {
                             <div className="space-y-5">
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                                 {/* Left: Status & Timing */}
-                                <div className="rounded-[5px] border-2 border-primary/50 bg-background p-4 shadow-sm space-y-6 [&>h3+*]:!mt-4">
+                                <div className="rounded-[5px] border-2 border-primary/50 bg-background p-4 shadow-sm space-y-6 [&>h3+*]:!mt-4 mb-3">
                                     <h3 className="text-sm font-semibold text-primary/90">
                                         Lead Lifecycle Management
                                     </h3>
@@ -1012,7 +1014,7 @@ export default function EnquiriesManagement() {
                                 </div>
 
                                 {/* Right: Internal Notes */}
-                                <div className="rounded-[5px] border-2 border-primary/50 bg-background p-4 shadow-sm space-y-6 [&>h3+*]:!mt-4">
+                                <div className="rounded-[5px] border-2 border-primary/50 bg-background p-4 shadow-sm space-y-6 [&>h3+*]:!mt-4 mb-3">
                                     <h3 className="text-sm font-semibold text-primary/90">
                                         Internal Progress Notes
                                     </h3>
@@ -1031,23 +1033,25 @@ export default function EnquiriesManagement() {
                             </div>
 
                             {bookingPermission?.can_create && !selected.is_reserved && (
-                                <div className="p-4 rounded-[5px] border border-dashed border-primary/30 bg-primary/5 flex items-center justify-between gap-4">
-                                    <div className="space-y-0.5">
-                                        <p className="text-xs font-bold text-primary tracking-wide">Convert to Booking</p>
-                                        <p className="text-[10px] text-muted-foreground font-bold">Ready to confirm? Proceed to reservations with this enquiry data.</p>
+                                <div className="pb-4">
+                                    <div className="p-4 rounded-[5px] border border-dashed border-primary/30 bg-primary/5 flex items-center justify-between gap-4">
+                                        <div className="space-y-0.5">
+                                            <p className="text-xs font-bold text-primary tracking-wide">Convert to Booking</p>
+                                            <p className="text-[10px] text-muted-foreground font-bold">Ready to confirm? Proceed to reservations with this enquiry data.</p>
+                                        </div>
+                                        <Button
+                                            variant="heroOutline"
+                                            className="h-10 px-6 text-xs font-bold flex items-center gap-2 bg-background shadow-sm hover:bg-primary/10 border-primary/30 text-primary"
+                                            onClick={() => handleBook(selected)}
+                                        >
+                                            <Plus className="w-4 h-4" /> Book Enquiry
+                                        </Button>
                                     </div>
-                                    <Button
-                                        variant="heroOutline"
-                                        className="h-10 px-6 text-xs font-bold flex items-center gap-2 bg-background shadow-sm hover:bg-primary/10 border-primary/30 text-primary"
-                                        onClick={() => handleBook(selected)}
-                                    >
-                                        <Plus className="w-4 h-4" /> Book Enquiry
-                                    </Button>
                                 </div>
                             )}
                         </div>
                     )}
-                        <div className="flex justify-end gap-3 pt-6 border-t border-border mt-6">
+                        <div className="-mx-6 -mb-6 px-6 py-4 border-t border-border bg-muted/20 flex justify-end gap-3">
                             <Button
                                 variant="heroOutline"
                                 onClick={() => setOpen(false)}

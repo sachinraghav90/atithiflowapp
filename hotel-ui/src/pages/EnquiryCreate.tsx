@@ -19,10 +19,11 @@ import {
     SheetContent,
     SheetHeader,
     SheetTitle,
+    SheetClose,
 } from "@/components/ui/sheet";
 import { DataGrid, DataGridCell, DataGridHead, DataGridHeader, DataGridRow } from "@/components/ui/data-grid";
 import { ValidationTooltip } from "@/components/ui/validation-tooltip";
-import { Delete, Trash, Trash2, PlusCircle } from "lucide-react";
+import { Delete, Trash, Trash2, PlusCircle, X } from "lucide-react";
 import { MenuItemSelect } from "@/components/MenuItemSelect";
 import PhonePrefixSelect from "@/components/forms/PhonePrefixSelect";
 import { motion } from "framer-motion";
@@ -376,77 +377,82 @@ export default function EnquiryCreate() {
         setSubmitted(false);
     }, []);
 
-return (
+    return (
         <Sheet open onOpenChange={(nextOpen) => !nextOpen && navigate("/enquiries")}>
-            <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="space-y-1"
-                >
-                    <SheetHeader>
+            <SheetContent side="right" className="w-full sm:max-w-4xl flex flex-col p-0 bg-background" hideClose>
+                <div className="flex-1 overflow-y-auto bg-background">
+                    <SheetHeader className="px-6 py-4 border-b border-border bg-background relative">
                         <SheetTitle className="text-xl font-bold">New Enquiry</SheetTitle>
+                        <SheetClose className="absolute right-4 top-4 rounded-md border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none h-5 w-5 flex items-center justify-center shadow-sm z-50">
+                            <X className="h-4 w-4 stroke-[2.5]" />
+                            <span className="sr-only">Close</span>
+                        </SheetClose>
                     </SheetHeader>
 
-
-                    <div className="space-y-3 mt-4">
-
-                        <FormSection
-                            title="Guest Details"
-                            description="Basic information about the guest"
+                    <div className="px-6 pb-4 pt-4 ">
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="space-y-1"
                         >
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <Label>Name*</Label>
-                                    <Input
-                                        className={cn(
-                                            "bg-background",
-                                            submitted && formErrors.guest_name && "border-red-500"
-                                        )}
-                                        value={form.guest_name}
-                                        onChange={(e) => {
-                                            setForm({ ...form, guest_name: e.target.value });
-                                            setFormErrors(p => ({ ...p, guest_name: "" }));
-                                        }}
-                                    />
-                                </div>
+                            <div className="space-y-3">
 
-                                <div>
-                                    <Label>Agent Type</Label>
-                                    <NativeSelect
-                                        className="h-10 w-full rounded-[3px] border border-border bg-background px-3 text-sm"
-                                        value={form.agent_type}
-                                        onChange={(e) =>
-                                            setForm({ ...form, agent_type: e.target.value })
-                                        }
-                                    >
-                                        <option value="" disabled>-- Please Select --</option>
-                                        <option value="TRAVEL">Travel</option>
-                                        <option value="COMMISSION">Commission</option>
-                                        <option value="OTA">OTA</option>
-                                    </NativeSelect>
-                                </div>
+                                <FormSection
+                                    title="Guest Details"
+                                    description="Basic information about the guest"
+                                >
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div>
+                                            <Label>Name*</Label>
+                                            <Input
+                                                className={cn(
+                                                    "bg-background",
+                                                    submitted && formErrors.guest_name && "border-red-500"
+                                                )}
+                                                value={form.guest_name}
+                                                onChange={(e) => {
+                                                    setForm({ ...form, guest_name: e.target.value });
+                                                    setFormErrors(p => ({ ...p, guest_name: "" }));
+                                                }}
+                                            />
+                                        </div>
 
-                                <div>
-                                    <Label>Contact Method</Label>
-                                    <NativeSelect
-                                        className="h-10 w-full rounded-[3px] border border-border bg-background px-3 text-sm"
-                                        value={form.contact_method}
-                                        onChange={(e) =>
-                                            setForm({ ...form, contact_method: e.target.value })
-                                        }
-                                    >
-                                        <option value="" disabled>-- Please Select --</option>
-                                        <option value="WALK_IN">Walk In</option>
-                                        <option value="PHONE_CALL">Phone CALL</option>
-                                        <option value="EMAIL">Email</option>
-                                        <option value="WHATSAPP">Whats App</option>
-                                    </NativeSelect>
-                                </div>
+                                        <div>
+                                            <Label>Agent Type</Label>
+                                            <NativeSelect
+                                                className="h-10 w-full rounded-[3px] border border-border bg-background px-3 text-sm"
+                                                value={form.agent_type}
+                                                onChange={(e) =>
+                                                    setForm({ ...form, agent_type: e.target.value })
+                                                }
+                                            >
+                                                <option value="" disabled>-- Please Select --</option>
+                                                <option value="TRAVEL">Travel</option>
+                                                <option value="COMMISSION">Commission</option>
+                                                <option value="OTA">OTA</option>
+                                            </NativeSelect>
+                                        </div>
 
-                                <div>
-                                    <Label>Mobile*</Label>
-                                    {/* <Input
+                                        <div>
+                                            <Label>Contact Method</Label>
+                                            <NativeSelect
+                                                className="h-10 w-full rounded-[3px] border border-border bg-background px-3 text-sm"
+                                                value={form.contact_method}
+                                                onChange={(e) =>
+                                                    setForm({ ...form, contact_method: e.target.value })
+                                                }
+                                            >
+                                                <option value="" disabled>-- Please Select --</option>
+                                                <option value="WALK_IN">Walk In</option>
+                                                <option value="PHONE_CALL">Phone CALL</option>
+                                                <option value="EMAIL">Email</option>
+                                                <option value="WHATSAPP">Whats App</option>
+                                            </NativeSelect>
+                                        </div>
+
+                                        <div>
+                                            <Label>Mobile*</Label>
+                                            {/* <Input
                                         className={submitted && formErrors.mobile ? "border-red-500 bg-white" : "bg-white"}
                                         value={form.mobile}
                                         onChange={(e) => {
@@ -454,420 +460,424 @@ return (
                                             setFormErrors(p => ({ ...p, mobile: "" }));
                                         }}
                                     /> */}
-                                    <div className={cn(
-                                        "flex h-10 w-full items-center rounded-[3px] border border-border bg-background transition-all focus-within:ring-1 focus-within:ring-primary overflow-hidden",
-                                        submitted && formErrors.mobile && "border-red-500"
-                                    )}>
-                                        <PhonePrefixSelect
-                                            value={form.country_code}
-                                            triggerClassName="border-0 bg-transparent h-full w-[60px] rounded-none focus:ring-0 shadow-none px-2"
-                                            onValueChange={(countryCode) =>
-                                                setForm((p) => ({
-                                                    ...p,
-                                                    country_code: countryCode,
-                                                }))
-                                            }
-                                        />
-                                        <div className="h-full w-[1px] bg-border" />
-                                        <Input
-                                            value={form.mobile}
-                                            className="border-0 bg-transparent h-full flex-1 focus-visible:ring-0 shadow-none px-3"
-                                            onChange={(e) => {
-                                                if (/^\d*$/.test(e.target.value) && e.target.value.length <= 10) {
-                                                    setForm(p => ({ ...p, mobile: e.target.value }));
-                                                    setFormErrors(p => ({ ...p, mobile: "" }));
-                                                }
-                                            }}
-                                            placeholder="Mobile number"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <Label>Email</Label>
-                                    <Input
-                                        className={submitted && formErrors.email ? "border-red-500 bg-background" : "bg-background"}
-                                        value={form.email}
-                                        onChange={(e) => {
-                                            setForm({ ...form, email: e.target.value });
-                                            setFormErrors(p => ({ ...p, email: "" }));
-                                        }}
-                                    />
-                                </div>
-                                <div>
-                                    <Label>City</Label>
-                                    <Input
-                                        className={submitted && formErrors.city ? "border-red-500 bg-background" : "bg-background"}
-                                        value={form.city}
-                                        onChange={(e) => {
-                                            setForm({ ...form, city: e.target.value });
-                                            setFormErrors(p => ({ ...p, city: "" }));
-                                        }}
-                                    />
-                                </div>
-
-                                <div>
-                                    <Label>Nationality</Label>
-                                    <NativeSelect
-                                        className="h-10 w-full rounded-[3px] border border-border bg-background px-3 text-sm"
-                                        value={form.nationality}
-                                        onChange={(e) =>
-                                            setForm({ ...form, nationality: e.target.value })
-                                        }
-                                    >
-                                        <option value="" disabled>-- Please Select --</option>
-                                        <option value="indian">Indian</option>
-                                        <option value="nri">NRI</option>
-                                        <option value="foreigner">Foreigner</option>
-                                    </NativeSelect>
-                                </div>
-                                <div>
-                                    <Label>Plan</Label>
-                                    <NativeSelect
-                                        className="h-10 w-full rounded-[3px] border border-border bg-background px-3 text-sm"
-                                        value={form.plan}
-                                        onChange={(e) =>
-                                            setForm({ ...form, plan: e.target.value })
-                                        }
-                                    >
-                                        <option value="" disabled>-- Please Select --</option>
-                                        {
-                                            packages && packages?.packages.map((plan, i) => {
-                                                return <option value={plan.package_name} key={i}>{plan.package_name}</option>
-                                            })
-                                        }
-                                    </NativeSelect>
-                                </div>
-
-                                {(isSuperAdmin || isOwner) && (
-                                    <div>
-                                        <Label>Property</Label>
-                                        <NativeSelect
-                                            className="h-10 w-full rounded-[3px] border border-border bg-background px-3 text-sm"
-                                            value={selectedPropertyId ?? ""}
-                                            onChange={(e) =>
-                                                setSelectedPropertyId(Number(e.target.value) || null)
-                                            }
-                                        >
-                                            <option value="">All properties</option>
-                                            {!myPropertiesLoading &&
-                                                myProperties?.properties?.map((property) => (
-                                                    <option key={property.id} value={property.id}>
-                                                        {property.brand_name}
-                                                    </option>
-                                                ))}
-                                        </NativeSelect>
-                                    </div>
-                                )}
-                            </div>
-                        </FormSection>
-
-                        <FormSection
-                            title="Stay Details"
-                            description="Expected check-in and check-out dates"
-                        >
-                            <div className="space-y-4">
-                                {/* Row 1: Senior Citizens & Children */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div>
-                                        <Label>Senior Citizens</Label>
-                                        <Input
-                                            className={submitted && formErrors.senior_citizens ? "border-red-500 bg-background" : "bg-background"}
-                                            value={form.senior_citizens}
-                                            onChange={(e) => {
-                                                setForm({ ...form, senior_citizens: normalizeNumberInput(e.target.value).toString() });
-                                                setFormErrors(p => ({ ...p, senior_citizens: "" }));
-                                            }}
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label>Children</Label>
-                                        <Input
-                                            className={submitted && formErrors.children ? "border-red-500 bg-background" : "bg-background"}
-                                            value={form.children}
-                                            onChange={(e) => {
-                                                setForm({ ...form, children: normalizeNumberInput(e.target.value).toString() });
-                                                setFormErrors(p => ({ ...p, children: "" }));
-                                            }}
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Row 2: Adult & Specially Abled */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div>
-                                        <Label>Adult</Label>
-                                        <Input
-                                            type="text"
-                                            className={submitted && formErrors.adults ? "border-red-500 bg-background" : "bg-background"}
-                                            value={form.adults}
-                                            onChange={(e) => {
-                                                setForm({ ...form, adults: normalizeNumberInput(e.target.value).toString() });
-                                                setFormErrors(p => ({ ...p, adults: "" }));
-                                            }}
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label>Specially Abled</Label>
-                                        <Input
-                                            className={submitted && formErrors.specially_abled ? "border-red-500 bg-background" : "bg-background"}
-                                            value={form.specially_abled}
-                                            onChange={(e) => {
-                                                setForm({ ...form, specially_abled: normalizeNumberInput(e.target.value).toString() });
-                                                setFormErrors(p => ({ ...p, specially_abled: "" }));
-                                            }}
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Row 3: Total Members, Check-in, Check-out */}
-                                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                                    <div className="sm:col-span-2">
-                                        <Label>Total Members</Label>
-                                        <Input
-                                            readOnly
-                                            className="bg-background cursor-not-allowed"
-                                            value={(Number(form.senior_citizens || 0) + Number(form.children || 0) + Number(form.adults || 0) + Number(form.specially_abled || 0)).toString()}
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label>Check-in*</Label>
-                                        <ResponsiveDatePicker
-                                            value={parseDate(form.check_in)}
-                                            onChange={(d) => {
-                                                const newCheckIn = formatDate(d);
-                                                let newCheckOut = form.check_out;
-                                                if (d && form.check_out) {
-                                                    const currentOut = parseDate(form.check_out);
-                                                    if (currentOut && d > currentOut) {
-                                                        newCheckOut = ""; 
+                                            <div className={cn(
+                                                "flex h-10 w-full items-center rounded-[3px] border border-border bg-background transition-all focus-within:ring-1 focus-within:ring-primary overflow-hidden",
+                                                submitted && formErrors.mobile && "border-red-500"
+                                            )}>
+                                                <PhonePrefixSelect
+                                                    value={form.country_code}
+                                                    triggerClassName="border-0 bg-transparent h-full w-[60px] rounded-none focus:ring-0 shadow-none px-2"
+                                                    onValueChange={(countryCode) =>
+                                                        setForm((p) => ({
+                                                            ...p,
+                                                            country_code: countryCode,
+                                                        }))
                                                     }
+                                                />
+                                                <div className="h-full w-[1px] bg-border" />
+                                                <Input
+                                                    value={form.mobile}
+                                                    className="border-0 bg-transparent h-full flex-1 focus-visible:ring-0 shadow-none px-3"
+                                                    onChange={(e) => {
+                                                        if (/^\d*$/.test(e.target.value) && e.target.value.length <= 10) {
+                                                            setForm(p => ({ ...p, mobile: e.target.value }));
+                                                            setFormErrors(p => ({ ...p, mobile: "" }));
+                                                        }
+                                                    }}
+                                                    placeholder="Mobile number"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <Label>Email</Label>
+                                            <Input
+                                                className={submitted && formErrors.email ? "border-red-500 bg-background" : "bg-background"}
+                                                value={form.email}
+                                                onChange={(e) => {
+                                                    setForm({ ...form, email: e.target.value });
+                                                    setFormErrors(p => ({ ...p, email: "" }));
+                                                }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label>City</Label>
+                                            <Input
+                                                className={submitted && formErrors.city ? "border-red-500 bg-background" : "bg-background"}
+                                                value={form.city}
+                                                onChange={(e) => {
+                                                    setForm({ ...form, city: e.target.value });
+                                                    setFormErrors(p => ({ ...p, city: "" }));
+                                                }}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <Label>Nationality</Label>
+                                            <NativeSelect
+                                                className="h-10 w-full rounded-[3px] border border-border bg-background px-3 text-sm"
+                                                value={form.nationality}
+                                                onChange={(e) =>
+                                                    setForm({ ...form, nationality: e.target.value })
                                                 }
-                                                setForm({ ...form, check_in: newCheckIn, check_out: newCheckOut });
-                                                setFormErrors(p => ({ ...p, check_in: "", check_out: "" }));
-                                            }}
-                                            placeholder={APP_DATE_INPUT_PLACEHOLDER}
-                                            className={cn(submitted && formErrors.check_in && "border-red-500")}
-                                        />
+                                            >
+                                                <option value="" disabled>-- Please Select --</option>
+                                                <option value="indian">Indian</option>
+                                                <option value="nri">NRI</option>
+                                                <option value="foreigner">Foreigner</option>
+                                            </NativeSelect>
+                                        </div>
+                                        <div>
+                                            <Label>Plan</Label>
+                                            <NativeSelect
+                                                className="h-10 w-full rounded-[3px] border border-border bg-background px-3 text-sm"
+                                                value={form.plan}
+                                                onChange={(e) =>
+                                                    setForm({ ...form, plan: e.target.value })
+                                                }
+                                            >
+                                                <option value="" disabled>-- Please Select --</option>
+                                                {
+                                                    packages && packages?.packages.map((plan, i) => {
+                                                        return <option value={plan.package_name} key={i}>{plan.package_name}</option>
+                                                    })
+                                                }
+                                            </NativeSelect>
+                                        </div>
+
+                                        {(isSuperAdmin || isOwner) && (
+                                            <div>
+                                                <Label>Property</Label>
+                                                <NativeSelect
+                                                    className="h-10 w-full rounded-[3px] border border-border bg-background px-3 text-sm"
+                                                    value={selectedPropertyId ?? ""}
+                                                    onChange={(e) =>
+                                                        setSelectedPropertyId(Number(e.target.value) || null)
+                                                    }
+                                                >
+                                                    <option value="">All properties</option>
+                                                    {!myPropertiesLoading &&
+                                                        myProperties?.properties?.map((property) => (
+                                                            <option key={property.id} value={property.id}>
+                                                                {property.brand_name}
+                                                            </option>
+                                                        ))}
+                                                </NativeSelect>
+                                            </div>
+                                        )}
                                     </div>
-                                    <div>
-                                        <Label>Check-out*</Label>
-                                        <ResponsiveDatePicker
-                                            value={parseDate(form.check_out)}
-                                            onChange={(d) => {
-                                                setForm({ ...form, check_out: formatDate(d) });
-                                                setFormErrors(p => ({ ...p, check_out: "" }));
-                                            }}
-                                            minDate={parseDate(form.check_in) || undefined}
-                                            placeholder={APP_DATE_INPUT_PLACEHOLDER}
-                                            className={cn(submitted && formErrors.check_out && "border-red-500")}
-                                        />
+                                </FormSection>
+
+                                <FormSection
+                                    title="Stay Details"
+                                    description="Expected check-in and check-out dates"
+                                >
+                                    <div className="space-y-4">
+                                        {/* Row 1: Senior Citizens & Children */}
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <Label>Senior Citizens</Label>
+                                                <Input
+                                                    className={submitted && formErrors.senior_citizens ? "border-red-500 bg-background" : "bg-background"}
+                                                    value={form.senior_citizens}
+                                                    onChange={(e) => {
+                                                        setForm({ ...form, senior_citizens: normalizeNumberInput(e.target.value).toString() });
+                                                        setFormErrors(p => ({ ...p, senior_citizens: "" }));
+                                                    }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <Label>Children</Label>
+                                                <Input
+                                                    className={submitted && formErrors.children ? "border-red-500 bg-background" : "bg-background"}
+                                                    value={form.children}
+                                                    onChange={(e) => {
+                                                        setForm({ ...form, children: normalizeNumberInput(e.target.value).toString() });
+                                                        setFormErrors(p => ({ ...p, children: "" }));
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Row 2: Adult & Specially Abled */}
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <Label>Adult</Label>
+                                                <Input
+                                                    type="text"
+                                                    className={submitted && formErrors.adults ? "border-red-500 bg-background" : "bg-background"}
+                                                    value={form.adults}
+                                                    onChange={(e) => {
+                                                        setForm({ ...form, adults: normalizeNumberInput(e.target.value).toString() });
+                                                        setFormErrors(p => ({ ...p, adults: "" }));
+                                                    }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <Label>Specially Abled</Label>
+                                                <Input
+                                                    className={submitted && formErrors.specially_abled ? "border-red-500 bg-background" : "bg-background"}
+                                                    value={form.specially_abled}
+                                                    onChange={(e) => {
+                                                        setForm({ ...form, specially_abled: normalizeNumberInput(e.target.value).toString() });
+                                                        setFormErrors(p => ({ ...p, specially_abled: "" }));
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Row 3: Total Members, Check-in, Check-out */}
+                                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                                            <div className="sm:col-span-2">
+                                                <Label>Total Members</Label>
+                                                <Input
+                                                    readOnly
+                                                    className="bg-background cursor-not-allowed"
+                                                    value={(Number(form.senior_citizens || 0) + Number(form.children || 0) + Number(form.adults || 0) + Number(form.specially_abled || 0)).toString()}
+                                                />
+                                            </div>
+                                            <div>
+                                                <Label>Check-in*</Label>
+                                                <ResponsiveDatePicker
+                                                    value={parseDate(form.check_in)}
+                                                    onChange={(d) => {
+                                                        const newCheckIn = formatDate(d);
+                                                        let newCheckOut = form.check_out;
+                                                        if (d && form.check_out) {
+                                                            const currentOut = parseDate(form.check_out);
+                                                            if (currentOut && d > currentOut) {
+                                                                newCheckOut = "";
+                                                            }
+                                                        }
+                                                        setForm({ ...form, check_in: newCheckIn, check_out: newCheckOut });
+                                                        setFormErrors(p => ({ ...p, check_in: "", check_out: "" }));
+                                                    }}
+                                                    placeholder={APP_DATE_INPUT_PLACEHOLDER}
+                                                    className={cn(submitted && formErrors.check_in && "border-red-500")}
+                                                />
+                                            </div>
+                                            <div>
+                                                <Label>Check-out*</Label>
+                                                <ResponsiveDatePicker
+                                                    value={parseDate(form.check_out)}
+                                                    onChange={(d) => {
+                                                        setForm({ ...form, check_out: formatDate(d) });
+                                                        setFormErrors(p => ({ ...p, check_out: "" }));
+                                                    }}
+                                                    minDate={parseDate(form.check_in) || undefined}
+                                                    placeholder={APP_DATE_INPUT_PLACEHOLDER}
+                                                    className={cn(submitted && formErrors.check_out && "border-red-500")}
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            </div>
-                        </FormSection>
+                                </FormSection>
 
-                        <FormSection
-                            title="Room & Pricing"
-                            description="Room preferences and quoted amount"
-                        >
-                            <div className="editable-grid-compact overflow-hidden rounded-[5px] border bg-background">
-                                <div className="grid-scroll-x w-full border-b border-border bg-background">
-                                    <div className="w-full min-w-[640px]">
-                                        <DataGrid>
-                                            <DataGridHeader>
-                                                <DataGridHead>Room Type*</DataGridHead>
-                                                <DataGridHead className="w-44">Rooms</DataGridHead>
-                                                {form.room_details.length > 1 && (
-                                                    <DataGridHead className="w-20 text-center">Action</DataGridHead>
-                                                )}
-                                            </DataGridHeader>
+                                <FormSection
+                                    title="Room & Pricing"
+                                    description="Room preferences and quoted amount"
+                                >
+                                    <div className="editable-grid-compact overflow-hidden rounded-[5px] border bg-background">
+                                        <div className="grid-scroll-x w-full border-b border-border bg-background">
+                                            <div className="w-full min-w-[640px]">
+                                                <DataGrid>
+                                                    <DataGridHeader>
+                                                        <DataGridHead>Room Type*</DataGridHead>
+                                                        <DataGridHead className="w-44">Rooms</DataGridHead>
+                                                        {form.room_details.length > 1 && (
+                                                            <DataGridHead className="w-20 text-center">Action</DataGridHead>
+                                                        )}
+                                                    </DataGridHeader>
 
-                                            <tbody>
-                                                {form.room_details.map((room) => {
-                                                    const isRoomTypeInvalid = submitted && !room.room_type;
-                                                    const isRoomCountInvalid = submitted && room.no_of_rooms < 1;
+                                                    <tbody>
+                                                        {form.room_details.map((room) => {
+                                                            const isRoomTypeInvalid = submitted && !room.room_type;
+                                                            const isRoomCountInvalid = submitted && room.no_of_rooms < 1;
 
-                                                    return (
-                                                        <DataGridRow key={room.id} className="odd:bg-background even:bg-background">
-                                                            <DataGridCell>
-                                                                <ValidationTooltip
-                                                                    isValid={!isRoomTypeInvalid}
-                                                                    message="Room type missing"
-                                                                >
-                                                                    <MenuItemSelect
-                                                                        value={room.room_type}
-                                                                        items={roomTypes}
-                                                                        itemName="full_name"
-                                                                        placeholder="--Please Select--"
-                                                                        extraClasses={cn(
-                                                                            "h-9 w-full rounded-[3px] border border-border bg-background px-2 py-1 text-sm font-normal shadow-none hover:bg-background text-left transition-colors duration-150",
-                                                                            !room.room_type && "text-muted-foreground",
-                                                                            isRoomTypeInvalid && "border-red-500"
-                                                                        )}
-                                                                        onSelect={(val) => {
-                                                                            const existingRoom = form.room_details.find(r => r.room_type === val && r.id !== room.id);
+                                                            return (
+                                                                <DataGridRow key={room.id} className="odd:bg-background even:bg-background">
+                                                                    <DataGridCell>
+                                                                        <ValidationTooltip
+                                                                            isValid={!isRoomTypeInvalid}
+                                                                            message="Room type missing"
+                                                                        >
+                                                                            <MenuItemSelect
+                                                                                value={room.room_type}
+                                                                                items={roomTypes}
+                                                                                itemName="full_name"
+                                                                                placeholder="--Please Select--"
+                                                                                extraClasses={cn(
+                                                                                    "h-9 w-full rounded-[3px] border border-border bg-background px-2 py-1 text-sm font-normal shadow-none hover:bg-background text-left transition-colors duration-150",
+                                                                                    !room.room_type && "text-muted-foreground",
+                                                                                    isRoomTypeInvalid && "border-red-500"
+                                                                                )}
+                                                                                onSelect={(val) => {
+                                                                                    const existingRoom = form.room_details.find(r => r.room_type === val && r.id !== room.id);
 
-                                                                            if (existingRoom) {
-                                                                                setForm(prev => ({
-                                                                                    ...prev,
-                                                                                    room_details: prev.room_details
-                                                                                        .map(r =>
-                                                                                            r.id === existingRoom.id
-                                                                                                ? { ...r, no_of_rooms: r.no_of_rooms + 1 }
-                                                                                                : r.id === room.id
-                                                                                                ? null
-                                                                                                : r
+                                                                                    if (existingRoom) {
+                                                                                        setForm(prev => ({
+                                                                                            ...prev,
+                                                                                            room_details: prev.room_details
+                                                                                                .map(r =>
+                                                                                                    r.id === existingRoom.id
+                                                                                                        ? { ...r, no_of_rooms: r.no_of_rooms + 1 }
+                                                                                                        : r.id === room.id
+                                                                                                            ? null
+                                                                                                            : r
+                                                                                                )
+                                                                                                .filter(Boolean) as typeof form.room_details
+                                                                                        }));
+                                                                                    } else {
+                                                                                        setForm(prev => ({
+                                                                                            ...prev,
+                                                                                            room_details: prev.room_details.map(r =>
+                                                                                                r.id === room.id ? { ...r, room_type: String(val) } : r
+                                                                                            )
+                                                                                        }));
+                                                                                    }
+                                                                                }}
+                                                                            />
+                                                                        </ValidationTooltip>
+                                                                    </DataGridCell>
+
+                                                                    <DataGridCell className="w-44">
+                                                                        <ValidationTooltip
+                                                                            isValid={!isRoomCountInvalid}
+                                                                            message="Invalid room count"
+                                                                        >
+                                                                            <Input
+                                                                                type="text"
+                                                                                className={cn(
+                                                                                    "h-9 rounded-[3px] border border-border bg-background px-3 shadow-none focus-visible:ring-1 focus-visible:ring-primary",
+                                                                                    isRoomCountInvalid && "border-red-500"
+                                                                                )}
+                                                                                value={room.no_of_rooms}
+                                                                                onChange={(e) => {
+                                                                                    const val = normalizeNumberInput(e.target.value);
+                                                                                    setForm(prev => ({
+                                                                                        ...prev,
+                                                                                        room_details: prev.room_details.map(r =>
+                                                                                            r.id === room.id ? { ...r, no_of_rooms: val === "" ? 0 : Number(val) } : r
                                                                                         )
-                                                                                        .filter(Boolean) as typeof form.room_details
-                                                                                }));
-                                                                            } else {
-                                                                                setForm(prev => ({
-                                                                                    ...prev,
-                                                                                    room_details: prev.room_details.map(r =>
-                                                                                        r.id === room.id ? { ...r, room_type: String(val) } : r
-                                                                                    )
-                                                                                }));
-                                                                            }
-                                                                        }}
-                                                                    />
-                                                                </ValidationTooltip>
-                                                            </DataGridCell>
+                                                                                    }));
+                                                                                }}
+                                                                            />
+                                                                        </ValidationTooltip>
+                                                                    </DataGridCell>
 
-                                                            <DataGridCell className="w-44">
-                                                                <ValidationTooltip
-                                                                    isValid={!isRoomCountInvalid}
-                                                                    message="Invalid room count"
-                                                                >
-                                                                    <Input
-                                                                        type="text"
-                                                                        className={cn(
-                                                                            "h-9 rounded-[3px] border border-border bg-background px-3 shadow-none focus-visible:ring-1 focus-visible:ring-primary",
-                                                                            isRoomCountInvalid && "border-red-500"
-                                                                        )}
-                                                                        value={room.no_of_rooms}
-                                                                        onChange={(e) => {
-                                                                            const val = normalizeNumberInput(e.target.value);
-                                                                            setForm(prev => ({
-                                                                                ...prev,
-                                                                                room_details: prev.room_details.map(r =>
-                                                                                    r.id === room.id ? { ...r, no_of_rooms: val === "" ? 0 : Number(val) } : r
-                                                                                )
-                                                                            }));
-                                                                        }}
-                                                                    />
-                                                                </ValidationTooltip>
-                                                            </DataGridCell>
+                                                                    {form.room_details.length > 1 && (
+                                                                        <DataGridCell className="text-center">
+                                                                            <Button
+                                                                                type="button"
+                                                                                size="icon"
+                                                                                variant="ghost"
+                                                                                className="mx-auto h-10 w-10 text-destructive transition-colors hover:text-destructive/80"
+                                                                                onClick={() => removeRoomType(room.id)}
+                                                                            >
+                                                                                <Trash2 className="h-5 w-5" />
+                                                                            </Button>
+                                                                        </DataGridCell>
+                                                                    )}
+                                                                </DataGridRow>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </DataGrid>
+                                            </div>
+                                        </div>
 
-                                                            {form.room_details.length > 1 && (
-                                                                <DataGridCell className="text-center">
-                                                                    <Button
-                                                                        type="button"
-                                                                        size="icon"
-                                                                        variant="ghost"
-                                                                        className="mx-auto h-10 w-10 text-destructive transition-colors hover:text-destructive/80"
-                                                                        onClick={() => removeRoomType(room.id)}
-                                                                    >
-                                                                        <Trash2 className="h-5 w-5" />
-                                                                    </Button>
-                                                                </DataGridCell>
-                                                            )}
-                                                        </DataGridRow>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </DataGrid>
+                                        <div className="bg-muted/10 p-3">
+                                            <button
+                                                type="button"
+                                                className="flex items-center gap-1.5 text-sm font-semibold text-primary transition-colors hover:underline"
+                                                onClick={addRoomType}
+                                            >
+                                                <PlusCircle className="w-4 h-4" /> Add New Room Type(s)
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3">
 
-                                <div className="bg-muted/10 p-3">
-                                    <button
-                                        type="button"
-                                        className="flex items-center gap-1.5 text-sm font-semibold text-primary transition-colors hover:underline"
-                                        onClick={addRoomType}
-                                    >
-                                        <PlusCircle className="w-4 h-4" /> Add New Room Type(s)
-                                    </button>
-                                </div>
+                                        <div>
+                                            <Label>Offer Amount</Label>
+                                            <Input
+                                                className={submitted && formErrors.offer_amount ? "border-red-500 bg-background" : "bg-background"}
+                                                value={form.offer_amount}
+                                                onChange={(e) => {
+                                                    setForm({ ...form, offer_amount: normalizeNumberInput(e.target.value).toString() });
+                                                    setFormErrors(p => ({ ...p, offer_amount: "" }));
+                                                }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label>Quote Amount*</Label>
+                                            <Input
+                                                className={submitted && formErrors.quote_amount ? "border-red-500 bg-background" : "bg-background"}
+                                                value={form.quote_amount}
+                                                onChange={(e) => {
+                                                    setForm({ ...form, quote_amount: +normalizeNumberInput(e.target.value) });
+                                                    setFormErrors(p => ({ ...p, quote_amount: "" }));
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                </FormSection>
+
+                                <FormSection
+                                    title="Follow-up & Notes"
+                                    description="Optional follow-up and comments"
+                                >
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div>
+                                            <Label>Follow-up Date</Label>
+                                            <ResponsiveDatePicker
+                                                value={parseDate(form.follow_up_date)}
+                                                onChange={(d) => {
+                                                    setForm({ ...form, follow_up_date: formatDate(d) });
+                                                    setFormErrors(p => ({ ...p, follow_up_date: "" }));
+                                                }}
+                                                placeholder={APP_DATE_INPUT_PLACEHOLDER}
+                                                className={cn(submitted && formErrors.follow_up_date && "border-red-500")}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <Label>Comments</Label>
+                                        <textarea
+                                            className="w-full min-h-[90px] rounded-[3px] border border-border bg-background px-3 py-2 text-sm"
+                                            value={form.comment}
+                                            onChange={(e) =>
+                                                setForm({ ...form, comment: e.target.value })
+                                            }
+                                        />
+                                    </div>
+                                </FormSection>
+
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3">
-
-                                <div>
-                                    <Label>Offer Amount</Label>
-                                    <Input
-                                        className={submitted && formErrors.offer_amount ? "border-red-500 bg-background" : "bg-background"}
-                                        value={form.offer_amount}
-                                        onChange={(e) => {
-                                            setForm({ ...form, offer_amount: normalizeNumberInput(e.target.value).toString() });
-                                            setFormErrors(p => ({ ...p, offer_amount: "" }));
-                                        }}
-                                    />
-                                </div>
-                                <div>
-                                    <Label>Quote Amount*</Label>
-                                    <Input
-                                        className={submitted && formErrors.quote_amount ? "border-red-500 bg-background" : "bg-background"}
-                                        value={form.quote_amount}
-                                        onChange={(e) => {
-                                            setForm({ ...form, quote_amount: +normalizeNumberInput(e.target.value) });
-                                            setFormErrors(p => ({ ...p, quote_amount: "" }));
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                        </FormSection>
-
-                        <FormSection
-                            title="Follow-up & Notes"
-                            description="Optional follow-up and comments"
-                        >
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <Label>Follow-up Date</Label>
-                                    <ResponsiveDatePicker
-                                        value={parseDate(form.follow_up_date)}
-                                        onChange={(d) => {
-                                            setForm({ ...form, follow_up_date: formatDate(d) });
-                                            setFormErrors(p => ({ ...p, follow_up_date: "" }));
-                                        }}
-                                        placeholder={APP_DATE_INPUT_PLACEHOLDER}
-                                        className={cn(submitted && formErrors.follow_up_date && "border-red-500")}
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <Label>Comments</Label>
-                                <textarea
-                                    className="w-full min-h-[90px] rounded-[3px] border border-border bg-background px-3 py-2 text-sm"
-                                    value={form.comment}
-                                    onChange={(e) =>
-                                        setForm({ ...form, comment: e.target.value })
-                                    }
-                                />
-                            </div>
-                        </FormSection>
-
-                        <div className="flex justify-end gap-3 pt-4 border-t border-border">
-                            <Button
-                                type="button"
-                                variant="heroOutline"
-                                onClick={() => navigate("/enquiries")}
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                variant="hero"
-                                onClick={() => {
-                                    buildEnquiryPayload(form)
-                                }}
-                            >
-                                Create Enquiry
-                            </Button>
-
-                        </div>
+                        </motion.div>
                     </div>
-                </motion.div>
+
+
+                    <div className="flex justify-end gap-3 pt-6 border-t border-border">
+                        <Button
+                            type="button"
+                            variant="heroOutline"
+                            onClick={() => navigate("/enquiries")}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="hero"
+                            className="min-w-[140px]"
+                            onClick={() => {
+                                buildEnquiryPayload(form)
+                            }}
+                        >
+                            Create Enquiry
+                        </Button>
+                    </div>
+                </div>
             </SheetContent>
         </Sheet>
     );

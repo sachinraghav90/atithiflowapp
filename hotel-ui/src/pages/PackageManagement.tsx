@@ -177,14 +177,14 @@ export default function PackageManagement() {
 
     const refreshHistoryGrid = async () => {
         if (globalAuditLogsFetching) return;
-        const toastId = toast.loading("Refreshing history...");
+        const toastId = toast.loading("Refreshing data...");
         try {
             await refetchGlobalAuditLogs();
             toast.dismiss(toastId);
-            toast.success("History refreshed");
+            toast.success("Data refreshed");
         } catch {
             toast.dismiss(toastId);
-            toast.error("Failed to refresh history");
+            toast.error("Failed to refresh data");
         }
     };
 
@@ -392,15 +392,15 @@ export default function PackageManagement() {
 
     const refreshTable = async () => {
         if (packagesFetching) return;
-        const toastId = toast.loading("Refreshing plans...");
+        const toastId = toast.loading("Refreshing data...");
 
         try {
             await refetchPackages();
             toast.dismiss(toastId);
-            toast.success("Plans refreshed");
+            toast.success("Data refreshed");
         } catch {
             toast.dismiss(toastId);
-            toast.error("Failed to refresh plans");
+            toast.error("Failed to refresh data");
         }
     };
 
@@ -601,7 +601,8 @@ export default function PackageManagement() {
                                     onSearch={() => {
                                         setSearchQuery(searchInput.trim());
                                         resetPage();
-                                    }}
+                                    }}
+
                                 />
 
                                 <GridToolbarSelect
@@ -720,7 +721,8 @@ export default function PackageManagement() {
                                             onSearch={() => {
                                                 setHistorySearchQuery(historySearchInput.trim());
                                                 setMainAuditPage(1);
-                                            }}
+                                            }}
+
                                         />
 
                                         <GridToolbarSelect
@@ -837,14 +839,14 @@ export default function PackageManagement() {
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
                 <SheetContent
                     side="right"
-                    className={cn("w-full overflow-y-auto bg-background transition-all duration-300", sheetTab === "history" ? "sm:max-w-4xl" : "lg:max-w-3xl sm:max-w-2xl")}
+                    className={cn("w-full overflow-y-auto bg-background p-0 transition-all duration-300", sheetTab === "history" ? "sm:max-w-4xl" : "lg:max-w-3xl sm:max-w-2xl")}
                 >
                         <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="space-y-1"
+                            className="flex flex-col h-full"
                         >
-                            <SheetHeader className="mb-6">
+                            <SheetHeader className="px-6 pb-4 pt-2 border-b border-border relative">
                                 <div className="space-y-1">
                                     <SheetTitle className="text-xl font-bold">
                                         {mode === "add" ? "Create New Plan" : mode === "edit" ? `Update Plan ${selectedPackage?.id ? `[#${formatModuleDisplayId("package", selectedPackage.id)}]` : "..."}` : `Plan Summary ${selectedPackage?.id ? `[#${formatModuleDisplayId("package", selectedPackage.id)}]` : "..."}`}
@@ -855,6 +857,7 @@ export default function PackageManagement() {
                                 </div>
                             </SheetHeader>
 
+                            <div className="px-6 pb-6 pt-4 flex-1 overflow-y-auto">
                             {mode === "view" ? (
                                 <div className="space-y-4">
                                     <div className="border-b border-border flex">
@@ -923,7 +926,7 @@ export default function PackageManagement() {
                                     )}
                                 </div>
                             ) : (
-                                <div className="space-y-5 mt-6">
+                                <div className="space-y-4">
                                     {(isSuperAdmin || isOwner) && mode === "add" && (
                                         <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-1 -mt-1 -mb-2">
                                             <Label>Property</Label>
@@ -943,7 +946,7 @@ export default function PackageManagement() {
                                         </div>
                                     )}
 
-                                    <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-5 [&>h3+*]:!mt-4">
+                                    <div className="rounded-[5px] border border-primary/50 bg-background p-5 shadow-sm space-y-5 [&>h3+*]:!mt-4">
                                         <h3 className="text-sm font-semibold text-primary/90">
                                             Plan Details
                                         </h3>
@@ -1045,7 +1048,7 @@ export default function PackageManagement() {
                             )}
 
                             {/* Actions */}
-                            <div className="flex justify-end gap-3 pt-6 border-t border-border mt-6">
+                            <div className="-mx-6 -mb-6 px-6 py-4 border-t border-border bg-muted/20 flex justify-end gap-3 mt-4">
                                 <Button
                                     variant="heroOutline"
                                     onClick={() => setSheetOpen(false)}
@@ -1061,6 +1064,7 @@ export default function PackageManagement() {
                                         {mode === "add" ? "Create Plan" : "Update"}
                                     </Button>
                                 )}
+                            </div>
                             </div>
                         </motion.div>
                 </SheetContent>

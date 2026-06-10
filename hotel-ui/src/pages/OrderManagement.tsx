@@ -266,14 +266,14 @@ export function OrdersManagement() {
 
     const refreshHistoryTable = async () => {
         if (logsFetching) return;
-        const toastId = toast.loading("Refreshing history...");
+        const toastId = toast.loading("Refreshing data...");
         try {
             await refetchAuditLogs();
             toast.dismiss(toastId);
-            toast.success("History refreshed");
+            toast.success("Data refreshed");
         } catch {
             toast.dismiss(toastId);
-            toast.error("Failed to refresh history");
+            toast.error("Failed to refresh data");
         }
     };
 

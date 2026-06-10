@@ -268,14 +268,14 @@ export default function BookingsManagement() {
 
     const refreshHistoryGrid = async () => {
         if (globalAuditLogsFetching) return;
-        const toastId = toast.loading("Refreshing history...");
+        const toastId = toast.loading("Refreshing data...");
         try {
             await refetchGlobalAuditLogs();
             toast.dismiss(toastId);
-            toast.success("History refreshed");
+            toast.success("Data refreshed");
         } catch {
             toast.dismiss(toastId);
-            toast.error("Failed to refresh history");
+            toast.error("Failed to refresh data");
         }
     };
 
@@ -1212,7 +1212,8 @@ export default function BookingsManagement() {
                                             onSearch={() => {
                                                 setHistorySearchQuery(historySearchInput.trim());
                                                 setMainAuditPage(1);
-                                            }}
+                                            }}
+
                                         />
 
                                         <GridToolbarSelect
@@ -1590,11 +1591,11 @@ export default function BookingsManagement() {
 
             <Sheet open={instructionsOpen} onOpenChange={setInstructionsOpen}>
                 <SheetContent side="right" className="w-full sm:max-w-2xl h-full overflow-y-auto bg-background p-0 flex flex-col">
-                    <SheetHeader className="px-6 py-4 border-b bg-background">
+                    <SheetHeader className="px-6 py-4 border-b border-border relative">
                         <SheetTitle className="text-xl font-bold">Booking Instructions</SheetTitle>
                     </SheetHeader>
 
-                    <div className="flex-1 px-6 pt-2 pb-6 space-y-4">
+                    <div className="px-6 pb-6 pt-0 flex-1 space-y-4">
                         {!isEditingInstructions ? (
                             <>
                                 {canManagePropertySettings && (
@@ -1639,38 +1640,38 @@ export default function BookingsManagement() {
                                 </div>
                             </>
                         )}
-                    </div>
 
-                    <div className="border-t border-border px-6 py-4 flex justify-end gap-3">
-                        {!isEditingInstructions ? (
-                            <>
-                                <Button
-                                    variant="heroOutline"
-                                    className="h-9 px-5"
-                                    onClick={handleCloseInstructionsPanel}
-                                >
-                                    Close
-                                </Button>
-                            </>
-                        ) : (
-                            <>
-                                <Button
-                                    variant="heroOutline"
-                                    className="h-9 px-5"
-                                    onClick={handleCancelInstructionsEdit}
-                                >
-                                    Cancel
-                                </Button>
-                                <Button
-                                    variant="hero"
-                                    className="h-9 px-5"
-                                    disabled={isSavingInstructions || !currentPropertyId}
-                                    onClick={handleUpdateInstructions}
-                                >
-                                    {isSavingInstructions ? "Saving..." : "Save"}
-                                </Button>
-                            </>
-                        )}
+                        <div className="-mx-6 -mb-6 px-6 py-4 border-t border-border bg-muted/20 flex justify-end gap-3 mt-4">
+                            {!isEditingInstructions ? (
+                                <>
+                                    <Button
+                                        variant="heroOutline"
+                                        className="h-9 px-5"
+                                        onClick={handleCloseInstructionsPanel}
+                                    >
+                                        Close
+                                    </Button>
+                                </>
+                            ) : (
+                                <>
+                                    <Button
+                                        variant="heroOutline"
+                                        className="h-9 px-5"
+                                        onClick={handleCancelInstructionsEdit}
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        variant="hero"
+                                        className="h-9 px-5"
+                                        disabled={isSavingInstructions || !currentPropertyId}
+                                        onClick={handleUpdateInstructions}
+                                    >
+                                        {isSavingInstructions ? "Saving..." : "Save"}
+                                    </Button>
+                                </>
+                            )}
+                        </div>
                     </div>
                 </SheetContent>
             </Sheet>

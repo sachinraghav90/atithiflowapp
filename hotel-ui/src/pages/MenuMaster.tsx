@@ -364,17 +364,17 @@ export default function MenuMaster() {
             toast.success("Data refreshed");
         } catch {
             toast.dismiss(toastId);
-            toast.error("Failed to refresh");
+            toast.error("Failed to refresh data");
         }
     };
 
     const exportMenuItems = () => {
-        if (!filteredMenuItems.length) {
+        if (!menuRows.length) {
             toast.info("No menu items to export");
             return;
         }
 
-        const formatted = filteredMenuItems.map((item: MenuItem) => ({
+        const formatted = menuRows.map((item: MenuItem) => ({
             "Menu ID": formatModuleDisplayId("menu", item.id),
             "Name": item.item_name,
             "Group": item.menu_item_group || "--",
@@ -435,14 +435,14 @@ export default function MenuMaster() {
 
     const refreshHistoryGrid = async () => {
         if (globalAuditFetching) return;
-        const toastId = toast.loading("Refreshing history...");
+        const toastId = toast.loading("Refreshing data...");
         try {
             await refetchGlobalLogs();
             toast.dismiss(toastId);
-            toast.success("History refreshed");
+            toast.success("Data refreshed");
         } catch {
             toast.dismiss(toastId);
-            toast.error("Failed to refresh");
+            toast.error("Failed to refresh data");
         }
     };
 
@@ -1098,7 +1098,7 @@ export default function MenuMaster() {
                         {(mode === "add" || mode === "edit") && (
                             <div className="space-y-5">
                                 {(isSuperAdmin || isOwner) && mode === "add" && (
-                                    <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-1 -mt-1 -mb-2">
+                                    <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-2 mb-4">
                                         <Label>Property</Label>
                                         <NativeSelect
                                             className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
@@ -1278,19 +1278,20 @@ export default function MenuMaster() {
 
             {/* CREATE GROUP SHEET */}
             <Sheet open={createGroupOpen} onOpenChange={setCreateGroupOpen}>
-                <SheetContent side="right" className="w-full lg:max-w-4xl sm:max-w-3xl overflow-y-auto bg-background">
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="space-y-6"
-                    >
-                        <SheetHeader className="border-b border-border/50 pb-4 mb-4">
-                            <SheetTitle className="text-xl font-bold">Create Menu Item Group</SheetTitle>
-                        </SheetHeader>
+                <SheetContent side="right" className="w-full sm:max-w-2xl flex flex-col p-0 bg-background">
+                    <SheetHeader className="px-6 py-4 border-b -mb-[2px] bg-background">
+                        <SheetTitle className="text-xl font-bold">Create Menu Item Group</SheetTitle>
+                    </SheetHeader>
 
-                        <div className="space-y-6">
+                    <div className="flex-1 overflow-y-auto bg-background">
+                        <div className="px-6 pb-3 pt-0">
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                            >
+                                <div className="space-y-6">
                             {(isSuperAdmin || isOwner) && (
-                                <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-1 -mt-1 -mb-2">
+                                <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-2 mb-4">
                                     <Label>Property</Label>
                                     <NativeSelect
                                         className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
@@ -1337,50 +1338,56 @@ export default function MenuMaster() {
                                 </div>
                             </div>
 
-                            <div className="flex justify-end gap-3">
-                                <Button variant="heroOutline" onClick={() => setCreateGroupOpen(false)}>Cancel</Button>
-                                <Button
-                                    variant="hero"
-                                    onClick={async () => {
-                                        if (!selectedPropertyId) return;
-                                        if (!groupName.trim()) {
-                                            setGroupErrors({ groupName: "Group name is required" });
-                                            return;
-                                        }
-                                        try {
-                                            const payload = buildCreateGroupPayload(groupName, selectedPropertyId);
-                                            await apiToast(
-                                                createMenuItemGroup(payload).unwrap(),
-                                                "Menu group created successfully"
-                                            );
-                                            setGroupName("");
-                                            setCreateGroupOpen(false);
-                                        } catch (err) {
-                                            console.error("Group creation failed", err);
-                                        }
-                                    }}
-                                >
-                                    Create Group
-                                </Button>
-                            </div>
+                                </div>
+                            </motion.div>
                         </div>
-                    </motion.div>
+                        
+                        <div className="px-6 py-4 border-t border-border bg-background flex justify-end gap-3">
+                            <Button variant="heroOutline" onClick={() => setCreateGroupOpen(false)}>Cancel</Button>
+                            <Button
+                                variant="hero"
+                                className="min-w-[140px]"
+                                onClick={async () => {
+                                    if (!selectedPropertyId) return;
+                                    if (!groupName.trim()) {
+                                        setGroupErrors({ groupName: "Group name is required" });
+                                        return;
+                                    }
+                                    try {
+                                        const payload = buildCreateGroupPayload(groupName, selectedPropertyId);
+                                        await apiToast(
+                                            createMenuItemGroup(payload).unwrap(),
+                                            "Menu group created successfully"
+                                        );
+                                        setGroupName("");
+                                        setCreateGroupOpen(false);
+                                    } catch (err) {
+                                        console.error("Group creation failed", err);
+                                    }
+                                }}
+                            >
+                                Create Group
+                            </Button>
+                        </div>
+                    </div>
                 </SheetContent>
             </Sheet>
 
             <Sheet open={viewGroupOpen} onOpenChange={setViewGroupOpen}>
-                <SheetContent side="right" className="w-full lg:max-w-4xl sm:max-w-3xl overflow-y-auto bg-background">
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="space-y-6"
-                    >
-                        <SheetHeader className="border-b border-border/50 pb-4 mb-4">
-                            <SheetTitle className="text-xl font-bold">Menu Item Groups</SheetTitle>
-                        </SheetHeader>
+                <SheetContent side="right" className="w-full sm:max-w-2xl flex flex-col p-0 bg-background">
+                    <SheetHeader className="px-6 py-4 border-b -mb-[2px] bg-background">
+                        <SheetTitle className="text-xl font-bold">Menu Item Groups</SheetTitle>
+                    </SheetHeader>
+
+                    <div className="flex-1 overflow-y-auto bg-background">
+                        <div className="px-6 pb-3 pt-0">
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                            >
 
                         {(isSuperAdmin || isOwner) && (
-                            <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-1 -mt-1 -mb-2">
+                            <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-2 mb-4">
                                 <Label>Property</Label>
                                 <NativeSelect
                                     className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
@@ -1517,10 +1524,13 @@ export default function MenuMaster() {
                         })}
                     </div>
 
-                    <div className="flex justify-end pt-4 border-t border-border">
-                        <Button variant="heroOutline" onClick={() => setViewGroupOpen(false)}>Close</Button>
+                            </motion.div>
+                        </div>
+                        
+                        <div className="px-6 py-4 border-t border-border bg-background flex justify-end gap-3">
+                            <Button variant="heroOutline" onClick={() => setViewGroupOpen(false)}>Close</Button>
+                        </div>
                     </div>
-                    </motion.div>
                 </SheetContent>
             </Sheet>
 

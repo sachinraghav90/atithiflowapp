@@ -159,14 +159,14 @@ export default function MenuMasterBulkSheet({
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
             <SheetContent side="right" onOpenAutoFocus={(event) => event.preventDefault()} className="w-full sm:max-w-4xl flex flex-col p-0 bg-background">
-                <SheetHeader className="px-6 py-4 border-b bg-background">
+                <SheetHeader className="px-6 py-4 border-b -mb-[2px] bg-background">
                     <SheetTitle className="text-xl font-bold">Add Menu Items</SheetTitle>
                 </SheetHeader>
 
-                <div className="flex-1 overflow-y-auto bg-background">
-                    <div className="px-6 pb-6 pt-3 space-y-6">
+                <div className="flex-1 overflow-y-auto px-3">
+                    <div className="sticky top-0 z-10 bg-background mb-4">
                         {(isSuperAdmin || isOwner) && (
-                            <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-1 -mt-1 -mb-2">
+                            <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background mb-2">
                                 <Label>Property</Label>
                                 <NativeSelect
                                     className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
@@ -183,10 +183,8 @@ export default function MenuMasterBulkSheet({
                                 </NativeSelect>
                             </div>
                         )}
-                        <div className="space-y-2">
-
-
-                        <div className="editable-grid-compact border rounded-[5px] overflow-hidden flex flex-col bg-background/50 border-border">
+                        
+                        <div className="editable-grid-compact border rounded-[5px] overflow-hidden flex flex-col mb-3 mt-0.5 bg-background/50 border-border">
                             <div className="grid-scroll-x w-full bg-background/50">
                                 <div className="w-full min-w-[800px]">
                                     <DataGrid>
@@ -340,7 +338,7 @@ export default function MenuMasterBulkSheet({
                         </div>
                     </div>
 
-                    <div className="p-6 border-t bg-background flex justify-end gap-3">
+                    <div className="-mx-3 px-6 py-4 border-t border-border bg-background flex justify-end gap-3">
                         <Button variant="heroOutline" onClick={() => onOpenChange(false)}>
                             Cancel
                         </Button>
@@ -349,7 +347,6 @@ export default function MenuMasterBulkSheet({
                         </Button>
                     </div>
                 </div>
-            </div>
             </SheetContent>
         </Sheet>
     );

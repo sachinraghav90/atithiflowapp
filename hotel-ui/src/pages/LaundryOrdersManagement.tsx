@@ -9,6 +9,7 @@ import {
     SheetContent,
     SheetHeader,
     SheetTitle,
+    SheetClose,
 } from "@/components/ui/sheet";
 import { NativeSelect } from "@/components/ui/native-select";
 import {
@@ -27,7 +28,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
-import { CalendarIcon, ClipboardList, Download, FilterX, Package, Pencil, RefreshCcw, ShieldCheck, Trash2, Truck, Plus, PlusCircle } from "lucide-react";
+import { CalendarIcon, ClipboardList, Download, FilterX, Package, Pencil, RefreshCcw, ShieldCheck, Trash2, Truck, Plus, PlusCircle, X } from "lucide-react";
 import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -1072,7 +1073,7 @@ export default function LaundryOrdersManagement() {
             toast.success("Data refreshed");
         } catch {
             toast.dismiss(toastId);
-            toast.error("Failed to refresh");
+            toast.error("Failed to refresh data");
         }
     };
 
@@ -1459,18 +1460,23 @@ export default function LaundryOrdersManagement() {
                 if (!open) handleCloseSheet();
                 else setSheetOpen(true);
             }}>
-                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto p-0 bg-background">
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex flex-col min-h-full"
-                    >
-                        <SheetHeader className="px-6 py-4 border-b">
+                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl flex flex-col p-0 bg-background" hideClose>
+                    <div className="flex-1 overflow-y-auto bg-background">
+                        <SheetHeader className="px-6 py-4 border-b border-border bg-background relative">
                             <SheetTitle className="text-xl font-bold">Add Laundry Order Items</SheetTitle>
+                            <SheetClose className="absolute right-4 top-4 rounded-md border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none h-5 w-5 flex items-center justify-center shadow-sm z-50">
+                                <X className="h-4 w-4 stroke-[2.5]" />
+                                <span className="sr-only">Close</span>
+                            </SheetClose>
                         </SheetHeader>
 
-                        <div className="flex-1 px-4 pb-6 pt-3">
-                            <div className="space-y-4">
+                        <div className="px-6 pb-4 pt-4">
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="flex flex-col min-h-full"
+                            >
+                                <div className="space-y-4">
                                 {isMultiProperty && (
                                     <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-3">
                                         <Label>Property</Label>
@@ -1691,14 +1697,16 @@ export default function LaundryOrdersManagement() {
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                                </div>
+                            </motion.div>
                         </div>
 
-                        <div className="p-6 border-t bg-muted/20 flex justify-end gap-3">
+
+                        <div className="px-6 py-4 border-t border-border bg-background flex justify-end gap-3">
                             <Button variant="heroOutline" onClick={handleCloseSheet}>Cancel</Button>
                             <Button variant="hero" className="min-w-[140px]" onClick={handleCreateOrder}>Create Order</Button>
                         </div>
-                    </motion.div>
+                    </div>
                 </SheetContent>
             </Sheet>
 

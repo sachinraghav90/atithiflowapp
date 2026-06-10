@@ -274,14 +274,14 @@ export default function InventoryMaster() {
     };
 
     const refreshHistoryGrid = async () => {
-        const toastId = toast.loading("Refreshing history logs...");
+        const toastId = toast.loading("Refreshing data...");
         try {
             await refetchInventoryLogs();
             toast.dismiss(toastId);
-            toast.success("History logs refreshed");
+            toast.success("Data refreshed");
         } catch {
             toast.dismiss(toastId);
-            toast.error("Failed to refresh history logs");
+            toast.error("Failed to refresh data");
         }
     };
 
@@ -1206,7 +1206,7 @@ export default function InventoryMaster() {
                                 </div>
                             </div>
                             
-                            <div className="-mx-3 px-6 py-4 border-t border-border bg-muted/20 flex justify-end gap-3">
+                            <div className="-mx-3 px-6 py-4 border-t border-border bg-background flex justify-end gap-3">
                                 <Button variant="heroOutline" onClick={() => setMode(null)}>
                                     Cancel
                                 </Button>

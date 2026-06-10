@@ -173,14 +173,14 @@ export default function RoomTypeBasePriceManagement() {
 
     const refreshHistoryGrid = async () => {
         if (globalAuditLogsFetching) return;
-        const toastId = toast.loading("Refreshing history...");
+        const toastId = toast.loading("Refreshing data...");
         try {
             await refetchGlobalAuditLogs();
             toast.dismiss(toastId);
-            toast.success("History refreshed");
+            toast.success("Data refreshed");
         } catch {
             toast.dismiss(toastId);
-            toast.error("Failed to refresh history");
+            toast.error("Failed to refresh data");
         }
     };
 
@@ -370,14 +370,14 @@ export default function RoomTypeBasePriceManagement() {
 
     const refreshTable = async () => {
         if (roomTypesFetching) return;
-        const toastId = toast.loading("Refreshing prices...");
+        const toastId = toast.loading("Refreshing data...");
         try {
             await refetchRoomTypes();
             toast.dismiss(toastId);
-            toast.success("Prices refreshed");
+            toast.success("Data refreshed");
         } catch {
             toast.dismiss(toastId);
-            toast.error("Failed to refresh prices");
+            toast.error("Failed to refresh data");
         }
     };
 
@@ -734,7 +734,8 @@ export default function RoomTypeBasePriceManagement() {
                                             onSearch={() => {
                                                 setHistorySearchQuery(historySearchInput.trim());
                                                 setMainAuditPage(1);
-                                            }}
+                                            }}
+
                                         />
 
                                         <GridToolbarSelect
@@ -849,13 +850,13 @@ export default function RoomTypeBasePriceManagement() {
             </section>
 
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetContent side="right" className={cn("w-full overflow-y-auto transition-all duration-300", sheetTab === "history" ? "sm:max-w-4xl" : "sm:max-w-xl")}>
+                <SheetContent side="right" className={cn("w-full overflow-y-auto bg-background p-0 transition-all duration-300", sheetTab === "history" ? "sm:max-w-4xl" : "sm:max-w-xl")}>
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="space-y-6 mt-4"
+                        className="flex flex-col h-full"
                     >
-                        <SheetHeader>
+                        <SheetHeader className="px-6 py-4 border-b border-border relative">
                             <div className="space-y-1">
                                 <SheetTitle className="text-xl font-bold">
                                     {mode === "view" ? `Room Category [#${selectedRow?.id ? formatModuleDisplayId("room", selectedRow.id) : "..."}]` : "Edit Configuration"}
@@ -867,8 +868,9 @@ export default function RoomTypeBasePriceManagement() {
                         </SheetHeader>
 
 
+                        <div className="px-6 pb-6 pt-4">
                         {mode === "view" ? (
-                            <div className="space-y-6 mt-6">
+                            <div className="space-y-4">
                                 {/* Sheet Tabs */}
                                 <div className="border-b border-border flex">
                                     <button
@@ -962,8 +964,8 @@ export default function RoomTypeBasePriceManagement() {
                                 )}
                             </div>
                         ) : (
-                            <div className="space-y-5 mt-6">
-                                <div className="rounded-[5px] border border-primary/50 bg-background p-4 shadow-sm space-y-5 [&>h3+*]:!mt-4">
+                            <div className="space-y-4">
+                                <div className="rounded-[5px] border border-primary/50 bg-background p-5 shadow-sm space-y-5 [&>h3+*]:!mt-4">
                                     <h3 className="text-sm font-semibold text-primary/90">
                                         Room Details
                                     </h3>
@@ -1037,7 +1039,7 @@ export default function RoomTypeBasePriceManagement() {
                             </div>
                         )}
 
-                        <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                        <div className="-mx-6 -mb-6 px-6 py-4 border-t border-border bg-muted/20 flex justify-end gap-3 mt-4">
                             <Button
                                 variant="heroOutline"
                                 onClick={() => setSheetOpen(false)}
@@ -1053,6 +1055,7 @@ export default function RoomTypeBasePriceManagement() {
                                     Save Changes
                                 </Button>
                             )}
+                        </div>
                         </div>
                     </motion.div>
                 </SheetContent>

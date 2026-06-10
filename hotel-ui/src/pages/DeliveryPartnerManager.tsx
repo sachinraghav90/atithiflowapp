@@ -15,6 +15,7 @@ import { usePermission } from "@/rbac/usePermission";
 import { Switch } from "@/components/ui/switch";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { NativeSelect } from "@/components/ui/native-select";
+import { cn } from "@/lib/utils";
 /* ===========================
    TYPES
 =========================== */
@@ -157,16 +158,16 @@ export default function DeliveryPartnerManager({
             ======================== */}
 
             <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetContent side="right" className="w-full sm:max-w-lg flex flex-col p-0 bg-background">
+                <SheetContent side="right" className="w-full sm:max-w-2xl flex flex-col p-0 bg-background">
 
-                    <SheetHeader className="px-6 py-4 border-b bg-background">
+                    <SheetHeader className="px-6 py-4 border-b -mb-[2px] bg-background">
                         <SheetTitle className="text-xl font-bold">Delivery Partners</SheetTitle>
                     </SheetHeader>
 
                     <div className="flex-1 overflow-y-auto bg-background">
-                        <div className="px-6 pb-6 pt-3 space-y-4">
+                        <div className="px-6 pb-3 pt-0">
                             {(isSuperAdmin || isOwner) && (
-                                <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-1 -mt-1 -mb-2">
+                                <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background mb-2">
                                     <Label>Property</Label>
                                     <NativeSelect
                                         className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
@@ -184,14 +185,14 @@ export default function DeliveryPartnerManager({
                                 </div>
                             )}
 
-                        {partners && partners.map(partner => {
+                        {partners && partners.map((partner, index) => {
 
                             const isEditing = editingId === partner.id;
 
                             return (
                                 <div
                                     key={partner.id}
-                                    className="flex justify-between items-center border rounded-[4px] px-4 py-3 bg-background"
+                                    className={cn("flex justify-between items-center border rounded-[4px] px-4 py-3 bg-background", index > 0 || (isSuperAdmin || isOwner) ? "mt-4" : "mt-0.5")}
                                 >
 
                                     {/* NAME / INPUT */}
@@ -281,12 +282,12 @@ export default function DeliveryPartnerManager({
                         })}
 
                         </div>
-                    </div>
-
-                    <div className="p-6 border-t bg-background flex justify-end gap-3">
-                        <Button variant="heroOutline" onClick={() => setSheetOpen(false)}>
-                            Cancel
-                        </Button>
+                        
+                        <div className="px-6 py-4 border-t border-border bg-background flex justify-end gap-3">
+                            <Button variant="heroOutline" onClick={() => setSheetOpen(false)}>
+                                Cancel
+                            </Button>
+                        </div>
                     </div>
 
                 </SheetContent>
@@ -297,16 +298,16 @@ export default function DeliveryPartnerManager({
             ======================== */}
 
             <Sheet open={createOpen} onOpenChange={setCreateOpen}>
-                <SheetContent side="right" className="w-full sm:max-w-xl flex flex-col p-0 bg-background">
+                <SheetContent side="right" className="w-full sm:max-w-2xl flex flex-col p-0 bg-background">
 
-                    <SheetHeader className="px-6 py-4 border-b bg-background">
+                    <SheetHeader className="px-6 py-4 border-b -mb-[2px] bg-background">
                         <SheetTitle className="text-xl font-bold">Create delivery partner</SheetTitle>
                     </SheetHeader>
 
                     <div className="flex-1 overflow-y-auto bg-background">
-                        <div className="px-6 pb-6 pt-3 space-y-6">
+                        <div className="px-6 pb-3 pt-0">
                             {(isSuperAdmin || isOwner) && (
-                                <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-1 -mt-1 -mb-2">
+                                <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background mb-2">
                                     <Label>Property</Label>
                                     <NativeSelect
                                         className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
@@ -324,11 +325,12 @@ export default function DeliveryPartnerManager({
                                 </div>
                             )}
 
-                        <div className="space-y-2">
+                        <div className={cn("space-y-2", (isSuperAdmin || isOwner) ? "mt-4" : "mt-0.5")}>
                             <Label>Name *</Label>
                             <Input
                                 className={errors.createName ? "border-red-500" : ""}
                                 value={createName}
+                                placeholder="Enter delivery partner name"
                                 onChange={(e) => {
 
                                     setCreateName(e.target.value);
@@ -349,24 +351,24 @@ export default function DeliveryPartnerManager({
                                 </p>
                             )}
                         </div>
-
-                        </div>
                     </div>
+                        
+                        <div className="px-6 py-4 border-t border-border bg-background flex justify-end gap-3">
+                            <Button
+                                variant="heroOutline"
+                                onClick={() => setCreateOpen(false)}
+                            >
+                                Cancel
+                            </Button>
 
-                    <div className="p-6 border-t bg-background flex justify-end gap-3">
-                        <Button
-                            variant="heroOutline"
-                            onClick={() => setCreateOpen(false)}
-                        >
-                            Cancel
-                        </Button>
-
-                        <Button
-                            variant="hero"
-                            onClick={createPartner}
-                        >
-                            Create
-                        </Button>
+                            <Button
+                                variant="hero"
+                                className="min-w-[140px]"
+                                onClick={createPartner}
+                            >
+                                Create
+                            </Button>
+                        </div>
                     </div>
 
                 </SheetContent>

@@ -294,14 +294,14 @@ export default function StaffManagement() {
 
     const refreshHistoryGrid = async () => {
         if (globalAuditLogsFetching) return;
-        const toastId = toast.loading("Refreshing history...");
+        const toastId = toast.loading("Refreshing data...");
         try {
             await refetchGlobalAuditLogs();
             toast.dismiss(toastId);
-            toast.success("History refreshed");
+            toast.success("Data refreshed");
         } catch {
             toast.dismiss(toastId);
-            toast.error("Failed to refresh history");
+            toast.error("Failed to refresh data");
         }
     };
 
@@ -557,15 +557,15 @@ export default function StaffManagement() {
 
     const refreshTable = async () => {
         if (isFetching) return;
-        const toastId = toast.loading("Refreshing staff...");
+        const toastId = toast.loading("Refreshing data...");
 
         try {
             await refetchStaff();
             toast.dismiss(toastId);
-            toast.success("Staff refreshed");
+            toast.success("Data refreshed");
         } catch {
             toast.dismiss(toastId);
-            toast.error("Failed to refresh staff");
+            toast.error("Failed to refresh data");
         }
     };
 
@@ -997,7 +997,8 @@ export default function StaffManagement() {
                                             onSearch={() => {
                                                 setHistorySearchQuery(historySearchInput.trim());
                                                 setMainAuditPage(1);
-                                            }}
+                                            }}
+
                                         />
 
                                         <GridToolbarSelect
@@ -1109,13 +1110,13 @@ export default function StaffManagement() {
 
             </section>
     <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background">
+                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background p-0">
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="space-y-1"
+                        className="flex flex-col h-full"
                     >
-                        <SheetHeader className="mb-6">
+                        <SheetHeader className="px-6 py-4 border-b border-border relative">
                             <div className="space-y-1">
                                 <SheetTitle className="text-xl font-bold">
                                     {mode === "add" ? "Register New Staff" : mode === "edit" ? `Update Staff Member ${staff?.id ? `[#${formatModuleDisplayId("staff", staff.id)}]` : "..."}` : `Staff ${staff?.id ? `[#${formatModuleDisplayId("staff", staff.id)}]` : "..."}`}
@@ -1126,6 +1127,7 @@ export default function StaffManagement() {
                             </div>
                         </SheetHeader>
 
+                        <div className="px-6 pb-6 pt-4 flex-1">
                         {viewMode ? (
 
                             <div className="space-y-4">
@@ -1256,7 +1258,7 @@ export default function StaffManagement() {
                                 )}
 
                                 {sheetTab === "history" && (
-                                    <div className="h-[600px] bg-background border border-border rounded-[3px] overflow-hidden">
+                                    <div className="border border-border rounded-lg overflow-hidden bg-background shadow-sm">
                                         <AppDataGrid
                                             columns={auditColumns}
                                             data={staffAuditData?.data || []}
@@ -1348,7 +1350,7 @@ export default function StaffManagement() {
 
                         )}
 
-                        <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                        <div className="-mx-6 -mb-6 px-6 py-4 border-t border-border bg-muted/20 flex justify-end gap-3 mt-4">
 
                             <Button
                                 variant="heroOutline"
@@ -1380,6 +1382,7 @@ export default function StaffManagement() {
                                 </Button>
                             )}
 
+                        </div>
                         </div>
                     </motion.div>
                 </SheetContent>
