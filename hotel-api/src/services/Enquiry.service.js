@@ -29,6 +29,10 @@ const ENQUIRY_UPDATEABLE_COLUMNS = new Set([
     "quote_amount",
     "is_reserved",
     "is_active",
+    "has_alternate_stay",
+    "alternate_check_in",
+    "alternate_check_out",
+    "alternate_room_details",
 ]);
 
 function toSnakeCase(input) {
@@ -43,6 +47,90 @@ class EnquiryService {
 
     constructor() {
         this.#DB = getDb();
+    }
+
+    /**
+     * GET Enquiry KPIs
+     */
+    async getEnquiryKpis({ propertyId, from, to, status }) {
+        // We ensure to default to 1 month ago if not provided, just as a safety net
+        const toDate = to ? new Date(to) : new Date();
+        const fromDate = from ? new Date(from) : new Date(new Date().setMonth(new Date().getMonth() - 1));
+
+        // Add 1 day to 'to' date to make it inclusive in SQL (< next day)
+        const toNextDay = new Date(toDate);
+        toNextDay.setDate(toNextDay.getDate() + 1);
+
+        const fromStr = fromDate.toISOString();
+        const toStr = toNextDay.toISOString();
+
+        // 1. Primary KPIs
+        let primarySql = `
+            SELECT
+                COUNT(e.id)::int AS total_enquiries,
+                COUNT(e.id) FILTER (WHERE e.booking_id IS NOT NULL)::int AS converted,
+                COUNT(e.id) FILTER (
+                    WHERE e.booking_id IS NOT NULL 
+                    AND UPPER(COALESCE(b.booking_status, '')) IN ('CANCELLED', 'CANCELED', 'NO_SHOW')
+                )::int AS converted_but_canceled
+            FROM public.enquiries e
+            LEFT JOIN public.bookings b ON b.id = e.booking_id
+            WHERE e.property_id = $1
+            AND e.created_on >= $2
+            AND e.created_on < $3
+            AND e.is_active = true
+        `;
+
+        const values = [propertyId, fromStr, toStr];
+
+        if (status && status !== "All") {
+            primarySql += ` AND e.status = $4`;
+            values.push(status);
+        }
+
+        const allStatusSql = `
+            SELECT
+                COALESCE(e.status, 'Unknown') AS status,
+                COUNT(*)::int AS total
+            FROM public.enquiries e
+            WHERE e.property_id = $1
+            AND e.created_on >= $2
+            AND e.created_on < $3
+            AND e.is_active = true
+            GROUP BY COALESCE(e.status, 'Unknown')
+            ORDER BY status;
+        `;
+
+        const [primaryResult, allStatusResult] = await Promise.all([
+            this.#DB.query(primarySql, values),
+            this.#DB.query(allStatusSql, [propertyId, fromStr, toStr])
+        ]);
+
+        const allStatusMap = {
+            "Open": 0,
+            "Follow Up": 0,
+            "Reserved": 0,
+            "Booked": 0,
+            "Closed": 0,
+            "Cancelled": 0
+        };
+
+        allStatusResult.rows.forEach(row => {
+            allStatusMap[row.status] = row.total;
+        });
+
+        const primaryRow = primaryResult.rows[0] || {
+            total_enquiries: 0,
+            converted: 0,
+            converted_but_canceled: 0
+        };
+
+        return {
+            total_enquiries: primaryRow.total_enquiries,
+            converted: primaryRow.converted,
+            converted_but_canceled: primaryRow.converted_but_canceled,
+            all_status: allStatusMap
+        };
     }
 
     /**
@@ -156,8 +244,14 @@ class EnquiryService {
 
         const total = countResult.rows[0]?.total || 0;
 
+        const records = dataResult.rows.map(row => {
+            const cleanRow = { ...row };
+            delete cleanRow.alternate_room_details;
+            return cleanRow;
+        });
+
         return {
-            data: dataResult.rows,
+            data: records,
             pagination: {
                 page: currentPage,
                 pageSize: limit,
@@ -209,14 +303,19 @@ class EnquiryService {
                 follow_up_date,
                 quote_amount,
                 is_reserved,
-                created_by
+                created_by,
+                has_alternate_stay,
+                alternate_check_in,
+                alternate_check_out,
+                alternate_room_details
             )
             VALUES (
                 $1,$2,$3,$4,$5,$6,$7,
                 COALESCE($8,'open'),
                 $9,$10,$11,$12,$13,$14,
                 $15,$16,$17,$18,$19,
-                $20,$21,$22,$23,$24,$25,$26,$27
+                $20,$21,$22,$23,$24,$25,$26,$27,
+                $28,$29,$30,$31
             )
             RETURNING *;
         `;
@@ -248,7 +347,11 @@ class EnquiryService {
                 payload.follow_up_date ?? null,
                 payload.quote_amount ?? null,
                 payload.is_reserved ?? false,
-                userId
+                userId,
+                payload.has_alternate_stay ?? false,
+                payload.alternate_check_in ?? null,
+                payload.alternate_check_out ?? null,
+                payload.alternate_room_details ? JSON.stringify(payload.alternate_room_details) : null
             ];
 
             const result = await client.query(query, values);
@@ -374,7 +477,22 @@ class EnquiryService {
             values.push(value);
         }
 
+        const auditBefore = { ...before };
+        const auditAfter = { ...after };
+
+        if (hasChanges) {
+            auditBefore.contact_method = currentEnquiry.contact_method;
+            auditAfter.contact_method = normalizedPayload.contact_method !== undefined ? normalizedPayload.contact_method : currentEnquiry.contact_method;
+            
+            auditBefore.mobile = currentEnquiry.mobile;
+            auditAfter.mobile = normalizedPayload.mobile !== undefined ? normalizedPayload.mobile : currentEnquiry.mobile;
+            
+            auditBefore.email = currentEnquiry.email;
+            auditAfter.email = normalizedPayload.email !== undefined ? normalizedPayload.email : currentEnquiry.email;
+        }
+
         // audit fields
+        after.updated_by = userId;
         fields.push(`updated_by = $${i++}`);
         values.push(userId);
 
@@ -402,8 +520,8 @@ class EnquiryService {
             task_name: isNewBooking ? "New Booking Created" : "Update Enquiry",
             comments: isNewBooking ? "New booking created from enquiry" : "Enquiry updated",
             details: JSON.stringify({
-                before,
-                after
+                before: auditBefore,
+                after: auditAfter
             }),
             user_id: userId
         });

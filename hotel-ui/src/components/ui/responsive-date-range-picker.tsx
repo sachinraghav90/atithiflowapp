@@ -123,7 +123,7 @@ export function ResponsiveDateRangePicker({
             {/* Date Inputs Area */}
             <div className="flex flex-1 items-center px-0 gap-0.5 h-full overflow-hidden justify-center">
                 <Input
-                    className="border-0 focus-visible:ring-0 h-full text-[10px] font-semibold placeholder:text-xs placeholder:text-muted-foreground/40 shadow-none px-0 w-[68px] text-center bg-transparent"
+                    className="border-0 focus-visible:ring-0 h-full text-[10px] font-semibold placeholder:text-xs placeholder:text-muted-foreground/40 shadow-none px-0 w-[85px] text-center bg-transparent"
                     value={typedStart}
                     placeholder={startPlaceholder}
                     onChange={(e) => handleStartChange(e.target.value)}
@@ -137,7 +137,7 @@ export function ResponsiveDateRangePicker({
                 </span>
 
                 <Input
-                    className="border-0 focus-visible:ring-0 h-full text-[10px] font-semibold placeholder:text-xs placeholder:text-muted-foreground/40 shadow-none px-0 w-[68px] text-center bg-transparent"
+                    className="border-0 focus-visible:ring-0 h-full text-[10px] font-semibold placeholder:text-xs placeholder:text-muted-foreground/40 shadow-none px-0 w-[85px] text-center bg-transparent"
                     value={typedEnd}
                     placeholder={endPlaceholder}
                     onChange={(e) => handleEndChange(e.target.value)}

@@ -3,6 +3,7 @@ import Sidebar from "@/components/layout/Sidebar";
 import AppHeader from "@/components/layout/AppHeader";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { Helmet } from "react-helmet-async";
 
 export default function AppLayout() {
     const [collapsed, setCollapsed] = useState(false);
@@ -12,6 +13,9 @@ export default function AppLayout() {
 
     return (
         <div className="h-screen bg-background overflow-hidden">
+            <Helmet>
+                <title>AtithiFlow</title>
+            </Helmet>
             <AppHeader
                 collapsed={collapsed}
                 setCollapsed={setCollapsed}

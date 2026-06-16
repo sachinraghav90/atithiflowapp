@@ -51,6 +51,9 @@ import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
 import FormInput from "@/components/forms/FormInput";
 import { getFormattedAuditChanges, getAuditActionBadge, getAuditChangePlainText, formatAuditActionText } from "@/utils/auditUtils";
+import { DataGrid, DataGridCell, DataGridHead, DataGridHeader, DataGridRow } from "@/components/ui/data-grid";
+import { ValidationTooltip } from "@/components/ui/validation-tooltip";
+import { PlusCircle, Trash2 } from "lucide-react";
 
 /* ---------------- Types ---------------- */
 type Vendor = {
@@ -64,6 +67,7 @@ type Vendor = {
     email_id?: string;
     vendor_type?: string;
     is_active: boolean;
+    bank_accounts?: any[];
 };
 
 type VendorForm = {
@@ -72,9 +76,12 @@ type VendorForm = {
     gst_no?: string;
     address?: string;
     contact_no?: string;
+    contact_no_country_code?: string;
     email_id?: string;
     vendor_type?: string;
     is_active?: boolean;
+    has_bank_details?: boolean;
+    bank_accounts: any[];
 };
 
 const VENDOR_STATUS_OPTIONS = [
@@ -83,7 +90,8 @@ const VENDOR_STATUS_OPTIONS = [
     { label: "Inactive", value: "inactive" },
 ];
 
-const buildVendorPayload = (form: VendorForm, propertyId?: number) => {
+const buildVendorPayload = (form: VendorForm, customVendorType: string, propertyId?: number) => {
+    const finalVendorType = form.vendor_type === "Other" ? customVendorType : form.vendor_type;
     const payload: any = {
         name: form.name,
         pan_no: form.pan_no,
@@ -91,8 +99,9 @@ const buildVendorPayload = (form: VendorForm, propertyId?: number) => {
         address: form.address,
         contact_no: form.contact_no,
         email_id: form.email_id,
-        vendor_type: form.vendor_type,
+        vendor_type: finalVendorType,
         is_active: form.is_active,
+        bank_accounts: form.has_bank_details ? form.bank_accounts : [],
     };
     if (propertyId) payload.property_id = propertyId;
     return payload;
@@ -118,46 +127,41 @@ function getVendorAuditChanges(audit: any) {
         );
     }
 
-    const formattedDetails: any = { before: {}, after: {} };
-
-    if (before?.name !== after?.name) {
-        formattedDetails.before["Name"] = before?.name || "—";
-        formattedDetails.after["Name"] = after?.name || "—";
-    }
-    
-    if (before?.vendor_type !== after?.vendor_type) {
-        formattedDetails.before["Vendor Type"] = before?.vendor_type || "—";
-        formattedDetails.after["Vendor Type"] = after?.vendor_type || "—";
-    }
-    
-    if (before?.pan_no !== after?.pan_no) {
-        formattedDetails.before["PAN"] = before?.pan_no || "—";
-        formattedDetails.after["PAN"] = after?.pan_no || "—";
-    }
-    
-    if (before?.gst_no !== after?.gst_no) {
-        formattedDetails.before["GST"] = before?.gst_no || "—";
-        formattedDetails.after["GST"] = after?.gst_no || "—";
-    }
-    
-    if (before?.contact_no !== after?.contact_no) {
-        formattedDetails.before["Contact No"] = before?.contact_no || "—";
-        formattedDetails.after["Contact No"] = after?.contact_no || "—";
-    }
-    
-    if (before?.email_id !== after?.email_id) {
-        formattedDetails.before["Email"] = before?.email_id || "—";
-        formattedDetails.after["Email"] = after?.email_id || "—";
-    }
-    
-    if (before?.address !== after?.address) {
-        formattedDetails.before["Address"] = before?.address || "—";
-        formattedDetails.after["Address"] = after?.address || "—";
+    if (!before && !after) {
+        return getFormattedAuditChanges(details);
     }
 
-    if (before?.is_active !== after?.is_active) {
-        formattedDetails.before["Status"] = before?.is_active ? "Active" : "Inactive";
-        formattedDetails.after["Status"] = after?.is_active ? "Active" : "Inactive";
+    const formattedDetails: any = { before: { ...before }, after: { ...after } };
+
+    // Remove bank_accounts array, we will map it manually
+    delete formattedDetails.before.bank_accounts;
+    delete formattedDetails.after.bank_accounts;
+
+    const beforeBanks = before?.bank_accounts || [];
+    const afterBanks = after?.bank_accounts || [];
+    const maxBanks = Math.max(beforeBanks.length, afterBanks.length);
+
+    for (let i = 0; i < maxBanks; i++) {
+        const bBefore = beforeBanks[i] || {};
+        const bAfter = afterBanks[i] || {};
+        const prefix = maxBanks > 1 ? `Bank ${i + 1} - ` : "";
+
+        if (bBefore.bank_name !== bAfter.bank_name) {
+            formattedDetails.before[`${prefix}Bank Name`] = bBefore.bank_name || "None";
+            formattedDetails.after[`${prefix}Bank Name`] = bAfter.bank_name || "None";
+        }
+        if (bBefore.account_holder_name !== bAfter.account_holder_name) {
+            formattedDetails.before[`${prefix}Account Holder`] = bBefore.account_holder_name || "None";
+            formattedDetails.after[`${prefix}Account Holder`] = bAfter.account_holder_name || "None";
+        }
+        if (bBefore.account_number !== bAfter.account_number) {
+            formattedDetails.before[`${prefix}Account Number`] = bBefore.account_number || "None";
+            formattedDetails.after[`${prefix}Account Number`] = bAfter.account_number || "None";
+        }
+        if (bBefore.ifsc_code !== bAfter.ifsc_code) {
+            formattedDetails.before[`${prefix}IFSC Code`] = bBefore.ifsc_code || "None";
+            formattedDetails.after[`${prefix}IFSC Code`] = bAfter.ifsc_code || "None";
+        }
     }
 
     return getFormattedAuditChanges(formattedDetails);
@@ -174,7 +178,10 @@ export default function VendorsManagement() {
 
     const [form, setForm] = useState<VendorForm>({
         name: "",
+        has_bank_details: false,
+        bank_accounts: [],
     });
+    const [customVendorType, setCustomVendorType] = useState("");
     const [formErrors, setFormErrors] = useState<Record<string, string>>({});
     const [submitted, setSubmitted] = useState(false);
     const [searchInput, setSearchInput] = useState("");
@@ -332,6 +339,7 @@ export default function VendorsManagement() {
         setEditingVendor(null);
         setSheetTab("summary");
         setForm({ name: "", is_active: true });
+        setCustomVendorType("");
         setSheetOpen(true);
     };
 
@@ -355,6 +363,20 @@ export default function VendorsManagement() {
             errors.contact_no = "Invalid contact number";
         }
 
+        if (form.vendor_type === "Other" && !customVendorType.trim()) {
+            errors.vendor_type = "Custom vendor type is required";
+        }
+
+        if (form.has_bank_details && form.bank_accounts) {
+            form.bank_accounts.forEach((ba, idx) => {
+                if (!ba.bank_name?.trim()) errors[`bank_name_${idx}`] = "Required";
+                if (!ba.account_holder_name?.trim()) errors[`account_holder_name_${idx}`] = "Required";
+                if (!ba.account_number?.trim()) errors[`account_number_${idx}`] = "Required";
+                if (!ba.ifsc_code?.trim()) errors[`ifsc_code_${idx}`] = "Required";
+                else if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ba.ifsc_code)) errors[`ifsc_code_${idx}`] = "Invalid IFSC";
+            });
+        }
+
         if (Object.keys(errors).length > 0) {
             setFormErrors(errors);
             return;
@@ -364,8 +386,8 @@ export default function VendorsManagement() {
 
         const payload =
             mode === "add"
-                ? buildVendorPayload(form, Number(selectedPropertyId))
-                : buildVendorPayload(form);
+                ? buildVendorPayload(form, customVendorType, Number(selectedPropertyId))
+                : buildVendorPayload(form, customVendorType);
 
         const promise =
             mode === "add"
@@ -462,6 +484,22 @@ export default function VendorsManagement() {
 
         setEditingVendor(vendor);
 
+        const isPredefined = vendorTypeOptions.some(opt => opt.value === vendor.vendor_type);
+        const finalVendorType = vendor.vendor_type && !isPredefined ? "Other" : vendor.vendor_type;
+        setCustomVendorType(vendor.vendor_type && !isPredefined ? vendor.vendor_type : "");
+
+        let bank_accounts = vendor.bank_accounts || [];
+        if (bank_accounts.length === 0 && (vendor.bank_name || vendor.account_number || vendor.ifsc_code)) {
+            // Fallback for old flat records
+            bank_accounts = [{
+                bank_name: vendor.bank_name || "",
+                account_holder_name: vendor.account_holder_name || "",
+                account_number: vendor.account_number || "",
+                ifsc_code: vendor.ifsc_code || "",
+                qr_code: vendor.qr_code || "",
+            }];
+        }
+
         setForm({
             name: vendor.name,
             pan_no: vendor.pan_no,
@@ -469,8 +507,10 @@ export default function VendorsManagement() {
             address: vendor.address,
             contact_no: vendor.contact_no,
             email_id: vendor.email_id,
-            vendor_type: vendor.vendor_type,
-            is_active: vendor.is_active
+            vendor_type: finalVendorType,
+            is_active: vendor.is_active,
+            has_bank_details: bank_accounts.length > 0,
+            bank_accounts: bank_accounts,
         });
 
         setSheetOpen(true);
@@ -798,13 +838,7 @@ export default function VendorsManagement() {
                                             label: "Change",
                                             headClassName: "w-[320px]",
                                             cellClassName: "min-w-[320px] whitespace-normal text-primary/80 font-medium",
-                                            render: (audit: any) => {
-                                                let parsed = audit.details;
-                                                if (typeof parsed === 'string') {
-                                                    try { parsed = JSON.parse(parsed); } catch { }
-                                                }
-                                                return getFormattedAuditChanges(parsed);
-                                            },
+                                            render: (audit: any) => getVendorAuditChanges(audit),
                                         },
                                         {
                                             label: "User",
@@ -831,7 +865,7 @@ export default function VendorsManagement() {
                     side="right" 
                     className={cn(
                         "w-full flex flex-col p-0 bg-background transition-all duration-300", 
-                        sheetTab === "history" ? "sm:max-w-4xl" : "lg:max-w-4xl sm:max-w-3xl"
+                        sheetTab === "history" ? "sm:max-w-4xl" : "lg:max-w-5xl sm:max-w-4xl"
                     )}
                     hideClose
                 >
@@ -910,6 +944,56 @@ export default function VendorsManagement() {
                                             <ViewField label="PAN Number" value={form.pan_no} />
                                             <ViewField label="GST Identification" value={form.gst_no} />
                                         </CardSectionView>
+
+                                        {form.bank_accounts && form.bank_accounts.length > 0 ? (
+                                            <CardSectionView
+                                                title="Bank Details"
+                                                titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal"
+                                                className="space-y-3"
+                                            >
+                                                <div className="editable-grid-compact border rounded-[5px] overflow-hidden flex flex-col">
+                                                    <div className="overflow-x-auto w-full bg-background">
+                                                        <div className="w-full min-w-[600px]">
+                                                            <DataGrid>
+                                                                <DataGridHeader>
+                                                                    <DataGridHead>Bank Name</DataGridHead>
+                                                                    <DataGridHead>Account Holder</DataGridHead>
+                                                                    <DataGridHead>Account No.</DataGridHead>
+                                                                    <DataGridHead>IFSC</DataGridHead>
+                                                                    <DataGridHead>QR</DataGridHead>
+                                                                </DataGridHeader>
+                                                                <tbody>
+                                                                    {form.bank_accounts.map((ba, idx) => (
+                                                                        <DataGridRow key={idx}>
+                                                                            <DataGridCell>{ba.bank_name || "-"}</DataGridCell>
+                                                                            <DataGridCell>{ba.account_holder_name || "-"}</DataGridCell>
+                                                                            <DataGridCell>{ba.account_number ? "****" + String(ba.account_number).slice(-4) : "-"}</DataGridCell>
+                                                                            <DataGridCell>{ba.ifsc_code || "-"}</DataGridCell>
+                                                                            <DataGridCell>
+                                                                                {ba.qr_code ? (
+                                                                                    <Tooltip>
+                                                                                        <TooltipTrigger asChild>
+                                                                                            <a href={ba.qr_code} download={`QR_Code_${form.name || 'Vendor'}.png`} className="cursor-pointer inline-block">
+                                                                                                <img src={ba.qr_code} alt="QR Code" className="w-10 h-10 object-contain rounded border border-border/50 bg-white hover:opacity-80 transition-opacity" />
+                                                                                            </a>
+                                                                                        </TooltipTrigger>
+                                                                                        <TooltipContent>Click to download QR Code</TooltipContent>
+                                                                                    </Tooltip>
+                                                                                ) : "-"}
+                                                                            </DataGridCell>
+                                                                        </DataGridRow>
+                                                                    ))}
+                                                                </tbody>
+                                                            </DataGrid>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </CardSectionView>
+                                        ) : (
+                                            <CardSectionView title="Bank Details" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal">
+                                                <div className="text-sm text-muted-foreground italic">No bank details available.</div>
+                                            </CardSectionView>
+                                        )}
                                     </div>
                                 )}
 
@@ -961,9 +1045,9 @@ export default function VendorsManagement() {
                             <div className="space-y-4">
                                 {(isSuperAdmin || isOwner) && mode === "add" && (
                                     <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-1 -mt-1 -mb-2">
-                                        <Label>Property</Label>
+                                        <Label className="text-foreground">Property</Label>
                                         <NativeSelect
-                                            className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
+                                            className="w-full h-11 rounded-[3px] border border-border/70 bg-background px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0"
                                             value={selectedPropertyId ?? ""}
                                             onChange={(e) => setSelectedPropertyId(e.target.value)}
                                         >
@@ -982,8 +1066,7 @@ export default function VendorsManagement() {
                                     <h3 className="text-sm font-semibold text-primary/90">
                                         Vendor Details
                                     </h3>
-                                    
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                                         <FormInput
                                             label="Name"
                                             field="name"
@@ -992,31 +1075,15 @@ export default function VendorsManagement() {
                                             errors={{ name: formErrors.name }}
                                             setErrors={() => {}}
                                             required
-                                            className={cn(submitted && formErrors.name && "border-red-500")}
+                                            maxLength={100}
                                         />
 
                                         <FormInput
-                                            label="Vendor Type"
-                                            field="vendor_type"
+                                            label="Email"
+                                            field="email_id"
                                             value={form}
                                             setValue={setForm}
-                                            maxLength={50}
-                                        />
-
-                                        <FormInput
-                                            label="PAN"
-                                            field="pan_no"
-                                            value={form}
-                                            setValue={setForm}
-                                            maxLength={20}
-                                        />
-
-                                        <FormInput
-                                            label="GST"
-                                            field="gst_no"
-                                            value={form}
-                                            setValue={setForm}
-                                            maxLength={20}
+                                            maxLength={150}
                                         />
 
                                         <FormInput
@@ -1042,12 +1109,52 @@ export default function VendorsManagement() {
                                         />
 
                                         <FormInput
-                                            label="Email"
-                                            field="email_id"
+                                            label="PAN"
+                                            field="pan_no"
                                             value={form}
                                             setValue={setForm}
-                                            maxLength={150}
+                                            maxLength={20}
                                         />
+
+                                        <div className="space-y-1">
+                                            <Label className="text-foreground">Vendor Type</Label>
+                                            <NativeSelect
+                                                value={form.vendor_type || ""}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    setForm({ ...form, vendor_type: val });
+                                                    if (val !== "Other") setCustomVendorType("");
+                                                }}
+                                                className={cn("h-11 w-full rounded-[3px] border border-border/70 bg-background px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0", submitted && formErrors.vendor_type && "border-red-500")}
+                                            >
+                                                <option value="">Select a vendor type</option>
+                                                {vendorTypeOptions.map(opt => (
+                                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                ))}
+                                                <option value="Other">Other</option>
+                                            </NativeSelect>
+                                            {submitted && formErrors.vendor_type && <span className="text-xs text-red-500">{formErrors.vendor_type}</span>}
+                                        </div>
+
+                                        <FormInput
+                                            label="GST"
+                                            field="gst_no"
+                                            value={form}
+                                            setValue={setForm}
+                                            maxLength={20}
+                                        />
+
+                                        {form.vendor_type === "Other" && (
+                                            <div className="space-y-1">
+                                                <Input
+                                                    placeholder="Enter custom vendor type"
+                                                    value={customVendorType}
+                                                    onChange={(e) => setCustomVendorType(e.target.value)}
+                                                    className={cn("h-11 w-full rounded-[3px] border border-border/70 bg-background text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0", submitted && formErrors.vendor_type && "border-red-500")}
+                                                    maxLength={50}
+                                                />
+                                            </div>
+                                        )}
 
                                         <div className="md:col-span-2">
                                             <FormInput
@@ -1061,9 +1168,9 @@ export default function VendorsManagement() {
                                             />
                                         </div>
                                     </div>
-
                                     {mode === "edit" && (
-                                        <div className="flex items-center gap-3 rounded-[5px] border border-primary/50 p-4 bg-accent/20">
+                                        <div className="flex items-center gap-3 mt-4">
+                                            <Label className="text-sm font-semibold">Status</Label>
                                             <Switch
                                                 className="scale-90"
                                                 checked={!!form.is_active}
@@ -1084,6 +1191,8 @@ export default function VendorsManagement() {
                                         </div>
                                     )}
                                 </div>
+
+                                <VendorBankGrid form={form} setForm={setForm} formErrors={formErrors} setFormErrors={setFormErrors} viewMode={mode === "view"} />
                             </div>
                         )}
 
@@ -1121,5 +1230,226 @@ export default function VendorsManagement() {
                 </SheetContent>
             </Sheet>
         </div>
+    );
+}
+
+/* ================= VENDOR BANK GRID COMPONENT ================= */
+
+function VendorBankGrid({ form, setForm, formErrors, setFormErrors, viewMode }: any) {
+
+    const updateField = (idx: number, field: string, val: string) => {
+        setForm((prev: any) => {
+            const arr = [...(prev.bank_accounts || [])];
+            arr[idx] = { ...arr[idx], [field]: val };
+            return { ...prev, bank_accounts: arr };
+        });
+        if (formErrors[`${field}_${idx}`]) {
+            setFormErrors((prev: any) => ({ ...prev, [`${field}_${idx}`]: undefined }));
+        }
+    };
+
+    const removeRow = (idx: number) => {
+        setForm((prev: any) => {
+            const arr = [...(prev.bank_accounts || [])];
+            arr.splice(idx, 1);
+            return {
+                ...prev,
+                has_bank_details: arr.length > 0,
+                bank_accounts: arr,
+            };
+        });
+    };
+
+    const addRow = () => {
+        setForm((prev: any) => ({
+            ...prev,
+            has_bank_details: true,
+            bank_accounts: [
+                ...(prev.bank_accounts || []),
+                {
+                    bank_name: "",
+                    account_holder_name: "",
+                    account_number: "",
+                    ifsc_code: "",
+                    qr_code: ""
+                }
+            ]
+        }));
+    };
+
+    const toggleHasBankDetails = (val: boolean) => {
+        setForm((prev: any) => ({
+            ...prev,
+            has_bank_details: val,
+            bank_accounts: val && (!prev.bank_accounts || prev.bank_accounts.length === 0) 
+                ? [{ bank_name: "", account_holder_name: "", account_number: "", ifsc_code: "", qr_code: "" }] 
+                : prev.bank_accounts
+        }));
+    };
+
+    return (
+        <div className="space-y-4 rounded-[5px] border border-border/40 bg-background p-4 shadow-sm mt-4">
+            <h3 className="text-sm font-semibold text-primary/90">
+                Bank Details (Optional)
+            </h3>
+
+            <div className="flex items-center gap-3">
+                <Switch
+                    disabled={viewMode}
+                    checked={form.has_bank_details}
+                    onCheckedChange={toggleHasBankDetails}
+                />
+                <Label className="text-foreground">Add Bank Details</Label>
+            </div>
+
+            {form.has_bank_details && (
+                <div className="editable-grid-compact border rounded-[5px] overflow-hidden flex flex-col">
+                    <div className="overflow-x-auto w-full bg-background border-b border-border">
+                        <div className="w-full min-w-[860px]">
+                            <DataGrid>
+                                <DataGridHeader>
+                                    <DataGridHead>Bank Name *</DataGridHead>
+                                    <DataGridHead>Account Holder *</DataGridHead>
+                                    <DataGridHead>Account Number *</DataGridHead>
+                                    <DataGridHead>IFSC Code *</DataGridHead>
+                                    <DataGridHead className="w-24 text-center">QR Code</DataGridHead>
+                                    {!viewMode && form.bank_accounts?.length > 1 && (
+                                        <DataGridHead className="w-20 text-center">Action</DataGridHead>
+                                    )}
+                                </DataGridHeader>
+
+                                <tbody>
+                                    {(form.bank_accounts || []).map((ba: any, idx: number) => (
+                                        <DataGridRow key={idx}>
+                                            <DataGridCell>
+                                                <TableInput
+                                                    value={ba.bank_name || ""}
+                                                    error={formErrors[`bank_name_${idx}`]}
+                                                    viewMode={viewMode}
+                                                    onChange={(v: string) => updateField(idx, "bank_name", v)}
+                                                    maxLength={150}
+                                                />
+                                            </DataGridCell>
+                                            <DataGridCell>
+                                                <TableInput
+                                                    value={ba.account_holder_name || ""}
+                                                    error={formErrors[`account_holder_name_${idx}`]}
+                                                    viewMode={viewMode}
+                                                    onChange={(v: string) => updateField(idx, "account_holder_name", v)}
+                                                    maxLength={150}
+                                                />
+                                            </DataGridCell>
+                                            <DataGridCell>
+                                                <TableInput
+                                                    value={ba.account_number || ""}
+                                                    error={formErrors[`account_number_${idx}`]}
+                                                    viewMode={viewMode}
+                                                    onChange={(v: string) => updateField(idx, "account_number", v)}
+                                                    maxLength={50}
+                                                />
+                                            </DataGridCell>
+                                            <DataGridCell>
+                                                <TableInput
+                                                    value={ba.ifsc_code || ""}
+                                                    error={formErrors[`ifsc_code_${idx}`]}
+                                                    viewMode={viewMode}
+                                                    transform={(v: string) => v.toUpperCase()}
+                                                    onChange={(v: string) => updateField(idx, "ifsc_code", v)}
+                                                    maxLength={20}
+                                                />
+                                            </DataGridCell>
+                                            <DataGridCell className="text-center flex justify-center">
+                                                <div className="relative w-10 h-10 rounded-[3px] border border-border/60 bg-background overflow-hidden group mx-auto">
+                                                    {ba.qr_code ? (
+                                                        <>
+                                                            <img src={ba.qr_code} className="absolute inset-0 w-full h-full object-contain p-0.5" />
+                                                            {!viewMode && (
+                                                                <button type="button" onClick={() => updateField(idx, "qr_code", "")} className="absolute top-0 right-0 bg-red-500 rounded-bl text-white text-[8px] w-4 h-4 flex items-center justify-center shadow z-10 opacity-0 group-hover:opacity-100 transition-opacity">X</button>
+                                                            )}
+                                                        </>
+                                                    ) : (
+                                                        <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground bg-accent/50 text-center">
+                                                            <span className="text-[8px] font-medium leading-none">QR</span>
+                                                        </div>
+                                                    )}
+                                                    {!ba.qr_code && !viewMode && (
+                                                        <input
+                                                            type="file"
+                                                            accept="image/*"
+                                                            className="absolute inset-0 opacity-0 cursor-pointer"
+                                                            onChange={(e) => {
+                                                                const file = e.target.files?.[0];
+                                                                if (!file) return;
+                                                                const reader = new FileReader();
+                                                                reader.onload = () => updateField(idx, "qr_code", reader.result as string);
+                                                                reader.readAsDataURL(file);
+                                                            }}
+                                                        />
+                                                    )}
+                                                </div>
+                                            </DataGridCell>
+                                            {!viewMode && form.bank_accounts?.length > 1 && (
+                                                <DataGridCell className="text-center">
+                                                    <Button
+                                                        type="button"
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="editable-grid-remove-btn h-10 w-10 text-destructive hover:text-destructive/80 transition-colors mx-auto"
+                                                        aria-label="Remove bank account row"
+                                                        onClick={() => removeRow(idx)}
+                                                    >
+                                                        <Trash2 className="w-5 h-5" />
+                                                    </Button>
+                                                </DataGridCell>
+                                            )}
+                                        </DataGridRow>
+                                    ))}
+                                </tbody>
+                            </DataGrid>
+                        </div>
+                    </div>
+                    {!viewMode && (
+                        <div className="bg-muted/10 p-2 border-t border-border mt-auto">
+                            <button
+                                type="button"
+                                onClick={addRow}
+                                className="flex items-center text-xs text-primary font-medium hover:text-primary/80 transition-colors"
+                            >
+                                <PlusCircle className="w-3.5 h-3.5 mr-1" />
+                                Add Account
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function TableInput({
+    value,
+    error,
+    onChange,
+    viewMode,
+    transform,
+    maxLength
+}: any) {
+    return (
+        <ValidationTooltip
+            isValid={!error}
+            message={typeof error === "string" ? error : error?.message || "Required field"}
+        >
+            <Input
+                disabled={viewMode}
+                value={value}
+                className={`h-10 w-full rounded-[3px] border border-input bg-background px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary ${error ? "border-red-500" : ""}`}
+                onChange={(e) => {
+                    let val = e.target.value;
+                    if (transform) val = transform(val);
+                    onChange(val);
+                }}
+                maxLength={maxLength}
+            />
+        </ValidationTooltip>
     );
 }

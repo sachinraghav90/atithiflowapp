@@ -46,6 +46,32 @@ class EnquiryController {
     }
 
     /**
+     * GET /enquiries/kpis
+     */
+    async getKpis(req, res, next) {
+        try {
+            const { propertyId, from, to, status } = req.query;
+
+            if (!propertyId) {
+                return res.status(400).json({
+                    message: "propertyId is required",
+                });
+            }
+
+            const result = await EnquiryService.getEnquiryKpis({
+                propertyId: Number(propertyId),
+                from,
+                to,
+                status,
+            });
+
+            return res.status(200).json(result);
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    /**
      * POST /enquiries
      */
     async create(req, res, next) {

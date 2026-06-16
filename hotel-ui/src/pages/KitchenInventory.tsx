@@ -42,9 +42,10 @@ import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
 import { 
     GridToolbar, 
     GridToolbarActions, 
-    GridToolbarRow, 
-    GridToolbarSearch, 
-    GridToolbarSelect 
+    GridToolbarRow,
+    GridToolbarSearch,
+    GridToolbarSelect,
+    GridToolbarSpacer
 } from "@/components/ui/grid-toolbar";
 import { formatAppDateTime } from "@/utils/dateFormat";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
@@ -66,6 +67,7 @@ type KitchenItem = {
     unit: string;
     reorder_level: number;
     is_active: boolean;
+    use_type?: string;
 };
 
 /* ---------------- Helpers ---------------- */
@@ -142,6 +144,7 @@ export default function KitchenInventory() {
     const [searchQuery, setSearchQuery] = useState("");
     const [stockFilter, setStockFilter] = useState("");
     const [unitFilter, setUnitFilter] = useState("");
+    const [useTypeFilter, setUseTypeFilter] = useState("");
 
     const [historySearchInput, setHistorySearchInput] = useState("");
     const [historySearchQuery, setHistorySearchQuery] = useState("");
@@ -257,6 +260,11 @@ export default function KitchenInventory() {
         return Array.from(new Set(units));
     }, [kitchenInventory]);
 
+    const inventoryUseTypeOptions = useMemo(() => {
+        const types = (kitchenInventory?.data ?? []).map((item: KitchenItem) => item.use_type).filter(Boolean);
+        return Array.from(new Set(types));
+    }, [kitchenInventory]);
+
     const historyActionOptions = ["CREATE", "UPDATE"];
 
     const filteredKitchenInventory = useMemo(() => {
@@ -278,8 +286,12 @@ export default function KitchenInventory() {
             rows = rows.filter((item: KitchenItem) => item.unit === unitFilter);
         }
 
+        if (useTypeFilter) {
+            rows = rows.filter((item: KitchenItem) => item.use_type === useTypeFilter);
+        }
+
         return rows;
-    }, [kitchenInventory, searchQuery, stockFilter, unitFilter]);
+    }, [kitchenInventory, searchQuery, stockFilter, unitFilter, useTypeFilter]);
 
     const inventoryTotalRecords = filteredKitchenInventory.length;
     const inventoryTotalPages = Math.max(1, Math.ceil(inventoryTotalRecords / inventoryLimit));
@@ -448,6 +460,7 @@ export default function KitchenInventory() {
         setSearchQuery("");
         setStockFilter("");
         setUnitFilter("");
+        setUseTypeFilter("");
         setInventoryPage(1);
     };
 
@@ -646,6 +659,28 @@ export default function KitchenInventory() {
                                             ]}
                                         />
                                     </GridToolbarRow>
+
+                                    {/* Row 2 */}
+                                    <GridToolbarRow className="gap-2 pt-0 pb-1.5">
+                                        <GridToolbarSelect
+                                            label="Use type"
+                                            value={useTypeFilter}
+                                            onChange={(value) => {
+                                                setUseTypeFilter(value);
+                                                setInventoryPage(1);
+                                            }}
+                                            options={[
+                                                { label: "All", value: "" },
+                                                ...inventoryUseTypeOptions.map((type) => ({
+                                                    label: String(type).charAt(0).toUpperCase() + String(type).slice(1),
+                                                    value: String(type),
+                                                })),
+                                            ]}
+                                        />
+                                        <GridToolbarSpacer className="hidden md:block" />
+                                        <GridToolbarSpacer className="hidden md:block" />
+                                        <GridToolbarSpacer type="actions" className="hidden md:block" />
+                                    </GridToolbarRow>
                                 </GridToolbar>
                             </div>
 
@@ -671,6 +706,11 @@ export default function KitchenInventory() {
                                             label: "Item",
                                             key: "name",
                                             cellClassName: "font-semibold text-foreground min-w-[180px]",
+                                        },
+                                        {
+                                            label: "Use Type",
+                                            cellClassName: "text-muted-foreground min-w-[100px] capitalize",
+                                            render: (item: any) => item.use_type || "—",
                                         },
                                         {
                                             label: "Stock",

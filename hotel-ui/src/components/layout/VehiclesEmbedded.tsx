@@ -207,7 +207,7 @@ export default function VehiclesEmbedded({ bookingId, rooms }: Props) {
                                 <DataGridHead className="border-r border-slate-200/20">Name</DataGridHead>
                                 <DataGridHead className="border-r border-slate-200/20">Color</DataGridHead>
                                 <DataGridHead className="border-r border-slate-200/20">Vehicle Number</DataGridHead>
-                                <DataGridHead className="border-r border-slate-200/20">Phone</DataGridHead>
+                                <DataGridHead className="border-r border-slate-200/20">Driver's Contact</DataGridHead>
                                 <DataGridHead className="border-r border-slate-200/20">Room</DataGridHead>
                                 {showVehicleActions && (
                                     <DataGridHead className="w-20 text-center">Action</DataGridHead>

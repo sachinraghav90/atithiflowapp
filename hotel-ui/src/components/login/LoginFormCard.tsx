@@ -80,8 +80,8 @@ const LoginFormCard = () => {
 
   useEffect(() => {
     if (!isLoggedIn || !meLoaded || !sidebarLinks || !Array.isArray(sidebarLinks.sidebarLinks)) return
-    const redirectPath = sidebarLinks?.sidebarLinks?.[0]?.endpoint
-    navigate(redirectPath)
+    const redirectPath = sidebarLinks?.sidebarLinks?.[0]?.endpoint || "/AtithiFlow"
+    navigate(redirectPath, { replace: true })
   }, [isLoggedIn, meLoaded, navigate, sidebarLinks])
 
   async function login() {

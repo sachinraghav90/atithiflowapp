@@ -39,6 +39,15 @@ import FormDatePicker from "@/components/forms/FormDatePicker";
 import FormSelect from "@/components/forms/FormSelect";
 import PhonePrefixSelect from "@/components/forms/PhonePrefixSelect";
 import { parseAppDate, toISODateOnly } from "@/utils/dateFormat";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+    DialogDescription
+} from "@/components/ui/dialog";
+import GuestsEmbedded from "@/components/layout/GuestsEmbedded";
 
 /* -------------------- Types -------------------- */
 type AvailableRoom = {
@@ -89,6 +98,14 @@ const getCurrentTimeHHMM = () => {
 
 /* -------------------- Component -------------------- */
 export default function ReservationManagement() {
+    return (
+        <>
+            <ReservationManagementInner />
+        </>
+    )
+}
+
+function ReservationManagementInner() {
 
     const todayISO = () => toISODateOnly(new Date());
     const tomorrowISO = () => {
@@ -212,8 +229,14 @@ export default function ReservationManagement() {
     }, [roomsModalOpen]);
     const [open, setOpen] = useState(false);
 
+    const [showAdditionalGuestModal, setShowAdditionalGuestModal] = useState(false);
+    const [createdBookingId, setCreatedBookingId] = useState<string | null>(null);
+    const [createdBookingTotalGuest, setCreatedBookingTotalGuest] = useState<number>(0);
+    const [showGuestForm, setShowGuestForm] = useState(false);
+
     const enquiryPrefilled = useRef(false);
     const duplicatePrefilled = useRef(false);
+    const submittedAdultCount = useRef<number>(1);
 
     const navigate = useNavigate()
     const location = useLocation();
@@ -449,6 +472,8 @@ export default function ReservationManagement() {
             return;
         }
 
+        submittedAdultCount.current = Number(adult);
+
         if (arrivalDate < todayISO()) {
             toast.error("arrival day is greater than today")
             return
@@ -536,15 +561,17 @@ export default function ReservationManagement() {
             return
         }
 
-        const { categories, bedTypes, acTypes, floors } = availableRooms.filters;
+        const { categories, bedTypes, acTypes } = availableRooms.filters;
         setAvailableRoomCategory(categories || []);
         setAvailableBedType(bedTypes || []);
         setAvailableAcType(acTypes || []);
-        setFloors(floors || []);
+        
+        const uniqueFloors = Array.from(new Set((availableRooms.rooms || []).map((r: any) => r.floor_number))).sort((a, b) => Number(a) - Number(b)) as number[];
+        setFloors(uniqueFloors);
 
-        if (floors) {
+        if (uniqueFloors.length > 0) {
             const initialCollapsed = new Set<number>();
-            floors.forEach((f: number) => {
+            uniqueFloors.forEach((f: number) => {
                 if (f !== 1) initialCollapsed.add(f);
             });
             setCollapsedFloors(initialCollapsed);
@@ -787,6 +814,7 @@ export default function ReservationManagement() {
             const normalizedGuest = {
                 ...guest,
                 phone: guest.country_code + " " + guest.phone,
+                emergency_contact: guest.emergency_contact ? (guest.emergency_contact_country_code || "+91") + " " + guest.emergency_contact : "",
                 // dob: guest.dob
                 //     ? formatDate(guest.dob)
                 //     : null,
@@ -815,8 +843,22 @@ export default function ReservationManagement() {
             formData.append("id_proof_map", JSON.stringify(idProofMap));
 
             await createGuest({ formData, bookingId }).unwrap()
-            navigate("/bookings")
-            reset()
+            
+            console.log("[Reservation] createGuest succeeded, bookingId:", bookingId);
+            setCreatedBookingId(bookingId);
+            setCreatedBookingTotalGuest(submittedAdultCount.current);
+            
+            const additionalGuestCount = submittedAdultCount.current - 1;
+            console.log("[Reservation] submittedAdultCount:", submittedAdultCount.current, "additionalGuestCount:", additionalGuestCount);
+            
+            if (additionalGuestCount > 0) {
+                console.log("[Reservation] Calling setShowAdditionalGuestModal(true)");
+                setShowAdditionalGuestModal(true);
+            } else {
+                console.log("[Reservation] No additional guests, navigating to /bookings");
+                navigate("/bookings");
+                reset();
+            }
         })()
 
     }, [isBooking, bookingData, bookingSuccess])
@@ -1026,6 +1068,7 @@ export default function ReservationManagement() {
 
     /* -------------------- UI -------------------- */
     return (
+        <>
         <Sheet open onOpenChange={(nextOpen) => !nextOpen && navigate("/bookings")}>
             <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl flex flex-col p-0 bg-background" hideClose>
                 <div className="flex-1 overflow-y-auto bg-background">
@@ -1735,14 +1778,7 @@ export default function ReservationManagement() {
                                             error={!!reservationErrors.emergency_contact}
                                         />
                                     }
-                                    transform={(v: string) => {
-
-                                        // allow only numbers + max length 10
-                                        // if (!/^\d*$/.test(v)) return guest.emergency_contact;
-                                        if (v.length > 15) return guest.emergency_contact;
-
-                                        return v;
-                                    }}
+                                    transform={(v: string) => v.replace(/\D/g, "").slice(0, 15)}
                                 />
 
                             </Grid>
@@ -2188,8 +2224,49 @@ export default function ReservationManagement() {
                     </SheetContent>
                 </Sheet>
 
+            {/* Additional Guest Details Side Sheet */}
+            {console.log("[Reservation] Rendering Side Sheet, showAdditionalGuestModal is:", showAdditionalGuestModal)}
+            <Sheet 
+                open={showAdditionalGuestModal} 
+                onOpenChange={(isOpen) => {
+                    console.log("[Reservation] Side Sheet onOpenChange triggered:", isOpen);
+                    if (!isOpen) {
+                        setShowAdditionalGuestModal(false);
+                        navigate("/bookings");
+                        reset();
+                    }
+                }}
+            >
+                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl flex flex-col p-0 bg-background" hideClose>
+                    <div className="flex-1 overflow-y-auto bg-background">
+                        <SheetHeader className="px-6 py-4 border-b border-border bg-background relative">
+                            <SheetTitle className="text-xl font-bold">Additional Guest Details</SheetTitle>
+                            <SheetClose className="absolute right-4 top-4 rounded-md border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 h-5 w-5 flex items-center justify-center shadow-sm z-50">
+                                <X className="h-4 w-4 stroke-[2.5]" />
+                                <span className="sr-only">Close</span>
+                            </SheetClose>
+                        </SheetHeader>
+                        
+                        <div className="p-6">
+                            <GuestsEmbedded 
+                                bookingId={createdBookingId!} 
+                                guestCount={createdBookingTotalGuest} 
+                                totalGuest={createdBookingTotalGuest}
+                                isPostBookingFlow={true}
+                                onClose={() => {
+                                    setShowAdditionalGuestModal(false);
+                                    navigate("/bookings");
+                                    reset();
+                                }}
+                            />
+                        </div>
+                    </div>
+                </SheetContent>
+            </Sheet>
+
             </SheetContent>
         </Sheet>
+        </>
     );
 }
 

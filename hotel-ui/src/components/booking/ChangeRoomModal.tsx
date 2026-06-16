@@ -109,11 +109,13 @@ export default function ChangeRoomModal({
         setAvailableRoomCategory(categories || []);
         setAvailableBedType(bedTypes || []);
         setAvailableAcType(acTypes || []);
-        setFloors(f || []);
+        
+        const uniqueFloors = Array.from(new Set((availableRooms.rooms || []).map((r: AvailableRoom) => r.floor_number))).sort((a, b) => Number(a) - Number(b)) as number[];
+        setFloors(uniqueFloors);
 
-        if (f) {
+        if (uniqueFloors.length > 0) {
             const initialCollapsed = new Set<number>();
-            f.forEach((fl: number) => {
+            uniqueFloors.forEach((fl: number) => {
                 if (fl !== 1) initialCollapsed.add(fl);
             });
             setCollapsedFloors(initialCollapsed);

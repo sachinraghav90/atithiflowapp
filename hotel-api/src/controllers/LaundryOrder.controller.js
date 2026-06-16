@@ -77,7 +77,7 @@ class LaundryOrderController {
         try {
 
             const propertyId = req.params.property_id;
-            const { page, limit, status, vendor_status, search, export: exportParam } = req.query;
+            const { page, limit, status, vendor_status, laundry_type, search, export: exportParam } = req.query;
 
             const result = await LaundryOrderService.getByPropertyId({
                 propertyId,
@@ -85,6 +85,7 @@ class LaundryOrderController {
                 limit,
                 status: status != "undefined" ? status : undefined,
                 vendorStatus: vendor_status != "undefined" ? vendor_status : undefined,
+                laundryType: laundry_type != "undefined" ? laundry_type : undefined,
                 search: search != "undefined" ? String(search ?? "") : "",
                 exportRows: exportParam === "true",
             });

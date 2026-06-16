@@ -6,6 +6,7 @@ import {
   View,
   StyleSheet,
   Font,
+  Image
 } from "@react-pdf/renderer";
 import { formatAppDate } from "@/utils/dateUtils";
 
@@ -112,7 +113,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "flex-start",
     borderBottomWidth: 1,
-    borderBottomColor: "#cbd5e1",
+    borderBottomColor: "#475569",
     paddingBottom: 8,
     marginBottom: 12,
   },
@@ -155,14 +156,14 @@ const styles = StyleSheet.create({
     textTransform: "none",
     color: "#0284c7",
     borderBottomWidth: 1,
-    borderBottomColor: "#e0f2fe",
+    borderBottomColor: "#475569",
     paddingBottom: 4,
     marginTop: 0,
     marginBottom: 8,
   },
   card: {
     borderWidth: 1,
-    borderColor: "#e0f2fe",
+    borderColor: "#475569",
     borderRadius: 6,
     padding: 8,
     marginTop: 0,
@@ -178,7 +179,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     borderBottomWidth: 1,
-    borderBottomColor: "#f1f5f9",
+    borderBottomColor: "#e2e8f0",
     paddingBottom: 2,
     marginRight: 8,
   },
@@ -229,7 +230,7 @@ const styles = StyleSheet.create({
   },
   infoCard: {
     borderWidth: 1,
-    borderColor: "#e0f2fe",
+    borderColor: "#475569",
     borderRadius: 6,
     padding: 8,
     marginTop: 0,
@@ -246,9 +247,16 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   infoItem: {
-    width: "48%",
+    width: "32%",
     borderBottomWidth: 1,
-    borderBottomColor: "#f1f5f9",
+    borderBottomColor: "#e2e8f0",
+    paddingBottom: 2,
+    marginBottom: 4,
+  },
+  infoItem4Col: {
+    width: "24%",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8f0",
     paddingBottom: 2,
     marginBottom: 4,
   },
@@ -261,12 +269,13 @@ const styles = StyleSheet.create({
   infoValue: {
     fontSize: 9,
     color: "#1e293b",
+    flexWrap: "wrap",
   },
   commentsBox: {
     marginTop: 4,
     paddingTop: 4,
     borderTopWidth: 1,
-    borderTopColor: "#f1f5f9",
+    borderTopColor: "#e2e8f0",
   },
   commentsLabel: {
     fontSize: 8,
@@ -285,7 +294,7 @@ const styles = StyleSheet.create({
   tableHeader: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: "#f1f5f9",
+    borderBottomColor: "#475569",
     paddingBottom: 4,
     marginBottom: 4,
   },
@@ -305,13 +314,14 @@ const styles = StyleSheet.create({
   tableRow: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: "#f1f5f9",
+    borderBottomColor: "#e2e8f0",
     paddingVertical: 4,
   },
   tableCell: {
     fontSize: 9,
     color: "#334155",
     flex: 1,
+    flexWrap: "wrap",
   },
   tableCellRight: {
     fontSize: 9,
@@ -319,6 +329,7 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "right",
     fontWeight: "bold",
+    flexWrap: "wrap",
   },
   noDataText: {
     fontSize: 9,
@@ -328,7 +339,7 @@ const styles = StyleSheet.create({
   },
   billingTable: {
     borderWidth: 1,
-    borderColor: "#e0f2fe",
+    borderColor: "#475569",
     borderRadius: 6,
     padding: 0,
     marginTop: 0,
@@ -340,14 +351,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "#f8fafc",
     borderBottomWidth: 1,
-    borderBottomColor: "#e0f2fe",
+    borderBottomColor: "#475569",
     paddingVertical: 6,
     paddingHorizontal: 8,
   },
   billingRow: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: "#f1f5f9",
+    borderBottomColor: "#e2e8f0",
     paddingVertical: 4,
     paddingHorizontal: 8,
   },
@@ -355,7 +366,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "#f8fafc",
     borderBottomWidth: 1,
-    borderBottomColor: "#f1f5f9",
+    borderBottomColor: "#e2e8f0",
     paddingVertical: 4,
     paddingHorizontal: 8,
   },
@@ -363,7 +374,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: "#f1f5f9",
     borderBottomWidth: 1,
-    borderBottomColor: "#e0f2fe",
+    borderBottomColor: "#475569",
     paddingVertical: 6,
     paddingHorizontal: 8,
   },
@@ -428,7 +439,7 @@ const styles = StyleSheet.create({
     left: 24,
     right: 24,
     borderTopWidth: 1,
-    borderTopColor: "#cbd5e1",
+    borderTopColor: "#475569",
     paddingTop: 8,
   },
   footerText: {
@@ -495,6 +506,7 @@ export default function BookingSummaryPDF({
   };
 
   const instructionsPlainText = (bookingInstructions || "")
+    .replace(/\r?\n|\r/g, "")
     .replace(/<li[^>]*>/gi, "\n• ")
     .replace(/<\/li>/gi, "")
     .replace(/<br\s*\/?>/gi, "\n")
@@ -505,7 +517,7 @@ export default function BookingSummaryPDF({
     .replace(/&amp;/gi, "&")
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">")
-    .replace(/\n{3,}/g, "\n\n")
+    .replace(/\n{2,}/g, "\n")
     .trim();
 
   return (
@@ -513,7 +525,17 @@ export default function BookingSummaryPDF({
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header} fixed>
-          <View>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            {property?.logo_mime && (
+              <Image 
+                src={{
+                  uri: `${import.meta.env.VITE_API_URL}/properties/${property.id}/logo`,
+                  method: "GET",
+                  headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+                }}
+                style={{ width: 40, height: 40, marginRight: 8, objectFit: "contain" }} 
+              />
+            )}
             <Text style={styles.propertyTitle}>{propertyBrandName}</Text>
           </View>
           <View style={styles.bookingIdBox}>
@@ -526,10 +548,10 @@ export default function BookingSummaryPDF({
       
         <View style={styles.gridRow}>
           {/* Booking Info */}
-          <View style={styles.gridCol7}>
+          <View style={!booking?.has_guest_image ? { width: "100%" } : { flex: 1, marginRight: 16 }}>
             <View style={styles.sectionContainer}>
               <Text style={styles.sectionTitle}>Booking Information</Text>
-            <View style={[styles.infoCard, styles.sideBySideCardCompact]}>
+            <View style={[styles.infoCard, styles.sideBySideCardCompact, { minHeight: 0, height: 110 }]}>
               <View style={styles.infoRow}>
                 <View style={styles.infoItem}>
                   <Text style={styles.infoLabel}>Primary Guest</Text>
@@ -582,331 +604,178 @@ export default function BookingSummaryPDF({
                     {formatDate(booking?.booking_date)}
                   </Text>
                 </View>
-              </View>
 
-              {isPrintableValue(booking?.comments) && (
-                <View style={styles.commentsBox}>
-                  <Text style={styles.commentsLabel}>Comments</Text>
-                  <Text style={styles.commentsValue}>
-                    {safeText(booking?.comments)}
+                <View style={styles.infoItem}>
+                  <Text style={styles.infoLabel}>Rooms</Text>
+                  <Text style={styles.infoValue}>
+                    {hasData(booking?.rooms) ? booking.rooms.map((room: any) => getRoomDisplayData(room.room_no, allRoomsMeta).roomNo).join(", ") : "—"}
                   </Text>
                 </View>
-              )}
+              </View>
             </View>
             </View>
           </View>
 
-          {/* Rooms Info */}
-          <View style={styles.gridCol5}>
+          {/* Guest Photo */}
+          {booking?.has_guest_image && (
+          <View style={{ width: 95 }}>
             <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>Rooms</Text>
-            <View style={[styles.infoCard, styles.sideBySideCardCompact]}>
-              {hasData(booking?.rooms) ? (
-                <View style={styles.table}>
-                  <View style={styles.tableHeader}>
-                    <Text style={[styles.tableHeaderCell, { flex: 1.2 }]}>
-                      Room No
-                    </Text>
-                    <Text style={styles.tableHeaderCell}>Floor</Text>
-                    <Text style={styles.tableHeaderCell}>Bed</Text>
-                    <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>
-                      Category
-                    </Text>
-                  </View>
-                  {booking.rooms.map((room: any, index: number) => {
-                    const ui = getRoomDisplayData(room.room_no, allRoomsMeta);
-                    return (
-                      <View key={room.room_id || index} style={styles.tableRow}>
-                        <Text
-                          style={[
-                            styles.tableCell,
-                            { flex: 1.2, fontWeight: "bold", color: "#0f172a" },
-                          ]}
-                        >
-                          {ui.roomNo}
-                        </Text>
-                        <Text style={styles.tableCell}>{ui.floorName}</Text>
-                        <Text style={styles.tableCell}>{ui.bedType}</Text>
-                        <Text style={[styles.tableCell, { flex: 1.5 }]}>
-                          {ui.category}
-                        </Text>
-                      </View>
-                    );
-                  })}
-                </View>
-              ) : (
-                <Text style={styles.noDataText}>No Rooms Assigned</Text>
-              )}
-            </View>
+              <Text style={[styles.sectionTitle, { textAlign: "center" }]}>Photo</Text>
+              <View style={[styles.infoCard, { padding: 0, overflow: "hidden", minHeight: 0, height: 110 }]}>
+                <Image 
+                  src={{
+                    uri: `${import.meta.env.VITE_API_URL}/bookings/${booking.id}/guest-image`,
+                    method: "GET",
+                    headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+                  }}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+                />
+              </View>
             </View>
           </View>
+          )}
         </View>
 
         {/* Guests Details */}
         {hasData(guests) && (
           <View style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>Guests Details</Text>
-            {guests.map((g: any, index: number) => {
-              const fullName = `${g.salutation || ""} ${g.first_name || ""} ${g.middle_name || ""} ${g.last_name || ""}`
-                .replace(/\s+/g, " ")
-                .trim();
-              const isLastGuest = index === guests.length - 1;
-              const isEven = index % 2 === 0;
+            
+            {/* Primary Guest Card */}
+            {guests.length > 0 && (() => {
+              const g = guests[0];
+              const fullName = `${g.salutation || ""} ${g.first_name || ""} ${g.middle_name || ""} ${g.last_name || ""}`.replace(/\s+/g, " ").trim();
               return (
-                <View
-                  key={g.id || index}
-                  style={[
-                    styles.card,
-                    isLastGuest ? { marginBottom: 12 } : null,
-                    !isEven ? { backgroundColor: "#f8fafc" } : null,
-                  ]}
-                >
+                <View style={[styles.infoCard, guests.length === 1 ? { marginBottom: 12 } : { marginBottom: 8 }]}>
                   <View style={styles.guestNameBox}>
                     <View style={styles.guestDot} />
                     <Text style={styles.guestName}>{fullName}</Text>
                   </View>
 
-                  <View style={styles.row}>
-                    <View style={styles.col6}>
-                      <Text style={styles.label}>Phone</Text>
-                      <Text style={styles.value}>{safeText(g.phone)}</Text>
+                  <View style={styles.infoRow}>
+                    <View style={styles.infoItem4Col}>
+                      <Text style={styles.infoLabel}>Phone</Text>
+                      <Text style={styles.infoValue}>{safeText(g.phone)}</Text>
                     </View>
-                    <View style={[styles.col6, { marginRight: 0 }]}>
-                      <Text style={styles.label}>Email</Text>
-                      <Text style={styles.value}>{safeText(g.email)}</Text>
+                    <View style={styles.infoItem4Col}>
+                      <Text style={styles.infoLabel}>Email</Text>
+                      <Text style={styles.infoValue}>{safeText(g.email)}</Text>
                     </View>
-                  </View>
-
-                  <View style={styles.row}>
-                    <View style={styles.col6}>
-                      <Text style={styles.label}>Gender / Age</Text>
-                      <Text style={styles.value}>
+                    <View style={styles.infoItem4Col}>
+                      <Text style={styles.infoLabel}>Gender / Age</Text>
+                      <Text style={styles.infoValue}>
                         {safeText(g.gender)} {g.age ? `/ ${g.age} yrs` : ""}
                       </Text>
                     </View>
-                    <View style={[styles.col6, { marginRight: 0 }]}>
-                      <Text style={styles.label}>Nationality</Text>
-                      <Text style={styles.value}>{safeText(g.nationality)}</Text>
+                    <View style={styles.infoItem4Col}>
+                      <Text style={styles.infoLabel}>Nationality</Text>
+                      <Text style={[styles.infoValue, { textTransform: "capitalize" }]}>{safeText(g.nationality)}</Text>
                     </View>
-                  </View>
 
-                  <View style={styles.row}>
-                    <View style={styles.col6}>
-                      <Text style={styles.label}>ID Proof</Text>
-                      <Text style={styles.value}>
-                        {safeText(g.id_type)}{" "}
-                        {g.id_number ? `(${g.id_number})` : ""}
+                    <View style={styles.infoItem4Col}>
+                      <Text style={styles.infoLabel}>ID Proof</Text>
+                      <Text style={styles.infoValue}>
+                        {safeText(g.id_type)} {g.id_number ? `(${g.id_number})` : ""}
                       </Text>
                     </View>
-                    <View style={[styles.col6, { marginRight: 0 }]}>
-                      <Text style={styles.label}>Coming From</Text>
-                      <Text style={styles.value}>{safeText(g.coming_from)}</Text>
+                    <View style={styles.infoItem4Col}>
+                      <Text style={styles.infoLabel}>Coming From</Text>
+                      <Text style={styles.infoValue}>{safeText(g.coming_from)}</Text>
                     </View>
-                  </View>
-
-                  <View style={styles.row}>
-                    <View style={styles.col6}>
-                      <Text style={styles.label}>Going To</Text>
-                      <Text style={styles.value}>{safeText(g.going_to)}</Text>
+                    <View style={styles.infoItem4Col}>
+                      <Text style={styles.infoLabel}>Going To</Text>
+                      <Text style={styles.infoValue}>{safeText(g.going_to)}</Text>
                     </View>
-                    <View style={[styles.col6, { marginRight: 0 }]}>
-                      <Text style={styles.label}>Emergency</Text>
-                      <Text style={styles.value}>
-                        {g.emergency_contact_name
-                          ? `${g.emergency_contact_name} - `
-                          : ""}
+                    <View style={styles.infoItem4Col}>
+                      <Text style={styles.infoLabel}>Emergency Contact</Text>
+                      <Text style={styles.infoValue}>
+                        {g.emergency_contact_name ? `${g.emergency_contact_name}\n` : ""}
                         {safeText(g.emergency_contact)}
                       </Text>
                     </View>
-                  </View>
 
                   {isPrintableValue(g.address) && (
-                    <View style={styles.col12}>
-                      <Text style={[styles.label, { width: "17%" }]}>
-                        Address
-                      </Text>
-                      <Text style={[styles.value, { width: "83%" }]}>
-                        {safeText(g.address)}
-                      </Text>
+                    <View style={[styles.infoItem, { width: "100%" }]}>
+                      <Text style={styles.infoLabel}>Address</Text>
+                      <Text style={styles.infoValue}>{safeText(g.address)}</Text>
                     </View>
                   )}
+                  </View>
                 </View>
               );
-            })}
-          </View>
-        )}
+            })()}
 
-        {/* Side-by-Side Payments and Vehicles */}
-        {(hasData(payments) || hasData(vehicles)) && (
-          <View style={styles.gridRow}>
-            {/* Payments */}
-            {hasData(payments) ? (
-              <View style={[styles.gridCol5, !hasData(vehicles) ? { width: "100%" } : { width: "48%" }]}>
-                <View style={styles.sectionContainer}>
-                  <Text style={styles.sectionTitle}>Payments</Text>
-                <View style={[styles.card, styles.sideBySideCardCompact]}>
+            {/* Additional Guests Grid */}
+            {guests.length > 1 && (
+              <>
+                <Text style={[styles.sectionTitle, { marginTop: 4 }]}>Additional Guest Details</Text>
+                <View style={[styles.card, { padding: 0 }]}>
                   <View style={styles.table}>
-                    <View style={styles.tableHeader}>
-                      <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>Date</Text>
-                      <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>Method</Text>
-                      <Text style={styles.tableHeaderCellRight}>Amount</Text>
+                    <View style={[styles.tableHeader, { paddingTop: 8, paddingHorizontal: 8 }]}>
+                      <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>Name</Text>
+                      <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Gender / Age</Text>
+                      <Text style={[styles.tableHeaderCell, { flex: 1 }]}>ID Type</Text>
+                      <Text style={[styles.tableHeaderCell, { flex: 1.2 }]}>ID Number</Text>
                     </View>
-                    {payments.map((p: any, index: number) => (
-                      <View key={p.id || index} style={styles.tableRow}>
-                        <Text style={[styles.tableCell, { flex: 1.5 }]}>
-                          {formatDate(p.payment_date || p.created_at)}
-                        </Text>
-                        <Text style={[styles.tableCell, { flex: 1.5 }]}>
-                          {safeText(p.payment_method)}
-                        </Text>
-                        <Text style={styles.tableCellRight}>
-                          Rs {money(p.paid_amount)}
-                        </Text>
-                      </View>
-                    ))}
+                    {guests.slice(1).map((g: any, index: number) => {
+                      const fullName = `${g.salutation || ""} ${g.first_name || ""} ${g.middle_name || ""} ${g.last_name || ""}`.replace(/\s+/g, " ").trim();
+                      const isLast = index === guests.length - 2;
+                      return (
+                        <View key={g.id || index} style={[styles.tableRow, { paddingHorizontal: 8 }, isLast && { borderBottomWidth: 0, paddingBottom: 8 }]}>
+                          <Text style={[styles.tableCell, { flex: 1.5 }]}>{fullName}</Text>
+                          <Text style={[styles.tableCell, { flex: 1 }]}>
+                            {safeText(g.gender)} {g.age ? `/ ${g.age} yrs` : ""}
+                          </Text>
+                          <Text style={[styles.tableCell, { flex: 1 }]}>{safeText(g.id_type)}</Text>
+                          <Text style={[styles.tableCell, { flex: 1.2 }]}>{safeText(g.id_number)}</Text>
+                        </View>
+                      );
+                    })}
                   </View>
                 </View>
-              </View>
-            </View>
-            ) : (
-              <View style={hasData(vehicles) ? { width: "0%" } : undefined} />
-            )}
-
-            {/* Vehicles */}
-            {hasData(vehicles) && (
-              <View style={[styles.gridCol5, !hasData(payments) ? { width: "100%" } : { width: "48%" }]}>
-                <View style={styles.sectionContainer}>
-                  <Text style={styles.sectionTitle}>Vehicle Details</Text>
-                <View style={[styles.card, styles.sideBySideCardCompact]}>
-                  <View style={styles.table}>
-                    <View style={styles.tableHeader}>
-                      <Text style={[styles.tableHeaderCell, { flex: 1.2 }]}>Type</Text>
-                      <Text style={[styles.tableHeaderCell, { flex: 1.2 }]}>Name</Text>
-                      <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>Number</Text>
-                      <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>Phone</Text>
-                    </View>
-                    {vehicles.map((v: any, index: number) => (
-                      <View key={v.id || index} style={styles.tableRow}>
-                        <Text style={[styles.tableCell, { flex: 1.2 }]}>
-                          {safeText(v.vehicle_type)}
-                        </Text>
-                        <Text style={[styles.tableCell, { flex: 1.2 }]}>
-                          {safeText(v.vehicle_name)}
-                        </Text>
-                        <Text style={[styles.tableCell, { fontWeight: "bold", flex: 1.5 }]}>
-                          {safeText(v.vehicle_number)}
-                        </Text>
-                        <Text style={[styles.tableCell, { flex: 1.5 }]}>
-                          {safeText(v.phone)}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              </View>
-            </View>
+              </>
             )}
           </View>
         )}
 
-        {/* Billing & Financial Summary */}
-        <View style={[styles.sectionContainer]}>
-          <Text style={styles.sectionTitle}>Billing Summary</Text>
-          <View style={styles.billingTable}>
-            <View style={styles.billingHeaderRow}>
-              <Text style={styles.tableHeaderCell}>Billing Item</Text>
-              <Text style={styles.tableHeaderCellRight}>Amount</Text>
-            </View>
-
-            <View style={styles.billingRow}>
-              <Text style={styles.billingLabel}>
-                Base Room Rent (Before Tax)
-              </Text>
-              <Text style={styles.billingValue}>Rs {money(baseAmt)}</Text>
-            </View>
-
-            {isPrintableValue(discAmt) && (
-              <View style={styles.billingRow}>
-                <Text style={styles.billingLabel}>
-                  Discount (
-                  {booking?.discount_type === "PERCENTAGE"
-                    ? `${booking.discount}%`
-                    : "Flat"}
-                  )
-                </Text>
-                <Text style={styles.billingValueDiscount}>
-                  - Rs {money(discAmt)}
-                </Text>
+        {/* Vehicles */}
+        {hasData(vehicles) && (
+          <View style={styles.sectionContainer}>
+            <Text style={styles.sectionTitle}>Vehicle Details</Text>
+            <View style={[styles.infoCard, { padding: 6 }]}>
+              <View style={styles.table}>
+                <View style={styles.tableHeader}>
+                  <Text style={[styles.tableHeaderCell, { flex: 0.8 }]}>Type</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 2 }]}>Name</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>Vehicle No.</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 1.5 }]}>Phone</Text>
+                </View>
+                {vehicles.map((v: any, index: number) => (
+                  <View key={v.id || index} style={styles.tableRow}>
+                    <Text style={[styles.tableCell, { flex: 0.8, paddingRight: 4 }]}>
+                      {safeText(v.vehicle_type)}
+                    </Text>
+                    <Text style={[styles.tableCell, { flex: 2, paddingRight: 4 }]}>
+                      {safeText(v.vehicle_name)}
+                    </Text>
+                    <Text style={[styles.tableCell, { flex: 1.5, paddingRight: 4 }]}>
+                      {safeText(v.vehicle_number)}
+                    </Text>
+                    <Text style={[styles.tableCell, { flex: 1.5 }]}>
+                      {safeText(v.phone)}
+                    </Text>
+                  </View>
+                ))}
               </View>
-            )}
-
-            {isPrintableValue(booking?.price_after_discount) && (
-              <View style={styles.billingRow}>
-                <Text style={styles.billingLabel}>
-                  Room Rent (After Discount)
-                </Text>
-                <Text style={styles.billingValue}>
-                  Rs {money(booking.price_after_discount)}
-                </Text>
-              </View>
-            )}
-
-            {isPrintableValue(gstAmt) && (
-              <View style={styles.billingRow}>
-                <Text style={styles.billingLabel}>GST Amount</Text>
-                <Text style={styles.billingValue}>Rs {money(gstAmt)}</Text>
-              </View>
-            )}
-
-            {isPrintableValue(roomTaxAmt) && (
-              <View style={styles.billingRow}>
-                <Text style={styles.billingLabel}>Other Room Taxes</Text>
-                <Text style={styles.billingValue}>Rs {money(roomTaxAmt)}</Text>
-              </View>
-            )}
-
-            <View style={styles.billingRowHighlight}>
-              <Text style={styles.billingLabelHighlight}>
-                Total Room Booking Amount (A)
-              </Text>
-              <Text style={styles.billingValue}>Rs {money(finalRoomAmt)}</Text>
-            </View>
-
-            {isPrintableValue(restTotalAmt) && (
-              <View style={styles.billingRowHighlight}>
-                <Text style={styles.billingLabelHighlight}>
-                  Restaurant Services (B)
-                </Text>
-                <Text style={styles.billingValue}>
-                  Rs {money(restTotalAmt)}
-                </Text>
-              </View>
-            )}
-
-            <View style={styles.billingRowGrandTotal}>
-              <Text style={styles.billingLabelGrandTotal}>
-                Grand Total (A + B)
-              </Text>
-              <Text style={styles.billingValue}>Rs {money(grandTotalAmt)}</Text>
-            </View>
-
-            <View style={styles.billingRow}>
-              <Text style={styles.billingLabel}>Total Paid Amount</Text>
-              <Text style={styles.billingValue}>Rs {money(totalPaidAmt)}</Text>
-            </View>
-
-            <View style={styles.billingRowBalance}>
-              <Text style={styles.billingLabelBalance}>Remaining Balance</Text>
-              <Text style={styles.billingValueBalance}>
-                Rs {money(Math.abs(remainingBalanceAmt))}
-              </Text>
             </View>
           </View>
-        </View>
+        )}
 
         {!!instructionsPlainText && (
-          <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>Booking Instructions</Text>
+          <View style={[styles.sectionContainer, { marginTop: 12, borderTopWidth: 1, borderTopColor: "#475569", paddingTop: 8 }]}>
+            <Text style={[styles.commentsValue, { fontSize: 8, lineHeight: 1.5, fontWeight: "bold", marginBottom: 2 }]}>
+              Note :
+            </Text>
             <Text style={[styles.commentsValue, { fontSize: 8, lineHeight: 1.5 }]}>
               {instructionsPlainText}
             </Text>

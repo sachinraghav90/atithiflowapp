@@ -20,6 +20,7 @@ interface ResponsiveDatePickerProps {
     label?: string
     disabled?: boolean
     minDate?: Date
+    maxDate?: Date
     className?: string
     showTime?: boolean
     displayFormat?: string
@@ -32,6 +33,7 @@ export function ResponsiveDatePicker({
     label = "Date",
     disabled,
     minDate,
+    maxDate,
     className,
     showTime,
     displayFormat = APP_DATE_DISPLAY_FORMAT
@@ -70,6 +72,9 @@ export function ResponsiveDatePicker({
             const parsed = parse(val, formatStr, new Date())
             if (isValid(parsed)) {
                 if (minDate && startOfDay(parsed) < startOfDay(minDate)) {
+                    return
+                }
+                if (maxDate && startOfDay(parsed) > startOfDay(maxDate)) {
                     return
                 }
                 onChange(parsed)
@@ -142,7 +147,11 @@ export function ResponsiveDatePicker({
                     }
                     if (!showTime) setOpen(false)
                 }}
-                disabled={(date) => (minDate ? startOfDay(date) < startOfDay(minDate) : false)}
+                disabled={(date) => {
+                    if (minDate && startOfDay(date) < startOfDay(minDate)) return true;
+                    if (maxDate && startOfDay(date) > startOfDay(maxDate)) return true;
+                    return false;
+                }}
                 initialFocus
                 className="bg-background"
             />

@@ -55,6 +55,7 @@ class VehicleService {
                     if (vehicle.room_no !== undefined) set("room_no", vehicle.room_no)
                     if (vehicle.is_active !== undefined) set("is_active", vehicle.is_active)
                     if (vehicle.color !== undefined) set("color", vehicle.color)
+                    if (vehicle.phone !== undefined) set("phone", vehicle.phone)
 
                     if (!fields.length) continue
 
@@ -101,9 +102,10 @@ class VehicleService {
                             vehicle_number,
                             room_no,
                             created_by,
-                            color
+                            color,
+                            phone
                         )
-                        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+                        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
                         `,
                         [
                             bookingId,
@@ -113,7 +115,8 @@ class VehicleService {
                             vehicle.vehicle_number ?? null,
                             vehicle.room_no ?? null,
                             userId,
-                            vehicle.color ?? null
+                            vehicle.color ?? null,
+                            vehicle.phone ?? null
                         ]
                     )
 
@@ -158,6 +161,7 @@ class VehicleService {
             vehicle_number,
             color,
             room_no,
+            phone,
             is_active,
             created_on,
             updated_on

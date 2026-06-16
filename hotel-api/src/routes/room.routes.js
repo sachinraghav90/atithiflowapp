@@ -13,6 +13,8 @@ router.route("/")
 
 router.patch("/dirty-status", supabaseAuth, requireRole(roles.ALL), RoomController.updateDirtyStatus.bind(RoomController))
 
+router.patch("/:roomId/maintenance", supabaseAuth, requireRole(roles.ALL), RoomController.updateMaintenanceStatus.bind(RoomController))
+
 router.route("/single-room")
     .post(supabaseAuth, requireRole(roles.ALL), RoomController.addRoom.bind(RoomController))
 

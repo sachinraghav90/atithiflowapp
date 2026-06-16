@@ -61,6 +61,14 @@ class Booking {
                             AND COALESCE(rd_search.is_changed, false) = false
                             AND rr_search.room_no ILIKE $${idx + 1}
                     )
+                    OR EXISTS (
+                        SELECT 1
+                        FROM public.vehicles v_search
+                        WHERE v_search.booking_id = b.id
+                            AND v_search.property_id = b.property_id
+                            AND COALESCE(v_search.is_active, true) = true
+                            AND v_search.vehicle_number ILIKE $${idx + 1}
+                    )
                 )`)
                 params.push(bookingId, `%${normalizedSearch}%`)
                 idx += 2
@@ -77,6 +85,14 @@ class Booking {
                             AND COALESCE(rd_search.is_cancelled, false) = false
                             AND COALESCE(rd_search.is_changed, false) = false
                             AND rr_search.room_no ILIKE $${idx}
+                    )
+                    OR EXISTS (
+                        SELECT 1
+                        FROM public.vehicles v_search
+                        WHERE v_search.booking_id = b.id
+                            AND v_search.property_id = b.property_id
+                            AND COALESCE(v_search.is_active, true) = true
+                            AND v_search.vehicle_number ILIKE $${idx}
                     )
                 )`)
                 params.push(`%${normalizedSearch}%`)
@@ -438,6 +454,8 @@ class Booking {
 
             COALESCE(paid.total_paid_amount, 0) AS paid_amount,
 
+            (b.guest_image IS NOT NULL) AS has_guest_image,
+
             /* ============================
                RESTAURANT AGGREGATES
             ============================ */
@@ -621,6 +639,9 @@ class Booking {
         comments,
         actual_arrival,
         actual_departure,
+        is_early_checkin,
+        is_delayed_checkout,
+        audit_comment,
         updatedBy
     }) {
         const client = await this.#DB.connect();
@@ -633,7 +654,7 @@ class Booking {
             /* ------------------------------------------------ */
             const { rows } = await client.query(
                 `
-            SELECT id, booking_status, property_id, estimated_arrival
+            SELECT id, booking_status, property_id, estimated_arrival, estimated_departure
             FROM public.bookings
             WHERE id = $1
             FOR UPDATE
@@ -676,18 +697,10 @@ class Booking {
                 todayOnly.setHours(0, 0, 0, 0);
 
                 if (arrivalDateOnly > todayOnly) {
-                    const formattedArrivalDate = arrivalDate.toISOString().split('T')[0];
-                    const dd = String(arrivalDate.getDate()).padStart(2, '0');
-                    const mm = String(arrivalDate.getMonth() + 1).padStart(2, '0');
-                    const yy = String(arrivalDate.getFullYear()).slice(-2);
-
                     throw {
                         code: "EARLY_CHECKIN_NOT_ALLOWED",
-                        message: `Cannot check in before arrival date. This booking is scheduled for ${dd}/${mm}/${yy}.`,
-                        booking_id: bookingId,
-                        booking_no: `BO${String(bookingId).padStart(3, '0')}`,
-                        arrival_date: formattedArrivalDate,
-                        actual_arrival: actual_arrival || today.toISOString()
+                        message: "Early check-in is allowed only on the scheduled arrival date. For previous-day arrival, please duplicate this booking or create a new booking.",
+                        booking_id: bookingId
                     };
                 }
             }
@@ -779,6 +792,81 @@ class Booking {
                     };
                 }
 
+                const estDepartureDate = new Date(rows[0].estimated_departure);
+                const actDepartureDate = new Date(actualDeparture);
+
+                const estDepOnly = new Date(estDepartureDate);
+                estDepOnly.setHours(0, 0, 0, 0);
+
+                const actDepOnly = new Date(actDepartureDate);
+                actDepOnly.setHours(0, 0, 0, 0);
+
+                if (actDepOnly > estDepOnly) {
+                    const msPerDay = 24 * 60 * 60 * 1000;
+                    const diffMs = Date.UTC(actDepOnly.getFullYear(), actDepOnly.getMonth(), actDepOnly.getDate()) - 
+                                   Date.UTC(estDepOnly.getFullYear(), estDepOnly.getMonth(), estDepOnly.getDate());
+                    const diffDays = Math.round(diffMs / msPerDay);
+
+                    const { rows: conflicts } = await client.query(
+                        `
+                        SELECT 
+                            r.id              AS room_id,
+                            r.room_no,
+                            rd2.booking_id    AS active_booking_id
+                        FROM public.room_details rd
+                        JOIN public.ref_rooms r 
+                            ON r.id = rd.ref_room_id
+                        JOIN public.room_details rd2
+                            ON rd2.ref_room_id = r.id
+                           AND rd2.booking_id != $1
+                           AND COALESCE(rd2.is_cancelled, false) = false
+                           AND COALESCE(rd2.is_changed, false) = false
+                        JOIN public.bookings b2
+                            ON b2.id = rd2.booking_id
+                           AND b2.is_active = true
+                           AND b2.booking_status IN ('CONFIRMED','CHECKED_IN')
+                           AND b2.estimated_arrival < $2
+                           AND COALESCE(b2.actual_departure, b2.estimated_departure) > $3
+                        WHERE rd.booking_id = $1
+                          AND COALESCE(rd.is_cancelled, false) = false
+                          AND COALESCE(rd.is_changed, false) = false
+                        `,
+                        [Number(bookingId), actualDeparture, rows[0].estimated_departure]
+                    );
+
+                    if (conflicts.length > 0) {
+                        const conflict = conflicts[0];
+                        const bookingDisplayId = `BO${String(conflict.active_booking_id).padStart(3, '0')}`;
+                        if (diffDays === 1) {
+                            throw {
+                                code: "NEXT_DAY_CHECKOUT_CONFLICT",
+                                message: `Room ${conflict.room_no} is already reserved for Booking #${bookingDisplayId} on the requested extended date. Please shift the current guest to another available room or create a new booking with a different room.`,
+                                booking_id: bookingId
+                            };
+                        } else {
+                            throw {
+                                code: "LONGER_STAY_CONFLICT",
+                                message: "Selected room is not available for the extended dates. Please shift the guest to another available room or create a new booking with available rooms.",
+                                booking_id: bookingId
+                            };
+                        }
+                    } else {
+                        if (diffDays === 1) {
+                            throw {
+                                code: "NEXT_DAY_CHECKOUT_NOT_ALLOWED",
+                                message: "Delayed checkout is allowed only on the scheduled checkout date. For next-day or longer stay, please create a new booking or Shift the Guest to another room.",
+                                booking_id: bookingId
+                            };
+                        } else {
+                            throw {
+                                code: "LONGER_STAY_NOT_ALLOWED",
+                                message: "This is a longer stay extension, not delayed checkout. Please create a new booking or use the Stay Extension flow after checking room availability.",
+                                booking_id: bookingId
+                            };
+                        }
+                    }
+                }
+
                 updateParams.push(actualDeparture);
                 extraUpdates += `, actual_departure = $${updateParams.length}`;
             }
@@ -830,6 +918,15 @@ class Booking {
             /* ------------------------------------------------ */
             /* 🧾 Audit */
             /* ------------------------------------------------ */
+            let auditCommentText = `Status changed to ${status}`;
+            if (is_early_checkin && audit_comment) {
+                auditCommentText += `\nEarly Check-In: ${audit_comment}`;
+            } else if (is_delayed_checkout && audit_comment) {
+                auditCommentText += `\nDelayed Checkout: ${audit_comment}`;
+            } else if (audit_comment) {
+                auditCommentText += `\nComment: ${audit_comment}`;
+            }
+
             try {
                 await AuditService.log({
                     property_id: rows[0].property_id,
@@ -837,7 +934,7 @@ class Booking {
                     table_name: "bookings",
                     event_type: "STATUS_CHANGE",
                     task_name: "Update Booking Status",
-                    comments: `Status changed to ${status}`,
+                    comments: auditCommentText,
                     details: JSON.stringify({
                         old_status: currentStatus,
                         new_status: status
@@ -1296,9 +1393,8 @@ class Booking {
                     task_name: "Room Changed",
                     comments: reason || "Room change requested",
                     details: JSON.stringify({
-                        reason,
-                        old_rooms: fetchedOldRooms,
-                        new_rooms: newRoomsDetails
+                        "Assigned Rooms": fetchedOldRooms.map(r => r.room_no).join(', '),
+                        "Replaced Rooms": newRoomsDetails.map(r => r.room_no).join(', ')
                     }),
                     user_id: changedBy
                 });

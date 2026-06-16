@@ -4,18 +4,20 @@ import AppHeader from "@/components/layout/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { useGetMyPropertiesQuery, useGetSidebarLinksQuery, useRoomsStatusQuery, useUpdateRoomDirtyStatusMutation } from "@/redux/services/hmsApi";
+import { useGetMyPropertiesQuery, useGetSidebarLinksQuery, useRoomsStatusQuery, useUpdateRoomDirtyStatusMutation, useUpdateRoomMaintenanceStatusMutation } from "@/redux/services/hmsApi";
 import { useAppSelector } from "@/redux/hook";
 import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
 import { useLocation, useNavigate } from "react-router-dom";
 import { usePermission } from "@/rbac/usePermission";
 import { NativeSelect } from "@/components/ui/native-select";
-import { Plus, Brush } from "lucide-react";
+import { Plus, Brush, Wrench } from "lucide-react";
 import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
+import { Textarea } from "@/components/ui/textarea";
 import { parseAppDate, toISODateOnly } from "@/utils/dateFormat";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { apiToast } from "@/utils/apiToastPromise";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 /* ---------------- Types ---------------- */
 type Room = {
@@ -23,6 +25,7 @@ type Room = {
     room_no: string;
     floor_number: number;
     dirty: boolean;
+    under_maintenance: boolean;
     booking_status: "CHECKED_IN" | "BOOKED" | "CHECKED_OUT" | null;
     pickup: boolean | null;
     drop: boolean | null;
@@ -39,6 +42,7 @@ type Summary = {
     no_show: number;
     free: number;
     dirty: number;
+    maintenance?: number;
 };
 
 type ApiResponse = {
@@ -66,7 +70,11 @@ const ROOM_STATUS_LEGEND = [
 ];
 
 /* ---------------- Helpers ---------------- */
-function getRoomUiStatus(room: Room): "OCCUPIED" | "FREE" | "DIRTY" | "BOOKED" {
+function getRoomUiStatus(room: Room): "OCCUPIED" | "FREE" | "DIRTY" | "BOOKED" | "MAINTENANCE" {
+    if (room.under_maintenance) {
+        return "MAINTENANCE";
+    }
+
     if (room.dirty && (room.status === "FREE" || !room.status)) {
         return "DIRTY";
     }
@@ -78,6 +86,8 @@ function getRoomUiStatus(room: Room): "OCCUPIED" | "FREE" | "DIRTY" | "BOOKED" {
             return "BOOKED";
         case "DIRTY":
             return "DIRTY";
+        case "MAINTENANCE":
+            return "MAINTENANCE";
         case "FREE":
         default:
             return "FREE";
@@ -132,9 +142,41 @@ export default function RoomStatusBoard() {
 
     const navigate = useNavigate()
     const [updateRoomDirtyStatus, { isLoading: isUpdatingDirty }] = useUpdateRoomDirtyStatusMutation();
+    const [updateRoomMaintenanceStatus, { isLoading: isUpdatingMaintenance }] = useUpdateRoomMaintenanceStatusMutation();
 
     const [isDirtySheetOpen, setIsDirtySheetOpen] = useState(false);
     const [dirtyStatuses, setDirtyStatuses] = useState<Record<string, boolean>>({});
+
+    const [maintenanceSheetRoom, setMaintenanceSheetRoom] = useState<Room | null>(null);
+    const [isMaintenance, setIsMaintenance] = useState(false);
+    const [maintenanceReason, setMaintenanceReason] = useState("");
+    const [isMaintenanceSheetOpen, setIsMaintenanceSheetOpen] = useState(false);
+
+    const openMaintenanceSheet = (room: Room) => {
+        setMaintenanceSheetRoom(room);
+        setIsMaintenance(room.under_maintenance);
+        setMaintenanceReason("");
+        setIsMaintenanceSheetOpen(true);
+    };
+
+    const handleSaveMaintenance = async () => {
+        if (!maintenanceSheetRoom) return;
+        
+        try {
+            await apiToast(
+                updateRoomMaintenanceStatus({ 
+                    roomId: maintenanceSheetRoom.ref_room_id, 
+                    under_maintenance: isMaintenance, 
+                    reason: maintenanceReason 
+                }).unwrap(),
+                isMaintenance ? "Room placed under maintenance" : "Room is now available"
+            );
+            setIsMaintenanceSheetOpen(false);
+            refetch();
+        } catch (error) {
+            console.error("Failed to update maintenance status", error);
+        }
+    };
 
     useEffect(() => {
         if (data?.rooms) {
@@ -224,49 +266,9 @@ export default function RoomStatusBoard() {
 
     return (
         <div className="flex flex-col">
-            <section className="p-6 lg:p-8 space-y-6">
+            <section className="p-4 lg:p-6 space-y-4">
                 {/* ---------- Header ---------- */}
                 <div className="space-y-3">
-
-                    {/* ---------- Status Legend (hover) ---------- */}
-                    <div className="relative group w-fit">
-                        <div className="flex items-center gap-1 cursor-pointer">
-                            {ROOM_STATUS_LEGEND.map((s) => (
-                                <span
-                                    key={s.label}
-                                    className={cn("h-3 w-3 rounded-full", s.color)}
-                                />
-                            ))}
-                        </div>
-
-                        {/* Hover Tooltip */}
-                        <div className="
-                                        absolute left-0 top-full mt-2 w-48
-                                        rounded-[3px] border bg-card p-3 shadow-lg
-                                        opacity-0 pointer-events-none
-                                        group-hover:opacity-100 group-hover:pointer-events-auto
-                                        transition
-                                      "
-                        >
-                            <p className="text-xs font-medium mb-2 text-muted-foreground">
-                                Room Status
-                            </p>
-
-                            <div className="space-y-1">
-                                {ROOM_STATUS_LEGEND.map((s) => (
-                                    <div
-                                        key={s.label}
-                                        className="flex items-center gap-2 text-sm"
-                                    >
-                                        <span
-                                            className={cn("h-3 w-3 rounded-full", s.color)}
-                                        />
-                                        <span>{s.label}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
 
                     {/* Title + Controls */}
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -326,24 +328,25 @@ export default function RoomStatusBoard() {
 
                 </div>
 
-                {/* ---------- Summary ---------- */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                    <SummaryCard label="Free" value={data?.summary.free} />
-                    <SummaryCard label="Booked" value={data?.summary.confirmed} />
-                    <SummaryCard label="Checked In" value={data?.summary.checked_in} />
-                    <SummaryCard label="Checked Out" value={data?.summary.checked_out} />
-                    <SummaryCard label="No Show" value={data?.summary.no_show} />
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                    <SummaryCard label="Available" value={data?.summary.free ?? 0} colorClass="text-green-300" />
+                    <SummaryCard label="Adv. Booked" value={data?.summary.confirmed ?? 0} colorClass="text-blue-300" />
+                    <SummaryCard label="Occupied" value={data?.summary.checked_in ?? 0} colorClass="text-pink-300" />
+                    <SummaryCard label="Dirty" value={data?.summary.dirty ?? 0} colorClass="text-gray-300" />
+                    <SummaryCard label="Under Maintenance" value={data?.summary.maintenance ?? 0} colorClass="text-yellow-300" />
                 </div>
 
 
                 {/* ---------- Main Layout ---------- */}
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+                <div className="relative border border-border rounded-md p-4 bg-background mt-6">
+                    <div className="absolute -top-3 left-4 bg-background px-2">
+                        <span className="text-sm font-semibold text-muted-foreground">Rooms</span>
+                    </div>
 
-                    {/* ---------- Rooms (4 columns) ---------- */}
-                    <div className="lg:col-span-4 bg-card border rounded-[5px] p-6">
-                        <p className="font-semibold mb-4">Rooms</p>
-
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-2">
+                        {/* ---------- Rooms (4 columns) ---------- */}
+                        <div className="lg:col-span-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5">
                             {data?.rooms.map((room) => {
                                 const uiStatus = getRoomUiStatus(room);
 
@@ -351,13 +354,32 @@ export default function RoomStatusBoard() {
                                     <div
                                         key={room.ref_room_id}
                                         className={cn(
-                                            "rounded-[3px] border p-3 space-y-2 transition",
+                                            "rounded-md border p-3 space-y-2 transition relative overflow-hidden",
                                             roomCardColor(uiStatus)
                                         )}
                                     >
-                                        <p className="text-xs text-muted-foreground">
-                                            {getFloorName(room.floor_number)}
-                                        </p>
+                                        <div className="flex justify-between items-start">
+                                            <p className="text-xs text-muted-foreground">
+                                                {getFloorName(room.floor_number)}
+                                            </p>
+                                            {room.status !== "CHECKED_IN" && room.status !== "BOOKED" && (
+                                                <TooltipProvider delayDuration={100}>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <button
+                                                                onClick={() => openMaintenanceSheet(room)}
+                                                                className="absolute right-2 top-2 rounded-md border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none h-6 w-6 flex items-center justify-center shadow-sm"
+                                                            >
+                                                                <Wrench className="h-3.5 w-3.5 stroke-[2.5]" />
+                                                            </button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent side="top" className="text-xs font-medium">
+                                                            Room Maintenance
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            )}
+                                        </div>
                                         <div className="flex justify-center items-center">
                                             <p className="text-2xl font-semibold">
                                                 {room.room_no}
@@ -374,37 +396,46 @@ export default function RoomStatusBoard() {
                     </div>
 
                     {/* ---------- Right Panel (1 column = same as summary card) ---------- */}
-                    <div className="space-y-4">
+                    <div className="space-y-1.5">
 
-                        <div className="bg-card border rounded-[5px] p-4">
-                            <p className="font-semibold mb-3">Checking In</p>
+                        <div className="bg-background border border-border rounded-md px-3 py-2">
+                            <p className="font-semibold mb-1.5 text-sm">Checking In</p>
                             {filteredCheckIns.map((c, i) => (
                                 <MovementRow key={i} {...c} checkIn />
                             ))}
                         </div>
 
-                        <div className="bg-card border rounded-[5px] p-4">
-                            <p className="font-semibold mb-3">Checking Out</p>
+                        <div className="bg-background border border-border rounded-md px-3 py-2">
+                            <p className="font-semibold mb-1.5 text-sm">Checking Out</p>
                             {filteredCheckOuts.map((c, i) => (
                                 <MovementRow key={i} {...c} />
                             ))}
                         </div>
 
-                        <div className="bg-card border rounded-[5px] p-4">
-                            <div className="flex justify-between items-center mb-3">
-                                <p className="font-semibold">
+                        <div className="bg-background border border-border rounded-md px-3 py-2 relative overflow-hidden">
+                            <div className="flex justify-between items-center mb-1.5">
+                                <p className="font-semibold text-sm mt-0.5">
                                     Dirty Rooms <span className="text-muted-foreground ml-1">({currentlyDirtyRooms.length || 0})</span>
                                 </p>
-                                <button 
-                                    type="button"
-                                    className="rounded-md border-2 border-green-400 bg-background text-green-500 hover:bg-green-500 hover:text-white transition-all focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2 disabled:pointer-events-none h-5 w-5 flex items-center justify-center shadow-sm cursor-pointer"
-                                    onClick={() => setIsDirtySheetOpen(true)}
-                                >
-                                    <Brush className="h-4 w-4 stroke-[2.5]" />
-                                </button>
+                                <TooltipProvider delayDuration={100}>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <button 
+                                                type="button"
+                                                className="absolute right-2 top-2 rounded-md border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none h-6 w-6 flex items-center justify-center shadow-sm"
+                                                onClick={() => setIsDirtySheetOpen(true)}
+                                            >
+                                                <Brush className="h-3.5 w-3.5 stroke-[2.5]" />
+                                            </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" className="text-xs font-medium">
+                                            Clean Room
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
                             </div>
                             {currentlyDirtyRooms.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">All rooms are clean</p>
+                                <p className="text-xs text-muted-foreground">All rooms are clean</p>
                             ) : (
                                 currentlyDirtyRooms.map((r, i) => (
                                     <div key={i} className="flex items-center justify-between rounded-lg border px-3 py-2 mb-2">
@@ -421,6 +452,7 @@ export default function RoomStatusBoard() {
 
                     </div>
                 </div>
+            </div>
 
             </section>
 
@@ -483,22 +515,87 @@ export default function RoomStatusBoard() {
                 </SheetContent>
             </Sheet>
 
+            {/* Maintenance Sheet */}
+            <Sheet open={isMaintenanceSheetOpen} onOpenChange={setIsMaintenanceSheetOpen}>
+                <SheetContent side="right" className="w-full sm:max-w-md p-0 bg-background overflow-y-auto">
+                    <div className="flex flex-col min-h-full">
+                        <SheetHeader className="px-6 py-4 border-b shrink-0">
+                            <SheetTitle className="text-[#444444]">Room Maintenance</SheetTitle>
+                            <p className="text-xs text-muted-foreground font-medium tracking-wide mt-1">
+                                {maintenanceSheetRoom?.room_no} • {maintenanceSheetRoom ? getFloorName(maintenanceSheetRoom.floor_number) : ''}
+                            </p>
+                        </SheetHeader>
+                        
+                        <section className="flex flex-1 flex-col gap-6 px-6 pb-6 pt-6">
+                            <div className="space-y-4 flex-1">
+                                <div className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                                    <div>
+                                        <p className="font-medium">Maintenance Mode</p>
+                                        <p className="text-xs text-muted-foreground">Block room for repairs</p>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className={cn("text-xs font-bold uppercase tracking-wider", isMaintenance ? "text-yellow-600" : "text-green-600")}>
+                                            {isMaintenance ? "Active" : "Available"}
+                                        </span>
+                                        <Switch 
+                                            checked={isMaintenance} 
+                                            onCheckedChange={setIsMaintenance} 
+                                        />
+                                    </div>
+                                </div>
+
+                                {isMaintenance && (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="maintenance-reason">Reason</Label>
+                                        <Textarea
+                                            id="maintenance-reason"
+                                            placeholder="e.g. AC Repair, Plumbing Issue"
+                                            value={maintenanceReason}
+                                            onChange={(e) => setMaintenanceReason(e.target.value)}
+                                            className="min-h-[100px]"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+                        
+                        <div className="px-6 py-4 border-t bg-background shrink-0 flex justify-end gap-3 mt-auto">
+                            <Button variant="heroOutline" onClick={() => setIsMaintenanceSheetOpen(false)}>
+                                Cancel
+                            </Button>
+                            <Button 
+                                variant="hero" 
+                                onClick={handleSaveMaintenance} 
+                                disabled={isUpdatingMaintenance || (isMaintenance && !maintenanceReason.trim())}
+                            >
+                                {isUpdatingMaintenance ? "Saving..." : "Save"}
+                            </Button>
+                        </div>
+                    </div>
+                </SheetContent>
+            </Sheet>
+
         </div>
     );
 }
 
-/* ---------------- Small Components ---------------- */
 function SummaryCard({
     label,
     value,
+    colorClass = "text-foreground"
 }: {
     label: string;
     value: number;
+    colorClass?: string;
 }) {
+    const dotColorClass = colorClass.replace("text-", "bg-");
     return (
-        <div className="bg-card border rounded-[3px] p-4">
-            <p className="text-sm text-muted-foreground">{label}</p>
-            <p className="text-xl font-semibold">{value}</p>
+        <div className="bg-background rounded-md border border-border px-3 py-1.5 shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-1.5 overflow-hidden mr-2">
+                <span className={cn("h-2 w-2 rounded-full shrink-0", dotColorClass)} />
+                <p className="text-[11px] font-bold text-muted-foreground tracking-wider truncate">{label}</p>
+            </div>
+            <h3 className="text-base font-bold text-foreground">{value}</h3>
         </div>
     );
 }

@@ -752,7 +752,7 @@ export default function InventoryMaster() {
                                 />
 
                                 <GridToolbarSearchSelect
-                                    label="Use"
+                                    label="Use type"
                                     value={useTypeFilter}
                                     onChange={(val) => {
                                         setUseTypeFilter(val as string);

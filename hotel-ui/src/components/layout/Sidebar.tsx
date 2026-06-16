@@ -40,6 +40,23 @@ export default function Sidebar({
     }, [isLoggedIn, meLoaded, sidebar])
 
 
+    const sortedSidebarLinks = React.useMemo(() => {
+        if (!data?.sidebarLinks) return [];
+        const links = [...data.sidebarLinks];
+        
+        const bookingsIndex = links.findIndex((l: any) => l.endpoint === '/bookings');
+        const enquiriesIndex = links.findIndex((l: any) => l.endpoint === '/enquiries');
+        
+        if (bookingsIndex !== -1 && enquiriesIndex !== -1) {
+            const [enquiries] = links.splice(enquiriesIndex, 1);
+            const newBookingsIndex = links.findIndex((l: any) => l.endpoint === '/bookings');
+            links.splice(newBookingsIndex + 1, 0, enquiries);
+        }
+        
+        return links;
+    }, [data?.sidebarLinks]);
+
+
     return (
         <aside
             className={cn(
@@ -56,7 +73,7 @@ export default function Sidebar({
 
             <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto scrollbar-hide">
                 {!isLoading &&
-                    data?.sidebarLinks.map((link: any) => (
+                    sortedSidebarLinks.map((link: any) => (
                         <SidebarLink
                             key={link.sidebar_link_id}
                             endpoint={link.endpoint}

@@ -70,6 +70,8 @@ type Props = {
     bookingId: string;
     totalGuest?: number;
     guestCount: number;
+    onClose?: () => void;
+    isPostBookingFlow?: boolean;
 };
 
 const parseDate = (value?: string) =>
@@ -81,14 +83,14 @@ const formatDate = (date: Date | null) => {
 
 
 /* ---------------- Component ---------------- */
-export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Props) {
+export default function GuestsEmbedded({ bookingId, guestCount, totalGuest, onClose, isPostBookingFlow }: Props) {
     const [guests, setGuests] = useState<GuestForm[]>([]);
     const [removedGuestIds, setRemovedGuestIds] = useState<string[]>([]);
     const [idProofFiles, setIdProofFiles] = useState<Record<string, File>>({});
     const [previewId, setPreviewId] = useState<string | null>(null);
-    const [isEditing, setIsEditing] = useState(false);
+    const [isEditing, setIsEditing] = useState(isPostBookingFlow || false);
     const [confirmOpen, setConfirmOpen] = useState(false);
-    const [isAdding, setIsAdding] = useState(false);
+    const [isAdding, setIsAdding] = useState(isPostBookingFlow || false);
     const [originalGuests, setOriginalGuests] = useState<GuestForm[]>([]);
     const [errors, setErrors] = useState<Record<number, any>>({});
     const [remainingGuests, setRemainingGuests] = useState(0)
@@ -145,6 +147,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
     /* -------- Init -------- */
     useEffect(() => {
         if (!data?.guests) return;
+        if (isEditing && guests.length > 0) return;
 
         const existing: GuestForm[] = data.guests.map((g: any) => ({ ...g }));
 
@@ -162,9 +165,9 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
             })
         );
 
-        setGuests([...existing, ...emptyGuests]);
+        setGuests((onClose && !isPostBookingFlow) ? existing : [...existing, ...emptyGuests]);
         setRemainingGuests(remainingGuestsNum)
-    }, [data, guestCount, maxGuests]);
+    }, [data, guestCount, maxGuests, onClose, isEditing, isPostBookingFlow]);
 
     /* -------- Helpers -------- */
     const updateGuest = (index: number, patch: Partial<GuestForm>) => {
@@ -252,31 +255,35 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
         guests.forEach((g, index) => {
             const guestErrors: any = {};
 
+            // Always require first name
             if (!g.first_name?.trim()) {
                 guestErrors.first_name = "First name is required";
             }
 
-            if (g.phone) {
-                const phoneNumber = g.phone.split(" ")[1];
+            // Only validate remaining fields for the Primary Guest (index 0)
+            if (index === 0) {
+                if (g.phone) {
+                    const phoneNumber = g.phone.split(" ")[1];
 
-                if (phoneNumber && phoneNumber.length < 10) {
-                    guestErrors.phone = "Invalid phone number";
+                    if (phoneNumber && phoneNumber.length < 10) {
+                        guestErrors.phone = "Invalid phone number";
+                    }
                 }
-            }
 
-            if (g.email && !emailRegex.test(g.email)) {
-                guestErrors.email = "Invalid Email"
-            }
+                if (g.email && !emailRegex.test(g.email)) {
+                    guestErrors.email = "Invalid Email"
+                }
 
-            if (g.nationality?.toLowerCase() === "foreigner") {
-                if (!g.visa_number)
-                    guestErrors.visa_number = "Visa number required";
+                if (g.nationality?.toLowerCase() === "foreigner") {
+                    if (!g.visa_number)
+                        guestErrors.visa_number = "Visa number required";
 
-                if (!g.visa_issue_date)
-                    guestErrors.visa_issue_date = "Issue date required";
+                    if (!g.visa_issue_date)
+                        guestErrors.visa_issue_date = "Issue date required";
 
-                if (!g.visa_expiry_date)
-                    guestErrors.visa_expiry_date = "Expiry date required";
+                    if (!g.visa_expiry_date)
+                        guestErrors.visa_expiry_date = "Expiry date required";
+                }
             }
 
             if (Object.keys(guestErrors).length > 0) {
@@ -291,7 +298,10 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
 
     /* -------- Save -------- */
     const handleSave = async (): Promise<boolean> => {
-        if (!validate()) return false;
+        if (!validate()) {
+            toast.error("Please fill all required fields correctly");
+            return false;
+        }
 
         const adultCount = guests.filter(
             (g) => g.guest_type === "ADULT"
@@ -388,7 +398,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
             <div className="flex flex-wrap items-center justify-end gap-2">
 
                 <div className="flex flex-wrap gap-2">
-                        {!isEditing && (
+                        {!isEditing && !isPostBookingFlow && (
                             <Button
                                 variant="heroOutline"
                                 className="h-9 px-4 text-[13px] font-semibold"
@@ -401,19 +411,21 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                             </Button>
                         )}
 
-                        <Button
-                            variant="hero"
-                            className="h-9 px-4 text-[13px] font-semibold"
-                            onClick={() => {
-                                setRemainingGuests(remainingGuests - 1);
-                                setOriginalGuests(guests.filter((g) => g.id));
-                                setIsEditing(true);
-                                setIsAdding(true);
-                                addGuest();
-                            }}
-                        >
-                            + Add Guest
-                        </Button>
+                        {!isPostBookingFlow && (
+                            <Button
+                                variant="hero"
+                                className="h-9 px-4 text-[13px] font-semibold"
+                                onClick={() => {
+                                    setRemainingGuests(remainingGuests - 1);
+                                    setOriginalGuests(guests.filter((g) => g.id));
+                                    setIsEditing(true);
+                                    setIsAdding(true);
+                                    addGuest();
+                                }}
+                            >
+                                + Add Guest
+                            </Button>
+                        )}
 
                         {isEditing && (
                             <>
@@ -425,18 +437,24 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                 >
                                     Save Guests
                                 </Button>
-                                <Button
-                                    variant="heroOutline"
-                                    className="h-9 px-4 text-[13px] font-semibold min-w-[90px]"
-                                    onClick={() => {
-                                        setRemainingGuests(maxGuests - data?.guests?.length);
-                                        setIsEditing(false);
-                                        setIsAdding(false);
-                                        setGuests(originalGuests);
-                                    }}
-                                >
-                                    Cancel
-                                </Button>
+                                {!isPostBookingFlow && (
+                                    <Button
+                                        variant="heroOutline"
+                                        className="h-9 px-4 text-[13px] font-semibold min-w-[90px]"
+                                        onClick={() => {
+                                            if (onClose) {
+                                                onClose();
+                                            } else {
+                                                setRemainingGuests(maxGuests - data?.guests?.length);
+                                                setIsEditing(false);
+                                                setIsAdding(false);
+                                                setGuests(originalGuests);
+                                            }
+                                        }}
+                                    >
+                                        {onClose ? "Close" : "Cancel"}
+                                    </Button>
+                                )}
                             </>
                         )}
                 </div>
@@ -456,7 +474,20 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                         {/* Guest Header */}
                         <div className="flex items-center justify-between border-b border-border/30 pb-2">
                             <div className="flex items-center gap-1.5">
-                                {index === 0 && <Crown className="h-4 w-4 text-amber-500 fill-amber-500/20" />}
+                                {index === 0 && (
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <span className="flex items-center cursor-help">
+                                                    <Crown className="h-4 w-4 text-amber-500 fill-amber-500/20" />
+                                                </span>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="top" align="center" className="text-xs">
+                                                Primary Guest
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                )}
                                 <p className="text-sm font-semibold text-primary/90">
                                     Guest {index + 1}
                                 </p>
@@ -586,11 +617,9 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                         className={`h-9 bg-background flex-1 ${errors[index]?.phone ? "border-red-500" : ""}`}
                                         value={getPhoneNumber(g.phone)}
                                         onChange={(e) => {
-                                            if (e.target.value.length <= 10) {
-                                                const number = normalizeNumberInput(e.target.value).toString();
-                                                const code = getCountryCode(g.phone);
-                                                updateGuest(index, { phone: getPhoneValue(code, number) });
-                                            }
+                                            const number = e.target.value.replace(/\D/g, "").slice(0, 15);
+                                            const code = getCountryCode(g.phone);
+                                            updateGuest(index, { phone: getPhoneValue(code, number) });
                                         }}
                                     />
                                 </div>
@@ -702,55 +731,6 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                     </div>
                                 </>
                             )}
-
-                            {/* Additional Info */}
-                            <div className="space-y-1">
-                                <Label className="text-foreground">Coming From</Label>
-                                <Input
-                                    className="h-9 bg-background"
-                                    value={g.coming_from ?? ""}
-                                    onChange={(e) => updateGuest(index, { coming_from: normalizeTextInput(e.target.value) })}
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <Label className="text-foreground">Going To</Label>
-                                <Input
-                                    className="h-9 bg-background"
-                                    value={g.going_to ?? ""}
-                                    onChange={(e) => updateGuest(index, { going_to: normalizeTextInput(e.target.value) })}
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <Label className="text-foreground">Emergency Contact</Label>
-                                <div className="flex gap-[2px]">
-                                    <PhonePrefixSelect
-                                        value={getCountryCode(g.emergency_contact)}
-                                        triggerClassName="h-9 px-2 text-xs"
-                                        inputClassName="h-8 text-xs"
-                                        itemClassName="text-xs"
-                                        iconClassName="ml-1 h-3 w-3"
-                                        onValueChange={(countryCode) => {
-                                            const number = getPhoneNumber(g.emergency_contact);
-                                            updateGuest(index, {
-                                                emergency_contact: getPhoneValue(countryCode, number),
-                                            });
-                                        }}
-                                    />
-                                    <Input
-                                        className="h-9 bg-background flex-1"
-                                        value={getPhoneNumber(g.emergency_contact)}
-                                        onChange={(e) => {
-                                            if (e.target.value.length <= 10) {
-                                                const number = normalizeNumberInput(e.target.value).toString();
-                                                const code = getCountryCode(g.emergency_contact);
-                                                updateGuest(index, {
-                                                    emergency_contact: getPhoneValue(code, number),
-                                                });
-                                            }
-                                        }}
-                                    />
-                                </div>
-                            </div>
                         </div>
 
                         {/* View ID Proof button (only if existing guest) */}
@@ -809,10 +789,20 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                         {/* Name Header */}
                         <div className="flex items-center justify-between border-b border-border/50 bg-primary/5 px-5 py-3">
                             <div className="flex items-center gap-2">
-                                {i === 0 && hasSavedGuestImage && guestImagePreview && (
-                                    <img src={guestImagePreview} alt="Guest" className="h-8 w-8 rounded object-cover border border-border" />
+                                {i === 0 && (
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <span className="flex items-center cursor-help">
+                                                    <Crown className="h-4 w-4 text-amber-500 fill-amber-500/20 -mt-0.5" />
+                                                </span>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="top" align="center" className="text-xs">
+                                                Primary Guest
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
                                 )}
-                                {i === 0 && <Crown className="h-4 w-4 text-amber-500 fill-amber-500/20 -mt-0.5" />}
                                 <h3 className="text-sm font-bold text-foreground tracking-tight">
                                     {g.salutation} {g.first_name} {g.middle_name} {g.last_name}
                                 </h3>
@@ -857,63 +847,65 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px]">
+                        <div className={cn("grid grid-cols-1", (i === 0 || g.nationality?.toLowerCase() === "foreigner") ? "lg:grid-cols-[1fr_320px]" : "")}>
                             {/* Left Side: Guest Details */}
                             <div className="px-5 py-3">
                                 <p className="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal">
                                     Guest Details
                                 </p>
 
-                                <div className="grid grid-cols-1 gap-x-12 gap-y-4 sm:grid-cols-2">
+                                <div className={cn("grid grid-cols-1 gap-x-6 gap-y-4", (i === 0 || g.nationality?.toLowerCase() === "foreigner") ? "sm:grid-cols-2" : "sm:grid-cols-2 md:grid-cols-3")}>
                                     <InfoRow label="Phone" value={g?.phone} />
                                     <InfoRow label="Email" value={g.email} />
                                     <InfoRow label="Gender" value={g.gender} />
                                     <InfoRow label="Age" value={g.age} />
                                     <InfoRow label="Nationality" value={g.nationality} />
                                     <InfoRow label="ID Type" value={g.id_type} />
-                                    <InfoRow label="From" value={g.coming_from} />
-                                    <InfoRow label="To" value={g.going_to} />
                                     <InfoRow label="ID Number" value={g.id_number} />
 
-                                    <div className="sm:col-span-2 border-t border-border/30 mt-2 pt-1.5">
+                                    <div className="sm:col-span-2 border-t border-border/30 mt-2 pt-2">
                                         <InfoRow label="Address" value={g.address} className="items-start" />
                                     </div>
                                 </div>
                             </div>
 
                             {/* Right Side: Emergency Contact & Others */}
-                            <div className="px-5 py-3 border-t lg:border-t-0 lg:border-l border-border/50 bg-accent/5">
-                                <div className="space-y-6">
-                                    {/* Emergency Contact */}
-                                    <div>
-                                        <p className="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal">
-                                            Emergency Contact
-                                        </p>
-                                        <div className="space-y-3">
-                                            <InfoRow
-                                                label="Name"
-                                                value={g.emergency_contact_name || "—"}
-                                            />
-                                            <InfoRow
-                                                label="Phone"
-                                                value={g.emergency_contact || "—"}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Visa Details */}
-                                    {g.nationality?.toLowerCase() === "foreigner" && (
-                                        <div className="pt-3 border-t border-border/30">
-                                            <p className="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal">Visa Details</p>
-                                            <div className="space-y-3">
-                                                <InfoRow label="Visa No" value={g.visa_number} />
-                                                <InfoRow label="Issue" value={formatReadableDate(g.visa_issue_date)} />
-                                                <InfoRow label="Expiry" value={formatReadableDate(g.visa_expiry_date)} />
+                            {(i === 0 || g.nationality?.toLowerCase() === "foreigner") && (
+                                <div className="px-5 py-3 border-t lg:border-t-0 lg:border-l border-border/50 bg-accent/5">
+                                    <div className="space-y-6">
+                                        {/* Emergency Contact */}
+                                        {i === 0 && (
+                                            <div>
+                                                <p className="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal">
+                                                    Emergency Contact
+                                                </p>
+                                                <div className="space-y-3">
+                                                    <InfoRow
+                                                        label="Name"
+                                                        value={g.emergency_contact_name || "—"}
+                                                    />
+                                                    <InfoRow
+                                                        label="Phone"
+                                                        value={g.emergency_contact || "—"}
+                                                    />
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
+                                        )}
+
+                                        {/* Visa Details */}
+                                        {g.nationality?.toLowerCase() === "foreigner" && (
+                                            <div className={cn(i === 0 ? "pt-3 border-t border-border/30" : "")}>
+                                                <p className="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal">Visa Details</p>
+                                                <div className="space-y-3">
+                                                    <InfoRow label="Visa No" value={g.visa_number} />
+                                                    <InfoRow label="Issue" value={formatReadableDate(g.visa_issue_date)} />
+                                                    <InfoRow label="Expiry" value={formatReadableDate(g.visa_expiry_date)} />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     </div>
                 );
@@ -1043,6 +1035,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest }: Pr
                                 if (success) {
                                     setIsEditing(false);
                                     setIsAdding(false);
+                                    onClose?.();
                                 }
                             }}
                             disabled={isLoading}
@@ -1071,9 +1064,9 @@ function InfoRow({
             label={label}
             value={value}
             hideIfEmpty
-            className={cn("flex items-baseline gap-10 py-0 space-y-0", className)}
+            className={cn("flex items-start gap-4 py-0 space-y-0", className)}
             labelClassName="w-20 shrink-0 leading-5 text-muted-foreground"
-            valueClassName="text-[13px] font-medium leading-5"
+            valueClassName="text-[13px] font-medium leading-5 break-words whitespace-normal break-all sm:break-normal"
         />
     );
 }

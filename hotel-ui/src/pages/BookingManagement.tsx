@@ -5,6 +5,8 @@ import AppHeader from "@/components/layout/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarRangePicker, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
 import {
@@ -56,7 +58,7 @@ import { formatToDDMMYY } from "@/utils/formatToDDMMYY";
 import LaundryEmbedded from "@/components/layout/LaundryEmbedded";
 import BookingLogsEmbedded from "@/components/layout/BookingLogsEmbedded";
 import RestaurantOrdersEmbedded from "@/components/layout/RestaurantOrdersEmbedded";
-import { Copy, Download, Eye, FilterX, Plus, RefreshCcw, HelpCircle, Printer } from "lucide-react";
+import { Copy, Download, Eye, FilterX, Plus, RefreshCcw, HelpCircle, Printer, CheckSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getStatusColor } from "@/constants/statusColors";
 import { GridBadge } from "@/components/ui/grid-badge";
@@ -311,9 +313,13 @@ export default function BookingsManagement() {
 
     const [updatedStatus, setUpdatedStatus] = useState<string>("");
     const [statusSelectOpen, setStatusSelectOpen] = useState(false);
-    const [isPrintTooltipOpen, setIsPrintTooltipOpen] = useState(false);
+
     const [statusTime, setStatusTime] = useState("");
     const [statusTimeError, setStatusTimeError] = useState("");
+    const [isEarlyCheckin, setIsEarlyCheckin] = useState(false);
+    const [isDelayedCheckout, setIsDelayedCheckout] = useState(false);
+    const [auditComment, setAuditComment] = useState("");
+    const [auditCommentError, setAuditCommentError] = useState("");
     const statusTimeInputRef = useRef<HTMLInputElement>(null);
 
     const memoizedArrivalFrom = useMemo(() => (arrivalFrom ? new Date(arrivalFrom) : null), [arrivalFrom]);
@@ -324,9 +330,6 @@ export default function BookingsManagement() {
 
 
     const [confirmStatusOpen, setConfirmStatusOpen] = useState(false)
-    const normalizedUpdatedStatus = normalizeBookingStatus(updatedStatus);
-    const requiresStatusTime = normalizedUpdatedStatus === "CHECKED_IN" || normalizedUpdatedStatus === "CHECKED_OUT";
-    const statusTimeLabel = normalizedUpdatedStatus === "CHECKED_IN" ? "Check-in Time" : "Checkout Time";
 
     const navigate = useNavigate()
     const location = useLocation()
@@ -528,6 +531,12 @@ export default function BookingsManagement() {
         skip: !isLoggedIn || !bookingId
     })
 
+    const normalizedUpdatedStatus = normalizeBookingStatus(updatedStatus);
+    const requiresStatusTime = 
+        (normalizedUpdatedStatus === "CHECKED_IN" && selectedBooking?.booking?.booking_status !== "CHECKED_IN") || 
+        (normalizedUpdatedStatus === "CHECKED_OUT" && selectedBooking?.booking?.booking_status !== "CHECKED_OUT");
+    const statusTimeLabel = normalizedUpdatedStatus === "CHECKED_IN" ? "Check-in Time" : "Checkout Time";
+
     const { data: guestsData } = useGetGuestsByBookingQuery({ booking_id: bookingId }, {
         skip: !detailsOpen || !bookingId
     })
@@ -572,6 +581,10 @@ export default function BookingsManagement() {
         setUpdatedStatus("");
         setStatusTime("");
         setStatusTimeError("");
+        setIsEarlyCheckin(false);
+        setIsDelayedCheckout(false);
+        setAuditComment("");
+        setAuditCommentError("");
     }
 
     function focusStatusTimeInput() {
@@ -643,19 +656,66 @@ export default function BookingsManagement() {
         if (!selectedBooking) return;
 
         const normalizedStatus = normalizeBookingStatus(updatedStatus);
-        const needsStatusTime = normalizedStatus === "CHECKED_IN" || normalizedStatus === "CHECKED_OUT";
+        const needsStatusTime = 
+            (normalizedStatus === "CHECKED_IN" && selectedBooking?.booking?.booking_status !== "CHECKED_IN") || 
+            (normalizedStatus === "CHECKED_OUT" && selectedBooking?.booking?.booking_status !== "CHECKED_OUT");
         const requiredTimeLabel = normalizedStatus === "CHECKED_IN" ? "Check-in Time" : "Checkout Time";
         const selectedTimestamp = needsStatusTime ? buildStatusTimestamp(statusTime) : "";
 
+        setAuditCommentError("");
+        let hasError = false;
+
         if (needsStatusTime && !statusTime) {
             setStatusTimeError(`${requiredTimeLabel} is required`);
-            return;
+            hasError = true;
+        } else if (needsStatusTime && !selectedTimestamp) {
+            setStatusTimeError(`Enter a valid ${requiredTimeLabel.toLowerCase()}`);
+            hasError = true;
         }
 
-        if (needsStatusTime && !selectedTimestamp) {
-            setStatusTimeError(`Enter a valid ${requiredTimeLabel.toLowerCase()}`);
-            return;
+        if (normalizedStatus === "CHECKED_IN") {
+            const today = new Date();
+            const estArrival = new Date(selectedBooking.booking.estimated_arrival);
+            
+            const todayDate = new Date(today);
+            todayDate.setHours(0, 0, 0, 0);
+            
+            const estArrivalDate = new Date(estArrival);
+            estArrivalDate.setHours(0, 0, 0, 0);
+            
+            if (todayDate < estArrivalDate) {
+                setStatusTimeError("Early check-in is allowed only on the scheduled arrival date. For previous-day arrival, please duplicate this booking or create a new booking.");
+                hasError = true;
+            }
         }
+
+        if (normalizedStatus === "CHECKED_OUT") {
+            const today = new Date();
+            const estDeparture = new Date(selectedBooking.booking.estimated_departure);
+            
+            const todayDate = new Date(today);
+            todayDate.setHours(0, 0, 0, 0);
+            
+            const estDepartureDate = new Date(estDeparture);
+            estDepartureDate.setHours(0, 0, 0, 0);
+            
+            if (todayDate > estDepartureDate) {
+                setStatusTimeError("Delayed checkout is allowed only on the scheduled checkout date. For next-day or longer stay, please use New Booking.");
+                hasError = true;
+            }
+        }
+
+        if (isEarlyCheckin && !auditComment.trim()) {
+            setAuditCommentError("Comment is required for Early Check-In");
+            hasError = true;
+        }
+
+        if (isDelayedCheckout && !auditComment.trim()) {
+            setAuditCommentError("Comment is required for Delayed Checkout");
+            hasError = true;
+        }
+
+        if (hasError) return;
 
         const payload: Record<string, any> = {
             booking_id: selectedBooking?.booking?.id,
@@ -663,11 +723,19 @@ export default function BookingsManagement() {
         };
 
         if (normalizedStatus === "CHECKED_IN") {
-            payload.actual_arrival = selectedTimestamp;
+            payload.actual_arrival = needsStatusTime ? selectedTimestamp : selectedBooking.booking.actual_arrival;
+            if (isEarlyCheckin) {
+                payload.is_early_checkin = true;
+                payload.audit_comment = auditComment.trim();
+            }
         }
 
         if (normalizedStatus === "CHECKED_OUT") {
-            payload.actual_departure = selectedTimestamp;
+            payload.actual_departure = needsStatusTime ? selectedTimestamp : selectedBooking.booking.actual_departure;
+            if (isDelayedCheckout) {
+                payload.is_delayed_checkout = true;
+                payload.audit_comment = auditComment.trim();
+            }
         }
 
         const promise = updateBooking(payload).unwrap();
@@ -758,8 +826,19 @@ export default function BookingsManagement() {
             ? formatTimeOnly(booking.estimated_arrival_time)
             : formatTimeOnly(booking?.actual_arrival);
 
+        const requiredAdditional = Math.max(0, (booking?.adult || 1) - 1);
+        const totalGuestsSaved = guestsData?.guests?.length || 0;
+        const completedAdditional = Math.max(0, totalGuestsSaved - 1);
+        const pendingCount = requiredAdditional - completedAdditional;
+        const isPendingGuests = guestsData && pendingCount > 0;
+
         return (
             <div className="space-y-4">
+                {isPendingGuests && (
+                    <div className="bg-amber-50 text-amber-800 px-4 py-3 rounded-[3px] border border-amber-200 text-sm font-medium flex items-center gap-2">
+                        Guest details for {pendingCount} additional guest{pendingCount === 1 ? " is" : "s are"} pending.
+                    </div>
+                )}
                 <CardSectionView 
                     title="Financial Overview" 
                     titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" 
@@ -786,7 +865,7 @@ export default function BookingsManagement() {
                     <ViewField label="Booking Date" value={formatToDDMMYY(booking?.booking_date)} />
                     <ViewField label="Rooms Booked" value={booking?.rooms?.length || 0} />
                     <ViewField label="Arrival Time" value={arrivalTime} />
-                    <ViewField label="Checked In At" value={booking?.actual_arrival ? formatToDDMMYY(booking.actual_arrival) : "—"} />
+                    <ViewField label="Checked In On" value={booking?.actual_arrival ? formatToDDMMYY(booking.actual_arrival) : "—"} />
                     <ViewField label="Comments" value={booking?.comments || "No comments"} className="sm:col-span-2 lg:col-span-3" />
                 </CardSectionView>
             </div>
@@ -825,7 +904,7 @@ export default function BookingsManagement() {
             <div className="space-y-4">
                 <div className="flex justify-end">
                     <Button variant="hero" onClick={() => setIsChangeRoomOpen(true)}>
-                        Change Room
+                        Shift
                     </Button>
                 </div>
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
@@ -1346,27 +1425,23 @@ export default function BookingsManagement() {
                                 </p>
                             </div>
                             
-                            <div className="flex items-end gap-3">
+                            <div className="flex items-end gap-3 sm:mr-8">
                                 <TooltipProvider>
-                                    <Tooltip open={detailsOpen && isPrintTooltipOpen}>
+                                    <Tooltip>
                                         <TooltipTrigger asChild>
                                             <Button
                                                 variant="heroOutline"
                                                 size="sm"
                                                 className="h-9 w-9 p-0 shadow-sm rounded-md"
                                                 onClick={handleDownloadPDF}
-                                                onMouseEnter={() => setIsPrintTooltipOpen(true)}
-                                                onMouseLeave={() => setIsPrintTooltipOpen(false)}
-                                                onFocus={() => setIsPrintTooltipOpen(false)}
-                                                onBlur={() => setIsPrintTooltipOpen(false)}
                                                 disabled={selectedBookingLoading || !selectedBooking?.booking || !detailsOpen}
-                                                aria-label="Print PDF"
+                                                aria-label="Print GR"
                                             >
                                                 <Printer className="w-4 h-4" />
                                             </Button>
                                         </TooltipTrigger>
                                         <TooltipContent side="top" align="center" className="text-xs">
-                                            Print PDF
+                                            Print GR
                                         </TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
@@ -1374,7 +1449,7 @@ export default function BookingsManagement() {
                                 <Button
                                     variant="heroOutline"
                                     size="sm"
-                                    className="h-9 w-[160px] px-3 text-xs font-semibold tracking-normal rounded-md"
+                                    className="h-9 px-3 text-xs font-semibold tracking-normal rounded-md"
                                     onClick={() => {
                                         navigate("/reservation", {
                                             state: { duplicateBooking: selectedBooking?.booking }
@@ -1388,47 +1463,30 @@ export default function BookingsManagement() {
                                 <TooltipProvider delayDuration={0}>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <div className="flex flex-col items-start space-y-0.5 cursor-help">
-                                            <Label className="text-xs font-semibold tracking-normal text-muted-foreground/80">Update Booking Status</Label>
-                                            <NativeSelect
-                                                className="h-9 w-[160px] border-primary/30 bg-primary/5 rounded-md px-3 py-0 text-xs font-semibold tracking-normal text-primary focus:ring-1 focus:ring-primary shadow-sm cursor-pointer transition-all hover:bg-primary/10"
-                                                value={updatedStatus || selectedBooking?.booking.booking_status || ""}
-                                                onOpenChange={setStatusSelectOpen}
-                                                onChange={(e) => {
-                                                    const nextStatus = e.target.value;
-                                                    setUpdatedStatus(nextStatus);
-                                                    
-                                                    const normalized = normalizeBookingStatus(nextStatus);
-                                                    if (normalized === "CHECKED_IN" || normalized === "CHECKED_OUT") {
-                                                        setStatusTime(getCurrentTimeHHMM());
-                                                    } else {
-                                                        setStatusTime("");
-                                                    }
-                                                    
-                                                    setStatusTimeError("");
-                                                    setConfirmStatusOpen(true);
-                                                }}
-                                                disabled={selectedBooking?.booking.booking_status === "CANCELLED"}
-                                            >
-                                                <option value={""} disabled>Select status</option>
-                                                {BOOKING_STATUSES.map((s) => (
-                                                    <option key={s} value={s}>
-                                                        {formatReadableLabel(s)}
-                                                    </option>
-                                                ))}
-                                            </NativeSelect>
-                                        </div>
-                                    </TooltipTrigger>
-                                    {!statusSelectOpen && (
-                                        <TooltipContent
-                                            side="top"
-                                            align="center"
-                                            sideOffset={6}
-                                            className="bg-white text-black border-border shadow-md px-3 py-1.5 text-xs font-medium z-[200] pointer-events-none"
+                                        <Button
+                                            variant="heroOutline"
+                                            size="sm"
+                                            className="h-9 px-3 text-xs font-semibold tracking-normal rounded-md"
+                                            onClick={() => {
+                                                setUpdatedStatus(selectedBooking?.booking.booking_status || "");
+                                                setStatusTime("");
+                                                setStatusTimeError("");
+                                                setConfirmStatusOpen(true);
+                                            }}
+                                            disabled={selectedBooking?.booking.booking_status === "CANCELLED"}
                                         >
-                                            Click to update booking status
-                                        </TooltipContent>
-                                    )}
+                                            <CheckSquare className="w-3.5 h-3.5 mr-2" />
+                                            Booking Status
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent
+                                        side="top"
+                                        align="center"
+                                        sideOffset={6}
+                                        className="bg-white text-black border-border shadow-md px-3 py-1.5 text-xs font-medium z-[200] pointer-events-none"
+                                    >
+                                        Click to update booking status
+                                    </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
                         </div>
@@ -1516,7 +1574,7 @@ export default function BookingsManagement() {
                 </SheetContent>
             </Sheet>
 
-            <Dialog 
+            <Sheet 
                 open={confirmStatusOpen} 
                 onOpenChange={(open) => {
                     if (open) {
@@ -1527,67 +1585,195 @@ export default function BookingsManagement() {
                     resetStatusConfirmation();
                 }}
             >
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Confirm Status Change</DialogTitle>
-                    </DialogHeader>
+                <SheetContent side="right" onOpenAutoFocus={(e) => e.preventDefault()} className="w-full sm:max-w-xl overflow-y-auto bg-background p-0 transition-all duration-300 flex flex-col">
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex flex-col min-h-full h-full"
+                    >
+                        <SheetHeader className="px-6 py-4 border-b border-border shrink-0">
+                            <div className="space-y-1">
+                                <SheetTitle className="text-xl font-bold">Update Booking Status</SheetTitle>
+                                <p className="text-xs text-muted-foreground font-medium tracking-wide">
+                                    Modify booking status and time
+                                </p>
+                            </div>
+                        </SheetHeader>
 
-                    <div className="space-y-4 text-sm">
-                        <p>
-                            You are about to change booking status to{" "}
-                            <strong>{updatedStatus}</strong>.
-                        </p>
+                        <div className="px-6 pb-6 pt-4 flex flex-col flex-1">
+                            <div className="space-y-4 flex-1">
+                                <div className="rounded-[5px] border border-primary/50 bg-background p-5 shadow-sm space-y-5 [&>h3+*]:!mt-4">
+                                    <h3 className="text-sm font-semibold text-primary/90">
+                                        Status Details
+                                    </h3>
 
-                        <p className="text-muted-foreground">
-                            This action may affect availability, billing, and reports.
-                        </p>
-
-                        {requiresStatusTime && (
-                            <div className="space-y-1.5">
-                                <Label htmlFor="booking-status-time" className="text-sm font-semibold text-foreground">
-                                    {statusTimeLabel} *
-                                </Label>
-                                <Input
-                                    ref={statusTimeInputRef}
-                                    id="booking-status-time"
-                                    type="time"
-                                    value={statusTime}
-                                    onClick={focusStatusTimeInput}
+                                    <div className="space-y-4 text-sm mt-2">
+                        <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                            <div className="flex-1 space-y-1.5">
+                                <Label className="text-sm font-semibold text-foreground">Change Status</Label>
+                                <NativeSelect
+                                    className="h-10 w-full border-primary/40 bg-background rounded-md px-3 text-sm font-semibold focus:ring-1 focus:ring-primary shadow-sm"
+                                    value={updatedStatus}
                                     onChange={(e) => {
-                                        setStatusTime(e.target.value);
+                                        const nextStatus = e.target.value;
+                                        setUpdatedStatus(nextStatus);
+                                        
+                                        const normalized = normalizeBookingStatus(nextStatus);
+                                        if (normalized === "CHECKED_IN" || normalized === "CHECKED_OUT") {
+                                            setStatusTime(getCurrentTimeHHMM());
+                                        } else {
+                                            setStatusTime("");
+                                        }
+                                        
+                                        if (normalized !== "CHECKED_IN") setIsEarlyCheckin(false);
+                                        if (normalized !== "CHECKED_OUT") setIsDelayedCheckout(false);
+                                        
                                         setStatusTimeError("");
+                                        setAuditCommentError("");
                                     }}
-                                    className={cn(
-                                        "h-10 w-32 max-w-full rounded-[4px] border-primary/40 bg-background text-sm font-semibold shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
-                                        statusTimeError && "border-red-500"
-                                    )}
+                                    disabled={selectedBooking?.booking.booking_status === "CANCELLED"}
+                                >
+                                    <option value={""} disabled>Select status</option>
+                                    {BOOKING_STATUSES.filter(s => {
+                                        const currentStatus = selectedBooking?.booking.booking_status;
+                                        
+                                        if (s === currentStatus) return false;
+
+                                        if (currentStatus === "CONFIRMED" && s === "CHECKED_OUT") return false;
+                                        
+                                        if (currentStatus === "CHECKED_IN" && s === "CONFIRMED") return false;
+                                        
+                                        if (currentStatus === "CHECKED_OUT" && (s === "CONFIRMED" || s === "CHECKED_IN" || s === "NO_SHOW" || s === "CANCELLED")) return false;
+                                        
+                                        if (currentStatus === "NO_SHOW" && (s === "CHECKED_IN" || s === "CHECKED_OUT")) return false;
+
+                                        return true;
+                                    }).map((s) => (
+                                        <option key={s} value={s}>
+                                            {formatReadableLabel(s)}
+                                        </option>
+                                    ))}
+                                </NativeSelect>
+                            </div>
+
+                            {requiresStatusTime && (
+                                <div className="flex-1 space-y-1.5">
+                                    <Label htmlFor="booking-status-time" className="text-sm font-semibold text-foreground">
+                                        {statusTimeLabel}
+                                    </Label>
+                                    <Input
+                                        ref={statusTimeInputRef}
+                                        id="booking-status-time"
+                                        type="time"
+                                        value={statusTime}
+                                        onClick={focusStatusTimeInput}
+                                        onChange={(e) => {
+                                            setStatusTime(e.target.value);
+                                            setStatusTimeError("");
+                                        }}
+                                        className={cn(
+                                            "h-10 w-full rounded-[4px] border-primary/40 bg-background text-sm font-semibold shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
+                                            statusTimeError && "border-red-500"
+                                        )}
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        {statusTimeError && (
+                            <p className="text-xs text-red-500 mt-1">
+                                {statusTimeError}
+                            </p>
+                        )}
+
+                        {normalizeBookingStatus(updatedStatus) === "CHECKED_IN" && selectedBooking?.booking?.booking_status !== "CHECKED_IN" && (
+                            <div className="flex items-center space-x-2 mt-4">
+                                <Checkbox
+                                    id="early-checkin-checkbox"
+                                    checked={isEarlyCheckin}
+                                    onCheckedChange={(checked) => {
+                                        setIsEarlyCheckin(!!checked);
+                                        setAuditCommentError("");
+                                    }}
                                 />
-                                {statusTimeError && (
-                                    <p className="text-xs text-red-500">
-                                        {statusTimeError}
+                                <Label htmlFor="early-checkin-checkbox" className="text-sm cursor-pointer">
+                                    Early Check-In
+                                </Label>
+                            </div>
+                        )}
+
+                        {normalizeBookingStatus(updatedStatus) === "CHECKED_OUT" && (
+                            <div className="flex items-center space-x-2 mt-4">
+                                <Checkbox
+                                    id="delayed-checkout-checkbox"
+                                    checked={isDelayedCheckout}
+                                    onCheckedChange={(checked) => {
+                                        setIsDelayedCheckout(!!checked);
+                                        setAuditCommentError("");
+                                    }}
+                                />
+                                <Label htmlFor="delayed-checkout-checkbox" className="text-sm cursor-pointer">
+                                    Delayed Checkout
+                                </Label>
+                            </div>
+                        )}
+
+                        {(isEarlyCheckin || isDelayedCheckout) && (
+                            <div className="mt-4 space-y-1.5">
+                                <Label htmlFor="audit-comment" className="text-sm font-semibold text-foreground">
+                                    Comment <span className="text-red-500">*</span>
+                                </Label>
+                                <Textarea
+                                    id="audit-comment"
+                                    value={auditComment}
+                                    onChange={(e) => {
+                                        setAuditComment(e.target.value);
+                                        setAuditCommentError("");
+                                    }}
+                                    placeholder="Enter reason here..."
+                                    className={cn(
+                                        "w-full rounded-[4px] border-primary/40 bg-background text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
+                                        auditCommentError && "border-red-500"
+                                    )}
+                                    rows={2}
+                                />
+                                {auditCommentError && (
+                                    <p className="text-xs text-red-500 mt-1">
+                                        {auditCommentError}
                                     </p>
                                 )}
                             </div>
                         )}
 
-                        <div className="flex justify-end gap-3 pt-2">
-                            <Button
-                                variant="heroOutline"
-                                onClick={resetStatusConfirmation}
-                            >
-                                Cancel
-                            </Button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className="pt-4 mt-4">
+                                <p className="text-sm text-muted-foreground pb-2">
+                                    This action may affect availability, billing, and reports.
+                                </p>
+                            </div>
 
-                            <Button
-                                variant="hero"
-                                onClick={handleUpdateBooking}
-                            >
-                                Yes, Update Status
-                            </Button>
+                            <div className="flex justify-end gap-3 pt-6 border-t border-border mt-2 shrink-0">
+                                <Button
+                                    variant="heroOutline"
+                                    onClick={resetStatusConfirmation}
+                                >
+                                    Cancel
+                                </Button>
+
+                                <Button
+                                    variant="hero"
+                                    onClick={handleUpdateBooking}
+                                >
+                                    Yes, Update Status
+                                </Button>
+                            </div>
                         </div>
-                    </div>
-                </DialogContent>
-            </Dialog>
+                    </motion.div>
+                </SheetContent>
+            </Sheet>
 
             <Sheet open={instructionsOpen} onOpenChange={setInstructionsOpen}>
                 <SheetContent side="right" className="w-full sm:max-w-2xl h-full overflow-y-auto bg-background p-0 flex flex-col">

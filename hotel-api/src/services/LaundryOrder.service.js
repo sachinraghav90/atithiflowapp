@@ -244,6 +244,7 @@ class LaundryOrderService {
         limit = 10,
         status,
         vendorStatus,
+        laundryType,
         search = "",
         exportRows = false
     }) {
@@ -265,6 +266,11 @@ class LaundryOrderService {
         if (vendorStatus) {
             filters.push(`COALESCE(lo.vendor_status, 'NOT_ALLOTTED') = $${paramIndex++}`);
             values.push(vendorStatus);
+        }
+
+        if (laundryType) {
+            filters.push(`lo.laundry_type ILIKE $${paramIndex++}`);
+            values.push(laundryType);
         }
 
         if (normalizedSearch) {

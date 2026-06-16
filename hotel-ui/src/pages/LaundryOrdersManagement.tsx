@@ -45,7 +45,7 @@ import { AppDataGrid, type ColumnDef, DataGrid, DataGridHeader, DataGridRow, Dat
 import { getStatusColor } from "@/constants/statusColors";
 import { GridBadge } from "@/components/ui/grid-badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect } from "@/components/ui/grid-toolbar";
+import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
 import { ValidationTooltip } from "@/components/ui/validation-tooltip";
 
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
@@ -349,8 +349,9 @@ export default function LaundryOrdersManagement() {
         type?: 'laundry' | 'vendor' | 'vendorAssign';
     }>({ open: false });
 
-    const [form, setForm] = useState<CreateLaundryOrderForm>({
+    const [form, setForm] = useState<CreateLaundryOrderForm & { laundryType?: "Guest" | "Hotel" }>({
         vendorId: "",
+        laundryType: "Guest",
         pickupDate: new Date(), // Will be updated by useEffect on open
         deliveryDate: "",
         vendorStatus: "NOT_ALLOTTED",
@@ -372,6 +373,7 @@ export default function LaundryOrdersManagement() {
     const [searchQuery, setSearchQuery] = useState("");
     const [laundryStatusFilter, setLaundryStatusFilter] = useState("");
     const [vendorStatusFilter, setVendorStatusFilter] = useState("");
+    const [laundryTypeFilter, setLaundryTypeFilter] = useState("");
     const [auditSearchInput, setAuditSearchInput] = useState("");
     const [auditSearchQuery, setAuditSearchQuery] = useState("");
     const [auditActionFilter, setAuditActionFilter] = useState("");
@@ -397,6 +399,7 @@ export default function LaundryOrdersManagement() {
     const summaryBookingId = summaryParams.get("bookingId");
     const summaryPropertyId = summaryParams.get("propertyId");
     const [autoOpenedSummaryOrderId, setAutoOpenedSummaryOrderId] = useState<string | null>(null);
+    const isFromBookingSummary = location.state?.source === "booking-module";
 
 
     const { myProperties, isMultiProperty, isInitializing } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
@@ -407,7 +410,8 @@ export default function LaundryOrdersManagement() {
         limit: ordersLimit,
         search: searchQuery,
         status: laundryStatusFilter || undefined,
-        vendor_status: vendorStatusFilter || undefined
+        vendor_status: vendorStatusFilter || undefined,
+        laundry_type: laundryTypeFilter || undefined
     }, {
         skip: !isLoggedIn || !selectedPropertyId
     })
@@ -587,10 +591,12 @@ export default function LaundryOrdersManagement() {
 
     function buildCreateLaundryOrderPayload(
         propertyId: number,
-        form: CreateLaundryOrderForm,
+        form: CreateLaundryOrderForm & { laundryType?: "Guest" | "Hotel" },
         pricingItems: any[],
         primaryGuest?: any
     ) {
+        const isHotel = form.laundryType === "Hotel";
+
         const items = form.items.map((item) => {
             const pricing = pricingItems.find((p) => Number(p.id) === Number(item.laundryId));
             const rate = Number(pricing?.item_rate || 0);
@@ -601,7 +607,7 @@ export default function LaundryOrdersManagement() {
                 item_count: count,
                 item_rate: rate,
                 amount: count * rate,
-                room_no: item.roomNo || form.roomNo,
+                room_no: isHotel ? null : (item.roomNo || form.roomNo),
                 notes: item.notes,
             };
         });
@@ -610,14 +616,15 @@ export default function LaundryOrdersManagement() {
 
         return {
             property_id: propertyId,
-            booking_id: form.bookingId || null,
+            booking_id: isHotel ? null : (form.bookingId || null),
             vendor_id: form.vendorId || null,
+            laundry_type: form.laundryType || "Guest",
             pickup_date: form.pickupDate ? form.pickupDate.toISOString() : null,
             delivery_date: form.deliveryDate ? new Date(form.deliveryDate).toISOString() : null,
             vendor_status: form.vendorStatus || "NOT_ALLOTTED",
             laundry_status: "PENDING",
-            guest_name: primaryGuest ? `${primaryGuest.first_name} ${primaryGuest.last_name || ""}`.trim() : "",
-            guest_mobile: primaryGuest?.mobile || "",
+            guest_name: isHotel ? null : (primaryGuest ? `${primaryGuest.first_name} ${primaryGuest.last_name || ""}`.trim() : ""),
+            guest_mobile: isHotel ? null : (primaryGuest?.mobile || ""),
             total_amount: totalAmount,
             items,
         };
@@ -1048,6 +1055,7 @@ export default function LaundryOrdersManagement() {
             setSearchQuery("");
             setLaundryStatusFilter("");
             setVendorStatusFilter("");
+            setLaundryTypeFilter("");
             return;
         }
 
@@ -1097,6 +1105,7 @@ export default function LaundryOrdersManagement() {
                 propertyId: selectedPropertyId,
                 status: laundryStatusFilter || undefined,
                 vendor_status: vendorStatusFilter || undefined,
+                laundry_type: laundryTypeFilter || undefined,
                 search: searchQuery,
             }).unwrap();
 
@@ -1302,6 +1311,27 @@ export default function LaundryOrdersManagement() {
                                             },
                                         ]}
                                     />
+                                </GridToolbarRow>
+
+                                {/* Row 2 */}
+                                <GridToolbarRow className="gap-2">
+                                    <GridToolbarSelect
+                                        label="Order Type"
+                                        value={laundryTypeFilter}
+                                        onChange={(value) => {
+                                            setLaundryTypeFilter(value);
+                                            setOrdersPage(1);
+                                        }}
+                                        options={[
+                                            { label: "All", value: "" },
+                                            { label: "Guest", value: "Guest" },
+                                            { label: "Hotel", value: "Hotel" },
+                                        ]}
+                                    />
+
+                                    <GridToolbarSpacer className="hidden md:block" />
+                                    <GridToolbarSpacer className="hidden md:block" />
+                                    <GridToolbarSpacer type="actions" className="hidden md:block" />
                                 </GridToolbarRow>
                             </GridToolbar>
                         </div>
@@ -1509,29 +1539,47 @@ export default function LaundryOrdersManagement() {
                                             />
                                         </div>
                                         <div className="space-y-1.5">
-                                            <Label>Room Number*</Label>
+                                            <Label>Laundry Type</Label>
                                             <MenuItemSelect
-                                                value={form.bookingId && form.roomNo ? `${form.bookingId}:${form.roomNo}` : ""}
-                                                items={[
-                                                    { id: "", label: "No Room" },
-                                                    ...displayedRoomOptions.map((option) => ({
-                                                        id: option.value,
-                                                        label: option.roomNo
-                                                    }))
+                                                value={form.laundryType || "Guest"}
+                                                items={isFromBookingSummary ? [
+                                                    { id: "Guest", label: "Guest" }
+                                                ] : [
+                                                    { id: "Guest", label: "Guest" },
+                                                    { id: "Hotel", label: "Hotel" }
                                                 ]}
-                                                onSelect={(value) => {
-                                                    const selectedOption = displayedRoomOptions.find(option => option.value === value);
-                                                    setForm((prev) => ({
-                                                        ...prev,
-                                                        bookingId: selectedOption?.bookingId || "",
-                                                        roomNo: selectedOption?.roomNo || "",
-                                                        items: prev.items.map(item => ({ ...item, roomNo: selectedOption?.roomNo || "" }))
-                                                    }));
-                                                }}
+                                                onSelect={(val) => setForm({ ...form, laundryType: val as any })}
+                                                disabled={isFromBookingSummary}
                                                 placeholder="--Please Select--"
-                                                extraClasses="h-10 bg-background/50 text-foreground font-semibold"
+                                                extraClasses="h-10 bg-background/50"
                                             />
                                         </div>
+                                        {form.laundryType !== "Hotel" && (
+                                            <div className="space-y-1.5">
+                                                <Label>Room Number*</Label>
+                                                <MenuItemSelect
+                                                    value={form.bookingId && form.roomNo ? `${form.bookingId}:${form.roomNo}` : ""}
+                                                    items={[
+                                                        { id: "", label: "No Room" },
+                                                        ...displayedRoomOptions.map((option) => ({
+                                                            id: option.value,
+                                                            label: option.roomNo
+                                                        }))
+                                                    ]}
+                                                    onSelect={(value) => {
+                                                        const selectedOption = displayedRoomOptions.find(option => option.value === value);
+                                                        setForm((prev) => ({
+                                                            ...prev,
+                                                            bookingId: selectedOption?.bookingId || "",
+                                                            roomNo: selectedOption?.roomNo || "",
+                                                            items: prev.items.map(item => ({ ...item, roomNo: selectedOption?.roomNo || "" }))
+                                                        }));
+                                                    }}
+                                                    placeholder="--Please Select--"
+                                                    extraClasses="h-10 bg-background/50 text-foreground font-semibold"
+                                                />
+                                            </div>
+                                        )}
                                         <div className="space-y-1.5">
                                             <Label>Expected Delivery</Label>
                                             <ResponsiveDatePicker
@@ -1543,24 +1591,28 @@ export default function LaundryOrdersManagement() {
                                                 className="h-10 bg-background/50"
                                             />
                                         </div>
-                                        <div className="space-y-1.5">
-                                            <Label>Booking Id*</Label>
-                                            <div className="flex h-10 items-center text-sm font-semibold text-foreground">
-                                                {form.bookingId ? formatModuleDisplayId("booking", form.bookingId) : "-"}
-                                            </div>
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <Label>Guest Name *</Label>
-                                            <div className="flex h-10 items-center text-sm font-semibold truncate">
-                                                {(form.bookingId && primaryGuest) ? `${primaryGuest.first_name} ${primaryGuest.last_name || ""}`.trim() : "-"}
-                                            </div>
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <Label>Guest Mobile</Label>
-                                            <div className="flex h-10 items-center text-sm font-semibold">
-                                                {(form.bookingId && primaryGuest?.phone) ? primaryGuest.phone : "-"}
-                                            </div>
-                                        </div>
+                                        {form.laundryType !== "Hotel" && (
+                                            <>
+                                                <div className="space-y-1.5">
+                                                    <Label>Booking Id*</Label>
+                                                    <div className="flex h-10 items-center text-sm font-semibold text-foreground">
+                                                        {form.bookingId ? formatModuleDisplayId("booking", form.bookingId) : "-"}
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <Label>Guest Name *</Label>
+                                                    <div className="flex h-10 items-center text-sm font-semibold truncate">
+                                                        {(form.bookingId && primaryGuest) ? `${primaryGuest.first_name} ${primaryGuest.last_name || ""}`.trim() : "-"}
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <Label>Guest Mobile</Label>
+                                                    <div className="flex h-10 items-center text-sm font-semibold">
+                                                        {(form.bookingId && primaryGuest?.phone) ? primaryGuest.phone : "-"}
+                                                    </div>
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
 
                                     {/* ================= ITEMS SECTION ================= */}
@@ -1912,73 +1964,80 @@ export default function LaundryOrdersManagement() {
 
                                         <CardSectionView title="Order items" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="mt-0">
                                             <div className="border border-border rounded-lg overflow-hidden bg-background shadow-sm">
-                                                <AppDataGrid
-                                                    density="compact"
-                                                    scrollable={false}
-                                                    tableClassName="w-full"
-                                                    columns={[
-                                                        {
-                                                            label: "Item",
-                                                            className: "w-[46%]",
-                                                            cellClassName: "font-medium text-foreground",
-                                                            render: (item: any) => item.item_name || "--",
-                                                        },
-                                                        {
-                                                            label: "Room",
-                                                            className: "w-[18%]",
-                                                            headClassName: "text-center",
-                                                            cellClassName: "text-center text-muted-foreground",
-                                                            render: (item: any) => item.room_no || "--",
-                                                        },
-                                                        {
-                                                            label: "Qty",
-                                                            className: "w-[12%]",
-                                                            headClassName: "text-center",
-                                                            cellClassName: "text-center font-medium",
-                                                            render: (item: any) => item.item_count ?? "--",
-                                                        },
-                                                        {
-                                                            label: "Amount",
-                                                            className: "w-[24%]",
-                                                            headClassName: "text-right",
-                                                            cellClassName: "text-right font-medium",
-                                                            render: (item: any) => formatLaundryAmount(item.amount),
-                                                        },
-                                                    ] as ColumnDef[]}
-                                                    data={orderItems}
-                                                    rowKey={(_, index) => index}
-                                                    emptyText="No laundry items found"
-                                                    minWidth="500px"
-                                                    showActions={false}
-                                                    className="mt-0 border-0"
-                                                />
-                                                {(Number(order.subtotal_amount) > 0 || Number(order.grand_total_amount) > 0) && (
-                                                    <div className="flex justify-between items-end p-4 bg-muted/10 border-t border-border">
-                                                        <div className="flex-1 pb-1">
-                                                            <div className="text-[9px] leading-tight text-muted-foreground/80">
-                                                                Note :- **Order Total is rounded off for billing convenience.
-                                                            </div>
-                                                        </div>
-                                                        <div className="w-64 shrink-0 space-y-2">
-                                                            <div className="flex justify-between text-sm text-muted-foreground">
-                                                                <span>Sub Total</span>
-                                                                <span>{formatLaundryAmount(Number(order.subtotal_amount || 0))}</span>
-                                                            </div>
-                                                            <div className="flex justify-between text-sm text-muted-foreground">
-                                                                <span>CGST ({order.cgst_rate || 0}%)</span>
-                                                                <span>{formatLaundryAmount(Number(order.cgst_amount || 0))}</span>
-                                                            </div>
-                                                            <div className="flex justify-between text-sm text-muted-foreground">
-                                                                <span>SGST ({order.sgst_rate || 0}%)</span>
-                                                                <span>{formatLaundryAmount(Number(order.sgst_amount || 0))}</span>
-                                                            </div>
-                                                            <div className="flex justify-between text-sm font-bold text-foreground pt-2 border-t border-border/50">
-                                                                <span>Order Total</span>
-                                                                <span>{formatLaundryAmount(Number(order.grand_total_amount || getLaundryOrderTotalAmount(order)))}</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )}
+                                                {(() => {
+                                                    const isHotelOrder = order?.laundry_type === "Hotel" || (order as any)?.laundryType === "Hotel" || !order?.booking_id;
+                                                    return (
+                                                        <>
+                                                            <AppDataGrid
+                                                                density="compact"
+                                                                scrollable={false}
+                                                                tableClassName="w-full"
+                                                                columns={[
+                                                                    {
+                                                                        label: "Item",
+                                                                        className: isHotelOrder ? "w-[64%]" : "w-[46%]",
+                                                                        cellClassName: "font-medium text-foreground",
+                                                                        render: (item: any) => item.item_name || "--",
+                                                                    },
+                                                                    !isHotelOrder ? {
+                                                                        label: "Room",
+                                                                        className: "w-[18%]",
+                                                                        headClassName: "text-center",
+                                                                        cellClassName: "text-center text-muted-foreground",
+                                                                        render: (item: any) => item.room_no || "--",
+                                                                    } : null,
+                                                                    {
+                                                                        label: "Qty",
+                                                                        className: "w-[12%]",
+                                                                        headClassName: "text-center",
+                                                                        cellClassName: "text-center font-medium",
+                                                                        render: (item: any) => item.item_count ?? "--",
+                                                                    },
+                                                                    {
+                                                                        label: "Amount",
+                                                                        className: "w-[24%]",
+                                                                        headClassName: "text-right",
+                                                                        cellClassName: "text-right font-medium",
+                                                                        render: (item: any) => formatLaundryAmount(item.amount),
+                                                                    },
+                                                                ].filter(Boolean) as ColumnDef[]}
+                                                                data={orderItems}
+                                                                rowKey={(_, index) => index}
+                                                                emptyText="No laundry items found"
+                                                                minWidth="500px"
+                                                                showActions={false}
+                                                                className="mt-0 border-0"
+                                                            />
+                                                            {(Number(order.subtotal_amount) > 0 || Number(order.grand_total_amount) > 0) && (
+                                                                <div className="flex justify-between items-end p-4 bg-muted/10 border-t border-border">
+                                                                    <div className="flex-1 pb-1">
+                                                                        <div className="text-[9px] leading-tight text-muted-foreground/80">
+                                                                            Note :- **Order Total is rounded off for billing convenience.
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="w-64 shrink-0 space-y-2">
+                                                                        <div className="flex justify-between text-sm text-muted-foreground">
+                                                                            <span>Sub Total</span>
+                                                                            <span>{formatLaundryAmount(Number(order.subtotal_amount || 0))}</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between text-sm text-muted-foreground">
+                                                                            <span>CGST ({order.cgst_rate || 0}%)</span>
+                                                                            <span>{formatLaundryAmount(Number(order.cgst_amount || 0))}</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between text-sm text-muted-foreground">
+                                                                            <span>SGST ({order.sgst_rate || 0}%)</span>
+                                                                            <span>{formatLaundryAmount(Number(order.sgst_amount || 0))}</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between text-sm font-bold text-foreground pt-2 border-t border-border/50">
+                                                                            <span>Order Total</span>
+                                                                            <span>{formatLaundryAmount(Number(order.grand_total_amount || getLaundryOrderTotalAmount(order)))}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    );
+                                                })()}
                                             </div>
                                         </CardSectionView>
                                             </div>

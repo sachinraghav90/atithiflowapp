@@ -405,6 +405,97 @@ class RoomService {
         }
     }
 
+    async updateMaintenanceStatus({ roomId, under_maintenance, reason, updatedBy }) {
+        const client = await this.#DB.connect();
+
+        try {
+            await client.query("BEGIN");
+
+            // 1. Check if room exists
+            const { rows: roomRows } = await client.query(
+                `SELECT id, room_no, property_id FROM public.ref_rooms WHERE id = $1 AND is_active = true FOR UPDATE`,
+                [roomId]
+            );
+
+            if (roomRows.length === 0) {
+                throw new Error("Room not found or inactive");
+            }
+
+            const roomNo = roomRows[0].room_no;
+            const propertyId = roomRows[0].property_id;
+
+            // 2. Validate against active bookings if marking as under maintenance
+            if (under_maintenance) {
+                const { rows: activeBookings } = await client.query(
+                    `
+                    SELECT b.id
+                    FROM public.room_details rd
+                    JOIN public.bookings b ON b.id = rd.booking_id
+                    WHERE rd.ref_room_id = $1
+                      AND COALESCE(rd.is_cancelled, false) = false
+                      AND COALESCE(rd.is_changed, false) = false
+                      AND COALESCE(b.is_active, true) = true
+                      AND b.booking_status IN ('CONFIRMED', 'CHECKED_IN')
+                      AND b.estimated_arrival::date <= CURRENT_DATE
+                      AND COALESCE(b.actual_departure::date, b.estimated_departure::date) >= CURRENT_DATE
+                    `,
+                    [roomId]
+                );
+
+                if (activeBookings.length > 0) {
+                    throw new Error("Room has an active booking and cannot be put under maintenance");
+                }
+            }
+
+            // 3. Get current maintenance status for audit
+            const { rows: currentStatusRows } = await client.query(
+                `SELECT COALESCE(under_maintenance, false) AS under_maintenance FROM public.ref_rooms WHERE id = $1`,
+                [roomId]
+            );
+            const beforeUnderMaintenance = currentStatusRows[0].under_maintenance;
+
+            // 4. Update the room
+            const { rows: updatedRooms } = await client.query(
+                `
+                UPDATE public.ref_rooms
+                SET 
+                    under_maintenance = $1,
+                    updated_by = $2,
+                    updated_on = NOW()
+                WHERE id = $3
+                RETURNING id, under_maintenance
+                `,
+                [under_maintenance, updatedBy, roomId]
+            );
+
+            // 5. Audit Log
+            await AuditService.log({
+                property_id: propertyId,
+                event_id: roomId,
+                table_name: "ref_rooms",
+                event_type: under_maintenance ? "ROOM_UNDER_MAINTENANCE" : "ROOM_AVAILABLE_FROM_MAINTENANCE",
+                comments: reason || "",
+                details: {
+                    room_id: roomId,
+                    room_no: roomNo,
+                    before_under_maintenance: beforeUnderMaintenance,
+                    after_under_maintenance: under_maintenance,
+                    reason: reason || ""
+                },
+                user_id: updatedBy,
+                client: client
+            });
+
+            await client.query("COMMIT");
+            return updatedRooms[0];
+        } catch (error) {
+            await client.query("ROLLBACK");
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+
     async addRoom({
         propertyId,
         floorNumber,
@@ -656,7 +747,7 @@ class RoomService {
         limit = 50,
         offset = 0,
     }) {
-        const baseParams = [propertyId, arrivalDate, departureDate, arrivalTime || null];
+        const baseParams = [propertyId, arrivalDate, departureDate];
         let roomTypeFilter = "";
         if (roomTypeId) {
             baseParams.push(roomTypeId);
@@ -669,29 +760,22 @@ class RoomService {
             WHERE r.property_id = $1
             AND r.is_active = true
             AND COALESCE(r.dirty, false) = false
+            AND COALESCE(r.under_maintenance, false) = false
             ${roomTypeFilter}
             AND NOT EXISTS (
                 SELECT 1
-                FROM public.room_details rd
-                JOIN public.bookings b ON b.id = rd.booking_id
-                WHERE rd.ref_room_id = r.id
-                AND COALESCE(rd.is_cancelled, false) = false
-                AND COALESCE(rd.is_changed, false) = false
-                AND (
-                    (
-                        b.booking_status IN ('CONFIRMED', 'CHECKED_IN')
-                        AND (
-                            (COALESCE(b.actual_departure, b.estimated_departure)::date + p.checkout_time) > ($2::date + COALESCE(NULLIF($4::text, '')::time, p.checkin_time))
-                            AND 
-                            (b.estimated_arrival::date + COALESCE(NULLIF(b.estimated_arrival_time::text, '')::time, p.checkin_time)) < ($3::date + p.checkout_time)
-                        )
-                    )
-                    OR
-                    (
-                        b.booking_status = 'CHECKED_IN'
-                        AND b.actual_departure IS NULL
-                    )
-                )
+                FROM public.room_details rd_active
+                JOIN public.bookings b_active
+                  ON b_active.id = rd_active.booking_id
+                WHERE rd_active.ref_room_id = r.id
+                  AND COALESCE(rd_active.is_cancelled, false) = false
+                  AND COALESCE(rd_active.is_changed, false) = false
+                  AND COALESCE(b_active.is_active, true) = true
+                  AND b_active.booking_status IN ('CONFIRMED', 'CHECKED_IN')
+                  AND (
+                    b_active.estimated_arrival < $3
+                    AND COALESCE(b_active.actual_departure, b_active.estimated_departure) > $2
+                  )
             )
         `;
 
@@ -933,6 +1017,7 @@ class RoomService {
                     r.room_no,
                     r.floor_number,
                     r.dirty,
+                    r.under_maintenance,
                     r.property_id,
                     r.room_type_id,
                     r.is_active
@@ -980,6 +1065,7 @@ class RoomService {
                     rm.room_no,
                     rm.floor_number,
                     rm.dirty,
+                    rm.under_maintenance,
                     rm.room_category_name,
                     rm.bed_type_name,
                     rm.ac_type_name,
@@ -991,6 +1077,7 @@ class RoomService {
                         WHEN bo.booking_status = 'CHECKED_OUT' AND rm.dirty = true THEN 'DIRTY'
                         WHEN bo.booking_status = 'CHECKED_OUT' AND rm.dirty = false THEN 'FREE'
                         WHEN bo.booking_status IN ('BOOKED','CONFIRMED') THEN 'BOOKED'
+                        WHEN bo.booking_id IS NULL AND rm.under_maintenance = true THEN 'MAINTENANCE'
                         WHEN bo.booking_id IS NULL THEN 'FREE'
                         ELSE 'FREE'
                     END AS status
@@ -1051,7 +1138,8 @@ class RoomService {
                 'checked_out', (SELECT COUNT(*) FROM checking_out),
                 'no_show', (SELECT COUNT(*) FROM no_shows),
                 'free', COUNT(*) FILTER (WHERE status = 'FREE'),
-                'dirty', COUNT(*) FILTER (WHERE status = 'DIRTY')
+                'dirty', COUNT(*) FILTER (WHERE status = 'DIRTY'),
+                'maintenance', COUNT(*) FILTER (WHERE status = 'MAINTENANCE')
             ) AS summary,
 
             jsonb_agg(jsonb_build_object(
@@ -1059,6 +1147,7 @@ class RoomService {
                 'room_no', room_no,
                 'floor_number', floor_number,
                 'dirty', dirty,
+                'under_maintenance', COALESCE(under_maintenance, false),
                 'room_category_name', room_category_name,
                 'bed_type_name', bed_type_name,
                 'ac_type_name', ac_type_name,
@@ -1066,11 +1155,10 @@ class RoomService {
                 'pickup', pickup,
                 'drop', drop,
                 'status', status
-            ) ORDER BY floor_number, room_no) AS rooms,
+            ) ORDER BY floor_number ASC, room_no ASC) AS rooms,
 
-            (SELECT jsonb_agg(ci) FROM checking_in ci) AS checking_in,
-            (SELECT jsonb_agg(co) FROM checking_out co) AS checking_out
-
+            COALESCE((SELECT jsonb_agg(c) FROM checking_in c), '[]'::jsonb) AS checking_in,
+            COALESCE((SELECT jsonb_agg(c) FROM checking_out c), '[]'::jsonb) AS checking_out
             FROM resolved;
             `;
 

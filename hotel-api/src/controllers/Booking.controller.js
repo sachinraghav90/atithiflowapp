@@ -99,7 +99,7 @@ class Booking {
     async updateBookingStatus(req, res) {
         try {
             const bookingId = req.params.id
-            const { status, comments, actual_arrival, actual_departure } = req.body
+            const { status, comments, actual_arrival, actual_departure, is_early_checkin, is_delayed_checkout, audit_comment } = req.body
             const userId = req.user.user_id
 
             const result = await BookingService.updateBookingStatus({
@@ -108,6 +108,9 @@ class Booking {
                 comments,
                 actual_arrival,
                 actual_departure,
+                is_early_checkin,
+                is_delayed_checkout,
+                audit_comment,
                 updatedBy: userId
             })
 

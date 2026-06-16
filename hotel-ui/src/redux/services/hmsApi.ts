@@ -347,6 +347,17 @@ export const hmsApi = createApi({
       invalidatesTags: ["rooms-status", "AvailableRooms"]
     }),
 
+    updateRoomMaintenanceStatus: builder.mutation({
+      query: ({ roomId, under_maintenance, reason }) => {
+        return {
+          url: `/rooms/${roomId}/maintenance`,
+          method: "PATCH",
+          body: { under_maintenance, reason },
+        }
+      },
+      invalidatesTags: ["rooms-status", "AvailableRooms"]
+    }),
+
     getRooms: builder.query({
       query: (propertyId) => {
         return {
@@ -1176,13 +1187,14 @@ export const hmsApi = createApi({
     }),
 
     getPropertyLaundryOrders: builder.query({
-      query: ({ propertyId, page = 1, limit = 10, status = "", vendor_status = "", search = "" }) => {
+      query: ({ propertyId, page = 1, limit = 10, status = "", vendor_status = "", laundry_type = "", search = "" }) => {
         const params = new URLSearchParams({
           page: String(page),
           limit: String(limit)
         });
         if (status) params.append("status", status);
         if (vendor_status) params.append("vendor_status", vendor_status);
+        if (laundry_type) params.append("laundry_type", laundry_type);
         if (search) params.append("search", search);
 
         return {
@@ -1194,13 +1206,14 @@ export const hmsApi = createApi({
     }),
 
     exportPropertyLaundryOrders: builder.query({
-      query: ({ propertyId, status = "", vendor_status = "", search = "" }) => {
+      query: ({ propertyId, status = "", vendor_status = "", laundry_type = "", search = "" }) => {
         const params = new URLSearchParams({
           export: "true",
           ts: String(Date.now())
         });
         if (status) params.append("status", status);
         if (vendor_status) params.append("vendor_status", vendor_status);
+        if (laundry_type) params.append("laundry_type", laundry_type);
         if (search) params.append("search", search);
 
         return {
@@ -1240,6 +1253,23 @@ export const hmsApi = createApi({
         }
       },
       invalidatesTags: ["LaundryOrders", "Audits"]
+    }),
+
+    getEnquiryKpis: builder.query({
+      query: ({ propertyId, from, to, status }) => {
+        const params = new URLSearchParams();
+        params.append("propertyId", String(propertyId));
+
+        if (from) params.append("from", from);
+        if (to) params.append("to", to);
+        if (status && status !== "All") params.append("status", status);
+
+        return {
+          url: `/enquiries/kpis?${params.toString()}`,
+          method: "GET",
+        };
+      },
+      providesTags: ["Enquiries"],
     }),
 
     getPropertyEnquiries: builder.query({
@@ -1843,6 +1873,7 @@ export const {
   useBulkUpdateRoomsMutation,
   useUpdateRoomDirtyStatusMutation,
   useBulkUpsertRoomsMutation,
+  useUpdateRoomMaintenanceStatusMutation,
   useGetPackageByIdQuery,
   useGetPackagesByPropertyQuery,
   useCreatePackageMutation,
@@ -1887,6 +1918,7 @@ export const {
   useCreateLaundryOrderMutation,
   useUpdateLaundryOrderMutation,
   useGetPropertyEnquiriesQuery,
+  useGetEnquiryKpisQuery,
   useCreateEnquiryMutation,
   useUpdateEnquiryMutation,
   useGetAllPropertyVendorsQuery,

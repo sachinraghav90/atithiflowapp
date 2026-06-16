@@ -84,6 +84,14 @@ type EnquiryForm = {
     specially_abled: string;
     offer_amount: string;
     adults: string;
+    has_alternate_stay: boolean;
+    alternate_check_in: string;
+    alternate_check_out: string;
+    alternate_room_details: {
+        id: string;
+        room_type: string;
+        no_of_rooms: number;
+    }[];
 };
 
 /* ---------------- Helpers ---------------- */
@@ -130,7 +138,13 @@ export default function EnquiryCreate() {
         children: "",
         specially_abled: "",
         offer_amount: "",
-        adults: ""
+        adults: "",
+        has_alternate_stay: false,
+        alternate_check_in: "",
+        alternate_check_out: "",
+        alternate_room_details: [
+            { id: "alt_room_1", room_type: "", no_of_rooms: 1 }
+        ]
     });
     const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
 
@@ -205,6 +219,24 @@ export default function EnquiryCreate() {
         }));
     };
 
+    const addAlternateRoomType = () => {
+        const newId = `alt_room_${Date.now()}`;
+        setForm(prev => ({
+            ...prev,
+            alternate_room_details: [
+                ...prev.alternate_room_details,
+                { id: newId, room_type: "", no_of_rooms: 1 }
+            ]
+        }));
+    };
+
+    const removeAlternateRoomType = (roomId: string) => {
+        setForm(prev => ({
+            ...prev,
+            alternate_room_details: prev.alternate_room_details.filter((room) => room.id !== roomId)
+        }));
+    };
+
     function validateEnquiryForm(
         form: EnquiryForm,
         propertyId: number | null
@@ -249,6 +281,25 @@ export default function EnquiryCreate() {
 
         if (form.room_details.some(r => r.no_of_rooms < 1))
             errors.room_details = "Invalid room count";
+
+        if (form.has_alternate_stay) {
+            if (!form.alternate_check_in)
+                errors.alternate_check_in = "Alternate check-in date is required";
+
+            if (!form.alternate_check_out)
+                errors.alternate_check_out = "Alternate check-out date is required";
+            else if (new Date(form.alternate_check_out) <= new Date(form.alternate_check_in))
+                errors.alternate_check_out = "Check-out must be after check-in";
+
+            if (!form.alternate_room_details.length)
+                errors.alternate_room_details = "At least one alternate room type required";
+
+            if (form.alternate_room_details.some(r => !r.room_type))
+                errors.alternate_room_details = "Alternate room type missing";
+
+            if (form.alternate_room_details.some(r => r.no_of_rooms < 1))
+                errors.alternate_room_details = "Invalid alternate room count";
+        }
 
 
         if (form.quote_amount === undefined || form.quote_amount === null || form.quote_amount <= 0)
@@ -317,7 +368,11 @@ export default function EnquiryCreate() {
             total_members: form.total_members,
             senior_citizens: form.senior_citizens,
             children: form.children,
-            specially_abled: form.specially_abled
+            specially_abled: form.specially_abled,
+            has_alternate_stay: form.has_alternate_stay,
+            alternate_check_in: form.has_alternate_stay ? form.alternate_check_in : null,
+            alternate_check_out: form.has_alternate_stay ? form.alternate_check_out : null,
+            alternate_room_details: form.has_alternate_stay ? form.alternate_room_details.map(({ id, ...rest }) => rest) : null
         };
         const promise = createEnquiry(payload).unwrap().then(() => {
             navigate("/enquiries");
@@ -670,6 +725,22 @@ export default function EnquiryCreate() {
                                                 />
                                             </div>
                                         </div>
+
+                                        <div className="flex items-center space-x-2 pt-2">
+                                            <input
+                                                type="checkbox"
+                                                id="has_alternate_stay"
+                                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                                checked={form.has_alternate_stay}
+                                                onChange={(e) => setForm({ ...form, has_alternate_stay: e.target.checked })}
+                                            />
+                                            <label
+                                                htmlFor="has_alternate_stay"
+                                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                            >
+                                                Add Alternate Check-In/Out Option
+                                            </label>
+                                        </div>
                                     </div>
                                 </FormSection>
 
@@ -822,6 +893,172 @@ export default function EnquiryCreate() {
                                         </div>
                                     </div>
                                 </FormSection>
+
+                                {form.has_alternate_stay && (
+                                    <FormSection
+                                        title="Alternate Stay & Pricing"
+                                        description="Alternate check-in/out dates and room preferences"
+                                    >
+                                        <div className="space-y-4">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <div>
+                                                    <Label>Alternate Check-in*</Label>
+                                                    <ResponsiveDatePicker
+                                                        value={parseDate(form.alternate_check_in)}
+                                                        onChange={(d) => {
+                                                            const newCheckIn = formatDate(d);
+                                                            let newCheckOut = form.alternate_check_out;
+                                                            if (d && form.alternate_check_out) {
+                                                                const currentOut = parseDate(form.alternate_check_out);
+                                                                if (currentOut && d > currentOut) {
+                                                                    newCheckOut = "";
+                                                                }
+                                                            }
+                                                            setForm({ ...form, alternate_check_in: newCheckIn, alternate_check_out: newCheckOut });
+                                                            setFormErrors(p => ({ ...p, alternate_check_in: "", alternate_check_out: "" }));
+                                                        }}
+                                                        placeholder={APP_DATE_INPUT_PLACEHOLDER}
+                                                        className={cn(submitted && formErrors.alternate_check_in && "border-red-500")}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <Label>Alternate Check-out*</Label>
+                                                    <ResponsiveDatePicker
+                                                        value={parseDate(form.alternate_check_out)}
+                                                        onChange={(d) => {
+                                                            setForm({ ...form, alternate_check_out: formatDate(d) });
+                                                            setFormErrors(p => ({ ...p, alternate_check_out: "" }));
+                                                        }}
+                                                        minDate={parseDate(form.alternate_check_in) || undefined}
+                                                        placeholder={APP_DATE_INPUT_PLACEHOLDER}
+                                                        className={cn(submitted && formErrors.alternate_check_out && "border-red-500")}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="editable-grid-compact overflow-hidden rounded-[5px] border bg-background mt-4">
+                                                <div className="grid-scroll-x w-full border-b border-border bg-background">
+                                                    <div className="w-full min-w-[640px]">
+                                                        <DataGrid>
+                                                            <DataGridHeader>
+                                                                <DataGridHead>Room Type*</DataGridHead>
+                                                                <DataGridHead className="w-44">Rooms</DataGridHead>
+                                                                {form.alternate_room_details.length > 1 && (
+                                                                    <DataGridHead className="w-20 text-center">Action</DataGridHead>
+                                                                )}
+                                                            </DataGridHeader>
+
+                                                            <tbody>
+                                                                {form.alternate_room_details.map((room) => {
+                                                                    const isRoomTypeInvalid = submitted && !room.room_type;
+                                                                    const isRoomCountInvalid = submitted && room.no_of_rooms < 1;
+
+                                                                    return (
+                                                                        <DataGridRow key={room.id} className="odd:bg-background even:bg-background">
+                                                                            <DataGridCell>
+                                                                                <ValidationTooltip
+                                                                                    isValid={!isRoomTypeInvalid}
+                                                                                    message="Room type missing"
+                                                                                >
+                                                                                    <MenuItemSelect
+                                                                                        value={room.room_type}
+                                                                                        items={roomTypes}
+                                                                                        itemName="full_name"
+                                                                                        placeholder="--Please Select--"
+                                                                                        extraClasses={cn(
+                                                                                            "h-9 w-full rounded-[3px] border border-border bg-background px-2 py-1 text-sm font-normal shadow-none hover:bg-background text-left transition-colors duration-150",
+                                                                                            !room.room_type && "text-muted-foreground",
+                                                                                            isRoomTypeInvalid && "border-red-500"
+                                                                                        )}
+                                                                                        onSelect={(val) => {
+                                                                                            const existingRoom = form.alternate_room_details.find(r => r.room_type === val && r.id !== room.id);
+
+                                                                                            if (existingRoom) {
+                                                                                                setForm(prev => ({
+                                                                                                    ...prev,
+                                                                                                    alternate_room_details: prev.alternate_room_details
+                                                                                                        .map(r =>
+                                                                                                            r.id === existingRoom.id
+                                                                                                                ? { ...r, no_of_rooms: r.no_of_rooms + 1 }
+                                                                                                                : r.id === room.id
+                                                                                                                    ? null
+                                                                                                                    : r
+                                                                                                        )
+                                                                                                        .filter(Boolean) as typeof form.alternate_room_details
+                                                                                                }));
+                                                                                            } else {
+                                                                                                setForm(prev => ({
+                                                                                                    ...prev,
+                                                                                                    alternate_room_details: prev.alternate_room_details.map(r =>
+                                                                                                        r.id === room.id ? { ...r, room_type: String(val) } : r
+                                                                                                    )
+                                                                                                }));
+                                                                                            }
+                                                                                        }}
+                                                                                    />
+                                                                                </ValidationTooltip>
+                                                                            </DataGridCell>
+
+                                                                            <DataGridCell className="w-44">
+                                                                                <ValidationTooltip
+                                                                                    isValid={!isRoomCountInvalid}
+                                                                                    message="Invalid room count"
+                                                                                >
+                                                                                    <Input
+                                                                                        type="text"
+                                                                                        className={cn(
+                                                                                            "h-9 rounded-[3px] border border-border bg-background px-3 shadow-none focus-visible:ring-1 focus-visible:ring-primary",
+                                                                                            isRoomCountInvalid && "border-red-500"
+                                                                                        )}
+                                                                                        value={room.no_of_rooms}
+                                                                                        onChange={(e) => {
+                                                                                            const val = normalizeNumberInput(e.target.value);
+                                                                                            setForm(prev => ({
+                                                                                                ...prev,
+                                                                                                alternate_room_details: prev.alternate_room_details.map(r =>
+                                                                                                    r.id === room.id ? { ...r, no_of_rooms: val === "" ? 0 : Number(val) } : r
+                                                                                                )
+                                                                                            }));
+                                                                                        }}
+                                                                                    />
+                                                                                </ValidationTooltip>
+                                                                            </DataGridCell>
+
+                                                                            {form.alternate_room_details.length > 1 && (
+                                                                                <DataGridCell className="text-center">
+                                                                                    <Button
+                                                                                        type="button"
+                                                                                        size="icon"
+                                                                                        variant="ghost"
+                                                                                        className="mx-auto h-10 w-10 text-destructive transition-colors hover:text-destructive/80"
+                                                                                        onClick={() => removeAlternateRoomType(room.id)}
+                                                                                    >
+                                                                                        <Trash2 className="w-4 h-4" />
+                                                                                    </Button>
+                                                                                </DataGridCell>
+                                                                            )}
+                                                                        </DataGridRow>
+                                                                    );
+                                                                })}
+                                                            </tbody>
+                                                        </DataGrid>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-muted/30 p-2 border-t border-border">
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        className="text-primary hover:text-primary/90 h-8 px-2 text-xs font-semibold tracking-wide"
+                                                        onClick={addAlternateRoomType}
+                                                    >
+                                                        <PlusCircle className="mr-2 h-3.5 w-3.5" />
+                                                        Add Alternate Room Type
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </FormSection>
+                                )}
 
                                 <FormSection
                                     title="Follow-up & Notes"

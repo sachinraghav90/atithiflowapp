@@ -64,6 +64,31 @@ class RoomController {
         }
     }
 
+    async updateMaintenanceStatus(req, res) {
+        try {
+            const { roomId } = req.params;
+            const { under_maintenance, reason } = req.body;
+            const updatedBy = req.user.user_id;
+
+            if (under_maintenance === undefined) {
+                return res.status(400).json({ message: "Invalid payload: requires under_maintenance boolean" });
+            }
+
+            if (under_maintenance === true && (!reason || reason.trim() === '')) {
+                return res.status(400).json({ message: "Invalid payload: reason is required when marking under maintenance" });
+            }
+
+            const row = await RoomService.updateMaintenanceStatus({ roomId, under_maintenance, reason, updatedBy });
+            return res.status(200).json({ message: "Room maintenance status updated successfully", data: row });
+        } catch (error) {
+            console.log("🚀 ~ RoomController ~ updateMaintenanceStatus ~ error:", error);
+            if (error.message === "Room has an active booking and cannot be put under maintenance") {
+                return res.status(400).json({ message: error.message });
+            }
+            return res.status(500).json({ message: "Error updating room maintenance status" });
+        }
+    }
+
     async addRoom(req, res) {
         try {
             const createdBy = req.user.user_id

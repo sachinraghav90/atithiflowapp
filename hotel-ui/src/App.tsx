@@ -48,25 +48,24 @@ import GuestsCreationManagement from "./pages/GuestsCreationManagement.tsx";
 
 const queryClient = new QueryClient();
 
+const unsafePaths = ["/", "/platform", "/contact", "/privacy-policy", "/terms-of-service", "/guests", "/unauthorized-access"];
+const loggedInPaths = ["/reservation", "/create-enquiry", "/create-order"];
+
 const App = () => {
+  const [accessiblePaths, setAccessiblePaths] = useState([]);
 
-  const [accessiblePaths, setAccessiblePaths] = useState([])
-
-  useAuthBootstrap()
-  useAutoLogout()
-  const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
-  const meLoaded = useAppSelector(state => state.isLoggedIn.meLoaded)
-  const apiLoaded = useAppSelector(state => state.isLoggedIn.apiLoaded)
-  const navigate = useNavigate()
-  const dispatch = useAppDispatch()
-  const pathname = useLocation().pathname
+  useAuthBootstrap();
+  useAutoLogout();
+  const isLoggedIn = useAppSelector((state) => state.isLoggedIn.value);
+  const meLoaded = useAppSelector((state) => state.isLoggedIn.meLoaded);
+  const apiLoaded = useAppSelector((state) => state.isLoggedIn.apiLoaded);
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const pathname = useLocation().pathname;
 
   const { data: sidebarLinks } = useGetSidebarLinksQuery(undefined, {
-    skip: !isLoggedIn || !meLoaded
-  })
-
-  const unsafePaths = ["/", "/platform", "/contact", "/privacy-policy", "/terms-of-service", "/guests", "/unauthorized-access"]
-  const loggedInPaths = ["/reservation", "/create-enquiry", "/create-order"]
+    skip: !isLoggedIn || !meLoaded,
+  });
 
   useEffect(() => {
     if (!isLoggedIn || !sidebarLinks?.sidebarLinks) return;
@@ -94,8 +93,13 @@ const App = () => {
         navigate("/login", { replace: true })
       }
       // dispatch(setApiLoaded(false))
+    } else if (apiLoaded && isLoggedIn && pathname === "/login") {
+      if (sidebarLinks?.sidebarLinks?.length) {
+        const redirectPath = sidebarLinks.sidebarLinks[0].endpoint || "/AtithiFlow";
+        navigate(redirectPath, { replace: true });
+      }
     }
-  }, [isLoggedIn, apiLoaded])
+  }, [isLoggedIn, apiLoaded, pathname, navigate, sidebarLinks])
 
   return (
     <QueryClientProvider client={queryClient}>

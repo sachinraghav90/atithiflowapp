@@ -562,22 +562,29 @@ class GuestsService {
 
                 /* ---------- ADDRESS UPSERT ---------- */
                 if (guest.address !== undefined) {
-                    await client.query(
-                        `
-                    INSERT INTO public.addresses (
-                        entity_type, entity_id, address_type,
-                        address_line_1, is_primary, created_by
-                    )
-                    VALUES ('GUEST', $1, 'HOME', $2, true, $3)
-                    ON CONFLICT (entity_type, entity_id, address_type)
-                    WHERE is_primary = true
-                    DO UPDATE SET
-                        address_line_1 = EXCLUDED.address_line_1,
-                        updated_by = $3,
-                        updated_on = now()
-                    `,
-                        [guest.id, guest.address, updatedBy]
-                    )
+                    if (guest.address !== null && guest.address.trim() !== "") {
+                        await client.query(
+                            `
+                        INSERT INTO public.addresses (
+                            entity_type, entity_id, address_type,
+                            address_line_1, is_primary, created_by
+                        )
+                        VALUES ('GUEST', $1, 'HOME', $2, true, $3)
+                        ON CONFLICT (entity_type, entity_id, address_type)
+                        WHERE is_primary = true
+                        DO UPDATE SET
+                            address_line_1 = EXCLUDED.address_line_1,
+                            updated_by = $3,
+                            updated_on = now()
+                        `,
+                            [guest.id, guest.address, updatedBy]
+                        )
+                    } else if (guest.id) {
+                        await client.query(
+                            `DELETE FROM public.addresses WHERE entity_type = 'GUEST' AND entity_id = $1 AND address_type = 'HOME'`,
+                            [guest.id]
+                        )
+                    }
                 }
 
                 if (guest.nationality === "foreigner") {
@@ -879,22 +886,29 @@ class GuestsService {
 
                 /* ---------- ADDRESS UPSERT (BOTH CASES) ---------- */
                 if (guest.address !== undefined) {
-                    await client.query(
-                        `
-                    INSERT INTO public.addresses (
-                        entity_type, entity_id, address_type,
-                        address_line_1, is_primary, created_by
-                    )
-                    VALUES ('GUEST', $1, 'HOME', $2, true, $3)
-                    ON CONFLICT (entity_type, entity_id, address_type)
-                    WHERE is_primary = true
-                    DO UPDATE SET
-                        address_line_1 = EXCLUDED.address_line_1,
-                        updated_by = $3,
-                        updated_on = now()
-                    `,
-                        [guestId, guest.address, updatedBy ?? createdBy]
-                    )
+                    if (guest.address !== null && guest.address.trim() !== "") {
+                        await client.query(
+                            `
+                        INSERT INTO public.addresses (
+                            entity_type, entity_id, address_type,
+                            address_line_1, is_primary, created_by
+                        )
+                        VALUES ('GUEST', $1, 'HOME', $2, true, $3)
+                        ON CONFLICT (entity_type, entity_id, address_type)
+                        WHERE is_primary = true
+                        DO UPDATE SET
+                            address_line_1 = EXCLUDED.address_line_1,
+                            updated_by = $3,
+                            updated_on = now()
+                        `,
+                            [guestId, guest.address, updatedBy ?? createdBy]
+                        )
+                    } else if (guestId) {
+                        await client.query(
+                            `DELETE FROM public.addresses WHERE entity_type = 'GUEST' AND entity_id = $1 AND address_type = 'HOME'`,
+                            [guestId]
+                        )
+                    }
                 }
             }
 
