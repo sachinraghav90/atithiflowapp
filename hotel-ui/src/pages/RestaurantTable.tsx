@@ -488,7 +488,7 @@ export function RestaurantTables() {
                                     variant="hero" 
                                     onClick={handleForm}
                                 >
-                                    {mode === "add" ? "Create Table" : "Save Changes"}
+                                    {mode === "add" ? "Create Table" : "Update"}
                                 </Button>
                             </div>
                         </div>

@@ -1053,7 +1053,7 @@ export default function RoomTypeBasePriceManagement() {
                                     variant="hero"
                                     onClick={handleSingleRowUpdate}
                                 >
-                                    Save Changes
+                                    Update
                                 </Button>
                             )}
                         </div>

@@ -1095,7 +1095,7 @@ export default function KitchenInventory() {
 
                                 <div className="flex justify-end gap-3 pt-6 border-t border-border">
                                     <Button variant="heroOutline" onClick={() => setSheetOpen(false)}>Cancel</Button>
-                                    <Button variant="hero" onClick={saveEdit}>{stockUpdateMode === "add" ? "Add Stock" : "Update Stock"}</Button>
+                                    <Button variant="hero" onClick={saveEdit}>{stockUpdateMode === "add" ? "Add" : "Update"}</Button>
                                 </div>
                                 </div>
                             )}

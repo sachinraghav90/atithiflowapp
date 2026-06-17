@@ -1415,7 +1415,6 @@ export default function InventoryMaster() {
                             <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-border">
                                 <Button
                                     variant="heroOutline"
-                                    className="min-w-[100px]"
                                     onClick={() => setMode(null)}
                                 >
                                     {mode === "view" ? "Close" : "Cancel"}
@@ -1424,7 +1423,6 @@ export default function InventoryMaster() {
                                 {mode === "edit" && (
                                     <Button
                                         variant="hero"
-                                        className="min-w-[140px]"
                                         onClick={handleForm}
                                     >
                                         Update

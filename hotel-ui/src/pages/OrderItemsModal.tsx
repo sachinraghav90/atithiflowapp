@@ -91,14 +91,10 @@ export function OrderItemsModal({
     const [draftOrderStatus, setDraftOrderStatus] = useState("");
     const [draftPaymentStatus, setDraftPaymentStatus] = useState("");
     const [previewImage, setPreviewImage] = useState<{ url: string; name: string } | null>(null);
-    const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
-    const [itemAuditPage, setItemAuditPage] = useState(1);
-    const [itemAuditLimit, setItemAuditLimit] = useState(5);
 
     useEffect(() => {
         if (open) {
             setEditMode(defaultEditMode);
-            setSheetTab("summary");
             return;
         }
 
@@ -114,15 +110,6 @@ export function OrderItemsModal({
 
     const [updateOrderStatus] = useUpdateOrderStatusMutation();
     const [updateOrderPayment] = useUpdateOrderPaymentMutation();
-
-    const { data: auditLogs } = useGetAuditLogsQuery({
-        tableName: "restaurant_orders",
-        eventId: orderId,
-        page: itemAuditPage,
-        limit: itemAuditLimit,
-    }, {
-        skip: !orderId || !open || sheetTab !== "history"
-    });
 
     useEffect(() => {
         if (!data) return;
@@ -253,7 +240,7 @@ export function OrderItemsModal({
 
     return (
         <Sheet open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
-            <SheetContent side="right" onOpenAutoFocus={(e) => e.preventDefault()} className={cn("w-full overflow-y-auto bg-background outline-none focus:outline-none focus-visible:outline-none transition-all duration-300", sheetTab === "history" ? "sm:max-w-4xl" : "lg:max-w-4xl sm:max-w-3xl")}>
+            <SheetContent side="right" onOpenAutoFocus={(e) => e.preventDefault()} className={cn("w-full overflow-y-auto bg-background outline-none focus:outline-none focus-visible:outline-none transition-all duration-300", "lg:max-w-4xl sm:max-w-3xl")}>
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -316,34 +303,7 @@ export function OrderItemsModal({
 
                 {data && (
                     <div className="space-y-6">
-                        {/* Sheet Tabs */}
-                        <div className="border-b border-border flex">
-                            <button
-                                onClick={() => setSheetTab("summary")}
-                                className={cn(
-                                    "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
-                                    sheetTab === "summary"
-                                        ? "border-primary text-primary"
-                                        : "border-transparent text-muted-foreground hover:text-foreground"
-                                )}
-                            >
-                                Summary
-                            </button>
-                            <button
-                                onClick={() => setSheetTab("history")}
-                                className={cn(
-                                    "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
-                                    sheetTab === "history"
-                                        ? "border-primary text-primary"
-                                        : "border-transparent text-muted-foreground hover:text-foreground"
-                                )}
-                            >
-                                History
-                            </button>
-                        </div>
-
-                        {sheetTab === "summary" && (
-                            <div className="space-y-5">
+                        <div className="space-y-5">
                         {/* ================= INFORMATION GRID ================= */}
                         {!editMode ? (
                             <div className="space-y-4">
@@ -521,59 +481,6 @@ export function OrderItemsModal({
                             </div>
                         </CardSectionView>
                             </div>
-                        )}
-
-                        {sheetTab === "history" && (
-                            <div className="space-y-3">
-                                {!auditLogs?.data?.length ? (
-                                    <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
-                                        <p className="text-xs text-muted-foreground italic">No recent activity logs.</p>
-                                    </div>
-                                ) : (
-                                    <div className="border border-border rounded-lg overflow-hidden bg-background shadow-sm">
-                                        <AppDataGrid
-                                            columns={[
-
-                                                { 
-                                                    label: "Action", 
-                                                    cellClassName: "whitespace-nowrap min-w-[120px]",
-                                                    render: (log: any) => getAuditActionBadge(log.event_type)
-                                                },
-                                                { 
-                                                    label: "Updated By", 
-                                                    cellClassName: "whitespace-nowrap",
-                                                    render: (log: any) => `${log.user_first_name || ""} ${log.user_last_name || ""}`.trim() || "System"
-                                                },
-                                                { 
-                                                    label: "Date & Time", 
-                                                    headClassName: "text-white", 
-                                                    cellClassName: "text-muted-foreground whitespace-nowrap min-w-[130px]",
-                                                    render: (log: any) => formatAppDateTime(log.created_on) 
-                                                },
-                                                { 
-                                                    label: "Changes", 
-                                                    cellClassName: "min-w-[300px] py-2",
-                                                    render: (log: any) => getAuditChangeText(parseAuditDetails(log.details), log) 
-                                                }
-                                            ] as ColumnDef[]}
-                                            data={auditLogs.data}
-                                            rowKey={(log: any) => log.id}
-                                            minWidth="600px"
-                                            enablePagination
-                                            paginationProps={{
-                                                page: itemAuditPage,
-                                                totalPages: auditLogs?.pagination?.totalPages ?? 1,
-                                                setPage: setItemAuditPage,
-                                                totalRecords: auditLogs?.pagination?.totalItems ?? auditLogs?.data?.length ?? 0,
-                                                limit: itemAuditLimit,
-                                                onLimitChange: (v) => { setItemAuditLimit(v); setItemAuditPage(1); },
-                                                disabled: !auditLogs,
-                                            }}
-                                        />
-                                    </div>
-                                )}
-                            </div>
-                        )}
 
                         <div className="flex justify-end gap-3 pt-4 border-t border-border mt-3">
                             <Button
@@ -588,7 +495,7 @@ export function OrderItemsModal({
                                     variant="hero"
                                     onClick={handleSave}
                                 >
-                                    Save Changes
+                                    Update
                                 </Button>
                             )}
                         </div>

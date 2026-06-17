@@ -2075,7 +2075,7 @@ function ReservationManagementInner() {
                                             setRoomsModalOpen(false);
                                         }}
                                     >
-                                        Save Changes
+                                        Update
                                     </Button>
                                 </div>
                                 <div className="flex items-center h-10 border border-primary/20 bg-background rounded-[3px] text-sm overflow-hidden w-full hover:border-primary/40 focus-within:ring-1 focus-within:ring-primary">

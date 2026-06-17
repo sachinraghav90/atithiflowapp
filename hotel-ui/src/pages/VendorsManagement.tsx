@@ -17,6 +17,12 @@ import {
     SheetClose,
 } from "@/components/ui/sheet";
 import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import {
     useCreateVendorMutation,
     useGetMyPropertiesQuery,
     useGetPropertyVendorsQuery,
@@ -175,6 +181,8 @@ export default function VendorsManagement() {
     const [mode, setMode] = useState<"add" | "edit" | "view">("add");
     const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
     const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
+    const [qrPreviewOpen, setQrPreviewOpen] = useState(false);
+    const [selectedQrCode, setSelectedQrCode] = useState<string | null>(null);
 
     const [form, setForm] = useState<VendorForm>({
         name: "",
@@ -960,7 +968,7 @@ export default function VendorsManagement() {
                                                                     <DataGridHead>Account Holder</DataGridHead>
                                                                     <DataGridHead>Account No.</DataGridHead>
                                                                     <DataGridHead>IFSC</DataGridHead>
-                                                                    <DataGridHead>QR</DataGridHead>
+                                                                    <DataGridHead>QR Code</DataGridHead>
                                                                 </DataGridHeader>
                                                                 <tbody>
                                                                     {form.bank_accounts.map((ba, idx) => (
@@ -973,11 +981,18 @@ export default function VendorsManagement() {
                                                                                 {ba.qr_code ? (
                                                                                     <Tooltip>
                                                                                         <TooltipTrigger asChild>
-                                                                                            <a href={ba.qr_code} download={`QR_Code_${form.name || 'Vendor'}.png`} className="cursor-pointer inline-block">
+                                                                                            <button 
+                                                                                                type="button" 
+                                                                                                onClick={() => {
+                                                                                                    setSelectedQrCode(ba.qr_code);
+                                                                                                    setQrPreviewOpen(true);
+                                                                                                }}
+                                                                                                className="cursor-pointer inline-block p-0 border-0 bg-transparent"
+                                                                                            >
                                                                                                 <img src={ba.qr_code} alt="QR Code" className="w-10 h-10 object-contain rounded border border-border/50 bg-white hover:opacity-80 transition-opacity" />
-                                                                                            </a>
+                                                                                            </button>
                                                                                         </TooltipTrigger>
-                                                                                        <TooltipContent>Click to download QR Code</TooltipContent>
+                                                                                        <TooltipContent>Click to View</TooltipContent>
                                                                                     </Tooltip>
                                                                                 ) : "-"}
                                                                             </DataGridCell>
@@ -1229,6 +1244,19 @@ export default function VendorsManagement() {
                     </div>
                 </SheetContent>
             </Sheet>
+
+            <Dialog open={qrPreviewOpen} onOpenChange={setQrPreviewOpen}>
+                <DialogContent className="max-w-sm p-4">
+                    <DialogHeader>
+                        <DialogTitle>QR Code Preview</DialogTitle>
+                    </DialogHeader>
+                    {selectedQrCode && (
+                        <div className="flex items-center justify-center p-4 bg-white/50 rounded-lg">
+                            <img src={selectedQrCode} alt="Full QR Code" className="w-full max-w-[250px] object-contain rounded-md shadow-sm border border-border" />
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

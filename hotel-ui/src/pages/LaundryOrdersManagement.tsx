@@ -1770,7 +1770,7 @@ export default function LaundryOrdersManagement() {
                     setViewItemsModal({ open: false, editMode: false, order: null })
                 }
             >
-                <SheetContent side="right" className={cn("w-full overflow-y-auto bg-background border-l border-border/50 p-4 transition-all duration-300", sheetTab === "history" ? "sm:max-w-4xl" : "lg:max-w-4xl sm:max-w-3xl")}>
+                <SheetContent side="right" className="w-full overflow-y-auto bg-background border-l border-border/50 p-4 transition-all duration-300 lg:max-w-4xl sm:max-w-3xl">
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -1798,35 +1798,7 @@ export default function LaundryOrdersManagement() {
 
                                 return (
                                     <div className="space-y-6">
-                                        {/* Sheet Tabs */}
-                                        <div className="border-b border-border flex">
-                                            <button
-                                                onClick={() => setSheetTab("summary")}
-                                                className={cn(
-                                                    "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
-                                                    sheetTab === "summary"
-                                                        ? "border-primary text-primary"
-                                                        : "border-transparent text-muted-foreground hover:text-foreground"
-                                                )}
-                                            >
-                                                Summary
-                                            </button>
-                                            <button
-                                                onClick={() => setSheetTab("history")}
-                                                className={cn(
-                                                    "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
-                                                    sheetTab === "history"
-                                                        ? "border-primary text-primary"
-                                                        : "border-transparent text-muted-foreground hover:text-foreground"
-                                                )}
-                                            >
-                                                History
-                                            </button>
-                                        </div>
-
-                                        {sheetTab === "summary" && (
                                             <div className="space-y-5">
-                                      
 
                                         {!viewItemsModal.editMode ? (
                                             <div className="space-y-4">
@@ -2041,34 +2013,6 @@ export default function LaundryOrdersManagement() {
                                             </div>
                                         </CardSectionView>
                                             </div>
-                                        )}
-
-                                        {sheetTab === "history" && (
-                                            <div className="border border-border rounded-[3px] bg-background">
-                                                <AppDataGrid
-                                                    density="compact"
-                                                    columns={orderAuditColumns}
-                                                    data={orderAuditLogs?.data || []}
-                                                    loading={orderAuditLoading}
-                                                    emptyText="No history logs available yet."
-                                                    className="mt-0"
-                                                    minWidth="600px"
-                                                    enablePagination={!!orderAuditLogs?.pagination}
-                                                    paginationProps={{
-                                                        page: orderHistoryPage,
-                                                        totalPages: orderAuditLogs?.pagination?.totalPages ?? 1,
-                                                        setPage: setOrderHistoryPage,
-                                                        disabled: !orderAuditLogs,
-                                                        totalRecords: orderAuditLogs?.pagination?.totalItems ?? orderAuditLogs?.pagination?.total ?? orderAuditLogs?.data?.length ?? 0,
-                                                        limit: orderHistoryLimit,
-                                                        onLimitChange: (val) => {
-                                                            setOrderHistoryLimit(val);
-                                                            setOrderHistoryPage(1);
-                                                        },
-                                                    }}
-                                                />
-                                            </div>
-                                        )}
                                     </div>
                                 );
                             })()}
@@ -2092,7 +2036,7 @@ export default function LaundryOrdersManagement() {
                                             Cancel
                                         </Button>
                                         <Button variant="hero" onClick={updateOrder}>
-                                            Save Changes
+                                            Update
                                         </Button>
                                     </>
                                 )}
