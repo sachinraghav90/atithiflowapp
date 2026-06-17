@@ -265,7 +265,7 @@ export default function MenuMaster() {
         skip: !isLoggedIn || !selectedPropertyId
     })
 
-    const { data: auditLogs } = useGetAuditLogsQuery({
+    const { data: auditLogs, isLoading: isAuditLogsLoading, isFetching: isAuditLogsFetching } = useGetAuditLogsQuery({
         tableName: "menu_master",
         eventId: selected?.id,
         page: itemAuditPage,
@@ -274,7 +274,7 @@ export default function MenuMaster() {
         skip: !selected?.id || mode !== "view" || sheetTab !== "history"
     });
 
-    const { data: globalAuditLogs, isFetching: globalAuditFetching, refetch: refetchGlobalLogs } = useGetLogsByTableQuery({
+    const { data: globalAuditLogs, isLoading: globalAuditLoading, isFetching: globalAuditFetching, refetch: refetchGlobalLogs } = useGetLogsByTableQuery({
         tableName: "menu_master",
         propertyId: selectedPropertyId,
         page: auditPage,
@@ -908,7 +908,7 @@ export default function MenuMaster() {
                                     }
                                 ] as ColumnDef[]}
                                 data={filteredAuditLogs}
-                                loading={globalAuditFetching}
+                                loading={globalAuditLoading || globalAuditFetching}
                                 emptyText="No history logs found"
                                 minWidth="800px"
                                 enablePagination
@@ -1075,6 +1075,7 @@ export default function MenuMaster() {
                                                         }
                                                     ] as ColumnDef[]}
                                                     data={auditLogs.data}
+                                                    loading={isAuditLogsLoading || isAuditLogsFetching}
                                                     rowKey={(log: any) => log.id}
                                                     minWidth="600px"
                                                     enablePagination

@@ -221,7 +221,7 @@ export default function VendorsManagement() {
         skip: !isLoggedIn || !selectedPropertyId,
     });
 
-    const { data: auditLogs, isFetching: fetchingLogs } = useGetLogsQuery(
+    const { data: auditLogs, isLoading: loadingLogs, isFetching: fetchingLogs } = useGetLogsQuery(
         {
             eventId: editingVendor?.id as string,
             tableName: "ref_vendors",
@@ -804,7 +804,7 @@ export default function VendorsManagement() {
                             <div className="px-2 pb-2">
                                 <AppDataGrid
                                     data={paginatedHistoryLogs}
-                                    loading={globalAuditLogsLoading}
+                                    loading={globalAuditLogsLoading || globalAuditLogsFetching}
                                     rowKey={(audit: any) => audit.id}
                                     emptyText="No history logs found."
                                     showActions={false}
@@ -886,7 +886,7 @@ export default function VendorsManagement() {
                                             : "Comprehensive Overview of Vendor Relationship"}
                                 </p>
                             </div>
-                            <SheetClose className="absolute right-4 top-4 rounded-md border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none h-5 w-5 flex items-center justify-center shadow-sm z-50">
+                            <SheetClose className="absolute right-4 top-4 rounded-md border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none h-5 w-5 flex items-center justify-center shadow-sm z-50">
                                 <X className="h-4 w-4 stroke-[2.5]" />
                                 <span className="sr-only">Close</span>
                             </SheetClose>
@@ -1025,7 +1025,7 @@ export default function VendorsManagement() {
                                             }
                                         ]}
                                         data={auditLogs?.data ?? []}
-                                        loading={fetchingLogs}
+                                        loading={loadingLogs || fetchingLogs}
                                         emptyText="No history logs found for this vendor"
                                         minWidth="700px"
                                         enablePagination={!!auditLogs?.pagination}

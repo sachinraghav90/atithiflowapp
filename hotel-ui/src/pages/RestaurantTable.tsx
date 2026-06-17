@@ -354,7 +354,7 @@ export function RestaurantTables() {
                             density="compact"
                             columns={columns}
                             data={paginatedTableRows}
-                            loading={isLoading || isInitializing}
+                            loading={isLoading || isFetching || isInitializing}
                             emptyText="No tables found"
                             minWidth="900px"
                             enablePagination

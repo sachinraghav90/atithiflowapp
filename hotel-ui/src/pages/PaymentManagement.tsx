@@ -257,7 +257,7 @@ export default function PaymentsManagement() {
                                 },
                             ] as ColumnDef[]}
                             data={filteredPayments}
-                            loading={paymentsLoading || isInitializing}
+                            loading={paymentsLoading || paymentsFetching || isInitializing}
                             emptyText="No payments found"
                             minWidth="860px"
                             actionLabel=""

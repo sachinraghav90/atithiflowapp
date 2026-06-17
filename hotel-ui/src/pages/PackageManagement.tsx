@@ -249,7 +249,7 @@ export default function PackageManagement() {
     const [itemAuditPage, setItemAuditPage] = useState(1);
     const itemAuditLimit = 10;
 
-    const { data: auditLogs, isFetching: isAuditLogsFetching } = useGetAuditLogsQuery(
+    const { data: auditLogs, isLoading: isAuditLogsLoading, isFetching: isAuditLogsFetching } = useGetAuditLogsQuery(
         {
             tableName: "packages",
             eventId: selectedPackageId,
@@ -910,7 +910,7 @@ export default function PackageManagement() {
                                                 <AppDataGrid
                                                     columns={auditColumns}
                                                     data={auditLogs.data}
-                                                    isLoading={isAuditLogsFetching}
+                                                    loading={isAuditLogsLoading || isAuditLogsFetching}
                                                     enablePagination
                                                     paginationProps={{
                                                         page: itemAuditPage,

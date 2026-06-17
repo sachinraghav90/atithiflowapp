@@ -17,26 +17,43 @@
 // }
 
 import { motion } from "framer-motion";
+import atithiflowLogo from "@/assets/atithiflow-logo.png";
 
 export function LogoSpinner() {
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
-            <div className="relative flex h-16 w-16 items-center justify-center">
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
+            <div className="relative flex h-24 w-24 items-center justify-center">
+                {/* Outer glowing ring */}
                 <motion.div
-                    className="h-16 w-16 rounded-full border-4 border-muted border-t-primary"
+                    className="absolute inset-0 rounded-full border-[3px] border-primary/20"
+                    animate={{ scale: [1, 1.1, 1], opacity: [0.5, 0.8, 0.5] }}
+                    transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                />
+                
+                {/* Spinning gradient ring */}
+                <motion.div
+                    className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary border-r-primary/50"
                     animate={{ rotate: 360 }}
-                    transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}
+                    transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
                 />
 
+                {/* Logo with slight pulse */}
                 <motion.img
-                    src="src\assets\atithiflow-logo.png"
-                    alt="Company Logo"
-                    className="absolute h-8 w-8"
-                    animate={{ scale: [1, 1.05, 1] }}
-                    transition={{ repeat: Infinity, duration: 1.5 }}
+                    src={atithiflowLogo}
+                    alt="AtithiFlow Logo"
+                    className="absolute h-10 w-auto object-contain"
+                    animate={{ scale: [0.95, 1.05, 0.95] }}
+                    transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
                 />
             </div>
+            
+            <motion.div 
+                className="mt-6 text-sm font-medium text-muted-foreground tracking-widest uppercase"
+                animate={{ opacity: [0.5, 1, 0.5] }}
+                transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+            >
+                Loading...
+            </motion.div>
         </div>
     );
 }
-

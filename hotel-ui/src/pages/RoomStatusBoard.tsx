@@ -18,6 +18,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Switch } from "@/components/ui/switch";
 import { apiToast } from "@/utils/apiToastPromise";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import EmptyPropertyOnboarding from "@/components/layout/EmptyPropertyOnboarding";
 
 /* ---------------- Types ---------------- */
 type Room = {
@@ -264,6 +265,16 @@ export default function RoomStatusBoard() {
     const currentlyDirtyRooms = data?.rooms.filter(r => dirtyStatuses[r.ref_room_id.toString()]) || [];
     const initialDirtyRooms = data?.rooms.filter(r => r.dirty) || [];
 
+    const hasZeroProperties = (isSuperAdmin || isOwner) && myProperties?.properties && myProperties.properties.length === 0;
+
+    if (hasZeroProperties) {
+        return (
+            <div className="flex-1 flex flex-col items-center justify-center h-[calc(100vh-4rem)]">
+                <EmptyPropertyOnboarding />
+            </div>
+        );
+    }
+
     return (
         <div className="flex flex-col">
             <section className="p-4 lg:p-6 space-y-4">
@@ -368,7 +379,7 @@ export default function RoomStatusBoard() {
                                                         <TooltipTrigger asChild>
                                                             <button
                                                                 onClick={() => openMaintenanceSheet(room)}
-                                                                className="absolute right-2 top-2 rounded-md border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none h-6 w-6 flex items-center justify-center shadow-sm"
+                                                                className="absolute right-2 top-2 rounded-md border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none h-6 w-6 flex items-center justify-center shadow-sm"
                                                             >
                                                                 <Wrench className="h-3.5 w-3.5 stroke-[2.5]" />
                                                             </button>

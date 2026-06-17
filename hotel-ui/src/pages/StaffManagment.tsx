@@ -1047,7 +1047,7 @@ export default function StaffManagement() {
                             <div className="px-2 pb-2">
                                 <AppDataGrid
                                     data={paginatedHistoryLogs}
-                                    loading={globalAuditLogsLoading}
+                                    loading={globalAuditLogsLoading || globalAuditLogsFetching}
                                     rowKey={(audit: any) => audit.id}
                                     emptyText="No history logs found."
                                     showActions={false}
@@ -1262,7 +1262,7 @@ export default function StaffManagement() {
                                         <AppDataGrid
                                             columns={auditColumns}
                                             data={staffAuditData?.data || []}
-                                            isLoading={staffAuditLoading}
+                                            loading={staffAuditLoading || staffAuditFetching}
                                             enablePagination={!!staffAuditData?.pagination}
                                             paginationProps={{
                                                 page: itemAuditPage,

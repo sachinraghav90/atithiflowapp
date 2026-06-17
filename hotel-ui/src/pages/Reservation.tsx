@@ -1074,7 +1074,7 @@ function ReservationManagementInner() {
                 <div className="flex-1 overflow-y-auto bg-background">
                     <SheetHeader className="px-6 py-4 border-b border-border bg-background relative">
                         <SheetTitle className="text-xl font-bold">New Booking</SheetTitle>
-                        <SheetClose className="absolute right-4 top-4 rounded-md border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none h-5 w-5 flex items-center justify-center shadow-sm z-50">
+                        <SheetClose className="absolute right-4 top-4 rounded-md border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none h-5 w-5 flex items-center justify-center shadow-sm z-50">
                             <X className="h-4 w-4 stroke-[2.5]" />
                             <span className="sr-only">Close</span>
                         </SheetClose>
@@ -1978,7 +1978,7 @@ function ReservationManagementInner() {
                                 <SheetTitle className="text-lg font-semibold">
                                     Available Rooms
                                 </SheetTitle>
-                                <SheetClose className="absolute right-4 top-4 rounded-md border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none h-5 w-5 flex items-center justify-center shadow-sm z-50">
+                                <SheetClose className="absolute right-4 top-4 rounded-md border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none h-5 w-5 flex items-center justify-center shadow-sm z-50">
                                     <X className="h-4 w-4 stroke-[2.5]" />
                                     <span className="sr-only">Close</span>
                                 </SheetClose>
@@ -2241,7 +2241,7 @@ function ReservationManagementInner() {
                     <div className="flex-1 overflow-y-auto bg-background">
                         <SheetHeader className="px-6 py-4 border-b border-border bg-background relative">
                             <SheetTitle className="text-xl font-bold">Additional Guest Details</SheetTitle>
-                            <SheetClose className="absolute right-4 top-4 rounded-md border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 h-5 w-5 flex items-center justify-center shadow-sm z-50">
+                            <SheetClose className="absolute right-4 top-4 rounded-md border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 h-5 w-5 flex items-center justify-center shadow-sm z-50">
                                 <X className="h-4 w-4 stroke-[2.5]" />
                                 <span className="sr-only">Close</span>
                             </SheetClose>

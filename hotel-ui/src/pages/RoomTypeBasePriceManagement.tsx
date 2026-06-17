@@ -230,7 +230,7 @@ export default function RoomTypeBasePriceManagement() {
         skip: !isLoggedIn || !propertyId
     });
 
-    const { data: auditLogs } = useGetAuditLogsQuery({
+    const { data: auditLogs, isLoading: auditLogsLoading, isFetching: auditLogsFetching } = useGetAuditLogsQuery({
         tableName: "room_type_rates",
         eventId: selectedRow?.id,
         page: itemAuditPage,
@@ -784,7 +784,7 @@ export default function RoomTypeBasePriceManagement() {
                             <div className="px-2 pb-2">
                                 <AppDataGrid
                                     data={paginatedHistoryLogs}
-                                    loading={globalAuditLogsLoading}
+                                    loading={globalAuditLogsLoading || globalAuditLogsFetching}
                                     rowKey={(audit: any) => audit.id}
                                     emptyText="No history logs found."
                                     showActions={false}
@@ -946,6 +946,7 @@ export default function RoomTypeBasePriceManagement() {
                                                     ] as ColumnDef[]}
                                                     data={auditLogs.data}
                                                     rowKey={(log: any) => log.id}
+                                                    loading={auditLogsLoading || auditLogsFetching}
                                                     minWidth="600px"
                                                     enablePagination
                                                     paginationProps={{

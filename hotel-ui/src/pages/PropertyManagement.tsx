@@ -1084,7 +1084,7 @@ export default function PropertyManagement() {
                                 },
                             ] as ColumnDef[]}
                             data={propertyRows}
-                            loading={propertiesLoading}
+                            loading={propertiesLoading || propertiesFetching}
                             emptyText="No properties found"
                             minWidth="760px"
                             actionLabel=""
@@ -1193,7 +1193,7 @@ export default function PropertyManagement() {
                             <div className="px-2 pb-2">
                                 <AppDataGrid
                                     data={paginatedHistoryLogs}
-                                    loading={propertyLogsLoading}
+                                    loading={propertyLogsLoading || propertyLogsFetching}
                                     rowKey={(audit: any) => audit.id}
                                     emptyText="No history logs found."
                                     showActions={false}
@@ -1509,7 +1509,7 @@ export default function PropertyManagement() {
                                                 }
                                             ]}
                                             data={auditLogs?.data || []}
-                                            loading={auditLogsLoading}
+                                            loading={auditLogsLoading || auditLogsFetching}
                                             emptyText="No history found for this property"
                                             showActions={false}
                                             enablePagination={!!auditLogs?.pagination}

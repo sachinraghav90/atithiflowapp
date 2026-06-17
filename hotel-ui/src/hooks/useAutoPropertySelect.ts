@@ -51,9 +51,11 @@ export function useAutoPropertySelect(
     const isStaffLoading = (!isSuperAdmin && !isOwner) && staffPropertyLoading;
 
     // We are "Initializing" if we are still fetching properties OR we have properties but haven't set the ID yet
+    const hasZeroProperties = (isSuperAdmin || isOwner) && myProperties?.properties && myProperties.properties.length === 0;
+    
     const isInitializing = 
         (isMultiLoading || isStaffLoading) || 
-        (isLoggedIn && !selectedPropertyId);
+        (isLoggedIn && !selectedPropertyId && !hasZeroProperties);
 
     return {
         myProperties,

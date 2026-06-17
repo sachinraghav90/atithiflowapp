@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
+import atithiflowLogo from "@/assets/atithiflow-logo.png"
 
 /* ------------------------------------------------------------------ */
 /*  Base Primitives                                                    */
@@ -320,7 +321,7 @@ function AppDataGrid<T extends Record<string, unknown>>({
     data,
     rowKey,
     loading = false,
-    emptyText = "No data found",
+    emptyText = "No record Found",
     actions,
     actionLabel = "",
     prefixActions = true,
@@ -387,17 +388,39 @@ function AppDataGrid<T extends Record<string, unknown>>({
 
                         {/* ---- BODY ---- */}
                         <tbody>
-                            {/* Loading state (Skeletons) */}
+                            {/* Loading state (Premium Loader) */}
                             {loading && (
-                                Array.from({ length: 5 }).map((_, i) => (
-                                    <DataGridRow key={`skeleton-${i}`} className="animate-pulse">
-                                        {Array.from({ length: totalCols }).map((__, j) => (
-                                            <DataGridCell key={`sk-cell-${j}`} className={compactSkeletonClassName}>
-                                                <div className="h-4 bg-muted rounded w-3/4 mx-auto" />
-                                            </DataGridCell>
-                                        ))}
-                                    </DataGridRow>
-                                ))
+                                <DataGridRow>
+                                    <DataGridCell colSpan={totalCols} className="h-[300px] relative p-0 border-b-0">
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 backdrop-blur-[2px] z-10 overflow-hidden">
+                                            <div className="relative flex h-20 w-20 items-center justify-center mb-6">
+                                                {/* Pulsing outer glow */}
+                                                <div className="absolute inset-[-10px] rounded-full bg-primary/5 animate-pulse duration-[3000ms] blur-md" />
+                                                
+                                                {/* Double spinning rings */}
+                                                <div className="absolute inset-0 rounded-full border-[3px] border-transparent border-t-primary border-r-primary/50 animate-[spin_1s_linear_infinite]" />
+                                                <div className="absolute inset-2 rounded-full border-[3px] border-transparent border-b-primary/80 border-l-primary/30 animate-[spin_1.5s_linear_infinite_reverse]" />
+                                                
+                                                {/* Center Logo */}
+                                                <img 
+                                                    src={atithiflowLogo} 
+                                                    alt="Loading..." 
+                                                    className="h-8 w-auto object-contain animate-pulse z-10"
+                                                />
+                                            </div>
+                                            <div className="flex flex-col items-center gap-2">
+                                                <span className="text-xs font-bold text-primary/80 tracking-[0.25em] uppercase animate-pulse">
+                                                    Fetching Records
+                                                </span>
+                                                <div className="flex gap-1.5 items-center justify-center">
+                                                    <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '0s' }} />
+                                                    <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '0.15s' }} />
+                                                    <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '0.3s' }} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </DataGridCell>
+                                </DataGridRow>
                             )}
 
                             {/* Empty state */}

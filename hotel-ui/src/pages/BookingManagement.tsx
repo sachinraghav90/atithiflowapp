@@ -1259,7 +1259,7 @@ export default function BookingsManagement() {
                                 }
                             ] as ColumnDef<any>[]}
                             data={bookingRows}
-                            loading={bookingsLoading || isInitializing}
+                            loading={bookingsLoading || bookingsFetching || isInitializing}
                             emptyText="No bookings found"
                             minWidth="800px"
                             enablePagination={!!bookingsData?.pagination}
@@ -1341,7 +1341,7 @@ export default function BookingsManagement() {
                             <div className="px-2 pb-2">
                                 <AppDataGrid
                                     data={paginatedHistoryLogs}
-                                    loading={globalAuditLogsLoading}
+                                    loading={globalAuditLogsLoading || globalAuditLogsFetching}
                                     rowKey={(audit: any) => audit.id}
                                     emptyText="No history logs found."
                                     showActions={false}

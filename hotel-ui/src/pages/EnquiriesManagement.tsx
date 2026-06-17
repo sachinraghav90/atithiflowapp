@@ -311,7 +311,7 @@ export default function EnquiriesManagement() {
     };
     const { myProperties, isMultiProperty, isInitializing } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
 
-    const { data: enquiries, isLoading: enquiryLoading, refetch } = useGetPropertyEnquiriesQuery({
+    const { data: enquiries, isLoading: enquiryLoading, isFetching: enquiryFetching, refetch } = useGetPropertyEnquiriesQuery({
         propertyId: selectedPropertyId,
         page,
         limit,
@@ -341,7 +341,7 @@ export default function EnquiriesManagement() {
         { skip: !selected?.id || sheetTab !== "history" }
     );
 
-    const { data: globalAuditLogs, isFetching: globalAuditFetching, refetch: refetchGlobalLogs } = useGetLogsByTableQuery({
+    const { data: globalAuditLogs, isLoading: globalAuditLoading, isFetching: globalAuditFetching, refetch: refetchGlobalLogs } = useGetLogsByTableQuery({
         tableName: "enquiries",
         propertyId: selectedPropertyId,
         page: 1,
@@ -892,7 +892,7 @@ export default function EnquiriesManagement() {
                             density="compact"
                             columns={enquiryColumns}
                             data={enquiryRows}
-                            loading={enquiryLoading || isInitializing}
+                            loading={enquiryLoading || enquiryFetching || isInitializing}
                             emptyText="No enquiries found"
                             minWidth="1080px"
                             actionClassName="text-center w-[60px]"
@@ -1035,7 +1035,7 @@ export default function EnquiriesManagement() {
                                     },
                                 ]}
                                 data={paginatedAuditLogs}
-                                loading={globalAuditFetching}
+                                loading={globalAuditLoading || globalAuditFetching}
                                 emptyText="No history records found"
                                 minWidth="800px"
                                 className="mt-0"

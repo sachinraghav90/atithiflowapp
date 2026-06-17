@@ -1,4 +1,5 @@
 import atithiflowLogo from "@/assets/atithiflow-logo.png";
+import { useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
     DropdownMenu,
@@ -14,6 +15,7 @@ import { AlignJustify, LogOut, Settings, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
+import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 
 type Props = {
     collapsed: boolean;
@@ -28,8 +30,13 @@ export default function AppHeader({ collapsed, setCollapsed }: Props) {
     const isSuperAdmin = useAppSelector(selectIsSuperAdmin)
     const isOwner = useAppSelector(selectIsOwner)
 
+    // Check for zero properties
+    const [dummyPropertyId, setDummyPropertyId] = useState<number | null>(null);
+    const { myProperties, isMultiProperty } = useAutoPropertySelect(dummyPropertyId, setDummyPropertyId);
+    const hasZeroProperties = isMultiProperty && myProperties?.properties && myProperties.properties.length === 0;
+
     const { data: propertyAddress } = useGetPropertyAddressByUserQuery(undefined, {
-        skip: !isLoggedIn || isOwner || isSuperAdmin || meLoading
+        skip: !isLoggedIn || isOwner || isSuperAdmin || meLoading || hasZeroProperties
     });
 
     const navigate = useNavigate();
