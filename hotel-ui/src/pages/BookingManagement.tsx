@@ -38,12 +38,15 @@ import {
     useGetMyPropertiesQuery,
     useLazyExportBookingsQuery,
     useUpdateBookingMutation,
+    useUpdateBookingStatusMutation,
     useGetGuestsByBookingQuery,
     useGetVehiclesByBookingQuery,
     useGetPaymentsByBookingIdQuery,
     useGetPropertyByIdQuery,
     useUpdatePropertiesMutation,
     useGetLogsByTableQuery,
+    useGetLogsQuery,
+    useTodayOccupiedBookingRoomsQuery,
 } from "@/redux/services/hmsApi";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { useGridPagination } from "@/hooks/useGridPagination";
@@ -58,7 +61,7 @@ import { formatToDDMMYY } from "@/utils/formatToDDMMYY";
 import LaundryEmbedded from "@/components/layout/LaundryEmbedded";
 import BookingLogsEmbedded from "@/components/layout/BookingLogsEmbedded";
 import RestaurantOrdersEmbedded from "@/components/layout/RestaurantOrdersEmbedded";
-import { Copy, Download, Eye, FilterX, Plus, RefreshCcw, HelpCircle, Printer, CheckSquare } from "lucide-react";
+import { Copy, Download, Eye, FilterX, Plus, RefreshCcw, HelpCircle, Printer, CheckSquare, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getStatusColor } from "@/constants/statusColors";
 import { GridBadge } from "@/components/ui/grid-badge";
@@ -319,8 +322,13 @@ export default function BookingsManagement() {
     const [isEarlyCheckin, setIsEarlyCheckin] = useState(false);
     const [isDelayedCheckout, setIsDelayedCheckout] = useState(false);
     const [auditComment, setAuditComment] = useState("");
+
+    const { data: todayOccupiedRooms } = useTodayOccupiedBookingRoomsQuery({ propertyId }, { skip: !propertyId });
+
+
     const [auditCommentError, setAuditCommentError] = useState("");
     const statusTimeInputRef = useRef<HTMLInputElement>(null);
+    const [updateApiError, setUpdateApiError] = useState("");
 
     const memoizedArrivalFrom = useMemo(() => (arrivalFrom ? new Date(arrivalFrom) : null), [arrivalFrom]);
     const memoizedArrivalTo = useMemo(() => (arrivalTo ? new Date(arrivalTo) : null), [arrivalTo]);
@@ -531,6 +539,37 @@ export default function BookingsManagement() {
         skip: !isLoggedIn || !bookingId
     })
 
+    const conflictRoom = useMemo(() => {
+        if (!selectedBooking) return null;
+        if (normalizeBookingStatus(updatedStatus) !== "CHECKED_IN") return null;
+        if (!todayOccupiedRooms) return null;
+        
+        for (const room of selectedBooking.booking.rooms || []) {
+            const conflict = Array.isArray(todayOccupiedRooms) ? todayOccupiedRooms.find((t: any) => String(t.room_no).trim() === String(room.room_no).trim() && String(t.booking_id).trim() !== String(selectedBooking.booking.id).trim()) : null;
+            if (conflict) {
+                return conflict;
+            }
+        }
+        return null;
+    }, [selectedBooking, updatedStatus, todayOccupiedRooms]);
+
+    const isDelayedCheckoutBlocked = useMemo(() => {
+        if (!isDelayedCheckout) return false;
+        if (!selectedBooking?.booking?.estimated_departure) return false;
+        if (normalizeBookingStatus(updatedStatus) !== "CHECKED_OUT") return false;
+        
+        const today = new Date();
+        const estDeparture = new Date(selectedBooking.booking.estimated_departure);
+        
+        const todayDate = new Date(today);
+        todayDate.setHours(0, 0, 0, 0);
+        
+        const estDepartureDate = new Date(estDeparture);
+        estDepartureDate.setHours(0, 0, 0, 0);
+        
+        return todayDate.getTime() !== estDepartureDate.getTime();
+    }, [isDelayedCheckout, updatedStatus, selectedBooking]);
+
     const normalizedUpdatedStatus = normalizeBookingStatus(updatedStatus);
     const requiresStatusTime = 
         (normalizedUpdatedStatus === "CHECKED_IN" && selectedBooking?.booking?.booking_status !== "CHECKED_IN") || 
@@ -585,6 +624,7 @@ export default function BookingsManagement() {
         setIsDelayedCheckout(false);
         setAuditComment("");
         setAuditCommentError("");
+        setUpdateApiError("");
     }
 
     function focusStatusTimeInput() {
@@ -673,36 +713,10 @@ export default function BookingsManagement() {
             hasError = true;
         }
 
-        if (normalizedStatus === "CHECKED_IN") {
-            const today = new Date();
-            const estArrival = new Date(selectedBooking.booking.estimated_arrival);
-            
-            const todayDate = new Date(today);
-            todayDate.setHours(0, 0, 0, 0);
-            
-            const estArrivalDate = new Date(estArrival);
-            estArrivalDate.setHours(0, 0, 0, 0);
-            
-            if (todayDate < estArrivalDate) {
-                setStatusTimeError("Early check-in is allowed only on the scheduled arrival date. For previous-day arrival, please duplicate this booking or create a new booking.");
-                hasError = true;
-            }
-        }
 
-        if (normalizedStatus === "CHECKED_OUT") {
-            const today = new Date();
-            const estDeparture = new Date(selectedBooking.booking.estimated_departure);
-            
-            const todayDate = new Date(today);
-            todayDate.setHours(0, 0, 0, 0);
-            
-            const estDepartureDate = new Date(estDeparture);
-            estDepartureDate.setHours(0, 0, 0, 0);
-            
-            if (todayDate > estDepartureDate) {
-                setStatusTimeError("Delayed checkout is allowed only on the scheduled checkout date. For next-day or longer stay, please use New Booking.");
-                hasError = true;
-            }
+
+        if (isDelayedCheckoutBlocked) {
+            hasError = true;
         }
 
         if (isEarlyCheckin && !auditComment.trim()) {
@@ -739,22 +753,22 @@ export default function BookingsManagement() {
         }
 
         const promise = updateBooking(payload).unwrap();
-
-        resetStatusConfirmation();
+        const toastId = toast.loading("Updating booking...");
 
         try {
-            await toast.promise(promise, {
-                pending: "Updating booking...",
-                success: "Booking updated successfully",
-                error: {
-                    render({ data }: { data: any }) {
-                        return data?.data?.message || data?.message || "Failed to update booking status";
-                    },
-                    pauseOnHover: true
-                }
-            });
-        } catch {
-            // Error feedback is handled by toast.promise.
+            await promise;
+            toast.update(toastId, { render: "Booking updated successfully", type: "success", isLoading: false, autoClose: 3000 });
+            resetStatusConfirmation();
+        } catch (err: any) {
+            const errorMsg = err?.data?.error || err?.data?.message || err?.error || err?.message || "Failed to update booking status";
+            
+            if (errorMsg.includes("Early check-in") || errorMsg.includes("booked") || errorMsg.includes("conflict")) {
+                toast.dismiss(toastId);
+                setUpdateApiError(errorMsg);
+            } else {
+                toast.update(toastId, { render: errorMsg, type: "error", isLoading: false, autoClose: 4000 });
+                resetStatusConfirmation();
+            }
         }
 
     }
@@ -836,7 +850,7 @@ export default function BookingsManagement() {
             <div className="space-y-4">
                 {isPendingGuests && (
                     <div className="bg-amber-50 text-amber-800 px-4 py-3 rounded-[3px] border border-amber-200 text-sm font-medium flex items-center gap-2">
-                        Guest details for {pendingCount} additional guest{pendingCount === 1 ? " is" : "s are"} pending.
+                     {pendingCount} additional guest details {pendingCount === 1 ? " is" : " are"} pending.
                     </div>
                 )}
                 <CardSectionView 
@@ -945,6 +959,35 @@ export default function BookingsManagement() {
                     booking={booking}
                     propertyId={booking?.property_id}
                 />
+                
+                {(() => {
+                    const { data: logsData } = useGetLogsQuery(
+                        { tableName: "bookings", eventId: booking?.id, page: 1, limit: 100 },
+                        { skip: !booking?.id }
+                    );
+                    const roomChangeLogs = (logsData?.data || []).filter((l: any) => l.event_type === "ROOM_CHANGE");
+                    const latestShiftLog = roomChangeLogs[0];
+                    
+                    if (!latestShiftLog) return null;
+                    
+                    let oldRooms = "";
+                    let newRooms = "";
+                    try {
+                        const details = JSON.parse(latestShiftLog.details || "{}");
+                        oldRooms = details["Assigned Rooms"] || details["old_rooms"] || details["old rooms"] || "";
+                        newRooms = details["Replaced Rooms"] || details["new_rooms"] || details["new rooms"] || "";
+                    } catch (e) {}
+
+                    if (!oldRooms || !newRooms) return null;
+
+                    return (
+                        <div className="pt-4 flex justify-start">
+                            <p className="text-sm font-medium text-muted-foreground bg-amber-50 text-amber-600 px-3 py-1.5 rounded-[5px] border border-amber-200">
+                                Room(s) [ {oldRooms} ] are shifted to [ {newRooms} ].
+                            </p>
+                        </div>
+                    );
+                })()}
             </div>
         );
     }
@@ -1625,8 +1668,12 @@ export default function BookingsManagement() {
                                             setStatusTime("");
                                         }
                                         
-                                        if (normalized !== "CHECKED_IN") setIsEarlyCheckin(false);
-                                        if (normalized !== "CHECKED_OUT") setIsDelayedCheckout(false);
+                                        if (normalized !== "CHECKED_IN") {
+                                            setIsEarlyCheckin(false);
+                                        }
+                                        if (normalized !== "CHECKED_OUT") {
+                                            setIsDelayedCheckout(false);
+                                        }
                                         
                                         setStatusTimeError("");
                                         setAuditCommentError("");
@@ -1687,39 +1734,75 @@ export default function BookingsManagement() {
                         )}
 
                         {normalizeBookingStatus(updatedStatus) === "CHECKED_IN" && selectedBooking?.booking?.booking_status !== "CHECKED_IN" && (
-                            <div className="flex items-center space-x-2 mt-4">
-                                <Checkbox
-                                    id="early-checkin-checkbox"
-                                    checked={isEarlyCheckin}
-                                    onCheckedChange={(checked) => {
-                                        setIsEarlyCheckin(!!checked);
-                                        setAuditCommentError("");
-                                    }}
-                                />
-                                <Label htmlFor="early-checkin-checkbox" className="text-sm cursor-pointer">
-                                    Early Check-In
-                                </Label>
+                            <div className="flex flex-col space-y-2 mt-2">
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id="early-checkin-checkbox"
+                                        checked={isEarlyCheckin}
+                                        onCheckedChange={(checked) => {
+                                            setIsEarlyCheckin(!!checked);
+                                            setAuditCommentError("");
+                                        }}
+                                    />
+                                    <Label htmlFor="early-checkin-checkbox" className="text-sm cursor-pointer">
+                                        Early Check-In
+                                    </Label>
+                                </div>
                             </div>
                         )}
 
                         {normalizeBookingStatus(updatedStatus) === "CHECKED_OUT" && (
-                            <div className="flex items-center space-x-2 mt-4">
-                                <Checkbox
-                                    id="delayed-checkout-checkbox"
-                                    checked={isDelayedCheckout}
-                                    onCheckedChange={(checked) => {
-                                        setIsDelayedCheckout(!!checked);
-                                        setAuditCommentError("");
-                                    }}
-                                />
-                                <Label htmlFor="delayed-checkout-checkbox" className="text-sm cursor-pointer">
-                                    Delayed Checkout
-                                </Label>
+                            <div className="flex flex-col space-y-2 mt-2">
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id="delayed-checkout-checkbox"
+                                        checked={isDelayedCheckout}
+                                        onCheckedChange={(checked) => {
+                                            setIsDelayedCheckout(!!checked);
+                                            setAuditCommentError("");
+                                        }}
+                                    />
+                                    <Label htmlFor="delayed-checkout-checkbox" className="text-sm cursor-pointer">
+                                        Delayed Checkout
+                                    </Label>
+                                </div>
                             </div>
                         )}
 
-                        {(isEarlyCheckin || isDelayedCheckout) && (
-                            <div className="mt-4 space-y-1.5">
+                        {(isDelayedCheckout || isEarlyCheckin) && (
+                            <div className="mt-2 flex flex-col space-y-1 py-1.5 px-2 bg-red-50 text-red-600 rounded-[4px] border border-red-100 text-[11px] sm:text-xs">
+                                {isEarlyCheckin && (
+                                    <div className="flex items-start space-x-1.5">
+                                        <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                                        <span className="leading-tight">
+                                           Note:Rooms are already booked.
+                                        </span>
+                                    </div>
+                                )}
+                                {isDelayedCheckout && (
+                                    <div className="flex items-start space-x-1.5">
+                                        <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                                        <span className="leading-tight">
+                                           Rooms are already booked.
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {conflictRoom && (
+                            <div className="mt-2 flex flex-col space-y-1 py-1.5 px-2 bg-red-50 text-red-600 rounded-[4px] border border-red-100 text-[11px] sm:text-xs">
+                                <div className="flex items-start space-x-1.5">
+                                    <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                                    <span className="leading-tight">
+                                        Rooms are already booked
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+
+                        {(isDelayedCheckout || isEarlyCheckin) && (
+                            <div className="mt-2 space-y-1">
                                 <Label htmlFor="audit-comment" className="text-sm font-semibold text-foreground">
                                     Comment <span className="text-red-500">*</span>
                                 </Label>
@@ -1735,7 +1818,7 @@ export default function BookingsManagement() {
                                         "w-full rounded-[4px] border-primary/40 bg-background text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
                                         auditCommentError && "border-red-500"
                                     )}
-                                    rows={2}
+                                    rows={1}
                                 />
                                 {auditCommentError && (
                                     <p className="text-xs text-red-500 mt-1">
@@ -1749,13 +1832,24 @@ export default function BookingsManagement() {
                                 </div>
                             </div>
                             
-                            <div className="pt-4 mt-4">
-                                <p className="text-sm text-muted-foreground pb-2">
+                            <div className="pt-2 mt-2">
+                                <p className="text-xs text-muted-foreground pb-1">
                                     This action may affect availability, billing, and reports.
                                 </p>
                             </div>
 
-                            <div className="flex justify-end gap-3 pt-6 border-t border-border mt-2 shrink-0">
+                            {updateApiError && (
+                                <div className="mt-1 flex flex-col space-y-1 py-1.5 px-2 bg-red-50 text-red-600 rounded-[4px] border border-red-100 text-[11px] sm:text-xs">
+                                    <div className="flex items-start space-x-1.5">
+                                        <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                                        <span className="leading-tight">
+                                            {updateApiError}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="flex justify-end gap-3 pt-3 border-t border-border mt-1 shrink-0">
                                 <Button
                                     variant="heroOutline"
                                     onClick={resetStatusConfirmation}
@@ -1766,8 +1860,9 @@ export default function BookingsManagement() {
                                 <Button
                                     variant="hero"
                                     onClick={handleUpdateBooking}
+                                    disabled={isDelayedCheckoutBlocked || !!conflictRoom}
                                 >
-                                    Yes, Update Status
+                                    Update
                                 </Button>
                             </div>
                         </div>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
     Sheet,
     SheetContent,
@@ -19,6 +20,7 @@ import {
     useGetStaffByPropertyQuery,
     useGetLogsQuery as useGetAuditLogsQuery,
     useGetLogsByTableQuery,
+    useGetBookingsQuery,
 } from "@/redux/services/hmsApi";
 import { useAppSelector } from "@/redux/hook";
 import { cn } from "@/lib/utils";
@@ -30,7 +32,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { usePermission } from "@/rbac/usePermission";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarRangePicker } from "@/components/ui/grid-toolbar";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Download, FilterX, Pencil, Plus, RefreshCcw, User, Phone, MapPin, Calendar, Clock, ClipboardList, Info, Building2, Package, Globe, UserCheck, DollarSign, ListTodo, Activity } from "lucide-react";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { exportToExcel } from "@/utils/exportToExcel";
@@ -120,7 +122,6 @@ type Enquiry = {
 const ENQUIRY_STATUS_OPTIONS: Array<{ label: string; value: EnquiryStatus }> = [
     { label: "Open", value: "open" },
     { label: "Follow Up", value: "follow_up" },
-    { label: "Reserved", value: "reserved" },
     { label: "Booked", value: "booked" },
     { label: "Closed", value: "closed" },
     { label: "Cancelled", value: "cancelled" },
@@ -220,6 +221,10 @@ function getAuditChangeText(log: any, plainText = false) {
             formattedDetails.before["Booking"] = before.booking_id ? `BO${before.booking_id}` : "None";
             formattedDetails.after["Booking"] = after.booking_id ? `BO${after.booking_id}` : "None";
         }
+        if (before.booking_shift_comment !== after.booking_shift_comment) {
+            formattedDetails.before["Comment"] = before.booking_shift_comment || "None";
+            formattedDetails.after["Comment"] = after.booking_shift_comment || "None";
+        }
 
         if (plainText) {
             return getAuditChangePlainText(formattedDetails);
@@ -240,6 +245,7 @@ export default function EnquiriesManagement() {
     const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
     const [historyPage, setHistoryPage] = useState(1);
     const [historyLimit, setHistoryLimit] = useState(25);
+
 
     const [activeTab, setActiveTab] = useState<"enquiry" | "audit">("enquiry");
     const [auditSearchInput, setAuditSearchInput] = useState("");
@@ -267,6 +273,15 @@ export default function EnquiriesManagement() {
     const [searchInput, setSearchInput] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState<EnquiryStatus | "">("");
+
+    const [bookingSheetOpen, setBookingSheetOpen] = useState(false);
+    const [selectedBookingId, setSelectedBookingId] = useState<string>("");
+    const [bookingShiftComment, setBookingShiftComment] = useState<string>("");
+
+    const { data: bookingsData, isLoading: bookingsLoading } = useGetBookingsQuery(
+        { propertyId: selectedPropertyId ?? 0, limit: 1000 },
+        { skip: !bookingSheetOpen || !selectedPropertyId }
+    );
 
     const { data: staffData } = useGetStaffByPropertyQuery({ 
         property_id: selectedPropertyId 
@@ -406,7 +421,30 @@ export default function EnquiriesManagement() {
     };
 
     const [getAllEnquiries, { isFetching: exportingEnquiries }] = useLazyExportPropertyEnquiriesQuery()
-    const [updateEnquiry] = useUpdateEnquiryMutation()
+    const [updateEnquiry, { isLoading: isUpdating }] = useUpdateEnquiryMutation()
+
+    const handleUpdateBookingId = async () => {
+        if (!selected) return;
+
+        if (!bookingShiftComment.trim()) {
+            toast.error("Comment is required");
+            return;
+        }
+
+        const payload = {
+            booking_id: selectedBookingId ? Number(selectedBookingId) : null,
+            booking_shift_comment: bookingShiftComment
+        };
+        try {
+            await updateEnquiry({ id: selected.id, payload }).unwrap();
+            toast.success("Booking ID updated successfully!");
+            setBookingSheetOpen(false);
+            setSelected({ ...selected, booking_id: payload.booking_id });
+            refetch();
+        } catch (error) {
+            toast.error("Failed to update booking ID");
+        }
+    };
 
     useEffect(() => {
         setPage(1);
@@ -1112,7 +1150,7 @@ export default function EnquiriesManagement() {
                             <div className="space-y-4">
                                 {sheetTab === "summary" && (
                                     <div className="space-y-4">
-                                        <CardSectionView title="Guest Profile" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                        <CardSectionView title="Guest Profile" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-4">
                                             <ViewField label="Guest Name" value={selected.guest_name} />
                                             <ViewField label="Mobile" value={selected.mobile} />
                                             <ViewField label="Email" value={selected.email} />
@@ -1121,14 +1159,41 @@ export default function EnquiriesManagement() {
                                             <ViewField label="Enquiry Type" value={selected.enquiry_type || "General"} />
                                         </CardSectionView>
 
-                                        <CardSectionView title="Stay Schedule" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                        <CardSectionView title="Stay Schedule" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-4">
                                             <ViewField label="Check In" value={selected.check_in ? formatAppDate(selected.check_in) : "—"} />
                                             <ViewField label="Check Out" value={selected.check_out ? formatAppDate(selected.check_out) : "—"} />
                                             <ViewField label="Selected Plan" value={selected.plan} />
                                             <ViewField label="Status" value={formatEnquiryStatus(selected.status)} />
+                                            <ViewField 
+                                                label="Booking ID" 
+                                                value={
+                                                    <div className="flex items-center gap-2">
+                                                        {selected.booking_id ? formatModuleDisplayId("booking", selected.booking_id) : "N/A"}
+                                                        <TooltipProvider>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <button 
+                                                                        onClick={() => {
+                                                                            setSelectedBookingId(selected.booking_id ? String(selected.booking_id) : "");
+                                                                            setBookingShiftComment(""); 
+                                                                            setBookingSheetOpen(true);
+                                                                        }}
+                                                                        className="rounded-[4px] border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white transition-all h-5 w-5 flex items-center justify-center shadow-sm"
+                                                                    >
+                                                                        <Pencil className="w-3 h-3 stroke-[2.5]" />
+                                                                    </button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>
+                                                                    {selected.booking_id ? "Update Booking ID" : "Set Booking ID"}
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
+                                                    </div>
+                                                } 
+                                            />
                                         </CardSectionView>
 
-                                        <CardSectionView title="Room Requirements" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                        <CardSectionView title="Room Requirements" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-4">
                                             {selected.room_details?.length ? (
                                                 selected.room_details.map((room, i) => (
                                                     <ViewField
@@ -1141,7 +1206,7 @@ export default function EnquiriesManagement() {
                                                 <ViewField
                                                     label="Room Requirements"
                                                     value="No specific room requirements documented."
-                                                    className="sm:col-span-2"
+                                                    className="sm:col-span-3"
                                                 />
                                             )}
                                             <ViewField label="Total Guests" value={`${selected.total_members || 0} Members • ${selected.child || 0} Children`} />
@@ -1350,6 +1415,7 @@ export default function EnquiriesManagement() {
                                             variant="heroOutline"
                                             className="h-10 px-6 text-xs font-bold flex items-center gap-2 bg-background shadow-sm hover:bg-primary/10 border-primary/30 text-primary"
                                             onClick={() => handleBook(selected)}
+                                            disabled={status !== "booked"}
                                         >
                                             <Plus className="w-4 h-4" /> Book Enquiry
                                         </Button>
@@ -1376,6 +1442,61 @@ export default function EnquiriesManagement() {
                             )}
                         </div>
                     </motion.div>
+                </SheetContent>
+            </Sheet>
+            {/* Booking ID Update Sheet */}
+            <Sheet open={bookingSheetOpen} onOpenChange={setBookingSheetOpen}>
+                <SheetContent side="right" className="w-full sm:max-w-md bg-background overflow-y-auto">
+                    <SheetHeader className="px-6 py-4 -mx-6 mb-3 border-b">
+                        <div className="space-y-0.5">
+                            <SheetTitle className="text-xl font-bold">Select Booking</SheetTitle>
+                            <p className="text-xs text-muted-foreground font-medium tracking-wide">
+                                Link an existing booking to this enquiry
+                            </p>
+                        </div>
+                    </SheetHeader>
+                    <div className="space-y-6">
+                        <div className="space-y-2 mt-4">
+                            <Label className="text-foreground">Booking ID</Label>
+                            <NativeSelect
+                                className="w-full h-11 bg-background shadow-none text-sm border-border/60"
+                                value={selectedBookingId}
+                                onChange={(e) => setSelectedBookingId(e.target.value)}
+                                disabled={bookingsLoading}
+                            >
+                                <option value="">--Please Select--</option>
+                                {bookingsData?.bookings?.map((b: any) => {
+                                    const guestText = b.guest_name ? ` - ${b.guest_name}` : "";
+                                    return (
+                                        <option key={b.id} value={b.id.toString()}>
+                                            {`Booking #${formatModuleDisplayId("booking", b.id)}${guestText}`}
+                                        </option>
+                                    );
+                                })}
+                            </NativeSelect>
+                        </div>
+                        <div className="space-y-2 mt-4">
+                            <Label className="text-foreground">Comment *</Label>
+                            <Textarea
+                                className="w-full bg-background shadow-none text-sm border-border/60 min-h-[80px]"
+                                value={bookingShiftComment}
+                                onChange={(e) => setBookingShiftComment(e.target.value)}
+                                disabled={bookingsLoading || isUpdating}
+                            />
+                        </div>
+                        <div className="flex gap-3 justify-end pt-4 border-t border-border mt-8">
+                            <Button variant="outline" className="h-10 px-6 font-semibold" onClick={() => setBookingSheetOpen(false)}>
+                                Cancel
+                            </Button>
+                            <Button 
+                                className="h-10 px-6 font-semibold bg-primary text-white hover:bg-primary/90" 
+                                onClick={handleUpdateBookingId}
+                                disabled={isUpdating}
+                            >
+                                {isUpdating ? "Saving..." : "Save"}
+                            </Button>
+                        </div>
+                    </div>
                 </SheetContent>
             </Sheet>
         </div>

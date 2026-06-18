@@ -144,7 +144,9 @@ class LaundryOrderController {
                 deliveryDate,
                 vendorStatus,
                 vendorId,
-                comments
+                comments,
+                staffReceivedBy,
+                guestReceivedBy
             } = req.body;
 
             const userId = req.user?.user_id;
@@ -157,7 +159,9 @@ class LaundryOrderController {
                 vendorStatus,
                 vendorId,
                 userId,
-                comments
+                comments,
+                staffReceivedBy,
+                guestReceivedBy
             });
 
             return res.json({

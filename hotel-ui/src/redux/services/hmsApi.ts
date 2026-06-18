@@ -676,6 +676,16 @@ export const hmsApi = createApi({
       providesTags: ["TodayInHouse"]
     }),
 
+    todayOccupiedBookingRooms: builder.query({
+      query: ({ propertyId }) => {
+        return {
+          url: `/bookings/${propertyId}/today-occupied-rooms`,
+          method: "GET",
+        }
+      },
+      providesTags: ["TodayInHouse"]
+    }),
+
     createBooking: builder.mutation({
       query: (payload) => {
         return {
@@ -1923,6 +1933,7 @@ export const {
   useUpdateEnquiryMutation,
   useGetAllPropertyVendorsQuery,
   useTodayInHouseBookingIdsQuery,
+  useTodayInHouseBookingRoomsQuery,
   useGetPropertyMenuQuery,
   useCreateMenuItemMutation,
   useUpdateMenuItemMutation,
@@ -1972,7 +1983,7 @@ export const {
   useUpdateStaffPasswordMutation,
   useCreateInventoryMasterBulkMutation,
   useBulkAdjustStockMutation,
-  useTodayInHouseBookingRoomsQuery,
+  useTodayOccupiedBookingRoomsQuery,
   useCreateMenuItemBulkMutation,
   useCheckDuplicateInventoryMutation,
   useCheckDuplicateKitchenInventoryMutation,

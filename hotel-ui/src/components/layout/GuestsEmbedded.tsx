@@ -260,6 +260,18 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest, onCl
                 guestErrors.first_name = "First name is required";
             }
 
+            if (!g.gender) {
+                guestErrors.gender = "Gender is required";
+            }
+
+            if (!g.id_type?.trim()) {
+                guestErrors.id_type = "ID Type is required";
+            }
+
+            if (!g.id_number?.trim()) {
+                guestErrors.id_number = "ID Number is required";
+            }
+
             // Only validate remaining fields for the Primary Guest (index 0)
             if (index === 0) {
                 if (g.phone) {
@@ -569,9 +581,9 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest, onCl
 
                             {/* Bio Section */}
                             <div className="space-y-1">
-                                <Label className="text-foreground">Gender</Label>
+                                <Label className="text-foreground">Gender *</Label>
                                 <NativeSelect
-                                    className="h-9 w-full rounded-[3px] border px-3 text-sm bg-background"
+                                    className={`h-9 w-full rounded-[3px] border px-3 text-sm bg-background ${errors[index]?.gender ? "border-red-500" : ""}`}
                                     value={g.gender ?? ""}
                                     onChange={(e) =>
                                         updateGuest(index, {
@@ -584,6 +596,7 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest, onCl
                                     <option value="FEMALE">Female</option>
                                     <option value="OTHER">Other</option>
                                 </NativeSelect>
+                                {errors[index]?.gender && <p className="text-[10px] text-red-500 mt-0.5">{errors[index].gender}</p>}
                             </div>
 
                             <div className="space-y-1">
@@ -661,9 +674,9 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest, onCl
 
                             {/* ID Section */}
                             <div className="space-y-1">
-                                <Label className="text-foreground">ID Type</Label>
+                                <Label className="text-foreground">ID Type *</Label>
                                 <NativeSelect
-                                    className="h-9 w-full rounded-[3px] border px-3 text-sm bg-background"
+                                    className={`h-9 w-full rounded-[3px] border px-3 text-sm bg-background ${errors[index]?.id_type ? "border-red-500" : ""}`}
                                     value={g.id_type ?? ""}
                                     onChange={(e) => updateGuest(index, { id_type: e.target.value })}
                                 >
@@ -675,15 +688,17 @@ export default function GuestsEmbedded({ bookingId, guestCount, totalGuest, onCl
                                     <option value="Voter ID">Voter ID</option>
                                     <option value="Apaar ID">Apaar ID</option>
                                 </NativeSelect>
+                                {errors[index]?.id_type && <p className="text-[10px] text-red-500 mt-0.5">{errors[index].id_type}</p>}
                             </div>
 
                             <div className="space-y-1">
-                                <Label className="text-foreground">ID Number</Label>
+                                <Label className="text-foreground">ID Number *</Label>
                                 <Input
-                                    className="h-9 bg-background"
+                                    className={`h-9 bg-background ${errors[index]?.id_number ? "border-red-500" : ""}`}
                                     value={g.id_number ?? ""}
                                     onChange={(e) => updateGuest(index, { id_number: normalizeTextInput(e.target.value) })}
                                 />
+                                {errors[index]?.id_number && <p className="text-[10px] text-red-500 mt-0.5">{errors[index].id_number}</p>}
                             </div>
 
                             <div className="space-y-1">

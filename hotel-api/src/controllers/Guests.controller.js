@@ -57,7 +57,17 @@ class GuestsController {
 
             const result = await GuestsService.getPrimaryGuestByBookingId(bookingId)
 
-            return res.status(200).json(result)
+            if (!result) {
+                return res.status(200).json(null)
+            }
+
+            return res.status(200).json({
+                id: result.id,
+                booking_id: result.booking_id,
+                first_name: result.first_name,
+                last_name: result.last_name,
+                phone: result.phone
+            })
 
         } catch (err) {
             console.error("getPrimaryGuestByBookingId:", err)

@@ -103,7 +103,7 @@ const isPrintableValue = (val: any): boolean => {
 const styles = StyleSheet.create({
   page: {
     padding: 24,
-    paddingBottom: 60,
+    paddingBottom: 75,
     fontFamily: "Helvetica",
     backgroundColor: "#ffffff",
     color: "#0f172a",
@@ -120,6 +120,14 @@ const styles = StyleSheet.create({
   propertyTitle: {
     fontSize: 16,
     fontWeight: "bold",
+    color: "#0f172a",
+  },
+  documentTitle: {
+    fontSize: 12,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 0,
+    marginTop: 0,
     color: "#0f172a",
   },
   propertyAddress: {
@@ -447,6 +455,19 @@ const styles = StyleSheet.create({
     color: "#94a3b8",
     textAlign: "center",
   },
+  signaturesContainer: {
+    position: "absolute",
+    bottom: 50,
+    left: 24,
+    right: 24,
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  signatureText: {
+    fontSize: 10,
+    fontWeight: "bold",
+    color: "#0f172a",
+  },
 });
 
 type Props = {
@@ -543,6 +564,9 @@ export default function BookingSummaryPDF({
             <Text style={styles.statusBadge}>{bookingStatus}</Text>
           </View>
         </View>
+
+        {/* Document Title */}
+        <Text style={styles.documentTitle}>Guest Registration</Text>
 
         {/* Side-by-Side Booking & Rooms */}
       
@@ -781,6 +805,12 @@ export default function BookingSummaryPDF({
             </Text>
           </View>
         )}
+
+        {/* Signatures */}
+        <View style={styles.signaturesContainer} fixed>
+          <Text style={styles.signatureText}>Auth. Sign</Text>
+          <Text style={styles.signatureText}>Guest Sign</Text>
+        </View>
 
         {/* Footer */}
         <View style={styles.footer} fixed>

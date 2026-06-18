@@ -36,10 +36,21 @@ class Booking {
         try {
             const propertyId = req.params.id
             const bookings = await BookingService.getTodayInHouseRoomsByProperty(propertyId)
-            return res.json(bookings)
+            res.json(bookings)
         } catch (error) {
             console.error("Booking Controller Error [getTodayInHouseRoomsByProperty]:", error)
-            return res.status(500).json({ message: "Error fetching bookings" })
+            res.status(500).json({ error: error.message || "Failed to fetch today inhouse rooms" })
+        }
+    }
+
+    async getTodayOccupiedRoomsByProperty(req, res) {
+        try {
+            const propertyId = req.params.id
+            const bookings = await BookingService.getTodayOccupiedRoomsByProperty(propertyId)
+            res.json(bookings)
+        } catch (error) {
+            console.error("Booking Controller Error [getTodayOccupiedRoomsByProperty]:", error)
+            res.status(500).json({ error: error.message || "Failed to fetch today occupied rooms" })
         }
     }
 

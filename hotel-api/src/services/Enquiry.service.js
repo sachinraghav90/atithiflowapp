@@ -33,6 +33,7 @@ const ENQUIRY_UPDATEABLE_COLUMNS = new Set([
     "alternate_check_in",
     "alternate_check_out",
     "alternate_room_details",
+    "booking_shift_comment",
 ]);
 
 function toSnakeCase(input) {

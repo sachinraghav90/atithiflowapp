@@ -107,12 +107,15 @@ const getFormattedAuditChangesRaw = (details: any, customParsers?: Record<string
         return (
             <div className="space-y-1">
                 {changes.map((change, i) => {
-                    const formattedKey = change.key.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+                    let formattedKey = change.key.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+                    if (change.key === 'booking_shift_comment') {
+                        formattedKey = 'Comment';
+                    }
                     const displayVal = formatAuditValue(change.newVal);
                     return (
                         <div key={i} className="mb-1 last:mb-0 text-sm">
                             <span className="font-semibold text-foreground/80">{formattedKey}:</span>{" "}
-                            <span className="text-primary font-medium">{displayVal}</span>
+                            <span className="text-primary font-medium">{displayVal || "--"}</span>
                         </div>
                     );
                 })}
@@ -225,9 +228,12 @@ export const getAuditChangePlainText = (details: any, customParsers?: Record<str
                     oldVal = customParsers[key](oldVal);
                     newVal = customParsers[key](newVal);
                 }
-                const formattedKey = key.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+                let formattedKey = key.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+                if (key === 'booking_shift_comment') {
+                    formattedKey = 'Comment';
+                }
                 const displayVal = formatAuditValue(newVal);
-                changes.push(`${formattedKey}: ${displayVal}`);
+                changes.push(`${formattedKey}: ${displayVal || "--"}`);
             }
         });
         if (changes.length === 0) return "--";

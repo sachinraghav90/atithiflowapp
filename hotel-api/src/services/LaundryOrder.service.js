@@ -450,7 +450,9 @@ class LaundryOrderService {
         userId,
         vendorStatus,
         vendorId,
-        comments
+        comments,
+        staffReceivedBy,
+        guestReceivedBy
     }) {
 
         /* ---------- GET BEFORE STATE ---------- */
@@ -476,22 +478,45 @@ class LaundryOrderService {
                 delivery_date = COALESCE($4, delivery_date),
                 vendor_status = COALESCE($6, vendor_status),
                 vendor_id = COALESCE($7, vendor_id),
+                staff_received_by = $8,
+                guest_received_by = $9,
                 updated_by = $5,
                 updated_on = NOW()
             WHERE id = $1
-              AND laundry_status NOT IN ('DELIVERED','CANCELLED')
+              AND laundry_status != 'CANCELLED'
             RETURNING *;
         `;
 
-        const { rows, rowCount } = await this.#DB.query(query, [
-            id,
-            laundryStatus,
-            pickupDate,
-            deliveryDate,
-            userId,
-            vendorStatus,
-            vendorId,
-        ]);
+        // enforce cleanup
+        let finalStaffReceivedBy = null;
+        let finalGuestReceivedBy = null;
+
+        const type = before.laundry_type ? before.laundry_type.toUpperCase() : "";
+
+        if (laundryStatus === "DELIVERED" || before.laundry_status === "DELIVERED") {
+            finalStaffReceivedBy = staffReceivedBy || null;
+            finalGuestReceivedBy = guestReceivedBy || null;
+        }
+
+        let rows, rowCount;
+        try {
+            const result = await this.#DB.query(query, [
+                id,
+                laundryStatus !== undefined ? laundryStatus : null,
+                pickupDate !== undefined ? pickupDate : null,
+                deliveryDate !== undefined ? deliveryDate : null,
+                userId !== undefined ? userId : null,
+                vendorStatus !== undefined ? vendorStatus : null,
+                vendorId !== undefined ? vendorId : null,
+                finalStaffReceivedBy,
+                finalGuestReceivedBy
+            ]);
+            rows = result.rows;
+            rowCount = result.rowCount;
+        } catch (err) {
+            console.error("SQL UPDATE ERROR:", err);
+            throw err;
+        }
 
         if (!rowCount) {
             throw new Error("Laundry order cannot be updated");
@@ -521,6 +546,14 @@ class LaundryOrderService {
 
         if ((before.comments || "") !== (after.comments || "")) {
             changes.push("Comments Updated");
+        }
+
+        if (before.staff_received_by !== after.staff_received_by) {
+            changes.push("Staff Received By Updated");
+        }
+
+        if (before.guest_received_by !== after.guest_received_by) {
+            changes.push("Guest Received By Updated");
         }
 
         /* ---------- AUDIT LOG ---------- */

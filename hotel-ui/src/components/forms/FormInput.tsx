@@ -31,6 +31,8 @@ type Props = {
     onChangeExtra?: (val: string) => void;
 
     maxLength?: number;
+    min?: number | string;
+    max?: number | string;
     prefix?: string;
     prefixControl?: ReactNode;
     className?: string;
@@ -51,6 +53,8 @@ export default function FormInput({
     onChangeExtra,
     transform,
     maxLength,
+    min,
+    max,
     prefix,
     prefixControl,
     className
@@ -91,6 +95,8 @@ export default function FormInput({
                     placeholder={placeholder}
                     title={hoverError}
                     maxLength={maxLength}
+                    min={min}
+                    max={max}
                     className={cn(
                         "h-11 rounded-[3px] border-border/70 bg-background text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
                         hasPrefix && "rounded-l-none border-l-0",

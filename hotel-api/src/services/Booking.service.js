@@ -696,13 +696,7 @@ class Booking {
                 const todayOnly = new Date(today);
                 todayOnly.setHours(0, 0, 0, 0);
 
-                if (arrivalDateOnly > todayOnly) {
-                    throw {
-                        code: "EARLY_CHECKIN_NOT_ALLOWED",
-                        message: "Early check-in is allowed only on the scheduled arrival date. For previous-day arrival, please duplicate this booking or create a new booking.",
-                        booking_id: bookingId
-                    };
-                }
+              
             }
 
             /* ------------------------------------------------ */
@@ -1004,6 +998,37 @@ class Booking {
 
             /* Only live room statuses */
             AND rd.room_status IN ('BOOKED', 'CHECKED_IN')
+
+            ORDER BY rr.room_no;
+        `;
+
+        const { rows } = await this.#DB.query(query, [propertyId]);
+
+        return rows;
+    }
+
+    async getTodayOccupiedRoomsByProperty(propertyId) {
+
+        const query = `
+            SELECT
+                b.id AS booking_id,
+                rr.room_no
+            FROM public.bookings b
+
+            JOIN public.room_details rd
+                ON rd.booking_id = b.id
+                AND COALESCE(rd.is_cancelled, false) = false
+                AND COALESCE(rd.is_changed, false) = false
+
+            JOIN public.ref_rooms rr
+                ON rr.id = rd.ref_room_id
+                AND rr.is_active = true
+
+            WHERE b.property_id = $1
+            AND b.is_active = true
+            AND b.booking_status IN ('CHECKED_IN', 'CONFIRMED')
+            AND b.estimated_arrival < date_trunc('day', now()) + interval '1 day'
+            AND COALESCE(b.actual_departure, b.estimated_departure) > date_trunc('day', now())
 
             ORDER BY rr.room_no;
         `;

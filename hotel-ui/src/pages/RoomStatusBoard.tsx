@@ -519,7 +519,7 @@ export default function RoomStatusBoard() {
                                 Cancel
                             </Button>
                             <Button variant="hero" onClick={handleSaveDirtyStatus} disabled={isUpdatingDirty}>
-                                {isUpdatingDirty ? "Saving..." : "Save"}
+                                {isUpdatingDirty ? "Updating..." : "Update"}
                             </Button>
                         </div>
                     </div>
@@ -601,9 +601,8 @@ function SummaryCard({
 }) {
     const dotColorClass = colorClass.replace("text-", "bg-");
     return (
-        <div className="bg-background rounded-md border border-border px-3 py-1.5 shadow-sm flex items-center justify-between">
+        <div className={cn("rounded-md border border-border px-3 py-1.5 shadow-sm flex items-center justify-between", dotColorClass)}>
             <div className="flex items-center gap-1.5 overflow-hidden mr-2">
-                <span className={cn("h-2 w-2 rounded-full shrink-0", dotColorClass)} />
                 <p className="text-[11px] font-bold text-muted-foreground tracking-wider truncate">{label}</p>
             </div>
             <h3 className="text-base font-bold text-foreground">{value}</h3>
