@@ -1179,6 +1179,8 @@ function ReservationManagementInner() {
                                     errors={reservationErrors}
                                     setErrors={setReservationErrors}
                                     required
+                                    type="number"
+                                    min={1}
                                     transform={normalizeNumberInput}
                                 />
 
@@ -1193,6 +1195,7 @@ function ReservationManagementInner() {
                                     errors={{}}
                                     setErrors={() => { }}
                                     type="number"
+                                    min={0}
                                 />
 
 
@@ -2225,11 +2228,9 @@ function ReservationManagementInner() {
                 </Sheet>
 
             {/* Additional Guest Details Side Sheet */}
-            {console.log("[Reservation] Rendering Side Sheet, showAdditionalGuestModal is:", showAdditionalGuestModal)}
             <Sheet 
                 open={showAdditionalGuestModal} 
                 onOpenChange={(isOpen) => {
-                    console.log("[Reservation] Side Sheet onOpenChange triggered:", isOpen);
                     if (!isOpen) {
                         setShowAdditionalGuestModal(false);
                         navigate("/bookings");

@@ -284,6 +284,16 @@ function getLaundryAuditChanges(audit: any, vendors?: Array<{ id: string | numbe
         formattedDetails.after["Laundry Status"] = formatDisplayStatus(after?.laundry_status);
     }
 
+    if (before?.staff_received_by !== after?.staff_received_by) {
+        formattedDetails.before["Staff - Received By"] = before?.staff_received_by || "—";
+        formattedDetails.after["Staff - Received By"] = after?.staff_received_by || "—";
+    }
+
+    if (before?.guest_received_by !== after?.guest_received_by) {
+        formattedDetails.before["Guest - Received By"] = before?.guest_received_by || "—";
+        formattedDetails.after["Guest - Received By"] = after?.guest_received_by || "—";
+    }
+
     if (before?.delivery_date !== after?.delivery_date) {
         formattedDetails.before["Delivery Date"] = before?.delivery_date ? formatDateTime(before.delivery_date) : "—";
         formattedDetails.after["Delivery Date"] = after?.delivery_date ? formatDateTime(after.delivery_date) : "—";
@@ -333,12 +343,23 @@ export default function LaundryOrdersManagement() {
     });
 
     const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
+    const [itemAuditPage, setItemAuditPage] = useState(1);
+    const [itemAuditLimit, setItemAuditLimit] = useState(5);
 
     useEffect(() => {
         if (viewItemsModal.open) {
             setSheetTab("summary");
         }
     }, [viewItemsModal.open]);
+
+    const { data: auditLogs } = useGetLogsQuery({
+        tableName: "laundry_orders",
+        eventId: viewItemsModal.order?.id,
+        page: itemAuditPage,
+        limit: itemAuditLimit,
+    }, {
+        skip: !viewItemsModal.order?.id || viewItemsModal.editMode || sheetTab !== "history" || !viewItemsModal.open
+    });
 
 
     const [statusModal, setStatusModal] = useState<{
@@ -782,12 +803,27 @@ export default function LaundryOrdersManagement() {
 
     const updateOrder = async () => {
         if (!editOrder) return;
+
+        const isHotelOrder = editOrder?.laundry_type === "Hotel" || editOrder?.laundryType === "Hotel" || !editOrder?.booking_id;
+        if (editOrder.laundry_status === "DELIVERED") {
+            if (!editOrder.guest_received_by) {
+                toast.error("Guest - Received By is required");
+                return;
+            }
+            if (!editOrder.staff_received_by) {
+                toast.error("Staff - Received By is required");
+                return;
+            }
+        }
+        
         apiToast(updateLaundryOrder({
             id: editOrder.id,
             vendorId: editOrder.vendor_id,
             vendorStatus: editOrder.vendor_status,
             laundryStatus: editOrder.laundry_status,
-            deliveryDate: editOrder.delivery_date
+            deliveryDate: editOrder.delivery_date,
+            staffReceivedBy: editOrder.staff_received_by,
+            guestReceivedBy: editOrder.guest_received_by
         }).unwrap(),
             "Laundry order updating successfully"
         )
@@ -1798,6 +1834,34 @@ export default function LaundryOrdersManagement() {
 
                                 return (
                                     <div className="space-y-6">
+                                        {!viewItemsModal.editMode && (
+                                            <div className="border-b border-border flex mb-4">
+                                                <button
+                                                    onClick={() => setSheetTab("summary")}
+                                                    className={cn(
+                                                        "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
+                                                        sheetTab === "summary"
+                                                            ? "border-primary text-primary"
+                                                            : "border-transparent text-muted-foreground hover:text-foreground"
+                                                    )}
+                                                >
+                                                    Summary
+                                                </button>
+                                                <button
+                                                    onClick={() => setSheetTab("history")}
+                                                    className={cn(
+                                                        "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
+                                                        sheetTab === "history"
+                                                            ? "border-primary text-primary"
+                                                            : "border-transparent text-muted-foreground hover:text-foreground"
+                                                    )}
+                                                >
+                                                    History
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {(viewItemsModal.editMode || sheetTab === "summary") && (
                                             <div className="space-y-5">
 
                                         {!viewItemsModal.editMode ? (
@@ -1808,6 +1872,12 @@ export default function LaundryOrdersManagement() {
                                                     <ViewField label="Laundry Status" value={<GridBadge status={order.laundry_status} statusType="laundry" className="h-6 px-2 text-[10px]">{displayOrder.laundryStatusLabel}</GridBadge>} />
                                                     <ViewField label="Pickup Date" value={formatDateTime(order.pickup_date)} />
                                                     <ViewField label="Delivery Date" value={formatDateTime(order.delivery_date)} />
+                                                    {order.laundry_status === "DELIVERED" && (
+                                                        <>
+                                                            <ViewField label="Staff - Received By" value={order.staff_received_by || "--"} />
+                                                            <ViewField label="Guest - Received By" value={order.guest_received_by || "--"} />
+                                                        </>
+                                                    )}
                                                 </CardSectionView>
                                             </div>
                                         ) : (
@@ -1924,6 +1994,51 @@ export default function LaundryOrdersManagement() {
                                                         )}
                                                     </div>
 
+                                                    {((viewItemsModal.editMode ? editOrder?.laundry_status : order.laundry_status) === "DELIVERED") && (
+                                                        <>
+                                                                <div className="space-y-2">
+                                                                    <Label className="text-foreground">Staff - Received By {viewItemsModal.editMode ? "*" : ""}</Label>
+                                                                    {viewItemsModal.editMode ? (
+                                                                        <Input
+                                                                            type="text"
+                                                                            className="h-10 text-sm focus:ring-1 focus:ring-primary shadow-none"
+                                                                            value={editOrder?.staff_received_by || ""}
+                                                                            onChange={(e) =>
+                                                                                setEditOrder(prev => ({
+                                                                                    ...prev,
+                                                                                    staff_received_by: e.target.value
+                                                                                }))
+                                                                            }
+                                                                        />
+                                                                    ) : (
+                                                                        <p className="py-2.5 px-0.5 text-sm font-semibold text-foreground">
+                                                                            {order.staff_received_by || "--"}
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <Label className="text-foreground">Guest - Received By {viewItemsModal.editMode ? "*" : ""}</Label>
+                                                                    {viewItemsModal.editMode ? (
+                                                                        <Input
+                                                                            type="text"
+                                                                            className="h-10 text-sm focus:ring-1 focus:ring-primary shadow-none"
+                                                                            value={editOrder?.guest_received_by || ""}
+                                                                            onChange={(e) =>
+                                                                                setEditOrder(prev => ({
+                                                                                    ...prev,
+                                                                                    guest_received_by: e.target.value
+                                                                                }))
+                                                                            }
+                                                                        />
+                                                                    ) : (
+                                                                        <p className="py-2.5 px-0.5 text-sm font-semibold text-foreground">
+                                                                            {order.guest_received_by || "--"}
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                        </>
+                                                    )}
+
                                                     <div className="space-y-2">
                                                         <Label className="text-foreground">Pickup Date</Label>
                                                         <p className="py-2.5 px-0.5 text-sm font-semibold text-foreground">
@@ -2013,6 +2128,59 @@ export default function LaundryOrdersManagement() {
                                             </div>
                                         </CardSectionView>
                                             </div>
+                                        )}
+
+                                        {!viewItemsModal.editMode && sheetTab === "history" && (
+                                            <div className="space-y-3">
+                                                {!auditLogs?.data?.length ? (
+                                                    <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
+                                                        <p className="text-xs text-muted-foreground italic">No recent activity logs.</p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="border border-border rounded-lg overflow-hidden bg-background shadow-sm">
+                                                            <AppDataGrid
+                                                                columns={[
+                                                                    { 
+                                                                        label: "Action",
+                                                                        cellClassName: "whitespace-nowrap",
+                                                                        render: (log: any) => getAuditActionBadge(log.event_type)
+                                                                    },
+                                                                    {
+                                                                        label: "Updated By",
+                                                                        cellClassName: "whitespace-nowrap",
+                                                                        render: (log: any) => `${log.user_first_name || ""} ${log.user_last_name || ""}`.trim() || "System"
+                                                                    },
+                                                                    { 
+                                                                        label: "Date & Time", 
+                                                                        headClassName: "text-white", 
+                                                                        cellClassName: "text-muted-foreground whitespace-nowrap min-w-[130px]",
+                                                                        render: (log: any) => formatAppDateTime(log.created_on) 
+                                                                    },
+                                                                    { 
+                                                                        label: "Changes", 
+                                                                        cellClassName: "py-2 min-w-[300px]",
+                                                                        render: (log: any) => getLaundryAuditChanges(log, vendors)
+                                                                    }
+                                                                ] as ColumnDef[]}
+                                                            data={auditLogs.data}
+                                                            rowKey={(log: any) => log.id}
+                                                            minWidth="600px"
+                                                            enablePagination
+                                                            paginationProps={{
+                                                                page: itemAuditPage,
+                                                                totalPages: auditLogs?.pagination?.totalPages ?? 1,
+                                                                setPage: setItemAuditPage,
+                                                                totalRecords: auditLogs?.pagination?.totalItems ?? auditLogs?.data?.length ?? 0,
+                                                                limit: itemAuditLimit,
+                                                                onLimitChange: (v) => { setItemAuditLimit(v); setItemAuditPage(1); },
+                                                                disabled: !auditLogs,
+                                                            }}
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
                                     </div>
                                 );
                             })()}

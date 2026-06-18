@@ -88,6 +88,9 @@ export function OrderItemsModal({
     defaultEditMode = false,
 }: Props) {
     const [editMode, setEditMode] = useState(false);
+    const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
+    const [itemAuditPage, setItemAuditPage] = useState(1);
+    const [itemAuditLimit, setItemAuditLimit] = useState(5);
     const [draftOrderStatus, setDraftOrderStatus] = useState("");
     const [draftPaymentStatus, setDraftPaymentStatus] = useState("");
     const [previewImage, setPreviewImage] = useState<{ url: string; name: string } | null>(null);
@@ -95,6 +98,7 @@ export function OrderItemsModal({
     useEffect(() => {
         if (open) {
             setEditMode(defaultEditMode);
+            setSheetTab("summary");
             return;
         }
 
@@ -103,6 +107,15 @@ export function OrderItemsModal({
 
     const { data, isLoading } = useGetOrderByIdQuery(orderId, {
         skip: !orderId || !open
+    });
+
+    const { data: auditLogs } = useGetAuditLogsQuery({
+        tableName: "restaurant_orders",
+        eventId: data?.id,
+        page: itemAuditPage,
+        limit: itemAuditLimit,
+    }, {
+        skip: !data?.id || editMode || sheetTab !== "history" || !open
     });
     const { data: propertyDetails } = useGetPropertyByIdQuery(Number(data?.property_id), {
         skip: !data?.property_id
@@ -281,6 +294,33 @@ export function OrderItemsModal({
                             )}
                         </div>
                     </SheetHeader>
+
+                {!editMode && (
+                    <div className="border-b border-border flex mb-4">
+                        <button
+                            onClick={() => setSheetTab("summary")}
+                            className={cn(
+                                "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
+                                sheetTab === "summary"
+                                    ? "border-primary text-primary"
+                                    : "border-transparent text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            Summary
+                        </button>
+                        <button
+                            onClick={() => setSheetTab("history")}
+                            className={cn(
+                                "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
+                                sheetTab === "history"
+                                    ? "border-primary text-primary"
+                                    : "border-transparent text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            History
+                        </button>
+                    </div>
+                )}
                 {isLoading && (
                     <div className="space-y-4 w-full animate-pulse px-1">
                         <div className="flex items-center gap-4 p-5 rounded-xl border border-border bg-accent/50 shadow-sm">
@@ -306,33 +346,182 @@ export function OrderItemsModal({
                         <div className="space-y-5">
                         {/* ================= INFORMATION GRID ================= */}
                         {!editMode ? (
-                            <div className="space-y-4">
-                                <CardSectionView title="Order Details" titleClassName="text-sm font-semibold text-primary/90 tracking-normal border-b-0 pb-0 mb-4" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-2.5">
-                                    <ViewField label="Order ID" value={`#${formatOrderDisplayId(data.id)}`} />
-                                    <ViewField label="Guest Name" value={data.guest_name || "Guest Order"} />
-                                    <ViewField label="Mobile Number" value={data.guest_mobile} />
-                                    <ViewField label="Order Type" value={data.order_type || "Restaurant"} />
-                                    {data.order_type === "Room Service" && (
-                                        <>
-                                            <ViewField label="Booking ID" value={formatModuleDisplayId("booking", data.booking_id)} />
-                                            <ViewField label="Room" value={data.room_no || "—"} />
-                                        </>
-                                    )}
-                                    {(data.order_type || "Restaurant") === "Restaurant" && (
-                                        <ViewField label="Table" value={data.table_no || "—"} />
-                                    )}
-                                    {data.order_type === "Delivery" && (
-                                        <ViewField label="Delivery Partner" value={data.delivery_partner_name || "—"} />
-                                    )}
-                                    <ViewField label="Expected Delivery" value={data.expected_delivery_time ? formatAppDateTime(data.expected_delivery_time) : "—"} />
-                                    <ViewField label="Order Date" value={formatAppDateTime(data.order_date)} />
-                                    {data.notes && (
-                                        <ViewField label="Order Notes" value={data.notes} className="sm:col-span-2 lg:col-span-3" />
-                                    )}
-                                    <ViewField label="Order Status" value={data.order_status} />
-                                    <ViewField label="Payment Status" value={data.payment_status} />
-                                </CardSectionView>
-                            </div>
+                            <>
+                                {sheetTab === "summary" && (
+                                    <>
+                                        <div className="space-y-4">
+                                            <CardSectionView title="Order Details" titleClassName="text-sm font-semibold text-primary/90 tracking-normal border-b-0 pb-0 mb-4" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-2.5">
+                                                <ViewField label="Order ID" value={`#${formatOrderDisplayId(data.id)}`} />
+                                                <ViewField label="Guest Name" value={data.guest_name || "Guest Order"} />
+                                                <ViewField label="Mobile Number" value={data.guest_mobile} />
+                                                <ViewField label="Order Type" value={data.order_type || "Restaurant"} />
+                                                {data.order_type === "Room Service" && (
+                                                    <>
+                                                        <ViewField label="Booking ID" value={formatModuleDisplayId("booking", data.booking_id)} />
+                                                        <ViewField label="Room" value={data.room_no || "—"} />
+                                                    </>
+                                                )}
+                                                {(data.order_type || "Restaurant") === "Restaurant" && (
+                                                    <ViewField label="Table" value={data.table_no || "—"} />
+                                                )}
+                                                {data.order_type === "Delivery" && (
+                                                    <ViewField label="Delivery Partner" value={data.delivery_partner_name || "—"} />
+                                                )}
+                                                <ViewField label="Expected Delivery" value={data.expected_delivery_time ? formatAppDateTime(data.expected_delivery_time) : "—"} />
+                                                <ViewField label="Order Date" value={formatAppDateTime(data.order_date)} />
+                                                {data.notes && (
+                                                    <ViewField label="Order Notes" value={data.notes} className="sm:col-span-2 lg:col-span-3" />
+                                                )}
+                                                <ViewField label="Order Status" value={data.order_status} />
+                                                <ViewField label="Payment Status" value={data.payment_status} />
+                                            </CardSectionView>
+                                        </div>
+
+                                        {/* ================= ITEMS SECTION ================= */}
+                                        <CardSectionView title="Items Ordered" titleClassName="text-sm font-semibold text-primary/90 tracking-normal border-b-0 pb-0 mb-4" className="mt-0">
+                                            <div className="border border-border rounded-lg overflow-hidden bg-background shadow-sm">
+                                                <AppDataGrid
+                                                    density="compact"
+                                                    scrollable={false}
+                                                    tableClassName="w-full"
+                                                    columns={[
+                                                        {
+                                                            label: "Item",
+                                                            headClassName: "w-[280px]",
+                                                            cellClassName: "font-medium min-w-[280px]",
+                                                            render: (item: any) => (
+                                                                <div className="space-y-0.5 py-1">
+                                                                    <p className="text-sm font-bold text-foreground">{item.item_name}</p>
+                                                                    {item.notes && (
+                                                                        <p className="text-[10px] font-normal text-muted-foreground italic flex items-center gap-1">
+                                                                            <InfoIcon className="w-3 h-3" />
+                                                                            Note: {item.notes}
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                            ),
+                                                        },
+                                                        {
+                                                            label: "Qty",
+                                                            headClassName: "text-center w-[60px]",
+                                                            cellClassName: "text-center min-w-[60px] font-semibold text-primary",
+                                                            render: (item: any) => item.quantity,
+                                                        },
+                                                        {
+                                                            label: "Price",
+                                                            headClassName: "text-right w-[100px]",
+                                                            cellClassName: "text-right min-w-[100px] text-muted-foreground",
+                                                            render: (item: any) => `₹${Number(item.unit_price).toFixed(2)}`,
+                                                        },
+                                                        {
+                                                            label: "Total",
+                                                            headClassName: "text-right w-[100px]",
+                                                            cellClassName: "text-right font-bold min-w-[100px] text-foreground",
+                                                            render: (item: any) => `₹${Number(item.item_total).toFixed(2)}`,
+                                                        },
+                                                    ] as ColumnDef[]}
+                                                    data={data.items ?? []}
+                                                    rowKey={(item: any, index) => item.id ?? index}
+                                                    minWidth="540px"
+                                                />
+                                                {Number(data.subtotal_amount) > 0 || Number(data.grand_total_amount) > 0 ? (
+                                                    <div className="flex justify-between items-end p-4 bg-muted/10 border-t border-border">
+                                                        <div className="flex-1 pb-1">
+                                                            <div className="text-[9px] leading-tight text-muted-foreground/80">
+                                                                Note :- **Order Total is rounded off for billing convenience.
+                                                            </div>
+                                                        </div>
+                                                        <div className="w-64 shrink-0 space-y-2">
+                                                            <div className="flex justify-between text-sm text-muted-foreground">
+                                                                <span>Sub Total</span>
+                                                                <span>₹{Number(data.subtotal_amount).toFixed(2)}</span>
+                                                            </div>
+                                                            <div className="flex justify-between text-sm text-muted-foreground">
+                                                                <span>CGST ({Number(data.cgst_rate || 0)}%)</span>
+                                                                <span>₹{Number(data.cgst_amount || 0).toFixed(2)}</span>
+                                                            </div>
+                                                            <div className="flex justify-between text-sm text-muted-foreground">
+                                                                <span>SGST ({Number(data.sgst_rate || 0)}%)</span>
+                                                                <span>₹{Number(data.sgst_amount || 0).toFixed(2)}</span>
+                                                            </div>
+                                                            <div className="flex justify-between text-sm font-bold text-foreground pt-2 border-t border-border/50">
+                                                                <span>Order Total</span>
+                                                                <span>₹{Math.round(Number(data.grand_total_amount)).toFixed(2)}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex justify-between items-end p-4 bg-muted/10 border-t border-border">
+                                                        <div className="flex-1 pb-1">
+                                                            <div className="text-[9px] leading-tight text-muted-foreground/80">
+                                                                Note :- **Order Total is rounded off for billing convenience.
+                                                            </div>
+                                                        </div>
+                                                        <div className="w-64 shrink-0 flex flex-col justify-end gap-2">
+                                                            <div className="flex justify-between text-sm font-bold text-foreground">
+                                                                <span>Order Total</span>
+                                                                <span>₹{Math.round(Number(data.total_amount)).toFixed(2)}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </CardSectionView>
+                                    </>
+                                )}
+                                
+                                {sheetTab === "history" && (
+                                    <div className="space-y-3">
+                                        {!auditLogs?.data?.length ? (
+                                            <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
+                                                <p className="text-xs text-muted-foreground italic">No recent activity logs.</p>
+                                            </div>
+                                        ) : (
+                                            <div className="border border-border rounded-lg overflow-hidden bg-background shadow-sm">
+                                                    <AppDataGrid
+                                                        columns={[
+
+                                                            { 
+                                                                label: "Action",
+                                                                cellClassName: "whitespace-nowrap",
+                                                                render: (log: any) => getAuditActionBadge(log.event_type)
+                                                            },
+                                                            {
+                                                                label: "Updated By",
+                                                                cellClassName: "whitespace-nowrap",
+                                                                render: (log: any) => `${log.user_first_name || ""} ${log.user_last_name || ""}`.trim() || "System"
+                                                            },
+                                                            { 
+                                                                label: "Date & Time", 
+                                                                headClassName: "text-white", 
+                                                                cellClassName: "text-muted-foreground whitespace-nowrap min-w-[130px]",
+                                                                render: (log: any) => formatAppDateTime(log.created_on) 
+                                                            },
+                                                            { 
+                                                                label: "Changes", 
+                                                                cellClassName: "py-2 min-w-[300px]",
+                                                                render: (log: any) => getAuditChangeText(parseAuditDetails(log.details), log) 
+                                                            }
+                                                        ] as ColumnDef[]}
+                                                    data={auditLogs.data}
+                                                    rowKey={(log: any) => log.id}
+                                                    minWidth="600px"
+                                                    enablePagination
+                                                    paginationProps={{
+                                                        page: itemAuditPage,
+                                                        totalPages: auditLogs?.pagination?.totalPages ?? 1,
+                                                        setPage: setItemAuditPage,
+                                                        totalRecords: auditLogs?.pagination?.totalItems ?? auditLogs?.data?.length ?? 0,
+                                                        limit: itemAuditLimit,
+                                                        onLimitChange: (v) => { setItemAuditLimit(v); setItemAuditPage(1); },
+                                                        disabled: !auditLogs,
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </>
                         ) : (
                             <div className="space-y-5">
                                 <CardSectionView title="Order Details" titleClassName="text-sm font-semibold text-primary/90 tracking-normal border-b-0 pb-0 mb-4" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-2.5">
@@ -389,97 +578,6 @@ export function OrderItemsModal({
                                 </div>
                             </div>
                         )}
-
-                        {/* ================= ITEMS SECTION ================= */}
-                        <CardSectionView title="Items Ordered" titleClassName="text-sm font-semibold text-primary/90 tracking-normal border-b-0 pb-0 mb-4" className="mt-0">
-                            <div className="border border-border rounded-lg overflow-hidden bg-background shadow-sm">
-                                <AppDataGrid
-                                    density="compact"
-                                    scrollable={false}
-                                    tableClassName="w-full"
-                                    columns={[
-                                        {
-                                            label: "Item",
-                                            headClassName: "w-[280px]",
-                                            cellClassName: "font-medium min-w-[280px]",
-                                            render: (item: any) => (
-                                                <div className="space-y-0.5 py-1">
-                                                    <p className="text-sm font-bold text-foreground">{item.item_name}</p>
-                                                    {item.notes && (
-                                                        <p className="text-[10px] font-normal text-muted-foreground italic flex items-center gap-1">
-                                                            <InfoIcon className="w-3 h-3" />
-                                                            Note: {item.notes}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            ),
-                                        },
-                                        {
-                                            label: "Qty",
-                                            headClassName: "text-center w-[60px]",
-                                            cellClassName: "text-center min-w-[60px] font-semibold text-primary",
-                                            render: (item: any) => item.quantity,
-                                        },
-                                        {
-                                            label: "Price",
-                                            headClassName: "text-right w-[100px]",
-                                            cellClassName: "text-right min-w-[100px] text-muted-foreground",
-                                            render: (item: any) => `₹${Number(item.unit_price).toFixed(2)}`,
-                                        },
-                                        {
-                                            label: "Total",
-                                            headClassName: "text-right w-[100px]",
-                                            cellClassName: "text-right font-bold min-w-[100px] text-foreground",
-                                            render: (item: any) => `₹${Number(item.item_total).toFixed(2)}`,
-                                        },
-                                    ] as ColumnDef[]}
-                                    data={data.items ?? []}
-                                    rowKey={(item: any, index) => item.id ?? index}
-                                    minWidth="540px"
-                                />
-                                {Number(data.subtotal_amount) > 0 || Number(data.grand_total_amount) > 0 ? (
-                                    <div className="flex justify-between items-end p-4 bg-muted/10 border-t border-border">
-                                        <div className="flex-1 pb-1">
-                                            <div className="text-[9px] leading-tight text-muted-foreground/80">
-                                                Note :- **Order Total is rounded off for billing convenience.
-                                            </div>
-                                        </div>
-                                        <div className="w-64 shrink-0 space-y-2">
-                                            <div className="flex justify-between text-sm text-muted-foreground">
-                                                <span>Sub Total</span>
-                                                <span>₹{Number(data.subtotal_amount).toFixed(2)}</span>
-                                            </div>
-                                            <div className="flex justify-between text-sm text-muted-foreground">
-                                                <span>CGST ({Number(data.cgst_rate || 0)}%)</span>
-                                                <span>₹{Number(data.cgst_amount || 0).toFixed(2)}</span>
-                                            </div>
-                                            <div className="flex justify-between text-sm text-muted-foreground">
-                                                <span>SGST ({Number(data.sgst_rate || 0)}%)</span>
-                                                <span>₹{Number(data.sgst_amount || 0).toFixed(2)}</span>
-                                            </div>
-                                            <div className="flex justify-between text-sm font-bold text-foreground pt-2 border-t border-border/50">
-                                                <span>Order Total</span>
-                                                <span>₹{Math.round(Number(data.grand_total_amount)).toFixed(2)}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="flex justify-between items-end p-4 bg-muted/10 border-t border-border">
-                                        <div className="flex-1 pb-1">
-                                            <div className="text-[9px] leading-tight text-muted-foreground/80">
-                                                Note :- **Order Total is rounded off for billing convenience.
-                                            </div>
-                                        </div>
-                                        <div className="w-64 shrink-0 flex flex-col justify-end gap-2">
-                                            <div className="flex justify-between text-sm font-bold text-foreground">
-                                                <span>Order Total</span>
-                                                <span>₹{Math.round(Number(data.total_amount)).toFixed(2)}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </CardSectionView>
                             </div>
 
                         <div className="flex justify-end gap-3 pt-4 border-t border-border mt-3">
