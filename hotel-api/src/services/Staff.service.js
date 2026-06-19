@@ -186,6 +186,7 @@ class Staff {
                 s.nationality,
                 s.country,
                 u.property_id,
+                u.property_limit,
 
                 /* ---------- VISA FIELDS (FLAT) ---------- */
                 CASE 
@@ -234,6 +235,7 @@ class Staff {
             GROUP BY
                 s.id,
                 u.property_id,
+                u.property_limit,
                 a.address_line_1,
                 vd.visa_number,
                 vd.issued_date,
@@ -404,6 +406,7 @@ class Staff {
                             "Nationality": staffPayload.nationality,
                             "Country": staffPayload.country,
                             "Address": address,
+                            "Property Limit": staffPayload.property_limit,
                             "Staff Photo": image ? "Updated" : undefined,
                             "ID Proof / Uploaded File": idProof ? "Updated" : undefined
                         }
@@ -556,6 +559,7 @@ class Staff {
                 checkAndAdd("Nationality", oldStaff.nationality, payload.nationality);
                 checkAndAdd("Country", oldStaff.country, payload.country);
                 checkAndAdd("Address", oldStaff.address, payload.address);
+                checkAndAdd("Property Limit", oldStaff.property_limit, payload.property_limit);
 
                 if (files?.image) {
                     before["Staff Photo"] = "-";

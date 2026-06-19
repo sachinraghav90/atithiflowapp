@@ -220,6 +220,10 @@ class Booking {
         created_by,
         drop,
         pickup,
+        pickup_time,
+        pickup_location,
+        drop_time,
+        drop_location,
         estimated_arrival_time
     }) {
         const client = await this.#DB.connect();
@@ -259,6 +263,10 @@ class Booking {
                 comments,
                 pickup,
                 drop,
+                pickup_time,
+                pickup_location,
+                drop_time,
+                drop_location,
                 estimated_arrival_time
             )
             VALUES (
@@ -266,7 +274,7 @@ class Booking {
                 $8,$9,($8::int + $9::int),
                 $10,$11,$12,
                 (DATE($7) - DATE($6)),
-                $13,$14,$15,$16,$17,$18,$19,$20,$21,$22
+                $13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26
             )
             RETURNING *
             `,
@@ -292,6 +300,10 @@ class Booking {
                     comments || "",
                     pickup,
                     drop,
+                    pickup_time || null,
+                    pickup_location || null,
+                    drop_time || null,
+                    drop_location || null,
                     estimated_arrival_time
                 ]
             );
@@ -451,6 +463,10 @@ class Booking {
 
             b.drop,
             b.pickup,
+            b.pickup_time,
+            b.pickup_location,
+            b.drop_time,
+            b.drop_location,
 
             COALESCE(paid.total_paid_amount, 0) AS paid_amount,
 

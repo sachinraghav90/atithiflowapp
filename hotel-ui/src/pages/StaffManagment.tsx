@@ -1215,6 +1215,9 @@ export default function StaffManagement() {
                                             <ViewField label="Shift Pattern" value={staff.shift_pattern || "General"} />
                                             <ViewField label="Employment Type" value={staff.employment_type} />
                                             <ViewField label="Joining Date" value={formatAppDate(staff.hire_date)} />
+                                            {String(roles?.roles?.find((r: Role) => String(r.id) === String(staff.role_ids?.[0]))?.name).toLowerCase() === "owner" && (
+                                                <ViewField label="Property Limit" value={staff.property_limit === null || staff.property_limit === "" ? "Unlimited" : staff.property_limit} />
+                                            )}
                                         </CardSectionView>
 
                                         <CardSectionView 

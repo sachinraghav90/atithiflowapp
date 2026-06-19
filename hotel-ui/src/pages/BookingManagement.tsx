@@ -120,16 +120,14 @@ const getCurrentTimeHHMM = () => {
     return `${hours}:${minutes}`;
 };
 
-const BOOKING_INSTRUCTIONS_WORD_LIMIT = 4000;
+const BOOKING_INSTRUCTIONS_WORD_LIMIT = 1000;
 
 const getWordCountFromHtml = (value: string) => {
     if (!value) return 0;
     const plainText = value
-        .replace(/<[^>]*>/g, " ")
-        .replace(/&nbsp;/gi, " ")
-        .trim();
-    if (!plainText) return 0;
-    return plainText.split(/\s+/).filter(Boolean).length;
+        .replace(/<[^>]*>/g, "")
+        .replace(/&nbsp;/gi, " ");
+    return plainText.length;
 };
 
 const isPrintableValue = (val: any): boolean => {
@@ -539,36 +537,76 @@ export default function BookingsManagement() {
         skip: !isLoggedIn || !bookingId
     })
 
-    const conflictRoom = useMemo(() => {
+    const checkInBeforeArrivalMsg = useMemo(() => {
         if (!selectedBooking) return null;
         if (normalizeBookingStatus(updatedStatus) !== "CHECKED_IN") return null;
+        if (!selectedBooking.booking.estimated_arrival) return null;
+        
+        const now = new Date();
+        const arrival = new Date(selectedBooking.booking.estimated_arrival);
+        const nowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const arrDate = new Date(arrival.getFullYear(), arrival.getMonth(), arrival.getDate());
+        
+        if (nowDate.getTime() < arrDate.getTime()) {
+            return "Check-In not possible before Arrival Date";
+        }
+        return null;
+    }, [selectedBooking, updatedStatus]);
+
+    const earlyCheckInConflictMsg = useMemo(() => {
+        if (!selectedBooking) return null;
+        if (normalizeBookingStatus(updatedStatus) !== "CHECKED_IN") return null;
+        if (!isEarlyCheckin) return null;
         if (!todayOccupiedRooms) return null;
         
         for (const room of selectedBooking.booking.rooms || []) {
             const conflict = Array.isArray(todayOccupiedRooms) ? todayOccupiedRooms.find((t: any) => String(t.room_no).trim() === String(room.room_no).trim() && String(t.booking_id).trim() !== String(selectedBooking.booking.id).trim()) : null;
             if (conflict) {
-                return conflict;
+                return "Rooms are already booked";
             }
         }
         return null;
-    }, [selectedBooking, updatedStatus, todayOccupiedRooms]);
+    }, [selectedBooking, updatedStatus, isEarlyCheckin, todayOccupiedRooms]);
 
-    const isDelayedCheckoutBlocked = useMemo(() => {
-        if (!isDelayedCheckout) return false;
-        if (!selectedBooking?.booking?.estimated_departure) return false;
-        if (normalizeBookingStatus(updatedStatus) !== "CHECKED_OUT") return false;
+    const checkOutAfterDepartureMsg = useMemo(() => {
+        if (!selectedBooking) return null;
+        if (normalizeBookingStatus(updatedStatus) !== "CHECKED_OUT") return null;
+        if (!selectedBooking.booking.estimated_departure) return null;
         
-        const today = new Date();
-        const estDeparture = new Date(selectedBooking.booking.estimated_departure);
+        const now = new Date();
+        const departure = new Date(selectedBooking.booking.estimated_departure);
+        const nowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const depDate = new Date(departure.getFullYear(), departure.getMonth(), departure.getDate());
         
-        const todayDate = new Date(today);
-        todayDate.setHours(0, 0, 0, 0);
+        if (nowDate.getTime() > depDate.getTime()) {
+            return "Check-Out not possible after Departure Date";
+        }
+        return null;
+    }, [selectedBooking, updatedStatus]);
+
+    const delayedCheckoutConflictMsg = useMemo(() => {
+        if (!selectedBooking) return null;
+        if (normalizeBookingStatus(updatedStatus) !== "CHECKED_OUT") return null;
+        if (!isDelayedCheckout) return null;
+        if (!todayOccupiedRooms) return null;
         
-        const estDepartureDate = new Date(estDeparture);
-        estDepartureDate.setHours(0, 0, 0, 0);
-        
-        return todayDate.getTime() !== estDepartureDate.getTime();
-    }, [isDelayedCheckout, updatedStatus, selectedBooking]);
+        const conflicts: string[] = [];
+        for (const room of selectedBooking.booking.rooms || []) {
+            const roomConflicts = Array.isArray(todayOccupiedRooms) ? todayOccupiedRooms.filter((t: any) => String(t.room_no).trim() === String(room.room_no).trim() && String(t.booking_id).trim() !== String(selectedBooking.booking.id).trim()) : [];
+            for (const c of roomConflicts) {
+                const formattedId = formatModuleDisplayId(c.booking_id, "BO");
+                if (!conflicts.includes(formattedId)) {
+                    conflicts.push(formattedId);
+                }
+            }
+        }
+        if (conflicts.length > 0) {
+            return `Rooms are already booked. Booking ID: ${conflicts.join(", ")}`;
+        }
+        return null;
+    }, [selectedBooking, updatedStatus, isDelayedCheckout, todayOccupiedRooms]);
+
+    const activeValidationMessage = checkInBeforeArrivalMsg || earlyCheckInConflictMsg || checkOutAfterDepartureMsg || delayedCheckoutConflictMsg;
 
     const normalizedUpdatedStatus = normalizeBookingStatus(updatedStatus);
     const requiresStatusTime = 
@@ -715,7 +753,7 @@ export default function BookingsManagement() {
 
 
 
-        if (isDelayedCheckoutBlocked) {
+        if (activeValidationMessage) {
             hasError = true;
         }
 
@@ -766,7 +804,7 @@ export default function BookingsManagement() {
                 toast.dismiss(toastId);
                 setUpdateApiError(errorMsg);
             } else {
-                toast.update(toastId, { render: errorMsg, type: "error", isLoading: false, autoClose: 4000 });
+                toast.update(toastId, { render: errorMsg, type: "error", isLoading: false, autoClose: 1000 });
                 resetStatusConfirmation();
             }
         }
@@ -880,6 +918,10 @@ export default function BookingsManagement() {
                     <ViewField label="Rooms Booked" value={booking?.rooms?.length || 0} />
                     <ViewField label="Arrival Time" value={arrivalTime} />
                     <ViewField label="Checked In On" value={booking?.actual_arrival ? formatToDDMMYY(booking.actual_arrival) : "—"} />
+                    {booking?.pickup_time && <ViewField label="Pickup Time" value={formatAppDateTime(booking.pickup_time)} />}
+                    {booking?.pickup_location && <ViewField label="Pickup Location" value={booking.pickup_location} />}
+                    {booking?.drop_time && <ViewField label="Drop Time" value={formatAppDateTime(booking.drop_time)} />}
+                    {booking?.drop_location && <ViewField label="Drop Location" value={booking.drop_location} />}
                     <ViewField label="Comments" value={booking?.comments || "No comments"} className="sm:col-span-2 lg:col-span-3" />
                 </CardSectionView>
             </div>
@@ -1769,33 +1811,12 @@ export default function BookingsManagement() {
                             </div>
                         )}
 
-                        {(isDelayedCheckout || isEarlyCheckin) && (
-                            <div className="mt-2 flex flex-col space-y-1 py-1.5 px-2 bg-red-50 text-red-600 rounded-[4px] border border-red-100 text-[11px] sm:text-xs">
-                                {isEarlyCheckin && (
-                                    <div className="flex items-start space-x-1.5">
-                                        <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-                                        <span className="leading-tight">
-                                           Note:Rooms are already booked.
-                                        </span>
-                                    </div>
-                                )}
-                                {isDelayedCheckout && (
-                                    <div className="flex items-start space-x-1.5">
-                                        <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-                                        <span className="leading-tight">
-                                           Rooms are already booked.
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {conflictRoom && (
+                        {activeValidationMessage && (
                             <div className="mt-2 flex flex-col space-y-1 py-1.5 px-2 bg-red-50 text-red-600 rounded-[4px] border border-red-100 text-[11px] sm:text-xs">
                                 <div className="flex items-start space-x-1.5">
                                     <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
                                     <span className="leading-tight">
-                                        Rooms are already booked
+                                        {activeValidationMessage}
                                     </span>
                                 </div>
                             </div>
@@ -1860,7 +1881,7 @@ export default function BookingsManagement() {
                                 <Button
                                     variant="hero"
                                     onClick={handleUpdateBooking}
-                                    disabled={isDelayedCheckoutBlocked || !!conflictRoom}
+                                    disabled={!!activeValidationMessage}
                                 >
                                     Update
                                 </Button>
@@ -1909,15 +1930,23 @@ export default function BookingsManagement() {
                                         value={instructionsDraft}
                                         onChange={setInstructionsDraft}
                                         className="min-h-[260px]"
+                                        maxLength={1000}
                                     />
-                                    <p className={cn(
-                                        "pointer-events-none absolute bottom-2 right-3 text-xs",
-                                        getWordCountFromHtml(instructionsDraft || "") > BOOKING_INSTRUCTIONS_WORD_LIMIT
-                                            ? "text-red-500"
-                                            : "text-muted-foreground"
-                                    )}>
-                                        {getWordCountFromHtml(instructionsDraft || "")}/{BOOKING_INSTRUCTIONS_WORD_LIMIT}
-                                    </p>
+                                    <div className="pointer-events-none absolute bottom-2 right-3 flex items-center gap-2">
+                                        {getWordCountFromHtml(instructionsDraft || "") >= BOOKING_INSTRUCTIONS_WORD_LIMIT && (
+                                            <span className="text-xs font-medium text-red-500">
+                                                Word limit reached.
+                                            </span>
+                                        )}
+                                        <p className={cn(
+                                            "text-xs",
+                                            getWordCountFromHtml(instructionsDraft || "") >= BOOKING_INSTRUCTIONS_WORD_LIMIT
+                                                ? "text-red-500"
+                                                : "text-muted-foreground"
+                                        )}>
+                                            {getWordCountFromHtml(instructionsDraft || "")}/{BOOKING_INSTRUCTIONS_WORD_LIMIT}
+                                        </p>
+                                    </div>
                                 </div>
                             </>
                         )}

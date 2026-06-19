@@ -265,6 +265,55 @@ class GuestsService {
         };
     }
 
+    async getGuestByPhone(phone, propertyId) {
+        // Normalize phone number (e.g., remove spaces and handle generic variations)
+        // Here we do a simple ILIKE or equality check. Since user specifically asked for handling '+91 9876544567' vs '9876544567',
+        // we can strip everything except digits from the input and do a LIKE check on the stored phone.
+        const cleanPhone = phone.replace(/\D/g, "");
+        if (!cleanPhone) return null;
+
+        const { rows } = await this.#DB.query(
+            `
+            SELECT
+                g.first_name,
+                g.middle_name,
+                g.last_name,
+                g.gender,
+                g.age,
+                g.phone,
+                g.email,
+                g.guest_type,
+                g.nationality,
+                g.country,
+                g.id_type,
+                g.id_number,
+                (g.id_proof IS NOT NULL) AS has_id_proof,
+                g.coming_from,
+                g.going_to,
+                g.emergency_contact,
+                g.emergency_contact_name,
+                a.address_line_1 AS address,
+
+                vd.visa_number,
+                vd.issued_date AS visa_issue_date,
+                vd.expiry_date AS visa_expiry_date
+
+            FROM public.guests g
+            ${this.#addressJoin()}
+            LEFT JOIN public.visa_details vd
+                ON vd.guest_id = g.id
+            WHERE g.property_id = $1
+            AND (g.phone LIKE '%' || $2 || '%' OR REPLACE(g.phone, ' ', '') LIKE '%' || $2 || '%')
+            AND g.is_active = true
+            ORDER BY g.updated_on DESC NULLS LAST, g.created_on DESC
+            LIMIT 1
+            `,
+            [Number(propertyId), cleanPhone]
+        );
+
+        return rows[0] || null;
+    }
+
     async getPrimaryGuestByBookingId(bookingId) {
 
         const { rows } = await this.#DB.query(

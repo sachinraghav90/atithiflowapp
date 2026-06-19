@@ -68,8 +68,8 @@ class Booking {
     async createBooking(req, res) {
         try {
             const created_by = req.user.user_id
-            const { property_id, package_id, booking_type, booking_status, booking_date, estimated_arrival, estimated_departure, adult, child, discount_type, rooms, discount, price_before_tax, discount_amount, price_after_discount, gst_amount, room_tax_amount, comments, pickup, drop } = req.body;
-            const booking = await BookingService.createBooking({ adult, booking_date, rooms, booking_status, booking_type, child, created_by, discount, discount_type, estimated_arrival, estimated_departure, package_id, property_id, discount_amount, gst_amount, comments, price_after_discount, price_before_tax, room_tax_amount, pickup, drop })
+            const { property_id, package_id, booking_type, booking_status, booking_date, estimated_arrival, estimated_departure, adult, child, discount_type, rooms, discount, price_before_tax, discount_amount, price_after_discount, gst_amount, room_tax_amount, comments, pickup, drop, pickup_time, pickup_location, drop_time, drop_location } = req.body;
+            const booking = await BookingService.createBooking({ adult, booking_date, rooms, booking_status, booking_type, child, created_by, discount, discount_type, estimated_arrival, estimated_departure, package_id, property_id, discount_amount, gst_amount, comments, price_after_discount, price_before_tax, room_tax_amount, pickup, drop, pickup_time, pickup_location, drop_time, drop_location })
             return res.status(201).json({ message: "Success", booking })
         } catch (error) {
             console.log("🚀 ~ Booking ~ createBooking ~ error:", error)

@@ -35,7 +35,8 @@ class StaffOnboardingService {
                 authUserId,
                 email: payload.email,
                 propertyId: payload.property_id,
-                created_by: createdBy
+                created_by: createdBy,
+                property_limit: payload.property_limit !== undefined && payload.property_limit !== "" ? payload.property_limit : null
             })
 
             /* ---------------------------------- */

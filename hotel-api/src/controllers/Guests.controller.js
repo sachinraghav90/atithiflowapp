@@ -35,6 +35,31 @@ class GuestsController {
     }
 
 
+    async getGuestByPhone(req, res) {
+        try {
+            const phone = req.query.phone;
+            const propertyId = req.query.propertyId;
+
+            if (!phone || !propertyId) {
+                return res.status(400).json({
+                    message: "Phone and propertyId are required"
+                });
+            }
+
+            const guest = await GuestsService.getGuestByPhone(phone, propertyId);
+
+            return res.status(200).json({
+                success: true,
+                guest: guest || null
+            });
+        } catch (err) {
+            console.error("getGuestByPhone error:", err);
+            return res.status(400).json({
+                message: err.message || "Failed to fetch guest details by phone"
+            });
+        }
+    }
+
     async getGuestsByBooking(req, res) {
         try {
             const bookingId = req.params.id

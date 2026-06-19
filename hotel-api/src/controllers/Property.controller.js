@@ -92,6 +92,9 @@ class Property {
       return res.status(201).json(property);
     } catch (err) {
       console.error("Property.create:", err);
+      if (err.statusCode === 400) {
+        return res.status(400).json({ success: false, message: err.message });
+      }
       return res.status(500).json({ error: "Failed to create property" });
     }
   }

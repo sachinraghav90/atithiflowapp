@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { useAppSelector } from "@/redux/hook";
 import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
-import { useAddGuestsByBookingMutation, useAvailableRoomsQuery, useCreateBookingMutation, useGetMyPropertiesQuery, useGetPackageByIdQuery, useGetPackagesByPropertyQuery, useGetPropertyTaxQuery, useGetRoomTypesQuery, useUpdateEnquiryMutation } from "@/redux/services/hmsApi";
+import { useAddGuestsByBookingMutation, useAvailableRoomsQuery, useCreateBookingMutation, useGetMyPropertiesQuery, useGetPackageByIdQuery, useGetPackagesByPropertyQuery, useGetPropertyTaxQuery, useGetRoomTypesQuery, useUpdateEnquiryMutation, useLazyGetGuestByPhoneQuery } from "@/redux/services/hmsApi";
 import { normalizeNumberInput, normalizeTextInput } from "@/utils/normalizeTextInput";
 import { toast } from "react-toastify";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -190,7 +190,11 @@ function ReservationManagementInner() {
     const [discountType, setDiscountType] = useState<"PERCENT" | "FLAT">("PERCENT");
     const [discount, setDiscount] = useState<number | "">("");
     const [pickup, setPickup] = useState(false)
+    const [pickupTime, setPickupTime] = useState<Date | null>(null)
+    const [pickupLocation, setPickupLocation] = useState("")
     const [drop, setDrop] = useState(false)
+    const [dropTime, setDropTime] = useState<Date | null>(null)
+    const [dropLocation, setDropLocation] = useState("")
 
     const [selectedRooms, setSelectedRooms] = useState<SelectedRoom[]>([]);
 
@@ -275,6 +279,81 @@ function ReservationManagementInner() {
 
     const [createBooking, { isLoading: isBooking, data: bookingData, isSuccess: bookingSuccess, isUninitialized: bookingUninitialized, reset }] = useCreateBookingMutation()
     const [createGuest] = useAddGuestsByBookingMutation()
+
+    const [getGuestByPhone, { isFetching: isFetchingGuestByPhone }] = useLazyGetGuestByPhoneQuery();
+
+    // Auto-fill guest logic
+    useEffect(() => {
+        // Skip lookup if not a new booking or if required fields are missing
+        if (!selectedPropertyId || !guest.phone) return;
+
+        // Do not auto-fetch if other guest details are already entered
+        const isAnyDetailFilled = 
+            guest.first_name || guest.middle_name || guest.last_name || 
+            guest.gender || guest.age || guest.email || guest.nationality || 
+            guest.coming_from || guest.going_to || guest.address || 
+            (guest.id_type && guest.id_type !== "Aadhaar Card") || guest.id_number || guest.emergency_contact || 
+            guest.emergency_contact_name || guest.visa_number || 
+            guest.visa_issue_date || guest.visa_expiry_date;
+
+        if (isAnyDetailFilled) return;
+
+        // Extract raw digits
+        const digits = guest.phone.replace(/\D/g, "");
+        if (digits.length < 8) return;
+
+        const handler = setTimeout(async () => {
+            try {
+                // Perform lookup
+                const phoneToSearch = guest.country_code ? `${guest.country_code} ${guest.phone}` : guest.phone;
+                const result = await getGuestByPhone({ phone: phoneToSearch, propertyId: selectedPropertyId }).unwrap();
+
+                // Double check if user hasn't started typing other fields while we were fetching
+                setGuest(prev => {
+                    const isAnyDetailFilledNow = 
+                        prev.first_name || prev.middle_name || prev.last_name || 
+                        prev.gender || prev.age || prev.email || prev.nationality || 
+                        prev.coming_from || prev.going_to || prev.address || 
+                        (prev.id_type && prev.id_type !== "Aadhaar Card") || prev.id_number || prev.emergency_contact || 
+                        prev.emergency_contact_name || prev.visa_number || 
+                        prev.visa_issue_date || prev.visa_expiry_date;
+
+                    // If user filled something during the fetch or if we have no result, do nothing
+                    if (isAnyDetailFilledNow || !result?.success || !result?.guest) {
+                        return prev;
+                    }
+
+                    const fetched = result.guest;
+                    return {
+                        ...prev,
+                        first_name: prev.first_name || fetched.first_name || "",
+                        middle_name: prev.middle_name || fetched.middle_name || "",
+                        last_name: prev.last_name || fetched.last_name || "",
+                        gender: prev.gender || fetched.gender || "",
+                        age: prev.age || fetched.age || "",
+                        email: prev.email || fetched.email || "",
+                        guest_type: prev.guest_type || fetched.guest_type || "ADULT",
+                        nationality: prev.nationality || fetched.nationality || "",
+                        country: prev.country || fetched.country || "",
+                        id_type: prev.id_type || fetched.id_type || "",
+                        id_number: prev.id_number || fetched.id_number || "",
+                        coming_from: prev.coming_from || fetched.coming_from || "",
+                        going_to: prev.going_to || fetched.going_to || "",
+                        emergency_contact: prev.emergency_contact || fetched.emergency_contact || "",
+                        emergency_contact_name: prev.emergency_contact_name || fetched.emergency_contact_name || "",
+                        address: prev.address || fetched.address || "",
+                        visa_number: prev.visa_number || fetched.visa_number || "",
+                        visa_issue_date: prev.visa_issue_date || fetched.visa_issue_date || "",
+                        visa_expiry_date: prev.visa_expiry_date || fetched.visa_expiry_date || ""
+                    };
+                });
+            } catch (err) {
+                // Ignore API errors for autofill
+            }
+        }, 600);
+
+        return () => clearTimeout(handler);
+    }, [guest.phone, guest.country_code, selectedPropertyId, getGuestByPhone]);
     const [updateEnquiry] = useUpdateEnquiryMutation()
 
     const validateReservation = () => {
@@ -508,7 +587,11 @@ function ReservationManagementInner() {
             room_tax_amount: billingDetails.roomTaxAmount,
             comments: acTypeComment,
             drop,
+            drop_time: drop && dropTime ? dropTime.toISOString() : null,
+            drop_location: drop ? dropLocation : null,
             pickup,
+            pickup_time: pickup && pickupTime ? pickupTime.toISOString() : null,
+            pickup_location: pickup ? pickupLocation : null,
             estimated_arrival_time: estimatedArrivalTime
         };
 
@@ -935,8 +1018,16 @@ function ReservationManagementInner() {
         if (b.discount_type) setDiscountType(b.discount_type);
 
         if (b.comments) setComments(b.comments);
-        if (b.pickup !== undefined) setPickup(!!b.pickup);
-        if (b.drop !== undefined) setDrop(!!b.drop);
+        if (b.pickup !== undefined) {
+            setPickup(!!b.pickup);
+            if (b.pickup_time) setPickupTime(new Date(b.pickup_time));
+            if (b.pickup_location) setPickupLocation(b.pickup_location);
+        }
+        if (b.drop !== undefined) {
+            setDrop(!!b.drop);
+            if (b.drop_time) setDropTime(new Date(b.drop_time));
+            if (b.drop_location) setDropLocation(b.drop_location);
+        }
 
         if (b.paid_amount !== undefined && b.paid_amount !== null) {
             setAdvancePayment(Number(b.paid_amount));
@@ -1084,7 +1175,7 @@ function ReservationManagementInner() {
                         <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="space-y-1"
+                            className=""
                         >
 
                     {/* =================== BOOKING FORM =================== */}
@@ -1094,7 +1185,7 @@ function ReservationManagementInner() {
                         </div>
                     )}
 
-                    <div className="space-y-1">
+                    <div className="space-y-0">
 
 
                         <CardSection title="Basic Booking Details" subtitle="Package, stay duration and guests">
@@ -1834,21 +1925,77 @@ function ReservationManagementInner() {
 
 
                                 {/* PICKUP TOGGLE */}
-
-                                <Toggle
-                                    label="Pickup"
-                                    checked={pickup}
-                                    onChange={setPickup}
-                                />
+                                <div className="space-y-4">
+                                    <Toggle
+                                        label="Pickup"
+                                        checked={pickup}
+                                        onChange={(val) => {
+                                            setPickup(val);
+                                            if (!val) {
+                                                setPickupTime(null);
+                                                setPickupLocation("");
+                                            }
+                                        }}
+                                    />
+                                    {pickup && (
+                                        <div className="space-y-4 pl-2 animate-in fade-in slide-in-from-top-2">
+                                            <div className="space-y-1">
+                                                <Label className="text-foreground">Pickup Time</Label>
+                                                <Input
+                                                    type="datetime-local"
+                                                    disabled={isBooking}
+                                                    value={pickupTime ? (new Date(pickupTime.getTime() - pickupTime.getTimezoneOffset() * 60000).toISOString().slice(0, 16)) : ""}
+                                                    onChange={(e) => setPickupTime(e.target.value ? new Date(e.target.value) : null)}
+                                                    className="h-11 rounded-[3px] border-border/70 bg-background text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0"
+                                                />
+                                            </div>
+                                            <FormInput
+                                                label="Pickup Location"
+                                                field="pickupLocation"
+                                                value={{ pickupLocation }}
+                                                setValue={(fn) => setPickupLocation(fn({ pickupLocation }).pickupLocation)}
+                                                viewMode={isBooking}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
 
 
                                 {/* DROP TOGGLE */}
-
-                                <Toggle
-                                    label="Drop"
-                                    checked={drop}
-                                    onChange={setDrop}
-                                />
+                                <div className="space-y-4">
+                                    <Toggle
+                                        label="Drop"
+                                        checked={drop}
+                                        onChange={(val) => {
+                                            setDrop(val);
+                                            if (!val) {
+                                                setDropTime(null);
+                                                setDropLocation("");
+                                            }
+                                        }}
+                                    />
+                                    {drop && (
+                                        <div className="space-y-4 pl-2 animate-in fade-in slide-in-from-top-2">
+                                            <div className="space-y-1">
+                                                <Label className="text-foreground">Drop Time</Label>
+                                                <Input
+                                                    type="datetime-local"
+                                                    disabled={isBooking}
+                                                    value={dropTime ? (new Date(dropTime.getTime() - dropTime.getTimezoneOffset() * 60000).toISOString().slice(0, 16)) : ""}
+                                                    onChange={(e) => setDropTime(e.target.value ? new Date(e.target.value) : null)}
+                                                    className="h-11 rounded-[3px] border-border/70 bg-background text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0"
+                                                />
+                                            </div>
+                                            <FormInput
+                                                label="Drop Location"
+                                                field="dropLocation"
+                                                value={{ dropLocation }}
+                                                setValue={(fn) => setDropLocation(fn({ dropLocation }).dropLocation)}
+                                                viewMode={isBooking}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
 
                             </Grid>
 

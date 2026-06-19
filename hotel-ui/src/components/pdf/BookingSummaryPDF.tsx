@@ -39,6 +39,22 @@ const money = (value: any) => {
   return num.toFixed(2);
 };
 
+const formatDateTime = (value: any) => {
+  if (!value) return "—";
+  const dateObj = new Date(value);
+  if (isNaN(dateObj.getTime())) return "—";
+  const d = String(dateObj.getDate()).padStart(2, "0");
+  const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+  const y = String(dateObj.getFullYear()).slice(-2);
+  let hours = dateObj.getHours();
+  const minutes = String(dateObj.getMinutes()).padStart(2, "0");
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  const h = String(hours).padStart(2, "0");
+  return `${d}/${m}/${y} ${h}:${minutes} ${ampm}`;
+};
+
 const formatDate = (value: any) => {
   if (!value) return "—";
   const dateObj = new Date(value);
@@ -115,7 +131,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#475569",
     paddingBottom: 8,
-    marginBottom: 12,
+    marginBottom: 6,
   },
   propertyTitle: {
     fontSize: 16,
@@ -575,7 +591,7 @@ export default function BookingSummaryPDF({
           <View style={!booking?.has_guest_image ? { width: "100%" } : { flex: 1, marginRight: 16 }}>
             <View style={styles.sectionContainer}>
               <Text style={styles.sectionTitle}>Booking Information</Text>
-            <View style={[styles.infoCard, styles.sideBySideCardCompact, { minHeight: 0, height: 110 }]}>
+              <View style={[styles.infoCard, styles.sideBySideCardCompact, { minHeight: 110, height: (booking?.pickup_time || booking?.pickup_location || booking?.drop_time || booking?.drop_location) ? "auto" : 110 }]}>
               <View style={styles.infoRow}>
                 <View style={styles.infoItem}>
                   <Text style={styles.infoLabel}>Primary Guest</Text>
@@ -635,6 +651,31 @@ export default function BookingSummaryPDF({
                     {hasData(booking?.rooms) ? booking.rooms.map((room: any) => getRoomDisplayData(room.room_no, allRoomsMeta).roomNo).join(", ") : "—"}
                   </Text>
                 </View>
+
+                {booking?.pickup_time && (
+                  <View style={styles.infoItem}>
+                    <Text style={styles.infoLabel}>Pickup Time</Text>
+                    <Text style={styles.infoValue}>{formatDateTime(booking.pickup_time)}</Text>
+                  </View>
+                )}
+                {booking?.pickup_location && (
+                  <View style={styles.infoItem}>
+                    <Text style={styles.infoLabel}>Pickup Location</Text>
+                    <Text style={styles.infoValue}>{safeText(booking.pickup_location)}</Text>
+                  </View>
+                )}
+                {booking?.drop_time && (
+                  <View style={styles.infoItem}>
+                    <Text style={styles.infoLabel}>Drop Time</Text>
+                    <Text style={styles.infoValue}>{formatDateTime(booking.drop_time)}</Text>
+                  </View>
+                )}
+                {booking?.drop_location && (
+                  <View style={styles.infoItem}>
+                    <Text style={styles.infoLabel}>Drop Location</Text>
+                    <Text style={styles.infoValue}>{safeText(booking.drop_location)}</Text>
+                  </View>
+                )}
               </View>
             </View>
             </View>
@@ -808,8 +849,8 @@ export default function BookingSummaryPDF({
 
         {/* Signatures */}
         <View style={styles.signaturesContainer} fixed>
-          <Text style={styles.signatureText}>Auth. Sign</Text>
-          <Text style={styles.signatureText}>Guest Sign</Text>
+          <Text style={styles.signatureText}>{"\u00A0\u00A0\u00A0\u00A0\u00A0Auth. Sign"}</Text>
+          <Text style={styles.signatureText}>{"Guest Sign\u00A0\u00A0\u00A0\u00A0\u00A0"}</Text>
         </View>
 
         {/* Footer */}

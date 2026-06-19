@@ -12,7 +12,7 @@ class User {
     /* CREATE USER (NO CHANGE)                               */
     /* ===================================================== */
 
-    async createUser({ authUserId, email, propertyId, created_by = null, is_active = true }) {
+    async createUser({ authUserId, email, propertyId, created_by = null, is_active = true, property_limit = null }) {
 
         const userResult = await this.#DB.query(
             `
@@ -22,12 +22,13 @@ class User {
                 property_id,
                 is_active,
                 created_by,
+                property_limit,
                 created_on
             )
-            VALUES ($1,$2,$3,$4,$5,now())
+            VALUES ($1,$2,$3,$4,$5,$6,now())
             RETURNING id
             `,
-            [authUserId, email, propertyId, is_active, created_by]
+            [authUserId, email, propertyId, is_active, created_by, property_limit]
         );
 
         return userResult.rows[0];
@@ -48,7 +49,8 @@ class User {
             "email",
             "property_id",
             "staff_id",
-            "is_active"
+            "is_active",
+            "property_limit"
         ]
 
         for (const key of ALLOWED_FIELDS) {
@@ -87,7 +89,8 @@ class User {
             SELECT
                 u.email,
                 u.property_id,
-                u.is_active
+                u.is_active,
+                u.property_limit
             FROM public.users u
             WHERE u.id = $1
             LIMIT 1
@@ -154,6 +157,7 @@ class User {
                 u.email,
                 u.property_id,
                 u.is_active,
+                u.property_limit,
                 u.created_on,
 
                 COALESCE(

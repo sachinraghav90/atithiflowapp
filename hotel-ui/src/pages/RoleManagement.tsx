@@ -278,7 +278,7 @@ export default function RoleManagement() {
         : false;
 
     async function sidebarPermissionUpdate(): Promise<void> {
-        if (!isDirty) return;
+        if (!isDirty || selectedRoleName === "SUPER_ADMIN") return;
         const { roleId, permissions } = sidebarPermissionPayload;
 
         const payloads = Object.entries(permissions).map(
@@ -487,6 +487,9 @@ export default function RoleManagement() {
                                             />
                                         )}
                                         </div>
+                                        {selectedRoleName === "SUPER_ADMIN" && (
+                                            <p className="text-[11px] text-muted-foreground mt-1">SUPER_ADMIN permissions are read-only and cannot be modified.</p>
+                                        )}
                                     </div>
                                 ) : (
                                     <div className="flex items-center gap-2">
@@ -520,7 +523,7 @@ export default function RoleManagement() {
                             </div>
 
                             <div className="flex gap-2">
-                                {!isEditingRoleName && permission?.can_create && <Button
+                                {!isEditingRoleName && permission?.can_create && selectedRoleName !== "SUPER_ADMIN" && <Button
                                     size="sm"
                                     variant="ghost"
                                     disabled={!isDirty}
@@ -529,7 +532,7 @@ export default function RoleManagement() {
                                     Reset
                                 </Button>}
 
-                                {!isEditingRoleName && permission?.can_create && <Button
+                                {!isEditingRoleName && permission?.can_create && selectedRoleName !== "SUPER_ADMIN" && <Button
                                     size="sm"
                                     variant="ghost"
                                     disabled={!isDirty}
@@ -580,7 +583,7 @@ export default function RoleManagement() {
                                                         <div className="relative flex items-center justify-center">
                                                             <input
                                                                 id={radioId}
-                                                                disabled={!permission?.can_create || (module.link_name === "Roles" && selectedRoleName === "SUPER_ADMIN") || (module.link_name === "Roles" && (action === "delete" || action === "write"))}
+                                                                disabled={!permission?.can_create || selectedRoleName === "SUPER_ADMIN" || (module.link_name === "Roles" && (action === "delete" || action === "write"))}
                                                                 type="radio"
                                                                 name={`perm-${module.id}`}
                                                                 className="w-3.5 h-3.5 cursor-pointer appearance-none rounded-full border border-primary/30 checked:border-primary checked:border-[4px] bg-transparent transition-all"

@@ -877,6 +877,14 @@ export const hmsApi = createApi({
       providesTags: ["Guests"]
     }),
 
+    getGuestByPhone: builder.query({
+      query: ({ phone, propertyId }) => ({
+        url: `/guests/by-phone`,
+        method: "GET",
+        params: { phone, propertyId }
+      })
+    }),
+
     getPrimaryGuestByBooking: builder.query({
       query: (booking_id) => {
         return {
@@ -1977,6 +1985,7 @@ export const {
   useAdjustStockMutation,
   useUpdateRoleNameMutation,
   useGetPrimaryGuestByBookingQuery,
+  useLazyGetGuestByPhoneQuery,
   useUploadBookingGuestImageMutation,
   useGetBookingGuestImageQuery,
   useDeleteBookingGuestImageMutation,

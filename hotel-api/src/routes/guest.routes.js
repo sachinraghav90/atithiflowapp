@@ -6,6 +6,7 @@ import GuestsController from '../controllers/Guests.controller.js'
 
 const router = express.Router()
 
+router.get("/by-phone", supabaseAuth, GuestsController.getGuestByPhone.bind(GuestsController));
 router.get("/:guestId/id-proof", GuestsController.viewGuestIdProof.bind(GuestsController));
 
 router.get("/:bookingId/primary", supabaseAuth, GuestsController.getPrimaryGuestByBookingId.bind(GuestsController));

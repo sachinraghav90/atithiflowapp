@@ -53,6 +53,15 @@ export default function PropertyRole({
         }
     }, [properties, isPrivilegeUser])
 
+    const selectedRoleId = value.role_ids?.[0];
+    const isOwnerRole = roles?.find(r => r.id === selectedRoleId)?.name?.toLowerCase() === "owner";
+
+    useEffect(() => {
+        if (!isOwnerRole && value.property_limit !== undefined && value.property_limit !== null) {
+            setValue((prev: any) => ({ ...prev, property_limit: null }));
+        }
+    }, [isOwnerRole, setValue, value.property_limit]);
+
     return (
         <div className="space-y-6 border border-border rounded-[5px] p-5 bg-transparent [&>h3+*]:!mt-4">
 
@@ -115,6 +124,25 @@ export default function PropertyRole({
                             ))}
                     </FormSelect>
                 </div>
+
+                {/* PROPERTY LIMIT */}
+                {isOwnerRole && (
+                    <div className="space-y-1">
+                        <FormInput
+                            label="Property Limit"
+                            field="property_limit"
+                            value={value}
+                            setValue={setValue}
+                            errors={errors}
+                            setErrors={setErrors}
+                            viewMode={viewMode}
+                            type="number"
+                            min="0"
+                            placeholder="Leave blank for unlimited properties."
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">Leave blank for unlimited properties.</p>
+                    </div>
+                )}
 
                 {/* EMPLOYMENT TYPE */}
                 <FormSelect

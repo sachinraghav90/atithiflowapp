@@ -243,6 +243,30 @@ class Property {
         const client = await this.#DB.connect();
 
         try {
+            // Check Property Limit
+            const ownerRes = await this.#DB.query(`SELECT property_limit FROM public.users WHERE id = $1 LIMIT 1`, [ownerUserId]);
+            if (ownerRes.rows.length > 0) {
+                const limit = ownerRes.rows[0].property_limit;
+                if (limit !== null) {
+                    const countRes = await this.#DB.query(`
+                        SELECT COUNT(p.id) as count
+                        FROM public.properties p
+                        JOIN public.property_users pu ON pu.property_id = p.id
+                        JOIN public.roles r ON r.id = pu.role_id
+                        WHERE pu.user_id = $1 
+                        AND LOWER(r.name) = 'owner'
+                        AND COALESCE(p.is_active, true) = true
+                    `, [ownerUserId]);
+                    
+                    const count = parseInt(countRes.rows[0].count, 10);
+                    if (count >= limit) {
+                        const err = new Error("Property limit reached for this owner. Please increase the owner’s property limit before adding another property.");
+                        err.statusCode = 400;
+                        throw err;
+                    }
+                }
+            }
+
             await client.query("BEGIN");
 
             const {

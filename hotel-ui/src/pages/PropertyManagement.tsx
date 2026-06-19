@@ -750,34 +750,43 @@ export default function PropertyManagement() {
             success: mode === 'add'
                 ? 'Property created successfully'
                 : 'Property updated successfully',
-            error: 'Something went wrong',
+            error: {
+                render({ data }: any) {
+                    return data?.data?.message || data?.message || 'Something went wrong'
+                }
+            }
         })
 
-        const { id } = await promise
+        try {
+            const { id } = await promise
 
-        if (hasBankDetails) {
-            await upsertPropertyBank({
-                propertyId: id,
-                accounts: bankAccounts,
-                deletedIds: deletedBankIds,
+            if (hasBankDetails) {
+                await upsertPropertyBank({
+                    propertyId: id,
+                    accounts: bankAccounts,
+                    deletedIds: deletedBankIds,
+                }).unwrap();
+            }
+
+            await bulkUpsertFloors({
+                property_id: id,
+                floors: newProperty.floors.map((f) => ({
+                    floor_number: f.floor_number,
+                    rooms_count: f.total_rooms,
+                })),
+                prefix: newProperty.serial_suffix
             }).unwrap();
+            
+            if (mode === "add") {
+                navigate("/rooms", {
+                    state: { propertyId: id }
+                })
+            }
+            setSheetOpen(false)
+            setDeletedBankIds([]);
+        } catch (error) {
+            console.error("Property action failed:", error);
         }
-
-        await bulkUpsertFloors({
-            property_id: id,
-            floors: newProperty.floors.map((f) => ({
-                floor_number: f.floor_number,
-                rooms_count: f.total_rooms,
-            })),
-            prefix: newProperty.serial_suffix
-        }).unwrap();
-        if (mode === "add") {
-            navigate("/rooms", {
-                state: { propertyId: id }
-            })
-        }
-        setSheetOpen(false)
-        setDeletedBankIds([]);
     }
 
     function syncFloors(totalFloors: number) {
