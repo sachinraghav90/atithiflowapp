@@ -35,6 +35,7 @@ type Props = {
     max?: number | string;
     prefix?: string;
     prefixControl?: ReactNode;
+    defaultValue?: any;
     className?: string;
 };
 
@@ -57,6 +58,7 @@ export default function FormInput({
     max,
     prefix,
     prefixControl,
+    defaultValue,
     className
 }: Props) {
 
@@ -91,7 +93,7 @@ export default function FormInput({
                     disabled={viewMode}
                     type={type}
                     autoComplete={autoComplete ?? (type === "password" ? "new-password" : "off")}
-                    value={value[field] ?? ""}
+                    value={value[field] ?? defaultValue ?? ""}
                     placeholder={placeholder}
                     title={hoverError}
                     maxLength={maxLength}

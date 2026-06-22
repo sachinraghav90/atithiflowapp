@@ -79,6 +79,7 @@ class PropertyFloorService {
                 updated_at = now()
             RETURNING id
             `,
+            values
         );
 
         try {

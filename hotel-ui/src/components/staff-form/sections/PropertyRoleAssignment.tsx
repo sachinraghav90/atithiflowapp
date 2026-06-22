@@ -129,6 +129,7 @@ export default function PropertyRole({
                 {isOwnerRole && (
                     <div className="space-y-1">
                         <FormInput
+                        defaultValue={0}
                             label="Property Limit"
                             field="property_limit"
                             value={value}
@@ -138,9 +139,9 @@ export default function PropertyRole({
                             viewMode={viewMode}
                             type="number"
                             min="0"
-                            placeholder="Leave blank for unlimited properties."
+                            placeholder=""
                         />
-                        <p className="text-xs text-muted-foreground mt-1">Leave blank for unlimited properties.</p>
+                      
                     </div>
                 )}
 

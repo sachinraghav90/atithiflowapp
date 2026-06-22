@@ -441,7 +441,7 @@ export default function RoleManagement() {
                         <TableBody>
                             {!allRolesLoading && !allRolesUninitialized && !allRolesError && allRolesData?.roles.map((role: any) => (
                                 <TableRow key={role.id} className="hover:bg-primary/[0.05] border-border/40 transition-colors">
-                                    <TableCell className="font-medium text-foreground">{role.name}</TableCell>
+                                    <TableCell className="font-medium text-foreground">{role.name === 'SUPER_ADMIN' ? 'SUPER ADMIN' : role.name}</TableCell>
                                     <TableCell className="text-right">
                                         <Button
                                             size="sm"
@@ -477,7 +477,7 @@ export default function RoleManagement() {
                                        <p className="text-xs text-muted-foreground font-medium tracking-wide">Managing Access For</p>
                                         <div className="flex items-center gap-2">
                                             <h2 className="text-xl font-bold text-primary">
-                                                {selectedRoleName}
+                                                {selectedRoleName === 'SUPER_ADMIN' ? 'SUPER ADMIN' : selectedRoleName}
                                             </h2>
 
                                         {permission?.can_create && !(selectedRoleName === "SUPER_ADMIN" || selectedRoleName === "ADMIN" || selectedRoleName === "OWNER") && (
@@ -488,7 +488,7 @@ export default function RoleManagement() {
                                         )}
                                         </div>
                                         {selectedRoleName === "SUPER_ADMIN" && (
-                                            <p className="text-[11px] text-muted-foreground mt-1">SUPER_ADMIN permissions are read-only and cannot be modified.</p>
+                                            <p className="text-[11px] text-muted-foreground mt-1">SUPER ADMIN permissions are read-only and cannot be modified.</p>
                                         )}
                                     </div>
                                 ) : (
