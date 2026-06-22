@@ -135,12 +135,43 @@ class Property {
         }
 
         if (search) {
-            where.push(`(
-            p.brand_name ILIKE $${idx}
-            OR pa.city ILIKE $${idx}
-        )`);
-            values.push(`%${search}%`);
-            idx++;
+            const normalizedSearch = search.trim();
+            const formattedIdMatch = normalizedSearch.match(/^pr0*(\d+)$/i);
+            const isNumericIdSearch = /^\d+$/.test(normalizedSearch);
+
+            if (formattedIdMatch || isNumericIdSearch) {
+                const rawId = formattedIdMatch ? formattedIdMatch[1] : normalizedSearch;
+                const propertyId = Number(rawId);
+
+                where.push(`(
+                    p.id = $${idx}
+                    OR p.brand_name ILIKE $${idx+1}
+                    OR pa.city ILIKE $${idx+1}
+                    OR pa.state ILIKE $${idx+1}
+                    OR u.email ILIKE $${idx+1}
+                    OR s.first_name ILIKE $${idx+1}
+                    OR s.last_name ILIKE $${idx+1}
+                    OR p.email ILIKE $${idx+1}
+                    OR p.phone ILIKE $${idx+1}
+                    OR p.serial_number ILIKE $${idx+1}
+                )`);
+                values.push(propertyId, `%${normalizedSearch}%`);
+                idx += 2;
+            } else {
+                where.push(`(
+                    p.brand_name ILIKE $${idx}
+                    OR pa.city ILIKE $${idx}
+                    OR pa.state ILIKE $${idx}
+                    OR u.email ILIKE $${idx}
+                    OR s.first_name ILIKE $${idx}
+                    OR s.last_name ILIKE $${idx}
+                    OR p.email ILIKE $${idx}
+                    OR p.phone ILIKE $${idx}
+                    OR p.serial_number ILIKE $${idx}
+                )`);
+                values.push(`%${normalizedSearch}%`);
+                idx++;
+            }
         }
 
         const whereClause = where.length
@@ -169,7 +200,9 @@ class Property {
                 p.checkin_time,
                 p.checkout_time,
                 p.is_active,
-                --p.owner_user_id,
+                p.owner_user_id,
+                u.email AS owner_email,
+                CONCAT_WS(' ', s.first_name, s.last_name) AS owner_name,
                 p.created_by,
                 p.created_on,
                 p.updated_by,
@@ -208,6 +241,8 @@ class Property {
             FROM public.properties p
             ${accessJoin}
             ${this.#addressJoins()}
+            LEFT JOIN public.users u ON u.id = p.owner_user_id
+            LEFT JOIN public.staff s ON s.id::varchar = u.staff_id
             ${whereClause}
 
             ORDER BY p.id DESC
@@ -222,6 +257,8 @@ class Property {
             FROM public.properties p
             ${accessJoin}
             ${this.#addressJoins()}
+            LEFT JOIN public.users u ON u.id = p.owner_user_id
+            LEFT JOIN public.staff s ON s.id::varchar = u.staff_id
             ${whereClause}
             `,
                 values

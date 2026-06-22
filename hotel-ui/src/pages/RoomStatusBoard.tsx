@@ -262,8 +262,8 @@ export default function RoomStatusBoard() {
     usePermission(pathname)
     const { permission: bookingPermission } = usePermission("/bookings", { autoRedirect: false })
 
-    const currentlyDirtyRooms = data?.rooms.filter(r => dirtyStatuses[r.ref_room_id.toString()]) || [];
-    const initialDirtyRooms = data?.rooms.filter(r => r.dirty) || [];
+    const currentlyDirtyRooms = data?.rooms?.filter(r => dirtyStatuses[r.ref_room_id.toString()]) || [];
+    const initialDirtyRooms = data?.rooms?.filter(r => r.dirty) || [];
 
     const hasZeroProperties = (isSuperAdmin || isOwner) && myProperties?.properties && myProperties.properties.length === 0;
 
@@ -358,7 +358,7 @@ export default function RoomStatusBoard() {
                         {/* ---------- Rooms (4 columns) ---------- */}
                         <div className="lg:col-span-4">
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5">
-                            {data?.rooms.map((room) => {
+                            {data?.rooms?.map((room) => {
                                 const uiStatus = getRoomUiStatus(room);
 
                                 return (

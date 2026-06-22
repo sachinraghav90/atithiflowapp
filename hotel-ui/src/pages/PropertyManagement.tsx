@@ -12,7 +12,7 @@ import {
 import { AppDataGrid, DataGrid, DataGridHeader, DataGridRow, DataGridHead, DataGridCell, type ColumnDef } from "@/components/ui/data-grid";
 import { TableCell } from "@/components/ui/table";
 import { Building2, FilterX, Image as ImageIcon, Pencil, RefreshCcw, Download } from "lucide-react";
-import { useAddPropertyBySuperAdminMutation, useAddPropertyMutation, useBulkUpsertPropertyFloorsMutation, useGetMeQuery, useGetPropertiesQuery, useGetPropertyBanksQuery, useGetPropertyFloorsQuery, useLazyGetUsersByPropertyAndRoleQuery, useLazyGetUsersByRoleQuery, useUpdatePropertiesMutation, useUpsertPropertyBanksMutation, useGetLogsQuery as useGetAuditLogsQuery, useGetLogsByTableQuery } from "@/redux/services/hmsApi";
+import { useAddPropertyBySuperAdminMutation, useAddPropertyMutation, useBulkUpsertPropertyFloorsMutation, useGetMeQuery, useGetPropertiesQuery, useLazyGetPropertiesQuery, useGetPropertyBanksQuery, useGetPropertyFloorsQuery, useLazyGetUsersByPropertyAndRoleQuery, useLazyGetUsersByRoleQuery, useUpdatePropertiesMutation, useUpsertPropertyBanksMutation, useGetLogsQuery as useGetAuditLogsQuery, useGetLogsByTableQuery } from "@/redux/services/hmsApi";
 import { useDebounce } from "@/hooks/use-debounce";
 import { toast } from "react-toastify";
 import { useAppSelector } from "@/redux/hook";
@@ -36,7 +36,7 @@ import PropertyCorporate from "@/components/property-form/sections/PropertyCorpo
 import { usePermission } from "@/rbac/usePermission";
 import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
-import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
+import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarSpacer, GridToolbarSearchSelect } from "@/components/ui/grid-toolbar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { getStatusColor } from "@/constants/statusColors";
@@ -185,6 +185,7 @@ export default function PropertyManagement() {
     const [propertyErrors, setPropertyErrors] = useState<Record<string, FieldError>>({});
 
     const debouncedSearch = useDebounce(searchQuery, 500)
+    const debouncedCity = useDebounce(city, 500)
     // const isLoggedIn = useSelector((state: any) => state.isLoggedIn.value);
     const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
 
@@ -193,6 +194,52 @@ export default function PropertyManagement() {
     const [addProperty] = useAddPropertyMutation()
     const [addPropertySuperAdmin] = useAddPropertyBySuperAdminMutation()
     const [updateProperty] = useUpdatePropertiesMutation()
+    const [getAllProperties, { isFetching: exportingProperties }] = useLazyGetPropertiesQuery();
+
+    const handleExport = async () => {
+        if (exportingProperties) return;
+        if (!properties?.pagination?.totalItems && !properties?.data?.length) {
+            toast.info("No data to export");
+            return;
+        }
+
+        const toastId = toast.loading("Preparing properties export...");
+        try {
+            const res = await getAllProperties({
+                page: 1,
+                limit: 1000,
+                search: debouncedSearch || undefined,
+                is_active: statusFilter === "active" ? "true" : statusFilter === "inactive" ? "false" : undefined,
+                city: debouncedCity || undefined,
+                state: stateFilter || undefined,
+                country: country || undefined,
+            }).unwrap();
+
+            if (!res?.data?.length) {
+                toast.dismiss(toastId);
+                toast.info("No data to export");
+                return;
+            }
+
+            const formatted = res.data.map((item: any) => ({
+                "Property ID": formatModuleDisplayId("property", item.id),
+                "Property Name": item.brand_name,
+                "City": item.city || "--",
+                "State": item.state || "--",
+                "Owner": item.owner_email || item.owner_name || "--",
+                "Email": item.email || "--",
+                "Phone": item.phone || "--",
+                "Status": item.is_active ? "Active" : "Inactive",
+            }));
+
+            exportToExcel(formatted, "Properties.xlsx");
+            toast.dismiss(toastId);
+            toast.success("Export completed");
+        } catch (error) {
+            toast.dismiss(toastId);
+            toast.error("Failed to export properties");
+        }
+    };
 
     const {
         data: properties,
@@ -206,7 +253,7 @@ export default function PropertyManagement() {
         limit,
         search: debouncedSearch || undefined,
         is_active: statusFilter === "active" ? "true" : statusFilter === "inactive" ? "false" : undefined,
-        city: city || undefined,
+        city: debouncedCity || undefined,
         state: stateFilter || undefined,
         country: country || undefined,
     }, {
@@ -1008,11 +1055,32 @@ export default function PropertyManagement() {
                                     ]}
                                 />
 
-                                <GridToolbarSpacer />
+                                <GridToolbarSearchSelect
+                                    label="City"
+                                    value={city}
+                                    onChange={(val) => {
+                                        setCity(val as string);
+                                        setPage(1);
+                                    }}
+                                    options={[
+                                        { label: "All", value: "" },
+                                        ...(Array.from(new Set(properties?.data?.map((p: any) => p.city).filter(Boolean))).map(c => ({
+                                            label: String(c),
+                                            value: String(c),
+                                        })) || [])
+                                    ]}
+                                />
+
 
                                 <GridToolbarActions
                                     className="gap-1 justify-end"
                                     actions={[
+                                        {
+                                            key: "export",
+                                            label: "Export Properties",
+                                            icon: <Download className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: handleExport,
+                                        },
                                         {
                                             key: "reset",
                                             label: "Reset Filters",
@@ -1063,14 +1131,26 @@ export default function PropertyManagement() {
                                     ),
                                 },
                                 {
-                                    label: "Address",
+                                    label: "City",
                                     cellClassName: "text-muted-foreground text-sm",
                                     render: (property: Property) => (
-                                        <div>
-                                            {property.city}, {property.state}
-                                        </div>
+                                        <div>{property.city}</div>
                                     ),
                                 },
+                                {
+                                    label: "State",
+                                    cellClassName: "text-muted-foreground text-sm",
+                                    render: (property: Property) => (
+                                        <div>{property.state}</div>
+                                    ),
+                                },
+                                ...(isSuperAdmin ? [{
+                                    label: "Owner",
+                                    cellClassName: "text-muted-foreground text-sm",
+                                    render: (property: any) => (
+                                        <div>{property.owner_name || property.owner_email || "-"}</div>
+                                    ),
+                                }] : []),
                                 {
                                     label: "Email",
                                     key: "email",

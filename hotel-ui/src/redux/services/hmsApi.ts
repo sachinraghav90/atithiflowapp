@@ -1865,6 +1865,7 @@ export const {
   usePostRoleSidebarLinkMutation,
   useCreateRoleMutation,
   useGetPropertiesQuery,
+  useLazyGetPropertiesQuery,
   useUpdatePropertiesMutation,
   useAddPropertyMutation,
   useAddPropertyBySuperAdminMutation,
