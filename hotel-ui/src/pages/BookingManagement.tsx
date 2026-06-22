@@ -318,7 +318,13 @@ export default function BookingsManagement() {
     const [statusTime, setStatusTime] = useState("");
     const [statusTimeError, setStatusTimeError] = useState("");
     const [isEarlyCheckin, setIsEarlyCheckin] = useState(false);
+    const [earlyCheckinAmount, setEarlyCheckinAmount] = useState("");
+    const [earlyCheckinAmountError, setEarlyCheckinAmountError] = useState("");
+
     const [isDelayedCheckout, setIsDelayedCheckout] = useState(false);
+    const [delayedCheckoutAmount, setDelayedCheckoutAmount] = useState("");
+    const [delayedCheckoutAmountError, setDelayedCheckoutAmountError] = useState("");
+
     const [auditComment, setAuditComment] = useState("");
 
     const { data: todayOccupiedRooms } = useTodayOccupiedBookingRoomsQuery({ propertyId }, { skip: !propertyId });
@@ -659,7 +665,11 @@ export default function BookingsManagement() {
         setStatusTime("");
         setStatusTimeError("");
         setIsEarlyCheckin(false);
+        setEarlyCheckinAmount("");
+        setEarlyCheckinAmountError("");
         setIsDelayedCheckout(false);
+        setDelayedCheckoutAmount("");
+        setDelayedCheckoutAmountError("");
         setAuditComment("");
         setAuditCommentError("");
         setUpdateApiError("");
@@ -757,14 +767,32 @@ export default function BookingsManagement() {
             hasError = true;
         }
 
-        if (isEarlyCheckin && !auditComment.trim()) {
-            setAuditCommentError("Comment is required for Early Check-In");
-            hasError = true;
+        if (isEarlyCheckin) {
+            if (!auditComment.trim()) {
+                setAuditCommentError("Comment is required for Early Check-In");
+                hasError = true;
+            }
+            if (!earlyCheckinAmount.trim()) {
+                setEarlyCheckinAmountError("Amount is required");
+                hasError = true;
+            } else if (Number(earlyCheckinAmount) < 0) {
+                setEarlyCheckinAmountError("Amount must be >= 0");
+                hasError = true;
+            }
         }
 
-        if (isDelayedCheckout && !auditComment.trim()) {
-            setAuditCommentError("Comment is required for Delayed Checkout");
-            hasError = true;
+        if (isDelayedCheckout) {
+            if (!auditComment.trim()) {
+                setAuditCommentError("Comment is required for Delayed Checkout");
+                hasError = true;
+            }
+            if (!delayedCheckoutAmount.trim()) {
+                setDelayedCheckoutAmountError("Amount is required");
+                hasError = true;
+            } else if (Number(delayedCheckoutAmount) < 0) {
+                setDelayedCheckoutAmountError("Amount must be >= 0");
+                hasError = true;
+            }
         }
 
         if (hasError) return;
@@ -778,6 +806,7 @@ export default function BookingsManagement() {
             payload.actual_arrival = needsStatusTime ? selectedTimestamp : selectedBooking.booking.actual_arrival;
             if (isEarlyCheckin) {
                 payload.is_early_checkin = true;
+                payload.earlyCheckinAmount = Number(earlyCheckinAmount);
                 payload.audit_comment = auditComment.trim();
             }
         }
@@ -786,6 +815,7 @@ export default function BookingsManagement() {
             payload.actual_departure = needsStatusTime ? selectedTimestamp : selectedBooking.booking.actual_departure;
             if (isDelayedCheckout) {
                 payload.is_delayed_checkout = true;
+                payload.delayedCheckoutAmount = Number(delayedCheckoutAmount);
                 payload.audit_comment = auditComment.trim();
             }
         }
@@ -900,6 +930,12 @@ export default function BookingsManagement() {
                     <ViewField label="Paid Amount" value={`₹ ${totalPaid}`} />
                     <ViewField label="Remaining Balance" value={`₹ ${Math.abs(remaining)}`} />
                     <ViewField label="Discount" value={`₹ ${booking?.discount_amount || 0}`} />
+                    {+(booking?.early_checkin_amount || 0) > 0 && (
+                        <ViewField label="Early Check-In Amount" value={`₹ ${booking.early_checkin_amount}`} />
+                    )}
+                    {+(booking?.delayed_checkout_amount || 0) > 0 && (
+                        <ViewField label="Delayed Checkout Amount" value={`₹ ${booking.delayed_checkout_amount}`} />
+                    )}
                 </CardSectionView>
 
                 <CardSectionView 
@@ -1664,6 +1700,12 @@ export default function BookingsManagement() {
                 onOpenChange={(open) => {
                     if (open) {
                         setConfirmStatusOpen(true);
+                        if (selectedBooking?.booking?.early_checkin_amount) {
+                            setEarlyCheckinAmount(selectedBooking.booking.early_checkin_amount.toString());
+                        }
+                        if (selectedBooking?.booking?.delayed_checkout_amount) {
+                            setDelayedCheckoutAmount(selectedBooking.booking.delayed_checkout_amount.toString());
+                        }
                         return;
                     }
 
@@ -1784,12 +1826,39 @@ export default function BookingsManagement() {
                                         onCheckedChange={(checked) => {
                                             setIsEarlyCheckin(!!checked);
                                             setAuditCommentError("");
+                                            setEarlyCheckinAmountError("");
                                         }}
                                     />
                                     <Label htmlFor="early-checkin-checkbox" className="text-sm cursor-pointer">
                                         Early Check-In
                                     </Label>
                                 </div>
+                                {isEarlyCheckin && (
+                                    <div className="mt-2 space-y-1">
+                                        <Label htmlFor="early-checkin-amount" className="text-sm font-semibold text-foreground">
+                                            Amount (₹)
+                                        </Label>
+                                        <Input
+                                            id="early-checkin-amount"
+                                            type="number"
+                                            min="0"
+                                            value={earlyCheckinAmount}
+                                            onChange={(e) => {
+                                                setEarlyCheckinAmount(e.target.value);
+                                                setEarlyCheckinAmountError("");
+                                            }}
+                                            className={cn(
+                                                "h-10 w-full sm:w-[calc(50%-0.5rem)] rounded-[4px] border-primary/40 bg-background text-sm font-semibold shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
+                                                earlyCheckinAmountError && "border-red-500"
+                                            )}
+                                        />
+                                        {earlyCheckinAmountError && (
+                                            <p className="text-xs text-red-500 mt-1">
+                                                {earlyCheckinAmountError}
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -1802,12 +1871,39 @@ export default function BookingsManagement() {
                                         onCheckedChange={(checked) => {
                                             setIsDelayedCheckout(!!checked);
                                             setAuditCommentError("");
+                                            setDelayedCheckoutAmountError("");
                                         }}
                                     />
                                     <Label htmlFor="delayed-checkout-checkbox" className="text-sm cursor-pointer">
                                         Delayed Checkout
                                     </Label>
                                 </div>
+                                {isDelayedCheckout && (
+                                    <div className="mt-2 space-y-1">
+                                        <Label htmlFor="delayed-checkout-amount" className="text-sm font-semibold text-foreground">
+                                            Amount (₹)
+                                        </Label>
+                                        <Input
+                                            id="delayed-checkout-amount"
+                                            type="number"
+                                            min="0"
+                                            value={delayedCheckoutAmount}
+                                            onChange={(e) => {
+                                                setDelayedCheckoutAmount(e.target.value);
+                                                setDelayedCheckoutAmountError("");
+                                            }}
+                                            className={cn(
+                                                "h-10 w-full sm:w-[calc(50%-0.5rem)] rounded-[4px] border-primary/40 bg-background text-sm font-semibold shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
+                                                delayedCheckoutAmountError && "border-red-500"
+                                            )}
+                                        />
+                                        {delayedCheckoutAmountError && (
+                                            <p className="text-xs text-red-500 mt-1">
+                                                {delayedCheckoutAmountError}
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         )}
 

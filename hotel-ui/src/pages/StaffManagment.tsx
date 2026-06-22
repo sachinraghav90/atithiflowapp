@@ -101,6 +101,8 @@ type Staff = {
     nationality?: string;
     country?: string;
     property_id?: string | number;
+    property_ids?: (string | number)[];
+    assigned_properties?: any[];
     properties?: Property[];
     roles?: Role[];
     phone?: string;
@@ -143,6 +145,7 @@ const STAFF_INITIAL_VALUE: Staff = {
     id_proof: null,
     user_id: "",
     property_id: "",
+    property_ids: [],
     // visa fields (for foreigner)
     visa_number: "",
     visa_issue_date: "",
@@ -643,6 +646,9 @@ export default function StaffManagement() {
                 role_ids: fullStaff.roles?.length
                     ? [String(fullStaff.roles[0].id)]
                     : [],
+                property_ids: fullStaff.assigned_properties?.length 
+                    ? fullStaff.assigned_properties.map((p: any) => p.id) 
+                    : (fullStaff.property_id ? [fullStaff.property_id] : []),
                 hire_date: toDateInput(fullStaff.hire_date),
                 dob: toDateInput(fullStaff.dob),
                 image: null,
@@ -821,7 +827,7 @@ export default function StaffManagement() {
                                 onClick={() => {
                                     setMode("add");
                                     setSheetTab("summary");
-                                    setStaff({ ...STAFF_INITIAL_VALUE, property_id: selectedPropertyId || "" });
+                                    setStaff({ ...STAFF_INITIAL_VALUE, property_id: selectedPropertyId || "", property_ids: selectedPropertyId ? [selectedPropertyId] : [] });
                                     setFormErrors({});
                                     setSheetOpen(true);
                                 }}
@@ -1127,7 +1133,7 @@ export default function StaffManagement() {
                             </div>
                         </SheetHeader>
 
-                        <div className="px-6 pb-6 pt-4 flex-1">
+                        <div className="px-6 pb-6 pt-4 flex-1 space-y-5">
                         {viewMode ? (
 
                             <div className="space-y-4">
@@ -1195,10 +1201,23 @@ export default function StaffManagement() {
                                         >
                                             <ViewField 
                                                 label="Property" 
+                                                className="col-span-full"
                                                 value={
-                                                    (myProperties?.properties?.find((p: Property) => String(p.id) === String(staff.property_id))?.brand_name) || 
-                                                    (String(staffProperty?.id) === String(staff.property_id) ? staffProperty?.brand_name : null) || 
-                                                    staff.property_id
+                                                    <div className="flex flex-wrap gap-2 p-2.5 bg-background rounded-[3px] border border-border/50 max-h-32 overflow-y-auto w-full">
+                                                        {staff.assigned_properties && staff.assigned_properties.length > 0
+                                                            ? staff.assigned_properties.map((p: any, idx: number) => (
+                                                                <GridBadge key={idx} tone="neutral" className="font-medium px-2 py-0.5 h-auto">
+                                                                    {p.name || p.brand_name}
+                                                                </GridBadge>
+                                                            ))
+                                                            : staff.property_ids && staff.property_ids.length > 0
+                                                                ? staff.property_ids.map((id, idx) => (
+                                                                    <GridBadge key={idx} tone="neutral" className="font-medium px-2 py-0.5 h-auto">
+                                                                        {myProperties?.properties?.find((p: Property) => String(p.id) === String(id))?.brand_name || id}
+                                                                    </GridBadge>
+                                                                ))
+                                                                : "-"}
+                                                    </div>
                                                 } 
                                             />
                                             <ViewField label="Department" value={staff.department} />

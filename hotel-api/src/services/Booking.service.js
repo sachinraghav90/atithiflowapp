@@ -449,6 +449,8 @@ class Booking {
             b.gst_amount,
             b.room_tax_amount,
             b.final_amount,
+            b.early_checkin_amount,
+            b.delayed_checkout_amount,
 
             b.cancellation_fee,
             b.is_no_show,
@@ -657,6 +659,10 @@ class Booking {
         actual_departure,
         is_early_checkin,
         is_delayed_checkout,
+        earlyCheckinAmount,
+        delayedCheckoutAmount,
+        early_checkin_amount,
+        delayed_checkout_amount,
         audit_comment,
         updatedBy
     }) {
@@ -670,7 +676,8 @@ class Booking {
             /* ------------------------------------------------ */
             const { rows } = await client.query(
                 `
-            SELECT id, booking_status, property_id, estimated_arrival, estimated_departure
+            SELECT id, booking_status, property_id, estimated_arrival, estimated_departure,
+                   final_amount, early_checkin_amount, delayed_checkout_amount
             FROM public.bookings
             WHERE id = $1
             FOR UPDATE
@@ -775,6 +782,53 @@ class Booking {
                 comments,
                 updatedBy
             ];
+
+            const currentFinalAmount = Number(rows[0].final_amount || 0);
+            let newFinalAmount = currentFinalAmount;
+
+            let newEarlyCheckinAmount = Number(rows[0].early_checkin_amount || 0);
+            let newDelayedCheckoutAmount = Number(rows[0].delayed_checkout_amount || 0);
+
+            if (is_early_checkin && status === 'CHECKED_IN') {
+                const payloadEarlyCheckinAmount = earlyCheckinAmount !== undefined ? earlyCheckinAmount : early_checkin_amount;
+                if (payloadEarlyCheckinAmount === undefined || payloadEarlyCheckinAmount === null || payloadEarlyCheckinAmount === "") {
+                    throw { code: "VALIDATION_ERROR", message: "Early Check-In amount is required" };
+                }
+                const parsedEarlyAmount = Number(payloadEarlyCheckinAmount);
+                if (isNaN(parsedEarlyAmount) || parsedEarlyAmount < 0) {
+                    throw { code: "VALIDATION_ERROR", message: "Early Check-In amount must be >= 0" };
+                }
+                const oldEarlyAmount = newEarlyCheckinAmount;
+                newEarlyCheckinAmount = parsedEarlyAmount;
+                const delta = newEarlyCheckinAmount - oldEarlyAmount;
+                newFinalAmount = newFinalAmount + delta;
+
+                updateParams.push(newEarlyCheckinAmount);
+                extraUpdates += `, early_checkin_amount = $${updateParams.length}`;
+            }
+
+            if (is_delayed_checkout && status === 'CHECKED_OUT') {
+                const payloadDelayedCheckoutAmount = delayedCheckoutAmount !== undefined ? delayedCheckoutAmount : delayed_checkout_amount;
+                if (payloadDelayedCheckoutAmount === undefined || payloadDelayedCheckoutAmount === null || payloadDelayedCheckoutAmount === "") {
+                    throw { code: "VALIDATION_ERROR", message: "Delayed Checkout amount is required" };
+                }
+                const parsedDelayedAmount = Number(payloadDelayedCheckoutAmount);
+                if (isNaN(parsedDelayedAmount) || parsedDelayedAmount < 0) {
+                    throw { code: "VALIDATION_ERROR", message: "Delayed Checkout amount must be >= 0" };
+                }
+                const oldDelayedAmount = newDelayedCheckoutAmount;
+                newDelayedCheckoutAmount = parsedDelayedAmount;
+                const delta = newDelayedCheckoutAmount - oldDelayedAmount;
+                newFinalAmount = newFinalAmount + delta;
+
+                updateParams.push(newDelayedCheckoutAmount);
+                extraUpdates += `, delayed_checkout_amount = $${updateParams.length}`;
+            }
+
+            if (newFinalAmount !== currentFinalAmount) {
+                updateParams.push(newFinalAmount);
+                extraUpdates += `, final_amount = $${updateParams.length}`;
+            }
 
             if (status === 'CHECKED_IN') {
                 const actualArrival = parseStatusTimestamp(actual_arrival);
@@ -938,6 +992,19 @@ class Booking {
             }
 
             try {
+                const auditDetails = {
+                    old_status: currentStatus,
+                    new_status: status
+                };
+                if (is_early_checkin) {
+                    auditDetails.early_checkin_amount = newEarlyCheckinAmount;
+                    auditDetails.final_amount = newFinalAmount;
+                }
+                if (is_delayed_checkout) {
+                    auditDetails.delayed_checkout_amount = newDelayedCheckoutAmount;
+                    auditDetails.final_amount = newFinalAmount;
+                }
+
                 await AuditService.log({
                     property_id: rows[0].property_id,
                     event_id: bookingId,
@@ -945,10 +1012,7 @@ class Booking {
                     event_type: "STATUS_CHANGE",
                     task_name: "Update Booking Status",
                     comments: auditCommentText,
-                    details: JSON.stringify({
-                        old_status: currentStatus,
-                        new_status: status
-                    }),
+                    details: JSON.stringify(auditDetails),
                     user_id: updatedBy
                 });
             } catch { }

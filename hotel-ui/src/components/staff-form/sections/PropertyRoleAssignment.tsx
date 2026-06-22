@@ -2,6 +2,7 @@ import { Label } from "@/components/ui/label";
 import { ResponsiveDatePicker } from "@/components/ui/responsive-date-picker";
 import FormInput from "@/components/forms/FormInput";
 import FormSelect from "@/components/forms/FormSelect";
+import FormMultiSelect from "@/components/forms/FormMultiSelect";
 import { useEffect } from "react";
 import { APP_DATE_INPUT_PLACEHOLDER, parseAppDate, toISODateOnly } from "@/utils/dateFormat";
 
@@ -73,9 +74,9 @@ export default function PropertyRole({
 
                 {/* PROPERTY */}
                 {isPrivilegeUser && (
-                    <FormSelect
+                    <FormMultiSelect
                         label="Property"
-                        field="property_id"
+                        field="property_ids"
                         value={value}
                         setValue={setValue}
                         errors={errors}
@@ -90,7 +91,7 @@ export default function PropertyRole({
                                     {property.brand_name}
                                 </option>
                             ))}
-                    </FormSelect>
+                    </FormMultiSelect>
                 )}
 
                 {/* ROLE */}

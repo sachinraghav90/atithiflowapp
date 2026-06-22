@@ -212,7 +212,17 @@ class Staff {
                         )
                     ) FILTER (WHERE r.id IS NOT NULL),
                     '[]'::jsonb
-                ) AS roles
+                ) AS roles,
+
+                COALESCE(
+                    jsonb_agg(
+                        DISTINCT jsonb_build_object(
+                            'id', pu.property_id,
+                            'name', p.brand_name
+                        )
+                    ) FILTER (WHERE pu.property_id IS NOT NULL),
+                    '[]'::jsonb
+                ) AS assigned_properties
 
             FROM public.staff s
             LEFT JOIN public.users u 
@@ -223,6 +233,9 @@ class Staff {
 
             LEFT JOIN public.roles r
                 ON r.id = pu.role_id
+
+            LEFT JOIN public.properties p
+                ON p.id = pu.property_id
 
             ${this.#addressJoin()}
 
@@ -369,6 +382,15 @@ class Staff {
             await client.query("COMMIT");
 
             try {
+                let newPropertiesStr = "-";
+                if (staffPayload.property_ids && staffPayload.property_ids.length > 0) {
+                    const { rows: newProps } = await client.query(`SELECT brand_name FROM public.properties WHERE id = ANY($1::int[])`, [staffPayload.property_ids]);
+                    newPropertiesStr = newProps.map(r => r.brand_name).join(", ");
+                } else if (staffPayload.property_id) {
+                    const { rows: newProps } = await client.query(`SELECT brand_name FROM public.properties WHERE id = $1`, [staffPayload.property_id]);
+                    newPropertiesStr = newProps[0]?.brand_name || staffPayload.property_id;
+                }
+
                 await AuditService.log({
                     property_id: staffPayload.property_id || null,
                     event_id: staffId,
@@ -407,14 +429,13 @@ class Staff {
                             "Country": staffPayload.country,
                             "Address": address,
                             "Property Limit": staffPayload.property_limit,
+                            "Assigned Properties": newPropertiesStr,
                             "Staff Photo": image ? "Updated" : undefined,
                             "ID Proof / Uploaded File": idProof ? "Updated" : undefined
                         }
                     }),
                     user_id: userId,
-                    client // use the provided client since we just committed on it? 
-                    // Wait, client is already released? No, release is in finally block.
-                    // But we committed, so the transaction is over. Passing client is safe.
+                    client
                 });
             } catch (auditErr) {
                 console.error("Staff Create Audit Log Error:", auditErr);
@@ -568,6 +589,17 @@ class Staff {
                 if (files?.id_proof) {
                     before["ID Proof / Uploaded File"] = "-";
                     after["ID Proof / Uploaded File"] = "Updated";
+                }
+
+                if (payload.property_ids && Array.isArray(payload.property_ids)) {
+                    const oldProps = oldStaff.assigned_properties?.map(p => p.name || p.id).join(", ") || "-";
+                    const { rows: newProps } = await client.query(`SELECT brand_name FROM public.properties WHERE id = ANY($1::int[])`, [payload.property_ids]);
+                    const newPropsStr = newProps.map(r => r.brand_name).join(", ") || "-";
+                    
+                    if (oldProps !== newPropsStr) {
+                        before["Assigned Properties"] = oldProps;
+                        after["Assigned Properties"] = newPropsStr;
+                    }
                 }
 
                 if (Object.keys(after).length > 0) {

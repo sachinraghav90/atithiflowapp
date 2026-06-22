@@ -30,11 +30,20 @@ class StaffOnboardingService {
 
             await client.query("BEGIN")
 
+            const propertyIds = Array.isArray(payload.property_ids) && payload.property_ids.length > 0 ? payload.property_ids : [payload.property_id];
+            const uniquePropertyIds = [...new Set(propertyIds)].filter(Boolean);
+
+            if (uniquePropertyIds.length === 0) {
+                throw new Error("At least one property is required");
+            }
+
+            const primaryPropertyId = uniquePropertyIds[0];
+
             const user = await userService.createUser({
                 client,
                 authUserId,
                 email: payload.email,
-                propertyId: payload.property_id,
+                propertyId: primaryPropertyId,
                 created_by: createdBy,
                 property_limit: payload.property_limit !== undefined && payload.property_limit !== "" ? payload.property_limit : null
             })
@@ -43,15 +52,15 @@ class StaffOnboardingService {
             /* ROLE ASSIGNMENT (NEW SOURCE)      */
             /* ---------------------------------- */
 
-            for (const roleId of payload.role_ids) {
-
-                await role.createUserRole({
-                    client,
-                    userId: user.id,
-                    roleId,
-                    propertyId: payload.property_id   // ⭐ NEW
-                })
-
+            for (const propId of uniquePropertyIds) {
+                for (const roleId of payload.role_ids) {
+                    await role.createUserRole({
+                        client,
+                        userId: user.id,
+                        roleId,
+                        propertyId: propId
+                    })
+                }
             }
 
             const staff = await StaffService.create({
@@ -127,6 +136,13 @@ class StaffOnboardingService {
 
             }
 
+            const propertyIds = Array.isArray(payload.property_ids) && payload.property_ids.length > 0 ? payload.property_ids : [payload.property_id];
+            const uniquePropertyIds = [...new Set(propertyIds)].filter(Boolean);
+
+            if (uniquePropertyIds.length > 0) {
+                payload.property_id = uniquePropertyIds[0]; // Set primary for users table update
+            }
+
             await userService.updateUser({
                 client,
                 userId: payload.user_id,
@@ -138,27 +154,26 @@ class StaffOnboardingService {
             /* ROLE UPDATE (NEW SOURCE)          */
             /* ---------------------------------- */
 
-            if (Array.isArray(payload.role_ids)) {
+            if (Array.isArray(payload.role_ids) && uniquePropertyIds.length > 0) {
 
-                // remove existing roles for property
+                // remove existing roles for ALL properties for this user
                 await client.query(`
                     DELETE FROM public.property_users
                     WHERE user_id = $1
-                    AND property_id = $2
                 `,
-                    [payload.user_id, payload.property_id]
+                    [payload.user_id]
                 )
 
-                // reassign roles
-                for (const roleId of payload.role_ids) {
-
-                    await role.createUserRole({
-                        client,
-                        userId: payload.user_id,
-                        roleId,
-                        propertyId: payload.property_id
-                    })
-
+                // reassign roles for all selected properties
+                for (const propId of uniquePropertyIds) {
+                    for (const roleId of payload.role_ids) {
+                        await role.createUserRole({
+                            client,
+                            userId: payload.user_id,
+                            roleId,
+                            propertyId: propId
+                        })
+                    }
                 }
 
             }

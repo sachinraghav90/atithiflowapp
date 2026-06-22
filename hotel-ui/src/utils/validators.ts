@@ -124,8 +124,8 @@ export const validateStaff = (
             };
         }
 
-        if (!staff.property_id?.trim())
-            errors.property_id = {
+        if (!staff.property_ids || staff.property_ids.length === 0)
+            errors.property_ids = {
                 type: "required",
                 message: "Property is required"
             };
@@ -305,8 +305,8 @@ export const validateStaff = (
         };
     }
 
-    if (!staff.property_id && !(isSuperAdmin || staffIsOwner))
-        errors.property_id = {
+    if ((!staff.property_ids || staff.property_ids.length === 0) && !(isSuperAdmin || staffIsOwner))
+        errors.property_ids = {
             type: "required",
             message: "Property is required"
         };
