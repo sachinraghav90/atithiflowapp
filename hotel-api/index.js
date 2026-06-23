@@ -31,6 +31,7 @@ import auditRoutes from "./src/routes/audit.routes.js";
 import inventoryRoutes from "./src/routes/inventory.routes.js";
 import menuItemGroupRoutes from "./src/routes/menuItemGroup.routes.js";
 import deliveryPartnersRoutes from "./src/routes/deliveryPartner.routes.js";
+import invoiceRoutes from "./src/routes/invoice.routes.js";
 import { normalizeRequestKeys } from "./src/middlewares/normalizeRequestKeys.js";
 
 config()
@@ -70,6 +71,7 @@ app.use("/audits", auditRoutes)
 app.use("/inventory", inventoryRoutes)
 app.use("/menu-item-groups", menuItemGroupRoutes)
 app.use("/delivery-partners", deliveryPartnersRoutes);
+app.use("/invoices", invoiceRoutes);
 
 // Global error handler
 app.use((err, req, res, next) => {
