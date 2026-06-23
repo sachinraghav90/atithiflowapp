@@ -1060,7 +1060,7 @@ class RoomService {
             ),
 
             resolved AS (
-                SELECT DISTINCT ON (rm.ref_room_id)
+                SELECT
                     rm.ref_room_id,
                     rm.room_no,
                     rm.floor_number,
@@ -1084,14 +1084,6 @@ class RoomService {
                 FROM room_meta rm
                 LEFT JOIN booking_overlap bo
                 ON bo.ref_room_id = rm.ref_room_id
-                ORDER BY rm.ref_room_id,
-                    CASE bo.booking_status
-                        WHEN 'CHECKED_IN' THEN 1
-                        WHEN 'CONFIRMED' THEN 2
-                        WHEN 'BOOKED' THEN 2
-                        WHEN 'CHECKED_OUT' THEN 3
-                        ELSE 4
-                    END
             ),
 
             checking_in AS (

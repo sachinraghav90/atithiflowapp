@@ -61,7 +61,7 @@ import { formatToDDMMYY } from "@/utils/formatToDDMMYY";
 import LaundryEmbedded from "@/components/layout/LaundryEmbedded";
 import BookingLogsEmbedded from "@/components/layout/BookingLogsEmbedded";
 import RestaurantOrdersEmbedded from "@/components/layout/RestaurantOrdersEmbedded";
-import { Copy, Download, Eye, FilterX, Plus, RefreshCcw, HelpCircle, Printer, CheckSquare, AlertTriangle, FileText } from "lucide-react";
+import { Copy, Download, Eye, FilterX, Plus, RefreshCcw, HelpCircle, Printer, CheckSquare, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getStatusColor } from "@/constants/statusColors";
 import { GridBadge } from "@/components/ui/grid-badge";
@@ -643,51 +643,6 @@ export default function BookingsManagement() {
         setDetailsOpen(true);
         setActiveTab("summary");
     }
-
-    const handleDownloadInvoice = async () => {
-        if (!selectedBooking?.booking?.id) return;
-        
-        try {
-            const token = localStorage.getItem("access_token");
-            if (!token) throw new Error("Authentication token not found.");
-
-            const res = await fetch(`${import.meta.env.VITE_API_URL}/invoices/booking/${selectedBooking.booking.id}/download`, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
-
-            if (!res.ok) {
-                let errorMsg = "Failed to download invoice.";
-                try {
-                    const errorData = await res.json();
-                    if (errorData.message) errorMsg = errorData.message;
-                } catch(e) {}
-                throw new Error(errorMsg);
-            }
-
-            const blob = await res.blob();
-            let filename = `Invoice_${selectedBooking.booking.id}.pdf`;
-            const contentDisposition = res.headers.get("Content-Disposition");
-            if (contentDisposition) {
-                const match = contentDisposition.match(/filename="?(.+)"?/);
-                if (match && match.length > 1) {
-                    filename = match[1];
-                }
-            }
-
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
-        } catch (error: any) {
-            toast.error(error.message || "Failed to download invoice");
-        }
-    };
 
     async function handleCancelBooking() {
         if (!selectedBooking) return;
@@ -1611,28 +1566,6 @@ export default function BookingsManagement() {
                                         </TooltipContent>
                                     </Tooltip>
                                 </TooltipProvider>
-
-                                {normalizeBookingStatus(selectedBooking?.booking?.booking_status) === "CHECKED_OUT" && (
-                                    <TooltipProvider>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <Button
-                                                    variant="heroOutline"
-                                                    size="sm"
-                                                    className="h-9 w-9 p-0 shadow-sm rounded-md"
-                                                    onClick={handleDownloadInvoice}
-                                                    disabled={selectedBookingLoading || !selectedBooking?.booking || !detailsOpen}
-                                                    aria-label="Download Invoice"
-                                                >
-                                                    <FileText className="w-4 h-4 text-blue-600" />
-                                                </Button>
-                                            </TooltipTrigger>
-                                            <TooltipContent side="top" align="center" className="text-xs">
-                                                Download Invoice
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
-                                )}
 
                                 <Button
                                     variant="heroOutline"
