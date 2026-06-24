@@ -122,6 +122,12 @@ class StaffController {
             const payload = req.body
             const files = req.files
             const staffId = req.params.id
+
+            const userRoles = req.roles || [];
+            if (!userRoles.includes("SUPER_ADMIN")) {
+                delete payload.property_limit;
+            }
+
             await StaffOnboardingService.updateStaffWithUser({ files, payload, staffId, updatedBy });
 
             res.json({

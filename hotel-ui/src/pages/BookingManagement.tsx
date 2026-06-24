@@ -38,7 +38,6 @@ import {
     useGetMyPropertiesQuery,
     useLazyExportBookingsQuery,
     useUpdateBookingMutation,
-    useUpdateBookingStatusMutation,
     useGetGuestsByBookingQuery,
     useGetVehiclesByBookingQuery,
     useGetPaymentsByBookingIdQuery,
@@ -50,8 +49,9 @@ import {
 } from "@/redux/services/hmsApi";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { useGridPagination } from "@/hooks/useGridPagination";
-import { useAppSelector } from "@/redux/hook";
+import { useAppSelector, useAppDispatch } from "@/redux/hook";
 import { selectCanManagePropertySettings, selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
+import { logout } from "@/redux/slices/isLoggedInSlice";
 import { normalizeNumberInput } from "@/utils/normalizeTextInput";
 import { useNavigate, useLocation } from "react-router-dom";
 import GuestsEmbedded from "@/components/layout/GuestsEmbedded";
@@ -61,7 +61,7 @@ import { formatToDDMMYY } from "@/utils/formatToDDMMYY";
 import LaundryEmbedded from "@/components/layout/LaundryEmbedded";
 import BookingLogsEmbedded from "@/components/layout/BookingLogsEmbedded";
 import RestaurantOrdersEmbedded from "@/components/layout/RestaurantOrdersEmbedded";
-import { Copy, Download, Eye, FilterX, Plus, RefreshCcw, HelpCircle, Printer, CheckSquare, AlertTriangle, FileText } from "lucide-react";
+import { Copy, Download, Eye, FilterX, Plus, RefreshCcw, HelpCircle, Printer, CheckSquare, AlertTriangle, FileText, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getStatusColor } from "@/constants/statusColors";
 import { GridBadge } from "@/components/ui/grid-badge";
@@ -179,6 +179,8 @@ const SUMMARY_TABS = [
 ];
 
 export default function BookingsManagement() {
+    const dispatch = useAppDispatch();
+    const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
 
     const todayISO = () => {
         const d = new Date();
@@ -645,8 +647,8 @@ export default function BookingsManagement() {
     }
 
     const handleDownloadInvoice = async () => {
-        if (!selectedBooking?.booking?.id) return;
-        
+        if (!selectedBooking?.booking?.id || isDownloadingInvoice) return;
+        setIsDownloadingInvoice(true);
         try {
             const token = localStorage.getItem("access_token");
             if (!token) throw new Error("Authentication token not found.");
@@ -661,31 +663,30 @@ export default function BookingsManagement() {
                 let errorMsg = "Failed to download invoice.";
                 try {
                     const errorData = await res.json();
-                    if (errorData.message) errorMsg = errorData.message;
+                    errorMsg = errorData.message || errorData.error || errorMsg;
                 } catch(e) {}
+                
+                if (
+                    res.status === 401 ||
+                    res.status === 403 ||
+                    String(errorMsg).toLowerCase().includes("invalid or expired token")
+                ) {
+                    toast.error("Your session has expired. Please log in again.");
+                    dispatch(logout());
+                    return;
+                }
+                
                 throw new Error(errorMsg);
             }
 
             const blob = await res.blob();
-            let filename = `Invoice_${selectedBooking.booking.id}.pdf`;
-            const contentDisposition = res.headers.get("Content-Disposition");
-            if (contentDisposition) {
-                const match = contentDisposition.match(/filename="?(.+)"?/);
-                if (match && match.length > 1) {
-                    filename = match[1];
-                }
-            }
-
             const url = window.URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
+            window.open(url, "_blank");
+            setTimeout(() => window.URL.revokeObjectURL(url), 1000);
         } catch (error: any) {
             toast.error(error.message || "Failed to download invoice");
+        } finally {
+            setIsDownloadingInvoice(false);
         }
     };
 
@@ -1621,14 +1622,18 @@ export default function BookingsManagement() {
                                                     size="sm"
                                                     className="h-9 w-9 p-0 shadow-sm rounded-md"
                                                     onClick={handleDownloadInvoice}
-                                                    disabled={selectedBookingLoading || !selectedBooking?.booking || !detailsOpen}
-                                                    aria-label="Download Invoice"
+                                                    disabled={selectedBookingLoading || !selectedBooking?.booking || !detailsOpen || isDownloadingInvoice}
+                                                    aria-label="Print Invoice"
                                                 >
-                                                    <FileText className="w-4 h-4 text-blue-600" />
+                                                    {isDownloadingInvoice ? (
+                                                        <Loader2 className="w-4 h-4  animate-spin" />
+                                                    ) : (
+                                                        <FileText className="w-4 h-4 " />
+                                                    )}
                                                 </Button>
                                             </TooltipTrigger>
                                             <TooltipContent side="top" align="center" className="text-xs">
-                                                Download Invoice
+                                                Print Invoice
                                             </TooltipContent>
                                         </Tooltip>
                                     </TooltipProvider>

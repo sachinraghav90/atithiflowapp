@@ -98,11 +98,13 @@ class InvoiceService {
 
             // Fetch guest address
             let guestAddressStr = guest.address;
+            let guestState = guest.state;
             if (!guestAddressStr) {
                 const addressRes = await client.query(`SELECT * FROM public.addresses WHERE entity_type = 'GUEST' AND entity_id = $1 AND address_type = 'HOME' LIMIT 1`, [guest.id]);
                 if (addressRes.rows.length > 0) {
                     const addr = addressRes.rows[0];
                     guestAddressStr = [addr.address_line_1, addr.city, addr.state, addr.country].filter(Boolean).join(", ");
+                    guestState = addr.state || guestState;
                 }
             }
 
@@ -126,7 +128,8 @@ class InvoiceService {
             // 6. GST logic and Amount calculation
             let sellerGstin = property.gst_no || "";
             let sellerStateCode = sellerGstin.length >= 2 ? sellerGstin.substring(0, 2) : "-";
-            let buyerStateCode = guest.country === 'India' && guest.state ? "-" : sellerStateCode; // Defaulting same state for now
+            let buyerStateCode = guest.country === 'India' && guestState ? "-" : sellerStateCode; // Defaulting same state for now
+            let buyerStateName = guestState || propertyState;
 
             let earlyCheckin = Number(booking.early_checkin_amount) || 0;
             let delayedCheckout = Number(booking.delayed_checkout_amount) || 0;
@@ -200,7 +203,7 @@ class InvoiceService {
             const values = [
                 bookingId, booking.property_id, invoiceNo, invoiceDate, `BO${bookingId}`,
                 property.brand_name || "-", property.gst_no || "-", propertyAddressStr, propertyState, sellerStateCode,
-                fullName, null, guestAddressStr || "-", buyerStateCode, buyerStateCode,
+                fullName, null, guestAddressStr || "-", buyerStateName || "-", buyerStateCode,
                 guest.coming_from || "-", fullName, guest.phone || "-", booking.actual_arrival || booking.estimated_arrival, booking.actual_departure || booking.estimated_departure,
                 stayTaxable, laundryTaxable, earlyCheckin, delayedCheckout,
                 taxableAmount, cgst, sgst, igst, totalTax,

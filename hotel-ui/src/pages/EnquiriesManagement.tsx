@@ -21,6 +21,7 @@ import {
     useGetLogsQuery as useGetAuditLogsQuery,
     useGetLogsByTableQuery,
     useGetBookingsQuery,
+    useGetRoomTypesQuery,
 } from "@/redux/services/hmsApi";
 import { useAppSelector } from "@/redux/hook";
 import { cn } from "@/lib/utils";
@@ -270,6 +271,82 @@ export default function EnquiriesManagement() {
     const [formErrors, setFormErrors] = useState<Record<string, string>>({});
     const [submitted, setSubmitted] = useState(false);
     const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
+
+    const { data: roomTypesData } = useGetRoomTypesQuery(
+        { propertyId: selected?.property_id || selectedPropertyId, limit: 100 },
+        { skip: !selected?.property_id && !selectedPropertyId }
+    );
+
+    const getRoomTypeName = (roomTypeValue: any, index?: number) => {
+        if (!roomTypeValue) return `Room ${index !== undefined ? index + 1 : ''}`;
+
+        const value = String(roomTypeValue).trim();
+
+        const roomTypes =
+            roomTypesData?.roomTypes ||
+            roomTypesData?.data ||
+            roomTypesData?.rooms ||
+            roomTypesData?.results ||
+            roomTypesData ||
+            [];
+
+        const list = Array.isArray(roomTypes) ? roomTypes : [];
+
+        const matched = list.find((item: any) => {
+            const possibleIds = [
+                item?.id,
+                item?.room_type_id,
+                item?.category_id,
+                item?.ref_room_type_id,
+                item?.category?.id,
+            ];
+
+            return possibleIds.some((id) => String(id) === value);
+        });
+
+        if (matched) {
+            return (
+                matched?.category?.name ||
+                matched?.name ||
+                matched?.room_type ||
+                matched?.category_name ||
+                matched?.room_category_name ||
+                matched?.title ||
+                value
+            );
+        }
+
+        const isNumeric = /^[0-9]+$/.test(value);
+
+        if (isNumeric) {
+            return `Room Type #${value}`;
+        }
+
+        return value;
+    };
+
+    const getGroupedRoomRequirements = (roomDetails: any[] | null | undefined) => {
+        if (!roomDetails || !roomDetails.length) return [];
+
+        const groupedMap = new Map();
+        
+        roomDetails.forEach((room, index) => {
+            const resolvedName = getRoomTypeName(room.room_type, index);
+            
+            if (groupedMap.has(resolvedName)) {
+                groupedMap.get(resolvedName).no_of_rooms += (Number(room.no_of_rooms) || 0);
+            } else {
+                groupedMap.set(resolvedName, {
+                    ...room,
+                    resolvedName,
+                    no_of_rooms: Number(room.no_of_rooms) || 0,
+                });
+            }
+        });
+
+        return Array.from(groupedMap.values());
+    };
+
     const [searchInput, setSearchInput] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState<EnquiryStatus | "">("");
@@ -1195,10 +1272,10 @@ export default function EnquiriesManagement() {
 
                                         <CardSectionView title="Room Requirements" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-4">
                                             {selected.room_details?.length ? (
-                                                selected.room_details.map((room, i) => (
+                                                getGroupedRoomRequirements(selected.room_details).map((room, i) => (
                                                     <ViewField
                                                         key={i}
-                                                        label={room.room_type || `Room ${i + 1}`}
+                                                        label={room.resolvedName}
                                                         value={`${room.no_of_rooms || 0} ${Number(room.no_of_rooms) === 1 ? "Room" : "Rooms"}`}
                                                     />
                                                 ))
@@ -1222,10 +1299,10 @@ export default function EnquiriesManagement() {
                                                     <h4 className="text-xs font-semibold text-muted-foreground  tracking-wide"></h4>
                                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
                                                         {selected.alternate_room_details?.length ? (
-                                                            selected.alternate_room_details.map((room, i) => (
+                                                            getGroupedRoomRequirements(selected.alternate_room_details).map((room, i) => (
                                                                 <ViewField
                                                                     key={i}
-                                                                    label={room.room_type || `Room ${i + 1}`}
+                                                                    label={room.resolvedName}
                                                                     value={`${room.no_of_rooms || 0} ${Number(room.no_of_rooms) === 1 ? "Room" : "Rooms"}`}
                                                                 />
                                                             ))

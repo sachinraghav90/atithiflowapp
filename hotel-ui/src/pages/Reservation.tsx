@@ -33,6 +33,7 @@ import {
     SheetTitle,
     SheetClose,
 } from "@/components/ui/sheet";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { motion } from "framer-motion";
 import FormInput from "@/components/forms/FormInput";
 import FormDatePicker from "@/components/forms/FormDatePicker";
@@ -229,6 +230,8 @@ function ReservationManagementInner() {
     useEffect(() => {
         if (roomsModalOpen) {
             setTempSelectedRooms([...selectedRooms]);
+        } else {
+            setRoomFilters({ bedType: "", roomCategory: "", floor: "", acType: "" });
         }
     }, [roomsModalOpen]);
     const [open, setOpen] = useState(false);
@@ -2208,14 +2211,20 @@ function ReservationManagementInner() {
                                     </div>
                                 </div>
                                 <div className="flex gap-1.5">
-                                    <Button 
-                                        variant="heroOutline" 
-                                        className="h-10 w-10 p-0 flex items-center justify-center shrink-0"
-                                        onClick={() => setRoomFilters({ bedType: "", roomCategory: "", floor: "", acType: "" })}
-                                        title="Reset Filters"
-                                    >
-                                        <RotateCcw className="w-4 h-4" />
-                                    </Button>
+                                    <TooltipProvider delayDuration={0}>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button 
+                                                    variant="heroOutline" 
+                                                    className="h-10 w-10 p-0 flex items-center justify-center shrink-0"
+                                                    onClick={() => setRoomFilters({ bedType: "", roomCategory: "", floor: "", acType: "" })}
+                                                >
+                                                    <RotateCcw className="w-4 h-4" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>Reset Filters</TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
                                     <Button 
                                         variant="hero" 
                                         className="h-10 px-3 text-xs font-bold flex-1"
@@ -2262,8 +2271,18 @@ function ReservationManagementInner() {
                             )}
 
                             <div className="space-y-3">
-                                {roomsByFloor.map(({ floor, rooms }) => (
-                                    (roomFilters.floor === "" || roomFilters.floor == floor.toString()) && <div key={floor} className="mb-6">
+                                {roomsByFloor.map(({ floor, rooms }) => {
+                                    const filteredRooms = rooms.filter((room) => {
+                                        const isSelected = tempSelectedRooms.some(
+                                            (r) => r.ref_room_id === Number(room.id)
+                                        );
+                                        return (isSelected ||
+                                            ((!roomFilters.bedType || room.bed_type_name === roomFilters.bedType) &&
+                                                (!roomFilters.roomCategory || room.room_category_name === roomFilters.roomCategory) &&
+                                                (!roomFilters.acType || room.ac_type_name === roomFilters.acType)));
+                                    });
+
+                                    return (roomFilters.floor === "" || roomFilters.floor == floor.toString()) && <div key={floor} className="mb-6">
                                         <div 
                                             className="flex items-center justify-between p-3 bg-primary/[0.05] rounded-lg border border-primary/10 mb-4 cursor-pointer hover:bg-primary/[0.08] transition-colors"
                                             onClick={() => toggleFloor(floor)}
@@ -2273,7 +2292,7 @@ function ReservationManagementInner() {
                                                     Floor {floor}
                                                 </h3>
                                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                                                    {rooms.length} {rooms.length === 1 ? "room" : "rooms"}
+                                                    {filteredRooms.length} {filteredRooms.length === 1 ? "room" : "rooms"}
                                                 </span>
                                             </div>
                                             <div className={cn(
@@ -2286,16 +2305,12 @@ function ReservationManagementInner() {
                                         
                                         {!collapsedFloors.has(floor) && (
                                             <div className="grid grid-cols-1 min-[520px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                                            {rooms.map((room) => {
+                                            {filteredRooms.map((room) => {
                                                 const isSelected = tempSelectedRooms.some(
                                                     (r) => r.ref_room_id === Number(room.id)
                                                 );
 
                                                 return (
-                                                    (isSelected ||
-                                                        ((!roomFilters.bedType || room.bed_type_name === roomFilters.bedType) &&
-                                                            (!roomFilters.roomCategory || room.room_category_name === roomFilters.roomCategory) &&
-                                                            (!roomFilters.acType || room.ac_type_name === roomFilters.acType))) &&
                                                     <button
                                                         key={room.id}
                                                         onClick={() => {
@@ -2356,7 +2371,7 @@ function ReservationManagementInner() {
                                         </div>
                                         )}
                                     </div>
-                                ))}
+                                })}
                             </div>
                         </section>
                             </motion.div>

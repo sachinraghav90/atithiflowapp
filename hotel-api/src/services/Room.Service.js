@@ -744,7 +744,7 @@ class RoomService {
         departureDate,
         arrivalTime,
         roomTypeId, // optional filter
-        limit = 50,
+        limit = 1000,
         offset = 0,
     }) {
         const baseParams = [propertyId, arrivalDate, departureDate];

@@ -632,7 +632,7 @@ export default function RoomsByFloor() {
 
                     {roomsByFloor.length === 0 && (
                         <div className="text-center text-muted-foreground py-12">
-                            No rooms found
+                            No floors available. Add a floor to start managing rooms.
                         </div>
                     )}
                 </div>

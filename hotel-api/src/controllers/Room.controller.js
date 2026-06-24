@@ -103,7 +103,7 @@ class RoomController {
 
     async getAvailableRooms(req, res) {
         try {
-            const { propertyId, arrivalDate, departureDate, arrivalTime, roomType, limit = 50, offset = 0, } = req.query
+            const { propertyId, arrivalDate, departureDate, arrivalTime, roomType, limit = 1000, offset = 0, } = req.query
             
             if (!propertyId || isNaN(Number(propertyId))) {
                 return res.status(400).json({ message: "propertyId is required and must be numeric" })

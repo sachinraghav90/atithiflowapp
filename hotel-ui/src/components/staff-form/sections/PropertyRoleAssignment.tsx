@@ -35,6 +35,7 @@ export default function PropertyRole({
     excludedRoles,
     properties,
     myPropertiesLoading,
+    isSuperAdmin,
     isPrivilegeUser
 }: Props) {
 
@@ -63,6 +64,32 @@ export default function PropertyRole({
         }
     }, [isOwnerRole, setValue, value.property_limit]);
 
+    useEffect(() => {
+        if (value.property_ids && value.property_limit !== null && value.property_limit !== undefined && value.property_limit !== "") {
+            const limit = Number(value.property_limit);
+            if (value.property_ids.length > limit) {
+                setErrors((prev: any) => ({
+                    ...prev,
+                    property_ids: {
+                        type: "invalid",
+                        message: limit === 0 
+                            ? "This user has 0 as the property limit." 
+                            : `This user has ${limit} property limit only.`
+                    }
+                }));
+            } else {
+                setErrors((prev: any) => {
+                    if (prev.property_ids?.message?.includes("property limit")) {
+                        const next = { ...prev };
+                        delete next.property_ids;
+                        return next;
+                    }
+                    return prev;
+                });
+            }
+        }
+    }, [value.property_limit, value.property_ids, setErrors]);
+
     return (
         <div className="space-y-6 border border-border rounded-[5px] p-5 bg-transparent [&>h3+*]:!mt-4">
 
@@ -78,7 +105,29 @@ export default function PropertyRole({
                         label="Property"
                         field="property_ids"
                         value={value}
-                        setValue={setValue}
+                        setValue={(action: any) => {
+                            setValue((prev: any) => {
+                                const nextState = typeof action === 'function' ? action(prev) : action;
+                                if (nextState.property_ids && prev.property_limit !== null && prev.property_limit !== undefined && prev.property_limit !== "") {
+                                    const limit = Number(prev.property_limit);
+                                    if (nextState.property_ids.length > limit && nextState.property_ids.length > (prev.property_ids?.length || 0)) {
+                                        setTimeout(() => {
+                                            setErrors((errPrev: any) => ({
+                                                ...errPrev,
+                                                property_ids: {
+                                                    type: "invalid",
+                                                    message: limit === 0 
+                                                        ? "This user has 0 as the property limit." 
+                                                        : `This user has ${limit} property limit only.`
+                                                }
+                                            }));
+                                        }, 0);
+                                        return prev;
+                                    }
+                                }
+                                return nextState;
+                            });
+                        }}
                         errors={errors}
                         setErrors={setErrors}
                         required
@@ -127,7 +176,7 @@ export default function PropertyRole({
                 </div>
 
                 {/* PROPERTY LIMIT */}
-                {isOwnerRole && (
+                {isOwnerRole && isSuperAdmin && (
                     <div className="space-y-1">
                         <FormInput
                         defaultValue={0}

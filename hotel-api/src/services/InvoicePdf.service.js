@@ -1,6 +1,7 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { getDb } from "../../utils/getDb.js";
+import { numberToWords } from "../../utils/numberToWords.js";
 
 class InvoicePdfService {
     async generatePdfBuffer(invoice) {
@@ -66,24 +67,6 @@ class InvoicePdfService {
                 }
             }
             
-            // Fetch laundry items if there is any laundry amount
-            if (invoice.booking_id && Number(invoice.laundry_taxable_amount) > 0) {
-                const laundryQuery = `
-                    SELECT 
-                        l.item_name,
-                        loi.item_count,
-                        loi.amount
-                    FROM public.laundry_orders lo
-                    LEFT JOIN public.laundry_order_items loi ON loi.order_id = lo.id
-                    LEFT JOIN public.laundry l ON l.id = loi.laundry_id
-                    WHERE lo.booking_id = $1 AND lo.status = 'active' AND lo.laundry_status != 'CANCELLED'
-                    ORDER BY loi.id ASC
-                `;
-                const laundryRes = await db.query(laundryQuery, [invoice.booking_id]);
-                invoice._laundry_items = laundryRes.rows;
-            }
-
-
             const stateMap = {
                 "01": "Jammu & Kashmir", "02": "Himachal Pradesh", "03": "Punjab", "04": "Chandigarh", "05": "Uttarakhand",
                 "06": "Haryana", "07": "Delhi", "08": "Rajasthan", "09": "Uttar Pradesh", "10": "Bihar",
@@ -95,7 +78,12 @@ class InvoicePdfService {
                 "36": "Telangana", "37": "Andhra Pradesh", "38": "Ladakh"
             };
 
-            if ((!buyerStateName || buyerStateName === "-") && invoice.buyer_state_code) {
+            if (sellerStateName && stateMap[sellerStateName]) {
+                sellerStateName = stateMap[sellerStateName];
+            }
+            if (buyerStateName && stateMap[buyerStateName]) {
+                buyerStateName = stateMap[buyerStateName];
+            } else if ((!buyerStateName || buyerStateName === "-") && invoice.buyer_state_code) {
                 buyerStateName = stateMap[invoice.buyer_state_code] || buyerStateName;
             }
 
@@ -328,9 +316,9 @@ class InvoicePdfService {
             headStyles: { fillColor: [255, 255, 255], textColor: 0, fontStyle: 'normal', lineColor: 0, lineWidth: 0.2, halign: 'center', fontSize: 7 },
             bodyStyles: { textColor: 0, lineColor: 0, valign: 'top', fontSize: 7 },
             columnStyles: {
-                0: { cellWidth: 100 },
-                1: { cellWidth: 35, halign: 'center' },
-                2: { cellWidth: 55, halign: 'right' }
+                0: { cellWidth: 145 },
+                1: { cellWidth: 20, halign: 'center' },
+                2: { cellWidth: 25, halign: 'right' }
             },
             willDrawCell: function(data) {
                 // Set explicitly object for line width to avoid array bug
@@ -369,7 +357,8 @@ class InvoicePdfService {
         doc.text("Amount Chargeable (in words)", m + 2, y + 3.5);
         doc.text("E. & O.E", pw - m - 2, y + 3.5, { align: "right" });
         doc.setFont("helvetica", "bold");
-        doc.text(invoice.amount_in_words || "-", m + 2, y + 6.5);
+        const correctAmountInWords = invoice.grand_total ? numberToWords(Number(invoice.grand_total)) : (invoice.amount_in_words || "-");
+        doc.text(correctAmountInWords, m + 2, y + 6.5);
         y += amountWordsHeight;
 
         // 5. Tax Breakdown Table
@@ -435,7 +424,8 @@ class InvoicePdfService {
         doc.setFontSize(7);
         doc.text("Tax Amount (in words) : ", m + 2, y + 4);
         doc.setFont("helvetica", "bold");
-        doc.text(invoice.tax_amount_in_words || "-", m + 32, y + 4);
+        const correctTaxAmountInWords = invoice.total_tax_amount ? numberToWords(Number(invoice.total_tax_amount)) : (invoice.tax_amount_in_words || "-");
+        doc.text(correctTaxAmountInWords, m + 32, y + 4);
 
         // Signatory
         doc.setFont("helvetica", "bold");
