@@ -386,7 +386,7 @@ CREATE TABLE public.payments (
 CREATE TABLE public.laundry (
   id bigint NOT NULL DEFAULT nextval('laundry_id_seq'::regclass),
   property_id bigint NOT NULL,
-  item_name USER-DEFINED NOT NULL,
+  item_name citext NOT NULL,
   description text,
   item_rate numeric DEFAULT 0,
   system_generated boolean DEFAULT false,
@@ -545,7 +545,7 @@ CREATE TABLE public.enquiry_room_details (
 CREATE TABLE public.menu_item_groups (
   id bigint NOT NULL DEFAULT nextval('menu_item_groups_id_seq'::regclass),
   property_id bigint NOT NULL,
-  name USER-DEFINED NOT NULL,
+  name citext NOT NULL,
   created_by uuid,
   updated_by uuid,
   created_on timestamp with time zone DEFAULT now(),
@@ -583,7 +583,7 @@ CREATE TABLE public.menu_master (
 CREATE TABLE public.delivery_partners (
   id bigint NOT NULL DEFAULT nextval('delivery_partners_id_seq'::regclass),
   property_id bigint NOT NULL,
-  name USER-DEFINED NOT NULL,
+  name citext NOT NULL,
   created_by uuid,
   updated_by uuid,
   created_on timestamp with time zone DEFAULT now(),
@@ -813,7 +813,7 @@ CREATE TABLE public.visa_details (
 
 CREATE TABLE public.inventory_types (
   id bigint NOT NULL DEFAULT nextval('inventory_types_id_seq'::regclass),
-  type USER-DEFINED NOT NULL UNIQUE,
+  type citext NOT NULL UNIQUE,
   created_on timestamp with time zone DEFAULT now(),
   CONSTRAINT inventory_types_pkey PRIMARY KEY (id)
 );
@@ -822,8 +822,8 @@ CREATE TABLE public.inventory_master (
   id bigint NOT NULL DEFAULT nextval('inventory_master_id_seq'::regclass),
   property_id bigint NOT NULL,
   inventory_type_id bigint NOT NULL,
-  use_type USER-DEFINED NOT NULL,
-  name USER-DEFINED NOT NULL,
+  use_type citext NOT NULL,
+  name citext NOT NULL,
   created_by uuid,
   updated_by uuid,
   created_on timestamp with time zone DEFAULT now(),
@@ -842,7 +842,7 @@ CREATE TABLE public.kitchen_inventory (
   property_id bigint NOT NULL,
   inventory_master_id bigint NOT NULL,
   quantity numeric DEFAULT 0,
-  unit USER-DEFINED,
+  unit character varying,
   created_by uuid,
   updated_by uuid,
   created_on timestamp with time zone DEFAULT now(),
