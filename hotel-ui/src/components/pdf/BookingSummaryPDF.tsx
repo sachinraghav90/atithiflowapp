@@ -517,8 +517,8 @@ export default function BookingSummaryPDF({
 ]
   .filter(Boolean) // remove null/undefined/empty values
   .join(", ");
-  const displayBookingId = String(booking?.id || "").padStart(3, "0");
-  const formattedBookingId = booking?.booking_no || `BO${displayBookingId}`;
+  const displayBookingId = String(booking?.booking_sequence || booking?.id || "").padStart(3, "0");
+  const formattedBookingId = booking?.booking_display_id || booking?.booking_no || `BO${displayBookingId}`;
   const bookingStatus = (booking?.booking_status || "").replace("_", " ");
 
   const baseAmt = +(booking?.price_before_tax || 0);

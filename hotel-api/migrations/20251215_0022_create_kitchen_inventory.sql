@@ -1,0 +1,22 @@
+-- create table
+--     if not exists public.kitchen_inventory (
+--         id bigserial primary key,
+--         property_id bigint not null,
+--         item_name varchar(100) not null,
+--         category varchar(50),
+--         stock_qty numeric(8, 2) default 0,
+--         unit varchar(20),
+--         reorder_level integer default 0,
+--         cost_price numeric(10, 2) default 0,
+--         is_active boolean default true,
+--         created_by uuid,
+--         created_on timestamptz default now (),
+--         updated_by uuid,
+--         updated_on timestamptz,
+--         constraint fk_kitchen_inventory_property foreign key (property_id) references public.properties (id) on delete cascade,
+--         constraint fk_kitchen_inventory_created_by foreign key (created_by) references public.users (id) on delete set null,
+--         constraint fk_kitchen_inventory_updated_by foreign key (updated_by) references public.users (id) on delete set null,
+--         constraint chk_inventory_stock_qty check (stock_qty >= 0),
+--         constraint chk_inventory_reorder_level check (reorder_level >= 0),
+--         constraint chk_inventory_cost_price check (cost_price >= 0)
+--     );

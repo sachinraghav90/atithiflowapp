@@ -148,6 +148,8 @@ class Booking {
             `
             SELECT
             b.id,
+            b.booking_sequence,
+            'BO' || LPAD(b.booking_sequence::text, 3, '0') AS booking_display_id,
             b.booking_status,
             b.booking_type,
             b.booking_date,
@@ -236,6 +238,29 @@ class Booking {
                 Number(gst_amount) +
                 Number(room_tax_amount);
 
+            /* ------------------ INSERT BOOKING SEQUENCE ------------------ */
+            const { rows: counterRows } = await client.query(
+                `
+                INSERT INTO public.property_counters (
+                  property_id,
+                  counter_name,
+                  next_value
+                )
+                VALUES (
+                  $1,
+                  'BOOKING',
+                  2
+                )
+                ON CONFLICT (property_id, counter_name)
+                DO UPDATE SET
+                  next_value = public.property_counters.next_value + 1,
+                  updated_on = now()
+                RETURNING next_value - 1 AS booking_sequence;
+                `,
+                [property_id]
+            );
+            const booking_sequence = counterRows[0].booking_sequence;
+
             /* ------------------ INSERT BOOKING ------------------ */
             const { rows: bookingRows } = await client.query(
                 `
@@ -267,14 +292,15 @@ class Booking {
                 pickup_location,
                 drop_time,
                 drop_location,
-                estimated_arrival_time
+                estimated_arrival_time,
+                booking_sequence
             )
             VALUES (
                 $1,$2,$3,$4,$5,$6,$7,
                 $8,$9,($8::int + $9::int),
                 $10,$11,$12,
                 (DATE($7) - DATE($6)),
-                $13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26
+                $13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27
             )
             RETURNING *
             `,
@@ -304,11 +330,13 @@ class Booking {
                     pickup_location || null,
                     drop_time || null,
                     drop_location || null,
-                    estimated_arrival_time
+                    estimated_arrival_time,
+                    booking_sequence
                 ]
             );
 
             const booking = bookingRows[0];
+            booking.booking_display_id = 'BO' + String(booking_sequence).padStart(3, '0');
 
             /* ------------------ ROOM AVAILABILITY CHECK ------------------ */
             for (const room of rooms) {
@@ -422,6 +450,8 @@ class Booking {
             `
             SELECT
             b.id,
+            b.booking_sequence,
+            'BO' || LPAD(b.booking_sequence::text, 3, '0') AS booking_display_id,
             b.property_id,
             b.package_id,
 

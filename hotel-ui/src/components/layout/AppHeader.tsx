@@ -261,9 +261,15 @@ export default function AppHeader({ collapsed, setCollapsed }: Props) {
                                     label="Assigned Properties" 
                                     value={
                                         <div className="flex flex-wrap gap-2 mt-1">
-                                            {myProperties?.properties?.length ? myProperties.properties.map((p: any) => (
-                                                <Badge key={p.id} variant="outline" className="font-normal">{p.brand_name}</Badge>
-                                            )) : "--"}
+                                            {isMultiProperty ? (
+                                                myProperties?.properties?.length ? myProperties.properties.map((p: any) => (
+                                                    <Badge key={p.id} variant="outline" className="font-normal">{p.brand_name}</Badge>
+                                                )) : "--"
+                                            ) : (
+                                                propertyAddress?.brand_name ? (
+                                                    <Badge variant="outline" className="font-normal">{propertyAddress.brand_name}</Badge>
+                                                ) : "--"
+                                            )}
                                         </div>
                                     } 
                                 />

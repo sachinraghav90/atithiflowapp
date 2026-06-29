@@ -360,7 +360,7 @@ export default function BookingsManagement() {
             return;
         }
 
-        const displayId = formatModuleDisplayId("booking", bookingId)
+        const displayId = (selectedBooking.booking.booking_display_id || (selectedBooking.booking.booking_sequence ? `BO${String(selectedBooking.booking.booking_sequence).padStart(3, "0")}` : formatModuleDisplayId("booking", bookingId)))
             .replace(/#/g, "")
             .trim();
 
@@ -767,7 +767,7 @@ export default function BookingsManagement() {
             }
 
             const formatted = rows.map((b: any) => ({
-                "Booking": formatModuleDisplayId("booking", b.id),
+                "Booking": b.booking_display_id || (b.booking_sequence ? `BO${String(b.booking_sequence).padStart(3, "0")}` : formatModuleDisplayId("booking", b.id)),
                 "Status": b.booking_status?.replace("_", " "),
                 "Arrival": formatToDDMMYY(b.estimated_arrival),
                 "Departure": formatToDDMMYY(b.estimated_departure),
@@ -1374,9 +1374,9 @@ export default function BookingsManagement() {
                                             type="button"
                                             className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
                                             onClick={() => handleManage(b.id, false)}
-                                            aria-label={`Open summary view for booking ${formatModuleDisplayId("booking", b.id)}`}
+                                            aria-label={`Open summary view for booking ${b.booking_display_id || (b.booking_sequence ? `BO${String(b.booking_sequence).padStart(3, "0")}` : formatModuleDisplayId("booking", b.id))}`}
                                         >
-                                            {formatModuleDisplayId("booking", b.id)}
+                                            {b.booking_display_id || (b.booking_sequence ? `BO${String(b.booking_sequence).padStart(3, "0")}` : formatModuleDisplayId("booking", b.id))}
                                         </button>
                                     ),
                                 },
@@ -1585,7 +1585,7 @@ export default function BookingsManagement() {
                         <SheetHeader className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                             <div className="space-y-1">
                                 <SheetTitle className="text-xl font-bold    ">
-                                    Booking {bookingId ? `[#${formatModuleDisplayId("booking", bookingId)}]` : ""}
+                                    Booking {bookingId ? `[#${selectedBooking?.booking?.booking_display_id || (selectedBooking?.booking?.booking_sequence ? `BO${String(selectedBooking.booking.booking_sequence).padStart(3, "0")}` : formatModuleDisplayId("booking", bookingId))}]` : ""}
                                 </SheetTitle>
                                 <p className="text-xs text-muted-foreground font-medium tracking-wide">
                                     {editMode ? "Manage Booking Details" : "Booking Related Details"}

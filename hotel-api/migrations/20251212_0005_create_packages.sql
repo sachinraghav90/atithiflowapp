@@ -6,7 +6,6 @@ create table
         description text,
         base_price numeric(10, 2) default 0,
         is_active boolean default true,
-        system_generated boolean default false,
         created_on timestamptz default now (),
         updated_on timestamptz,
         created_by uuid,
