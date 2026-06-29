@@ -33,6 +33,7 @@ class KitchenInventoryService {
             `
             SELECT
                 ki.id,
+                ki.kitchen_sequence,
                 ki.quantity,
                 ki.unit,
                 ki.created_on,
@@ -143,51 +144,80 @@ class KitchenInventoryService {
 
         const master = masterRows[0];
 
-        const { rows } = await this.#DB.query(
-            `
-            INSERT INTO public.kitchen_inventory (
-                property_id,
-                inventory_master_id,
-                quantity,
-                unit,
-                created_by
-            )
-            VALUES ($1,$2,$3,$4,$5)
-            RETURNING *
-            `,
-            [
-                property_id,
-                inventory_master_id,
-                quantity,
-                unit,
-                created_by
-            ]
-        );
+        const client = await this.#DB.connect();
+        try {
+            await client.query("BEGIN");
 
-        const inventory = rows[0];
+            // -----------------------------
+            // Allocate sequence
+            // -----------------------------
+            const seqResult = await client.query(`
+                INSERT INTO public.property_counters (property_id, counter_name, next_value)
+                VALUES ($1, 'KITCHEN', 1)
+                ON CONFLICT (property_id, counter_name)
+                DO UPDATE SET 
+                    next_value = public.property_counters.next_value + 1,
+                    updated_on = now()
+                RETURNING next_value
+            `, [property_id]);
+            
+            const nextSeq = seqResult.rows[0].next_value;
 
-        /* ---------- AUDIT ---------- */
-
-        await AuditService.log({
-            property_id,
-            event_id: inventory.id,
-            table_name: "kitchen_inventory",
-            event_type: "CREATE",
-            task_name: "Create Kitchen Inventory",
-            comments: "New kitchen inventory item added",
-            details: JSON.stringify({
-                entity: this.#buildAuditEntity(master, inventory_master_id, inventory.unit),
-
-                after: {
+            const { rows } = await client.query(
+                `
+                INSERT INTO public.kitchen_inventory (
+                    property_id,
+                    kitchen_sequence,
+                    inventory_master_id,
                     quantity,
-                    unit: inventory.unit
-                },
-                changed_fields: ["quantity", "unit"]
-            }),
-            user_id: created_by
-        });
+                    unit,
+                    created_by
+                )
+                VALUES ($1, $2, $3, $4, $5, $6)
+                RETURNING *;
+                `,
+                [
+                    property_id,
+                    nextSeq,
+                    inventory_master_id,
+                    quantity,
+                    unit,
+                    created_by
+                ]
+            );
 
-        return inventory;
+            if (rows[0]) {
+                const newItem = rows[0];
+
+                /* ---------- AUDIT ---------- */
+
+                await AuditService.log({
+                    property_id,
+                    event_id: newItem.id,
+                    table_name: "kitchen_inventory",
+                    event_type: "CREATE",
+                    task_name: "Create Kitchen Inventory",
+                    comments: "New kitchen inventory item added",
+                    details: JSON.stringify({
+                        entity: this.#buildAuditEntity(master, inventory_master_id, newItem.unit),
+                        after: {
+                            quantity,
+                            unit: newItem.unit
+                        },
+                        changed_fields: ["quantity", "unit"]
+                    }),
+                    user_id: created_by
+                }).catch(e => console.error("Audit log failed:", e));
+            }
+
+            await client.query("COMMIT");
+            return rows[0];
+        } catch (e) {
+            await client.query("ROLLBACK");
+            throw e;
+        } finally {
+            client.release();
+        }
     }
 
     /* =====================================================

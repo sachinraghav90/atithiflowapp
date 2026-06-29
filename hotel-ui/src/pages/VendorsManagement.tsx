@@ -65,6 +65,7 @@ import { PlusCircle, Trash2 } from "lucide-react";
 type Vendor = {
     id: string;
     property_id: string;
+    vendor_sequence?: string | number;
     name: string;
     pan_no?: string;
     gst_no?: string;
@@ -449,7 +450,7 @@ export default function VendorsManagement() {
             }
 
             const formatted = rows.map((v: Vendor) => ({
-                "Vendor ID": formatModuleDisplayId("vendor", v.id),
+                "Vendor ID": formatModuleDisplayId("vendor", v.vendor_sequence || v.id),
                 "Name": v.name,
                 "Type": v.vendor_type || "—",
                 "Contact": v.contact_no || "—",
@@ -676,9 +677,9 @@ export default function VendorsManagement() {
                                     type="button"
                                     className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
                                     onClick={() => openView(v, "view")}
-                                    aria-label={`Open summary view for vendor ${formatModuleDisplayId("vendor", v.id)}`}
+                                    aria-label={`Open summary view for vendor ${formatModuleDisplayId("vendor", v.vendor_sequence || v.id)}`}
                                 >
-                                    {formatModuleDisplayId("vendor", v.id)}
+                                    {formatModuleDisplayId("vendor", v.vendor_sequence || v.id)}
                                 </button>
                             ),
                         },
@@ -882,8 +883,8 @@ export default function VendorsManagement() {
                             <div className="space-y-1">
                                 <SheetTitle className="text-xl font-bold">
                                     {mode === "add" || mode === "edit"
-                                        ? `Vendor ${mode === "add" ? "" : editingVendor?.id ? `[#${formatModuleDisplayId("vendor", editingVendor.id)}]` : ""}`
-                                        : `Vendor ${editingVendor?.id ? `[#${formatModuleDisplayId("vendor", editingVendor.id)}]` : ""}`
+                                        ? `Vendor ${mode === "add" ? "" : editingVendor?.id ? `[#${formatModuleDisplayId("vendor", editingVendor.vendor_sequence || editingVendor.id)}]` : ""}`
+                                        : `Vendor ${editingVendor?.id ? `[#${formatModuleDisplayId("vendor", editingVendor.vendor_sequence || editingVendor.id)}]` : ""}`
                                     }
                                 </SheetTitle>
                                 <p className="text-xs text-muted-foreground font-medium tracking-wide">

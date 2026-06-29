@@ -95,6 +95,7 @@ const getAuditChangeText = (details: any, inventoryTypes: any[]) => {
 type InventoryItem = {
     id: string;
     property_id: string;
+    inventory_sequence?: string | number;
     inventory_type_id: number;
     inventory_type?: string;
     use_type: string;
@@ -565,7 +566,16 @@ export default function InventoryMaster() {
     const { permission } = usePermission(pathname)
 
     const inventoryRows = useMemo(() => {
-        return inventoryMaster?.data ?? [];
+        const items = [...(inventoryMaster?.data ?? [])];
+        items.sort((a: any, b: any) => {
+            const aSeq = a.inventory_sequence ?? -1;
+            const bSeq = b.inventory_sequence ?? -1;
+            
+            if (aSeq !== bSeq) return bSeq - aSeq;
+            
+            return b.id - a.id;
+        });
+        return items;
     }, [inventoryMaster?.data]);
 
 
@@ -610,7 +620,7 @@ export default function InventoryMaster() {
             }
 
             const formatted = res.data.map((item: InventoryItem) => ({
-                "Inventory ID": formatModuleDisplayId("inventory", item.id),
+                "Inventory ID": formatModuleDisplayId("inventory", item.inventory_sequence || item.id),
                 "Name": item.name,
                 "Inventory Type": item.inventory_type || "—",
                 "Use Type": item.use_type.charAt(0).toUpperCase() + item.use_type.slice(1),
@@ -833,9 +843,9 @@ export default function InventoryMaster() {
                                             type="button"
                                             className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
                                             onClick={() => openView(item)}
-                                            aria-label={`Open summary view for inventory ${formatModuleDisplayId("inventory", item.id)}`}
+                                            aria-label={`Open summary view for inventory ${formatModuleDisplayId("inventory", item.inventory_sequence || item.id)}`}
                                         >
-                                            {formatModuleDisplayId("inventory", item.id)}
+                                            {formatModuleDisplayId("inventory", item.inventory_sequence || item.id)}
                                         </button>
                                     ),
                                 },
@@ -1233,7 +1243,7 @@ export default function InventoryMaster() {
                             <SheetHeader className="mb-6">
                                 <div className="space-y-1">
                                     <SheetTitle className="text-xl font-bold">
-                                        {mode === "view" ? `Master Inventory [${selected?.id ? `#${formatModuleDisplayId("inventory", selected.id)}` : "..."}]` : mode === "edit" ? `Update Master Inventory [${selected?.id ? `#${formatModuleDisplayId("inventory", selected.id)}` : "..."}]` : "Add Master Inventory Item"}
+                                        {mode === "view" ? `Master Inventory [${selected?.id ? `#${formatModuleDisplayId("inventory", selected.inventory_sequence || selected.id)}` : "..."}]` : mode === "edit" ? `Update Master Inventory [${selected?.id ? `#${formatModuleDisplayId("inventory", selected.inventory_sequence || selected.id)}` : "..."}]` : "Add Master Inventory Item"}
                                     </SheetTitle>
                                     <p className="text-xs text-muted-foreground font-medium tracking-wide">
                                         {mode === "view" ? "Inventory configuration details" : "Modify existing inventory item details."}
@@ -1242,7 +1252,7 @@ export default function InventoryMaster() {
                             </SheetHeader>
 
                             {mode === "view" && selected && (
-                                <div className="space-y-6">
+                                <div className="space-y-4">
                                     {/* Sheet Tabs */}
                                     <div className="border-b border-border flex">
                                         <button

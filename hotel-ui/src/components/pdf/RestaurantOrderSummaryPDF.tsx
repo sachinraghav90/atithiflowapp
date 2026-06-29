@@ -138,7 +138,7 @@ type Props = {
 };
 
 export default function RestaurantOrderSummaryPDF({ order, propertyName }: Props) {
-  const orderId = order?.id ? formatModuleDisplayId("order", order.id) : "—";
+  const orderId = order?.id ? formatModuleDisplayId("order", order.order_sequence || order.id) : "—";
   const headerTitle = propertyName || "AtithiFlow Hotel";
   const items = Array.isArray(order?.items) ? order.items : [];
   const hasItems = items.length > 0;

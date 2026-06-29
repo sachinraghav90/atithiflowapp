@@ -88,6 +88,7 @@ const AUDIT_ACTIONS = ["CREATE", "UPDATE", "DELETE"];
 type LaundryOrder = {
     id: string;
     property_id?: string | number | null;
+    order_sequence?: string | number;
     booking_id?: string | number | null;
     amount: string;
     laundry_status: LaundryStatus;
@@ -1019,7 +1020,7 @@ export default function LaundryOrdersManagement() {
                     }}
                     className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
                 >
-                    {formatLaundryOrderDisplayId(order.id)}
+                    {formatLaundryOrderDisplayId(order.order_sequence || order.id)}
                 </button>
             ),
         },
@@ -1157,7 +1158,7 @@ export default function LaundryOrdersManagement() {
                 const displayOrder = getLaundryOrderDisplay(order, vendors);
 
                 return {
-                    "Laundry ID": formatLaundryOrderDisplayId(order.id),
+                    "Laundry ID": formatLaundryOrderDisplayId(order.order_sequence || order.id),
                     "Item Name": displayOrder.itemLabel,
                     "No. of Items": displayOrder.itemCountLabel,
                     "Pickup Date": displayOrder.pickupDateLabel,
@@ -1815,7 +1816,7 @@ export default function LaundryOrdersManagement() {
                         <SheetHeader className="mb-6">
                             <div className="space-y-1">
                                 <SheetTitle className="text-xl font-bold">
-                                    {viewItemsModal.editMode ? `Update Laundry Order [${viewItemsModal.order?.id ? `#${formatLaundryOrderDisplayId(viewItemsModal.order.id)}` : "..."}]` : `Laundry Order [${viewItemsModal.order?.id ? `#${formatLaundryOrderDisplayId(viewItemsModal.order.id)}` : "..."}]`}
+                                    {viewItemsModal.editMode ? `Update Laundry Order [${viewItemsModal.order?.id ? `#${formatLaundryOrderDisplayId(viewItemsModal.order.order_sequence || viewItemsModal.order.id)}` : "..."}]` : `Laundry Order [${viewItemsModal.order?.id ? `#${formatLaundryOrderDisplayId(viewItemsModal.order.order_sequence || viewItemsModal.order.id)}` : "..."}]`}
                                 </SheetTitle>
                                 <p className="text-xs text-muted-foreground font-medium tracking-wide">
                                     {viewItemsModal.editMode
@@ -1829,7 +1830,7 @@ export default function LaundryOrdersManagement() {
                             {viewItemsModal.order && (() => {
                                 const order = viewItemsModal.order;
                                 const displayOrder = getLaundryOrderDisplay(order, vendors);
-                                const displayId = formatLaundryOrderDisplayId(order.id);
+                                const displayId = formatLaundryOrderDisplayId(order.order_sequence || order.id);
                                 const orderItems = Array.isArray(order.items) ? order.items : [];
 
                                 return (

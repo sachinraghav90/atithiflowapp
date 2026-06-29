@@ -62,6 +62,7 @@ type EnquiryStatus =
 type Enquiry = {
     id: string;
     property_id: string;
+    enquiry_sequence?: string | number;
     booking_id: string | null;
 
     guest_name: string;
@@ -557,7 +558,7 @@ export default function EnquiriesManagement() {
                 const displayEnquiry = getEnquiryDisplay(enquiry);
 
                 return {
-                    "Enquiry ID": formatModuleDisplayId("enquiry", enquiry.id),
+                    "Enquiry ID": formatModuleDisplayId("enquiry", enquiry.enquiry_sequence || enquiry.id),
                     Name: displayEnquiry.primaryLabel,
                     Contact: displayEnquiry.contactLabel,
                     City: displayEnquiry.cityLabel,
@@ -712,9 +713,9 @@ export default function EnquiriesManagement() {
                     type="button"
                     className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
                     onClick={() => openManage(enquiry, false)}
-                    aria-label={`Open summary view for enquiry ${formatModuleDisplayId("enquiry", enquiry.id)}`}
+                    aria-label={`Open summary view for enquiry ${formatModuleDisplayId("enquiry", enquiry.enquiry_sequence || enquiry.id)}`}
                 >
-                    {formatModuleDisplayId("enquiry", enquiry.id)}
+                    {formatModuleDisplayId("enquiry", enquiry.enquiry_sequence || enquiry.id)}
                 </button>
             ),
         },
@@ -1186,7 +1187,7 @@ export default function EnquiriesManagement() {
                             <div className="space-y-0.5">
                                 <SheetTitle className="text-xl font-bold">
                                     {editMode ? "Update Enquiry" : "Enquiry"}
-                                    {selected?.id && <span className="ml-2">[#{formatModuleDisplayId("enquiry", selected.id)}]</span>}
+                                    {selected?.id && <span className="ml-2">[#{formatModuleDisplayId("enquiry", selected.enquiry_sequence || selected.id)}]</span>}
                                 </SheetTitle>
                                 <p className="text-xs text-muted-foreground font-medium tracking-wide">
                                     {editMode 

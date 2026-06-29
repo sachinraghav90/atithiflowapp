@@ -156,39 +156,61 @@ class MenuMasterService {
         image,
         imageMime,
         prepTime,
+        userId,
     }) {
-        const { rows } = await this.#DB.query(
-            `
-            INSERT INTO public.menu_master (
-                property_id,
-                item_name,
-                menu_item_group_id,
-                price,
-                is_active,
-                is_veg,
-                description,
-                image,
-                image_mime,
-                prep_time,
-                created_by
-            )
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-            RETURNING id, property_id, item_name, menu_item_group_id, price, is_active, is_veg, description, prep_time, created_on, updated_on
-            `,
-            [
-                propertyId,
-                itemName,
-                menuItemGroupId,
-                price,
-                isActive,
-                isVeg,
-                description,
-                image,
-                imageMime,
-                prepTime,
-                userId
-            ]
-        );
+        const client = await this.#DB.connect();
+        try {
+            await client.query("BEGIN");
+
+            // -----------------------------
+            // Allocate sequence
+            // -----------------------------
+            const seqResult = await client.query(`
+                INSERT INTO public.property_counters (property_id, counter_name, next_value)
+                VALUES ($1, 'MENU', 1)
+                ON CONFLICT (property_id, counter_name)
+                DO UPDATE SET 
+                    next_value = public.property_counters.next_value + 1,
+                    updated_on = now()
+                RETURNING next_value
+            `, [propertyId]);
+            
+            const nextSeq = seqResult.rows[0].next_value;
+
+            const { rows } = await client.query(
+                `
+                INSERT INTO public.menu_master (
+                    property_id,
+                    menu_sequence,
+                    item_name,
+                    menu_item_group_id,
+                    price,
+                    is_active,
+                    is_veg,
+                    description,
+                    image,
+                    image_mime,
+                    prep_time,
+                    created_by
+                )
+                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+                RETURNING id, property_id, item_name, menu_item_group_id, price, is_active, is_veg, description, prep_time, created_on, updated_on
+                `,
+                [
+                    propertyId,
+                    nextSeq,
+                    itemName,
+                    menuItemGroupId,
+                    price,
+                    isActive,
+                    isVeg,
+                    description,
+                    image,
+                    imageMime,
+                    prepTime,
+                    userId
+                ]
+            );
 
         const created = rows[0];
 
@@ -212,7 +234,14 @@ class MenuMasterService {
             user_id: userId
         });
 
+        await client.query("COMMIT");
         return created;
+        } catch (error) {
+            await client.query("ROLLBACK");
+            throw error;
+        } finally {
+            client.release();
+        }
     }
 
     /* ===============================
@@ -446,10 +475,23 @@ class MenuMasterService {
                     throw new Error("Package, Stay Duration and Guests required");
                 }
 
+                const seqResult = await client.query(`
+                    INSERT INTO public.property_counters (property_id, counter_name, next_value)
+                    VALUES ($1, 'MENU', 1)
+                    ON CONFLICT (property_id, counter_name)
+                    DO UPDATE SET 
+                        next_value = public.property_counters.next_value + 1,
+                        updated_on = now()
+                    RETURNING next_value
+                `, [propertyId]);
+                
+                const nextSeq = seqResult.rows[0].next_value;
+
                 const { rows } = await client.query(
                     `
                     INSERT INTO public.menu_master (
                         property_id,
+                        menu_sequence,
                         item_name,
                         menu_item_group_id,
                         price,
@@ -461,11 +503,12 @@ class MenuMasterService {
                         prep_time,
                         created_by
                     )
-                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
                     RETURNING id, property_id, item_name, menu_item_group_id, price, is_active, is_veg, description, prep_time, created_on, updated_on
                     `,
                     [
                         propertyId,
+                        nextSeq,
                         itemName,
                         menuItemGroupId ?? null,
                         price ?? 0,

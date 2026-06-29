@@ -88,26 +88,47 @@ class LaundryService {
         itemRate,
         userId
     }) {
-        const query = `
-            insert into public.laundry (
-                property_id,
-                item_name,
-                description,
-                item_rate,
-                system_generated,
-                created_by
-            )
-            values ($1, $2, $3, $4, false, $5)
-            returning *;
-        `;
+        const client = await this.#DB.connect();
+        try {
+            await client.query("BEGIN");
 
-        const { rows } = await this.#DB.query(query, [
-            propertyId,
-            itemName,
-            description ?? null,
-            itemRate ?? 0,
-            userId
-        ]);
+            // -----------------------------
+            // Allocate sequence
+            // -----------------------------
+            const seqResult = await client.query(`
+                INSERT INTO public.property_counters (property_id, counter_name, next_value)
+                VALUES ($1, 'LAUNDRY_PRICING', 1)
+                ON CONFLICT (property_id, counter_name)
+                DO UPDATE SET 
+                    next_value = public.property_counters.next_value + 1,
+                    updated_on = now()
+                RETURNING next_value
+            `, [propertyId]);
+            
+            const nextSeq = seqResult.rows[0].next_value;
+
+            const query = `
+                insert into public.laundry (
+                    property_id,
+                    laundry_sequence,
+                    item_name,
+                    description,
+                    item_rate,
+                    system_generated,
+                    created_by
+                )
+                values ($1, $2, $3, $4, $5, false, $6)
+                returning *;
+            `;
+
+            const { rows } = await client.query(query, [
+                propertyId,
+                nextSeq,
+                itemName,
+                description ?? null,
+                itemRate ?? 0,
+                userId
+            ]);
 
         await AuditService.log({
             property_id: propertyId,
@@ -126,8 +147,14 @@ class LaundryService {
             user_id: userId
         });
 
-
+        await client.query("COMMIT");
         return rows[0];
+        } catch (error) {
+            await client.query("ROLLBACK");
+            throw error;
+        } finally {
+            client.release();
+        }
     }
 
     async bulkCreateLaundry({
@@ -177,6 +204,32 @@ class LaundryService {
         ]);
 
         if (rows.length > 0) {
+            await this.#DB.query(`
+                WITH max_seqs AS (
+                    SELECT property_id, COALESCE(MAX(laundry_sequence), 0) as max_seq
+                    FROM public.laundry
+                    WHERE property_id = $1
+                    GROUP BY property_id
+                ),
+                numbered_laundry AS (
+                    SELECT id, property_id, ROW_NUMBER() OVER (PARTITION BY property_id ORDER BY id ASC) as seq
+                    FROM public.laundry
+                    WHERE laundry_sequence IS NULL AND property_id = $1
+                )
+                UPDATE public.laundry l
+                SET laundry_sequence = COALESCE((SELECT max_seq FROM max_seqs), 0) + nl.seq
+                FROM numbered_laundry nl
+                WHERE l.id = nl.id;
+
+                INSERT INTO public.property_counters (property_id, counter_name, next_value)
+                SELECT property_id, 'LAUNDRY_PRICING', COALESCE(MAX(laundry_sequence), 0) + 1
+                FROM public.laundry
+                WHERE property_id = $1
+                GROUP BY property_id
+                ON CONFLICT (property_id, counter_name) 
+                DO UPDATE SET next_value = EXCLUDED.next_value, updated_on = CURRENT_TIMESTAMP;
+            `, [propertyId]);
+            
             const itemMap = new Map(
                 items.map((item) => [
                     item.itemName?.trim()?.toLowerCase(),

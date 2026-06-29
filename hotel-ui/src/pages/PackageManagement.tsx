@@ -96,6 +96,7 @@ type PackageListItem = {
 type PackageDetail = {
     id?: string;
     property_id?: string;
+    package_sequence?: string | number;
     package_name: string;
     description: string;
     base_price: string;
@@ -412,7 +413,7 @@ export default function PackageManagement() {
         }
 
         const formatted = packageRows.map((pkg) => ({
-            "Plan ID": formatModuleDisplayId("package", pkg.id),
+            "Plan ID": formatModuleDisplayId("package", pkg.package_sequence || pkg.id),
             "Plan Name": pkg.package_name,
             "Description": pkg.description || "-",
             "Type": pkg.system_generated ? "System" : "Custom",
@@ -453,9 +454,9 @@ export default function PackageManagement() {
                     type="button"
                     className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
                     onClick={() => handleOpenEdit({ id: String(pkg.id), package_name: pkg.package_name }, "view")}
-                    aria-label={`Open plan ${formatModuleDisplayId("package", pkg.id)}`}
+                    aria-label={`Open plan ${formatModuleDisplayId("package", pkg.package_sequence || pkg.id)}`}
                 >
-                    {formatModuleDisplayId("package", pkg.id)}
+                    {formatModuleDisplayId("package", pkg.package_sequence || pkg.id)}
                 </button>
             ),
         },
@@ -851,7 +852,7 @@ export default function PackageManagement() {
                             <SheetHeader className="px-6 pb-4 pt-2 border-b border-border sticky top-0 z-50 bg-background relative">
                                 <div className="space-y-1">
                                     <SheetTitle className="text-xl font-bold">
-                                        {mode === "add" ? "Create New Plan" : mode === "edit" ? `Update Plan ${selectedPackage?.id ? `[#${formatModuleDisplayId("package", selectedPackage.id)}]` : "..."}` : `Plan Summary ${selectedPackage?.id ? `[#${formatModuleDisplayId("package", selectedPackage.id)}]` : "..."}`}
+                                        {mode === "add" ? "Create New Plan" : mode === "edit" ? `Update Plan ${selectedPackage?.id ? `[#${formatModuleDisplayId("package", selectedPackage.package_sequence || selectedPackage.id)}]` : "..."}` : `Plan Summary ${selectedPackage?.id ? `[#${formatModuleDisplayId("package", selectedPackage.package_sequence || selectedPackage.id)}]` : "..."}`}
                                     </SheetTitle>
                                    <p className="text-xs text-muted-foreground font-medium tracking-wide">
                                         {mode === "add" ? "Setup new room plan" : mode === "edit" ? "Modify existing plan information" : "Plan details and pricing"}

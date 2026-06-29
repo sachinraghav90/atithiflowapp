@@ -273,12 +273,28 @@ class EnquiryService {
             await client.query("BEGIN");
 
             // -----------------------------
+            // Allocate sequence
+            // -----------------------------
+            const seqResult = await client.query(`
+                INSERT INTO public.property_counters (property_id, counter_name, next_value)
+                VALUES ($1, 'ENQUIRY', 1)
+                ON CONFLICT (property_id, counter_name)
+                DO UPDATE SET 
+                    next_value = public.property_counters.next_value + 1,
+                    updated_on = now()
+                RETURNING next_value
+            `, [payload.property_id]);
+            
+            const nextSeq = seqResult.rows[0].next_value;
+
+            // -----------------------------
             // 1️⃣ Create enquiry
             // -----------------------------
 
             const query = `
             INSERT INTO public.enquiries (
                 property_id,
+                enquiry_sequence,
                 booking_id,
                 guest_name,
                 mobile,
@@ -311,18 +327,19 @@ class EnquiryService {
                 alternate_room_details
             )
             VALUES (
-                $1,$2,$3,$4,$5,$6,$7,
-                COALESCE($8,'open'),
-                $9,$10,$11,$12,$13,$14,
-                $15,$16,$17,$18,$19,
-                $20,$21,$22,$23,$24,$25,$26,$27,
-                $28,$29,$30,$31
+                $1,$2,$3,$4,$5,$6,$7,$8,
+                COALESCE($9,'open'),
+                $10,$11,$12,$13,$14,$15,
+                $16,$17,$18,$19,$20,
+                $21,$22,$23,$24,$25,$26,$27,$28,
+                $29,$30,$31,$32
             )
             RETURNING *;
         `;
 
             const values = [
                 payload.property_id,
+                nextSeq,
                 payload.booking_id ?? null,
                 payload.guest_name,
                 payload.mobile ?? null,

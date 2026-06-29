@@ -162,10 +162,26 @@ class VendorService {
         try {
             await client.query("BEGIN");
 
+            // -----------------------------
+            // Allocate sequence
+            // -----------------------------
+            const seqResult = await client.query(`
+                INSERT INTO public.property_counters (property_id, counter_name, next_value)
+                VALUES ($1, 'VENDOR', 1)
+                ON CONFLICT (property_id, counter_name)
+                DO UPDATE SET 
+                    next_value = public.property_counters.next_value + 1,
+                    updated_on = now()
+                RETURNING next_value
+            `, [property_id]);
+            
+            const nextSeq = seqResult.rows[0].next_value;
+
             const { rows } = await client.query(
             `
             INSERT INTO public.ref_vendors (
                 property_id,
+                vendor_sequence,
                 name,
                 pan_no,
                 gst_no,
@@ -180,12 +196,13 @@ class VendorService {
                 qr_code,
                 created_by
             ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
             )
             RETURNING *
             `,
             [
                 property_id,
+                nextSeq,
                 name,
                 pan_no,
                 gst_no,

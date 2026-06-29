@@ -60,6 +60,7 @@ import { getFormattedAuditChanges, getAuditActionBadge } from "@/utils/auditUtil
 /* ---------------- Types ---------------- */
 type KitchenItem = {
     id: string;
+    kitchen_sequence?: string | number;
     inventory_master_id: number;
     name: string;
     inventory_type: string;
@@ -216,6 +217,7 @@ export default function KitchenInventory() {
 
     const { data: masterInventoryData } = useGetInventoryMasterQuery({
         propertyId: selectedPropertyId,
+        type: "Kitchen",
         page: 1,
         limit: 1000
     }, {
@@ -492,7 +494,7 @@ export default function KitchenInventory() {
     const exportKitchenSheet = () => {
         if (!filteredKitchenInventory.length) return toast.info("No rows to export");
         const formatted = filteredKitchenInventory.map((item: KitchenItem) => ({
-            "Item ID": formatModuleDisplayId("kitchen", item.id),
+            "Item ID": formatModuleDisplayId("kitchen", item.kitchen_sequence || item.id),
             "Name": item.name,
             "Type": item.inventory_type,
             "Stock": formatDisplayQuantity(item.quantity, item.unit || ""),
@@ -698,7 +700,7 @@ export default function KitchenInventory() {
                                                     className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
                                                     onClick={() => openManage(item, "view")}
                                                 >
-                                                    {formatModuleDisplayId("kitchen", item.id)}
+                                                    {formatModuleDisplayId("kitchen", item.kitchen_sequence || item.id)}
                                                 </button>
                                             ),
                                         },
@@ -900,7 +902,7 @@ export default function KitchenInventory() {
                         <SheetHeader className="px-6 py-4 border-b">
                             <div className="space-y-1">
                                 <SheetTitle className="text-xl font-bold">
-                                    {mode === "view" ? `Kitchen Inventory [${selectedItem?.id ? `#${formatModuleDisplayId("kitchen", selectedItem.id)}` : "..."}]` : mode === "edit" ? `Update Kitchen Inventory [${selectedItem?.id ? `#${formatModuleDisplayId("kitchen", selectedItem.id)}` : "..."}]` : "Add Item"}
+                                    {mode === "view" ? `Kitchen Inventory [${selectedItem?.id ? `#${formatModuleDisplayId("kitchen", selectedItem.kitchen_sequence || selectedItem.id)}` : "..."}]` : mode === "edit" ? `Update Kitchen Inventory [${selectedItem?.id ? `#${formatModuleDisplayId("kitchen", selectedItem.kitchen_sequence || selectedItem.id)}` : "..."}]` : "Add Item"}
                                 </SheetTitle>
                                 <p className="text-xs text-muted-foreground font-medium  tracking-wide">
                                     {mode === "view" ? "Detailed stock and audit information" : "Modify stock levels and unit configuration"}

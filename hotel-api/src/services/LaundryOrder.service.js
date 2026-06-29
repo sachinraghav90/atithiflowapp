@@ -88,12 +88,26 @@ class LaundryOrderService {
             const grand_total_amount = Number((subtotal + cgst_amount + sgst_amount).toFixed(2));
             const finalTotal = grand_total_amount;
 
+            /* ---------- SEQUENCE ALLOCATION ---------- */
+            const seqQuery = `
+                INSERT INTO public.property_counters (property_id, counter_name, next_value)
+                VALUES ($1, 'LAUNDRY_ORDER', 2)
+                ON CONFLICT (property_id, counter_name) 
+                DO UPDATE SET 
+                    next_value = property_counters.next_value + 1,
+                    updated_on = CURRENT_TIMESTAMP
+                RETURNING next_value - 1 as allocated_sequence;
+            `;
+            const seqRes = await client.query(seqQuery, [propertyId]);
+            const allocatedSequence = seqRes.rows[0].allocated_sequence;
+
             /* ---------- CREATE ORDER ---------- */
 
             const orderQuery = `
             INSERT INTO public.laundry_orders (
                 booking_id,
                 property_id,
+                order_sequence,
                 vendor_id,
                 laundry_type,
                 laundry_status,
@@ -116,10 +130,10 @@ class LaundryOrderService {
                 grand_total_amount
             )
             VALUES (
-                $1,$2,$3,$4,
+                $1,$2,$3,$4,$5,
                 'PENDING',
-                $5,$6,$7,$8,$9,$10,$11,$12,$13,
-                $14,$15,$16,$17,$18,$19,$20
+                $6,$7,$8,$9,$10,$11,$12,$13,$14,
+                $15,$16,$17,$18,$19,$20,$21
             )
             RETURNING *;
         `;
@@ -127,6 +141,7 @@ class LaundryOrderService {
             const orderRes = await client.query(orderQuery, [
                 bookingId,
                 propertyId,
+                allocatedSequence,
                 vendorId,
                 laundryType,
                 pickupDate,

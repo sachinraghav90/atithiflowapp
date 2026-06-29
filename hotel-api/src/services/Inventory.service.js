@@ -117,7 +117,7 @@ class InventoryService {
             JOIN public.inventory_types it
                 ON it.id = im.inventory_type_id
             ${where}
-            ORDER BY im.created_on DESC
+            ORDER BY im.inventory_sequence DESC NULLS LAST, im.id DESC
             ${exportRows ? "" : `LIMIT $${i++} OFFSET $${i++}`}
         `;
 
@@ -152,33 +152,54 @@ class InventoryService {
     ===================================================== */
     async createInventory(payload, userId) {
 
-        const query = `
-            INSERT INTO public.inventory_master (
-                property_id,
-                inventory_type_id,
-                use_type,
-                name,
-                unit,
-                created_by
-            )
-            VALUES ($1,$2,$3,$4,$5,$6)
-            RETURNING *;
-        `;
+        const client = await this.#DB.connect();
+        try {
+            await client.query("BEGIN");
 
-        const values = [
-            payload.property_id,
-            payload.inventory_type_id,
-            payload.use_type,
-            payload.name,
-            payload.unit ?? null,
-            userId
-        ];
+            // -----------------------------
+            // Allocate sequence
+            // -----------------------------
+            const seqResult = await client.query(`
+                INSERT INTO public.property_counters (property_id, counter_name, next_value)
+                VALUES ($1, 'INVENTORY', 1)
+                ON CONFLICT (property_id, counter_name)
+                DO UPDATE SET 
+                    next_value = public.property_counters.next_value + 1,
+                    updated_on = now()
+                RETURNING next_value
+            `, [payload.property_id]);
+            
+            const nextSeq = seqResult.rows[0].next_value;
 
-        const result = await this.#DB.query(query, values);
+            const query = `
+                INSERT INTO public.inventory_master (
+                    property_id,
+                    inventory_sequence,
+                    inventory_type_id,
+                    use_type,
+                    name,
+                    unit,
+                    created_by
+                )
+                VALUES ($1,$2,$3,$4,$5,$6,$7)
+                RETURNING *;
+            `;
+
+            const values = [
+                payload.property_id,
+                nextSeq,
+                payload.inventory_type_id,
+                payload.use_type,
+                payload.name,
+                payload.unit ?? null,
+                userId
+            ];
+
+            const result = await client.query(query, values);
 
         if (result.rows[0]) {
             const newItem = result.rows[0];
-            AuditService.log({
+            await AuditService.log({
                 property_id: newItem.property_id,
                 event_id: newItem.id,
                 table_name: "inventory_master",
@@ -195,7 +216,14 @@ class InventoryService {
             }).catch(e => console.error("Audit log failed:", e));
         }
 
+        await client.query("COMMIT");
         return result.rows[0];
+        } catch (e) {
+            await client.query("ROLLBACK");
+            throw e;
+        } finally {
+            client.release();
+        }
     }
 
     /* =====================================================

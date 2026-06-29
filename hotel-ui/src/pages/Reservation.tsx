@@ -6,6 +6,8 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { useAppSelector } from "@/redux/hook";
+import { extractApiErrorMessage } from "@/utils/apiError";
+import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
 import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
 import { useAddGuestsByBookingMutation, useAvailableRoomsQuery, useCreateBookingMutation, useGetMyPropertiesQuery, useGetPackageByIdQuery, useGetPackagesByPropertyQuery, useGetPropertyTaxQuery, useGetRoomTypesQuery, useUpdateEnquiryMutation, useLazyGetGuestByPhoneQuery } from "@/redux/services/hmsApi";
 import { normalizeNumberInput, normalizeTextInput } from "@/utils/normalizeTextInput";
@@ -995,8 +997,8 @@ function ReservationManagementInner() {
         // 🔹 Mark enquiry-origin booking
         setComments((prev) =>
             prev
-                ? `${prev}\n(Generated from enquiry #${enquiry.id})`
-                : `Generated from enquiry #${enquiry.id}`
+                ? `${prev}\n(Generated from enquiry #${formatModuleDisplayId("enquiry", enquiry.enquiry_sequence || enquiry.id)})`
+                : `Generated from enquiry #${formatModuleDisplayId("enquiry", enquiry.enquiry_sequence || enquiry.id)}`
         );
 
     }, [fromEnquiry, enquiry]);

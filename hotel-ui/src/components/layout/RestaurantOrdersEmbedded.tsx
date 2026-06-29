@@ -14,6 +14,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/
 type RestaurantOrder = {
     id: string;
     property_id: string;
+    order_sequence?: string | number;
     table_no: string;
     guest_id: string | null;
     room_id: string | null;
@@ -109,7 +110,7 @@ export default function RestaurantOrdersEmbedded({
                                             rel="noopener noreferrer"
                                             className="font-bold text-primary hover:underline transition-all cursor-pointer text-left"
                                         >
-                                            Order #{formatModuleDisplayId("order", order.id)} — {formatDateTime(order.order_date)}
+                                            Order #{formatModuleDisplayId("order", order.order_sequence || order.id)} — {formatDateTime(order.order_date)}
                                         </a>
                                     </TooltipTrigger>
                                     <TooltipContent side="right">

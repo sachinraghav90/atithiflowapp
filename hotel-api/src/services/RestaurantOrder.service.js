@@ -129,6 +129,7 @@ class RestaurantOrderService {
         SELECT
             ro.id,
             ro.property_id,
+            ro.order_sequence,
             ro.table_no,
             ro.room_id,
             ro.booking_id,
@@ -202,6 +203,29 @@ class RestaurantOrderService {
             const grand_total_amount = Math.round(subtotal + cgst_amount + sgst_amount);
             const finalTotal = grand_total_amount;
 
+            // Generate order_sequence using property_counters
+            const counterRes = await client.query(
+                `
+                INSERT INTO public.property_counters (
+                  property_id,
+                  counter_name,
+                  next_value
+                )
+                VALUES (
+                  $1,
+                  'RESTAURANT_ORDER',
+                  2
+                )
+                ON CONFLICT (property_id, counter_name)
+                DO UPDATE SET
+                  next_value = public.property_counters.next_value + 1,
+                  updated_on = now()
+                RETURNING next_value - 1 AS generated_sequence;
+                `,
+                [order.property_id]
+            );
+            const order_sequence = counterRes.rows[0].generated_sequence;
+
             // 1. Create order
             const { rows: orderRows } = await client.query(
                 `
@@ -231,9 +255,10 @@ class RestaurantOrderService {
                     sgst_rate,
                     cgst_amount,
                     sgst_amount,
-                    grand_total_amount
+                    grand_total_amount,
+                    order_sequence
                 )
-                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
+                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
                 RETURNING *
                 `,
                 [
@@ -259,7 +284,8 @@ class RestaurantOrderService {
                     sgst_rate,
                     cgst_amount,
                     sgst_amount,
-                    grand_total_amount
+                    grand_total_amount,
+                    order_sequence
                 ]
             );
 
@@ -302,6 +328,7 @@ class RestaurantOrderService {
                 comments: "New restaurant order created",
                 details: JSON.stringify({
                     order_id: createdOrder.id,
+                    order_sequence: createdOrder.order_sequence,
                     property_id: order.property_id,
                     total_amount: order.total_amount,
                     items_count: items.length,

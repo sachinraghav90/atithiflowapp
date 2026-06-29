@@ -40,8 +40,8 @@ const parseAuditDetails = (details: any) => {
 const ORDER_STATUSES = ["New", "Preparing", "Ready", "Delivered", "Cancelled"];
 const PAYMENT_STATUSES = ["Pending", "Paid", "Failed", "Refunded"];
 
-const formatOrderDisplayId = (orderId: string | number) =>
-    formatModuleDisplayId("order", orderId);
+const formatOrderDisplayId = (orderId: string | number, sequence?: string | number) =>
+    sequence ? formatModuleDisplayId("order", sequence) : formatModuleDisplayId("order", orderId);
 
 const getOrderRoomTableDisplayValue = (order: Order) =>
     order.room_no || order.table_no || "—";
@@ -52,6 +52,7 @@ const formatOrderDateTime = (value: string | null | undefined) =>
 type Order = {
     id: string;
     property_id: string;
+    order_sequence?: string | number;
     table_no: string;
     guest_id: string | null;
     room_id: string | null;
@@ -203,7 +204,7 @@ export function OrdersManagement() {
 
 
             const formatted = res.data.map(order => ({
-                "Order ID": formatOrderDisplayId(order.id),
+                "Order ID": formatOrderDisplayId(order.id, order.order_sequence),
                 "Guest": order.guest_name || "—",
                 "Room/Table": getOrderRoomTableDisplayValue(order),
                 "Delivery Time": formatOrderDateTime(order.expected_delivery_time),
@@ -294,9 +295,9 @@ export function OrdersManagement() {
                         setSelectedOrderId(order.id);
                         setItemsOpen(true);
                     }}
-                    aria-label={`Open summary view for order ${formatOrderDisplayId(order.id)}`}
+                    aria-label={`Open summary view for order ${formatOrderDisplayId(order.id, order.order_sequence)}`}
                 >
-                    {formatOrderDisplayId(order.id)}
+                    {formatOrderDisplayId(order.id, order.order_sequence)}
                 </button>
             ),
         },
@@ -545,7 +546,7 @@ export function OrdersManagement() {
                                             size="icon"
                                             variant="ghost"
                                             className="h-7 w-7 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
-                                            aria-label={`View and edit details for order ${formatOrderDisplayId(order.id)}`}
+                                            aria-label={`View and edit details for order ${formatOrderDisplayId(order.id, order.order_sequence)}`}
                                             onMouseEnter={() => prefetchOrder(order.id)}
                                             onFocus={() => prefetchOrder(order.id)}
                                             onClick={() => {

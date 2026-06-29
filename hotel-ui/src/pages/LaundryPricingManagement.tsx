@@ -41,6 +41,7 @@ import { getFormattedAuditChanges, getAuditActionBadge, formatAuditActionText, g
 /* ---------------- Types ---------------- */
 type LaundryItem = {
     id: string;
+    laundry_sequence?: string | number;
     property_id: string;
     item_name: string;
     description?: string | null;
@@ -455,7 +456,7 @@ export default function LaundryPricingManagement() {
     const exportPricesSheet = () => {
         if (!items.length) return toast.info("No data to export");
         const formatted = items.map(item => ({
-            "Laundry ID": formatModuleDisplayId("laundry_pricing", item.id),
+            "Laundry ID": formatModuleDisplayId("laundry_pricing", item.laundry_sequence || item.id),
             "Item": item.item_name,
             "Description": item.description || "-",
             "Rate": `Rs ${item.item_rate}`,
@@ -493,7 +494,7 @@ export default function LaundryPricingManagement() {
                     className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
                     onClick={() => openSheet(item, "view")}
                 >
-                    {formatModuleDisplayId("laundry_pricing", item.id)}
+                    {formatModuleDisplayId("laundry_pricing", item.laundry_sequence || item.id)}
                 </button>
             ),
         },
@@ -865,7 +866,7 @@ export default function LaundryPricingManagement() {
                                     {mode === "view" ? "Laundry Pricing" : mode === "edit" ? "Update Laundry Pricing" : "Add Laundry Items"}
                                     {(mode === "view" || mode === "edit") && selectedItem?.id && (
                                         <span className="ml-2">
-                                            {`[#${formatModuleDisplayId("laundry_pricing", selectedItem.id)}]`}
+                                            {`[#${formatModuleDisplayId("laundry_pricing", selectedItem.laundry_sequence || selectedItem.id)}]`}
                                         </span>
                                     )}
                                 </SheetTitle>

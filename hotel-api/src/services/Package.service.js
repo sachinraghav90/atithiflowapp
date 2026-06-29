@@ -17,10 +17,30 @@ class PackageService {
         createdBy,
         isActive = true
     }) {
-        const { rows } = await this.#DB.query(
+        const client = await this.#DB.connect();
+        try {
+            await client.query("BEGIN");
+
+            // -----------------------------
+            // Allocate sequence
+            // -----------------------------
+            const seqResult = await client.query(`
+                INSERT INTO public.property_counters (property_id, counter_name, next_value)
+                VALUES ($1, 'PACKAGE', 1)
+                ON CONFLICT (property_id, counter_name)
+                DO UPDATE SET 
+                    next_value = public.property_counters.next_value + 1,
+                    updated_on = now()
+                RETURNING next_value
+            `, [propertyId]);
+            
+            const nextSeq = seqResult.rows[0].next_value;
+
+            const { rows } = await client.query(
             `
             INSERT INTO public.packages (
                 property_id,
+                package_sequence,
                 package_name,
                 description,
                 base_price,
@@ -28,10 +48,10 @@ class PackageService {
                 created_on,
                 created_by
             )
-            VALUES ($1, $2, $3, $4, $5, now(), $6)
+            VALUES ($1, $2, $3, $4, $5, $6, now(), $7)
             RETURNING *
             `,
-            [propertyId, packageName, description, basePrice, isActive, createdBy]
+            [propertyId, nextSeq, packageName, description, basePrice, isActive, createdBy]
         );
 
         await AuditService.log({
@@ -52,7 +72,14 @@ class PackageService {
             user_id: createdBy
         });
 
+        await client.query("COMMIT");
         return rows[0];
+        } catch (e) {
+            await client.query("ROLLBACK");
+            throw e;
+        } finally {
+            client.release();
+        }
     }
 
     async generatePackagesForProperty(propertyId, userId) {
@@ -93,6 +120,34 @@ class PackageService {
         `,
             [propertyId, userId]
         );
+
+        if (rowCount > 0) {
+            await this.#DB.query(`
+                WITH max_seqs AS (
+                    SELECT property_id, COALESCE(MAX(package_sequence), 0) as max_seq
+                    FROM public.packages
+                    WHERE property_id = $1
+                    GROUP BY property_id
+                ),
+                numbered_packages AS (
+                    SELECT id, property_id, ROW_NUMBER() OVER (PARTITION BY property_id ORDER BY id ASC) as seq
+                    FROM public.packages
+                    WHERE package_sequence IS NULL AND property_id = $1
+                )
+                UPDATE public.packages p
+                SET package_sequence = COALESCE((SELECT max_seq FROM max_seqs), 0) + np.seq
+                FROM numbered_packages np
+                WHERE p.id = np.id;
+
+                INSERT INTO public.property_counters (property_id, counter_name, next_value)
+                SELECT property_id, 'PACKAGE', COALESCE(MAX(package_sequence), 0) + 1
+                FROM public.packages
+                WHERE property_id = $1
+                GROUP BY property_id
+                ON CONFLICT (property_id, counter_name) 
+                DO UPDATE SET next_value = EXCLUDED.next_value, updated_on = CURRENT_TIMESTAMP;
+            `, [propertyId]);
+        }
 
         return {
             insertedCount: rowCount
@@ -138,6 +193,33 @@ class PackageService {
         `,
             [userId]
         );
+
+        if (rowCount > 0) {
+            await this.#DB.query(`
+                WITH max_seqs AS (
+                    SELECT property_id, COALESCE(MAX(package_sequence), 0) as max_seq
+                    FROM public.packages
+                    GROUP BY property_id
+                ),
+                numbered_packages AS (
+                    SELECT id, property_id, ROW_NUMBER() OVER (PARTITION BY property_id ORDER BY id ASC) as seq
+                    FROM public.packages
+                    WHERE package_sequence IS NULL
+                )
+                UPDATE public.packages p
+                SET package_sequence = COALESCE(ms.max_seq, 0) + np.seq
+                FROM numbered_packages np
+                LEFT JOIN max_seqs ms ON ms.property_id = np.property_id
+                WHERE p.id = np.id;
+
+                INSERT INTO public.property_counters (property_id, counter_name, next_value)
+                SELECT property_id, 'PACKAGE', COALESCE(MAX(package_sequence), 0) + 1
+                FROM public.packages
+                GROUP BY property_id
+                ON CONFLICT (property_id, counter_name) 
+                DO UPDATE SET next_value = EXCLUDED.next_value, updated_on = CURRENT_TIMESTAMP;
+            `);
+        }
 
         return {
             insertedCount: rowCount

@@ -104,6 +104,7 @@ const getAuditChangeText = (details: any, audit: any, isPlainText = false) => {
 
 type MenuItem = {
     id: string;
+    menu_sequence?: string | number;
     property_id: string;
     item_name: string;
     menu_item_group: string;
@@ -375,7 +376,7 @@ export default function MenuMaster() {
         }
 
         const formatted = menuRows.map((item: MenuItem) => ({
-            "Menu ID": formatModuleDisplayId("menu", item.id),
+            "Menu ID": formatModuleDisplayId("menu", item.menu_sequence || item.id),
             "Name": item.item_name,
             "Group": item.menu_item_group || "--",
             "Price": `₹${item.price}`,
@@ -721,9 +722,9 @@ export default function MenuMaster() {
                                             type="button"
                                             className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
                                             onClick={() => openView(item)}
-                                            aria-label={`Open summary for menu item ${formatModuleDisplayId("menu", item.id)}`}
+                                            aria-label={`Open summary for menu item ${formatModuleDisplayId("menu", item.menu_sequence || item.id)}`}
                                         >
-                                            {formatModuleDisplayId("menu", item.id)}
+                                            {formatModuleDisplayId("menu", item.menu_sequence || item.id)}
                                         </button>
                                     ),
                                 },
@@ -939,7 +940,7 @@ export default function MenuMaster() {
                         <SheetHeader className="mb-6">
                             <div className="space-y-1">
                                 <SheetTitle className="text-xl font-bold">
-                                    {mode === "add" ? "Create Menu Item" : mode === "edit" ? `Update Menu Item [${selected?.id ? `#${formatModuleDisplayId("menu", selected.id)}` : "..."}]` : `Menu Item [${selected?.id ? `#${formatModuleDisplayId("menu", selected.id)}` : "..."}]`}
+                                    {mode === "add" ? "Create Menu Item" : mode === "edit" ? `Update Menu Item [${selected?.id ? `#${formatModuleDisplayId("menu", selected.menu_sequence || selected.id)}` : "..."}]` : `Menu Item [${selected?.id ? `#${formatModuleDisplayId("menu", selected.menu_sequence || selected.id)}` : "..."}]`}
                                 </SheetTitle>
                                 <p className="text-xs text-muted-foreground font-medium tracking-wide">
                                     {mode === "add" ? "Setup your new food or beverage item" : mode === "edit" ? "Modify existing menu item details" : "Detailed summary of menu item configuration"}

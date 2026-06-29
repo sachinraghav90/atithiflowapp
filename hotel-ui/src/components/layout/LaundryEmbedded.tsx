@@ -140,7 +140,7 @@ export default function LaundryEmbedded({
                                             rel="noopener noreferrer"
                                             className="font-bold text-primary hover:underline transition-all cursor-pointer text-left"
                                         >
-                                            Order #{formatModuleDisplayId("laundry_order", order.id)} - {formatAppDateTime(order.pickup_date)}
+                                            Order #{formatModuleDisplayId("laundry_order", order.order_sequence || order.id)} - {formatAppDateTime(order.pickup_date)}
                                         </a>
                                     </TooltipTrigger>
                                     <TooltipContent side="right">
@@ -211,7 +211,7 @@ export default function LaundryEmbedded({
                         <SheetHeader className="mb-4">
                             <div className="space-y-1">
                                 <SheetTitle className="text-xl font-bold">
-                                    Laundry Order [{selectedOrder?.id ? `#${formatModuleDisplayId("laundry_order", selectedOrder.id)}` : "..."}]
+                                    Laundry Order [{selectedOrder?.id ? `#${formatModuleDisplayId("laundry_order", selectedOrder.order_sequence || selectedOrder.id)}` : "..."}]
                                 </SheetTitle>
                                 <p className="text-xs text-muted-foreground font-medium tracking-wide">
                                     Complete laundry order summary and itemized list
@@ -226,7 +226,7 @@ export default function LaundryEmbedded({
                                     titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal"
                                     className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4"
                                 >
-                                    <ViewField label="Order ID" value={`#${formatModuleDisplayId("laundry_order", selectedOrder.id)}`} />
+                                    <ViewField label="Order ID" value={`#${formatModuleDisplayId("laundry_order", selectedOrder.order_sequence || selectedOrder.id)}`} />
                                     <ViewField label="Booking ID" value={formatModuleDisplayId("booking", selectedOrder.booking_id)} />
                                     <ViewField label="Room" value={selectedOrder.items?.[0]?.room_no || "—"} />
                                     <ViewField label="Guest" value={guestName || "—"} />
