@@ -175,7 +175,12 @@ class User {
                     'first_name', s.first_name,
                     'last_name', s.last_name,
                     'designation', s.designation,
-                    'department', s.department
+                    'department', s.department,
+                    'phone1', s.phone1,
+                    'gender', s.gender,
+                    'blood_group', s.blood_group,
+                    'nationality', s.nationality,
+                    'status', s.status
                 ) AS staff
 
             FROM public.users u

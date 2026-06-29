@@ -2,7 +2,7 @@ create table
     if not exists public.bookings (
         id bigserial primary key,
         property_id bigint not null,
-        -- tax_amount numeric(10, 2) default 0,
+        --  default 0,
         final_amount numeric(10, 2) default 0,
         cancellation_fee numeric(10, 2) default 0,
         is_no_show boolean default false,
@@ -55,3 +55,7 @@ CREATE INDEX IF NOT EXISTS idx_bookings_date_range ON public.bookings (estimated
 CREATE INDEX IF NOT EXISTS idx_bookings_property_arrival ON public.bookings (property_id, estimated_arrival);
 
 CREATE INDEX IF NOT EXISTS idx_bookings_property_departure ON public.bookings (property_id, estimated_departure);
+CREATE INDEX IF NOT EXISTS idx_bookings_effective_departure ON public.bookings (
+    estimated_arrival,
+    COALESCE(actual_departure, estimated_departure)
+);

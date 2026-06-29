@@ -8,7 +8,8 @@ create table
         -- password varchar(255) not null,  -- using supabase auth
         email varchar(150) not null,
         staff_id varchar(50),
-        is_active boolean default true,
+        is_active boolean DEFAULT true,
+    property_limit INTEGER,
         created_by uuid,
         created_on timestamptz default now (),
         updated_by uuid,
@@ -21,3 +22,4 @@ create table
 
 create index if not exists idx_users_is_active on public.users (is_active);
 create index if not exists idx_users_property_id on public.users(property_id);
+ALTER TABLE public.users ADD CONSTRAINT chk_users_property_limit_non_negative CHECK (property_limit IS NULL OR property_limit >= 0);

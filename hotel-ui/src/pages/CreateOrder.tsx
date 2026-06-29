@@ -513,7 +513,7 @@ export function CreateOrder() {
 
                 {/* Property */}
                 {(isSuperAdmin || isOwner) && (
-                    <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-1">
+                    <div className="w-full sm:w-64 space-y-1">
                         <Label>Property</Label>
                         <NativeSelect
                             className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"

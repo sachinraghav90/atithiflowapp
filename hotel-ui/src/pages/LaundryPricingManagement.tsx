@@ -1026,7 +1026,7 @@ export default function LaundryPricingManagement() {
                         {mode === "bulk_add" && (
                             <div className="space-y-4">
                                 {(isSuperAdmin || isOwner) && (
-                                    <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-1 -mt-1 -mb-2">
+                                    <div className="w-full sm:w-64 space-y-1">
                                         <Label>Property</Label>
                                         <NativeSelect
                                             className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"

@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { normalizeNumberInput } from "@/utils/normalizeTextInput";
 import { NativeSelect } from "@/components/ui/native-select";
 import { DataGrid, DataGridHeader, DataGridRow, DataGridHead, DataGridCell } from "@/components/ui/data-grid";
-import { Trash2, PlusCircle } from "lucide-react";
+import { Trash2, PlusCircle, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type Props = {
     value: any;
@@ -78,38 +79,53 @@ export default function PropertyConfiguration({
 
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
 
-                {/* Serial Number */}
-                <FormInput
-                    label="Serial Number"
-                    field="serial_number"
-                    value={value}
-                    setValue={setValue}
-                    errors={errors}
-                    setErrors={setErrors}
-                    viewMode={viewMode}
-                    type="text"
-                    maxLength={3}
-                />
-
-                {/* Serial Suffix */}
+                {/* Property Code */}
                 <div className="space-y-1">
-                    <Label className="text-foreground">Serial Suffix *</Label>
+                    <FormInput
+                        label="Property Code"
+                        field="serial_number"
+                        value={value}
+                        setValue={setValue}
+                        errors={errors}
+                        setErrors={setErrors}
+                        viewMode={viewMode}
+                        type="text"
+                        maxLength={3}
+                        placeholder="e.g. MUM, DEL"
+                    />
+                </div>
+
+                {/* Room Prefix */}
+                <div className="space-y-1">
+                    <Label className="text-foreground">
+                        Room Number Prefix
+                        <TooltipProvider delayDuration={0}>
+                            <Tooltip>
+                                <TooltipTrigger type="button" tabIndex={-1} className="cursor-default inline-flex align-text-bottom ml-1.5">
+                                    <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground transition-colors" />
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="text-xs max-w-[200px]">
+                                    Optional prefix added before auto-generated room numbers. Example: 001 + 101 = 001101.
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    </Label>
                     <NativeSelect
                         disabled={viewMode}
-                        value={value.serial_suffix}
-                        title={errors.serial_suffix?.message || ""}
+                        value={value.room_number_prefix}
+                        title={errors.room_number_prefix?.message || ""}
                         className={cn(
                             "w-full h-11 rounded-[3px] border px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0",
-                            errors.serial_suffix ? "border-red-500 bg-background" : "border-border/70 bg-background"
+                            errors.room_number_prefix ? "border-red-500 bg-background" : "border-border/70 bg-background"
                         )}
                         onChange={(e) =>
                             setValue((prev: any) => ({
                                 ...prev,
-                                serial_suffix: e.target.value,
+                                room_number_prefix: e.target.value,
                             }))
                         }
                     >
-                        <option value="">-- Select --</option>
+                        <option value="">No Prefix</option>
                         <option value="001">001</option>
                         <option value="002">002</option>
                         <option value="003">003</option>

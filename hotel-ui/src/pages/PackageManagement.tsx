@@ -9,6 +9,7 @@ import {
     SheetContent,
     SheetHeader,
     SheetTitle,
+    SheetClose,
 } from "@/components/ui/sheet";
 import { NativeSelect } from "@/components/ui/native-select";
 import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
@@ -23,7 +24,7 @@ import { useLocation } from "react-router-dom";
 import { usePermission } from "@/rbac/usePermission";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Download, FilterX, Pencil, RefreshCcw, Plus } from "lucide-react";
+import { Download, FilterX, Pencil, RefreshCcw, Plus, X } from "lucide-react";
 import { getStatusColor } from "@/constants/statusColors";
 import { GridToolbar, GridToolbarActions, GridToolbarSearch, GridToolbarSelect, GridToolbarRow, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
 import { filterGridRowsByQuery } from "@/utils/filterGridRows";
@@ -840,13 +841,14 @@ export default function PackageManagement() {
                 <SheetContent
                     side="right"
                     className={cn("w-full overflow-y-auto bg-background p-0 transition-all duration-300", sheetTab === "history" ? "sm:max-w-4xl" : "lg:max-w-3xl sm:max-w-2xl")}
+                    hideClose
                 >
                         <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="flex flex-col h-full"
+                            className="min-h-full"
                         >
-                            <SheetHeader className="px-6 pb-4 pt-2 border-b border-border relative">
+                            <SheetHeader className="px-6 pb-4 pt-2 border-b border-border sticky top-0 z-50 bg-background relative">
                                 <div className="space-y-1">
                                     <SheetTitle className="text-xl font-bold">
                                         {mode === "add" ? "Create New Plan" : mode === "edit" ? `Update Plan ${selectedPackage?.id ? `[#${formatModuleDisplayId("package", selectedPackage.id)}]` : "..."}` : `Plan Summary ${selectedPackage?.id ? `[#${formatModuleDisplayId("package", selectedPackage.id)}]` : "..."}`}
@@ -855,9 +857,13 @@ export default function PackageManagement() {
                                         {mode === "add" ? "Setup new room plan" : mode === "edit" ? "Modify existing plan information" : "Plan details and pricing"}
                                     </p>
                                 </div>
+                                <SheetClose className="absolute right-4 top-4 rounded-md border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none h-5 w-5 flex items-center justify-center shadow-sm z-50">
+                                    <X className="h-4 w-4 stroke-[2.5]" />
+                                    <span className="sr-only">Close</span>
+                                </SheetClose>
                             </SheetHeader>
 
-                            <div className="px-6 pb-6 pt-4 flex-1 overflow-y-auto">
+                            <div className="px-6 pb-6 pt-4">
                             {mode === "view" ? (
                                 <div className="space-y-4">
                                     <div className="border-b border-border flex">
@@ -928,7 +934,7 @@ export default function PackageManagement() {
                             ) : (
                                 <div className="space-y-4">
                                     {(isSuperAdmin || isOwner) && mode === "add" && (
-                                        <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-1 -mt-1 -mb-2">
+                                        <div className="w-full sm:w-64 space-y-1">
                                             <Label>Property</Label>
                                             <NativeSelect
                                                 className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"

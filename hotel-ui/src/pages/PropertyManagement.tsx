@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
     Sheet,
@@ -12,11 +11,11 @@ import {
 import { AppDataGrid, DataGrid, DataGridHeader, DataGridRow, DataGridHead, DataGridCell, type ColumnDef } from "@/components/ui/data-grid";
 import { TableCell } from "@/components/ui/table";
 import { Building2, FilterX, Image as ImageIcon, Pencil, RefreshCcw, Download } from "lucide-react";
-import { useAddPropertyBySuperAdminMutation, useAddPropertyMutation, useBulkUpsertPropertyFloorsMutation, useGetMeQuery, useGetPropertiesQuery, useLazyGetPropertiesQuery, useGetPropertyBanksQuery, useGetPropertyFloorsQuery, useLazyGetUsersByPropertyAndRoleQuery, useLazyGetUsersByRoleQuery, useUpdatePropertiesMutation, useUpsertPropertyBanksMutation, useGetLogsQuery as useGetAuditLogsQuery, useGetLogsByTableQuery } from "@/redux/services/hmsApi";
+import { useAddPropertyBySuperAdminMutation, useAddPropertyMutation, useBulkUpsertPropertyFloorsMutation, useGetPropertiesQuery, useLazyGetPropertiesQuery, useGetPropertyBanksQuery, useGetPropertyFloorsQuery, useLazyGetUsersByPropertyAndRoleQuery, useLazyGetUsersByRoleQuery, useUpdatePropertiesMutation, useUpsertPropertyBanksMutation, useGetLogsQuery as useGetAuditLogsQuery, useGetLogsByTableQuery } from "@/redux/services/hmsApi";
 import { useDebounce } from "@/hooks/use-debounce";
 import { toast } from "react-toastify";
 import { useAppSelector } from "@/redux/hook";
-import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
+import { selectIsOwner, selectIsSuperAdmin, selectMe } from "@/redux/selectors/auth.selectors";
 import { normalizeTextInput } from "@/utils/normalizeTextInput";
 import { useLocation, useNavigate } from "react-router-dom";
 import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
@@ -39,7 +38,6 @@ import ViewField from "@/components/ViewField";
 import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarSpacer, GridToolbarSearchSelect } from "@/components/ui/grid-toolbar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { getStatusColor } from "@/constants/statusColors";
 import { GridBadge } from "@/components/ui/grid-badge";
 
 // ---- Types ----
@@ -64,6 +62,8 @@ type Property = {
     owner_user_id?: string | null;
     restaurant_gst?: number;
     laundry_gst?: number;
+    room_number_prefix?: string | null;
+    serial_number?: string | null;
 };
 
 const EMPTY_PROPERTY = {
@@ -83,7 +83,7 @@ const EMPTY_PROPERTY = {
     restaurant_gst: 0,
     laundry_gst: 0,
     serial_number: "001",
-    serial_suffix: "",
+    room_number_prefix: "",
     total_floors: 0,
     phone: "",
     phone_country_code: "+91",
@@ -261,7 +261,7 @@ export default function PropertyManagement() {
     });
 
     const { data: floorsResponse, isLoading: floorsLoading } = useGetPropertyFloorsQuery(selectedProperty?.id, { skip: !selectedProperty?.id, });
-    const floors = floorsResponse?.floors ?? [];
+    const floors = useMemo(() => floorsResponse?.floors ?? [], [floorsResponse?.floors]);
 
     const { data: propertyBanks } = useGetPropertyBanksQuery(selectedProperty?.id, {
         skip: !isLoggedIn || !selectedProperty?.id
@@ -371,6 +371,7 @@ export default function PropertyManagement() {
     const [getPropertyAdmins, { data: propertyAdmins }] = useLazyGetUsersByPropertyAndRoleQuery()
     const isSuperAdmin = useAppSelector(selectIsSuperAdmin)
     const isOwner = useAppSelector(selectIsOwner)
+    const user = useAppSelector(selectMe)?.user;
 
     useEffect(() => {
         if (!isLoggedIn) return
@@ -456,7 +457,7 @@ export default function PropertyManagement() {
         }
     }, [propertyBanks, mode]);
 
-    const toggleActive = async (id: string, is_active: boolean) => {
+    const toggleActive = useCallback(async (id: string, is_active: boolean) => {
         setUpdatingPropertyIds(prev => new Set(prev).add(id));
 
         try {
@@ -473,7 +474,7 @@ export default function PropertyManagement() {
                 return next;
             });
         }
-    };
+    }, [updateProperty]);
 
     const openPropertyDetails = (property: Property, forceMode: "view" | "edit" = "view") => {
         setMode(forceMode);
@@ -487,6 +488,7 @@ export default function PropertyManagement() {
             total_rooms: property.total_rooms != null ? String(property.total_rooms) : "",
             total_floors: property.total_floors ?? 0,
             owner_user_id: property.owner_user_id ?? "",
+            room_number_prefix: property.room_number_prefix || "",
         };
 
         setNewProperty(prepared);
@@ -538,10 +540,11 @@ export default function PropertyManagement() {
 
         fd.append('room_tax_rate', String(payload.room_tax_rate ?? 0))
         fd.append('gst', String(payload.gst ?? 0))
-        fd.append('restaurant_gst', String(payload.restaurant_gst ?? payload.restaurantGst ?? 0))
-        fd.append('laundry_gst', String(payload.laundry_gst ?? payload.laundryGst ?? 0))
+        fd.append('restaurant_gst', String(payload.restaurant_gst ?? 0))
+        fd.append('laundry_gst', String(payload.laundry_gst ?? 0))
 
         if (payload.serial_number) fd.append('serial_number', payload.serial_number)
+        if (payload.room_number_prefix !== undefined) fd.append('room_number_prefix', payload.room_number_prefix || "")
         if (payload.total_floors) fd.append('total_floors', String(payload.total_floors))
         if (total_rooms) fd.append('total_rooms', String(total_rooms))
 
@@ -821,7 +824,7 @@ export default function PropertyManagement() {
                     floor_number: f.floor_number,
                     rooms_count: f.total_rooms,
                 })),
-                prefix: newProperty.serial_suffix
+                prefix: newProperty.room_number_prefix
             }).unwrap();
             
             if (mode === "add") {
@@ -991,6 +994,13 @@ export default function PropertyManagement() {
                         variant="hero"
                         disabled={!permission?.can_create}
                         onClick={() => {
+                            if (isOwner && !isSuperAdmin && user?.property_limit !== undefined && user?.property_limit !== null) {
+                                const currentCount = properties?.pagination?.totalItems || properties?.data?.length || 0;
+                                if (currentCount >= Number(user.property_limit)) {
+                                    toast.error("Property limit exceeded, contact Admin.");
+                                    return;
+                                }
+                            }
                             setMode("add");
                             setSheetTab("summary");
                             setSelectedProperty(null);
@@ -1485,8 +1495,8 @@ export default function PropertyManagement() {
                                             <ViewField label="GSTIN *" value={newProperty.gst_no} />
                                             <ViewField label="Room Tax Rate %" value={newProperty.room_tax_rate} />
                                             <ViewField label="GST Rate for Rooms *" value={newProperty.gst} />
-                                            <ViewField label="GST Rate for Restaurant Orders *" value={newProperty.restaurant_gst ?? newProperty.restaurantGst} />
-                                            <ViewField label="GST Rate for Laundry Orders *" value={newProperty.laundry_gst ?? newProperty.laundryGst} />
+                                            <ViewField label="GST Rate for Restaurant Orders *" value={newProperty.restaurant_gst} />
+                                            <ViewField label="GST Rate for Laundry Orders *" value={newProperty.laundry_gst} />
                                         </CardSectionView>
 
                                         {newProperty.address_line_1_office && (
@@ -1587,7 +1597,7 @@ export default function PropertyManagement() {
                                                     render: (log: any) => {
                                                         let parsed = log.details;
                                                         if (typeof parsed === 'string') {
-                                                            try { parsed = JSON.parse(parsed); } catch { }
+                                                            try { parsed = JSON.parse(parsed); } catch { /* ignore error */ }
                                                         }
                                                         return (
                                                             <div className="max-w-[400px] whitespace-normal">
@@ -1771,7 +1781,7 @@ function PropertyStatusCell({ property, toggleActive, isUpdating }) {
         if (debouncedIsActive !== property.is_active) {
             toggleActive(property.id, debouncedIsActive);
         }
-    }, [debouncedIsActive]);
+    }, [debouncedIsActive, property.id, property.is_active, toggleActive]);
 
     return (
         <TableCell>

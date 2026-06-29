@@ -17,6 +17,9 @@ router.get("/property/:propertyId", supabaseAuth, requireRole(roles.ALL), user.g
 router.route("/me")
     .get(supabaseAuth, user.getMe.bind(user))
 
+router.patch("/me/change-password", supabaseAuth, user.updatePassword.bind(user))
+
+
 router.route("/by-role/:id")
     .get(supabaseAuth, requireRole(roles.SUPER_ADMIN, roles.OWNER), user.getUsersByRole.bind(user))
 

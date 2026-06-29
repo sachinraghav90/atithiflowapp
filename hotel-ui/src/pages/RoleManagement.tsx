@@ -328,6 +328,39 @@ export default function RoleManagement() {
     const pathname = useLocation().pathname
     const { permission } = usePermission(pathname)
 
+    const isAllNewPermissionsSelected = allSidebarLinksData?.roles?.length > 0 && allSidebarLinksData?.roles?.every(
+        (module: any) =>
+            newRolePermissions[module.id]?.can_read &&
+            newRolePermissions[module.id]?.can_create &&
+            newRolePermissions[module.id]?.can_delete
+    );
+
+    const toggleAllNewPermissions = () => {
+        if (isAllNewPermissionsSelected) {
+            const cleared: any = {};
+            allSidebarLinksData?.roles?.forEach((module: any) => {
+                cleared[module.id] = {
+                    can_read: false,
+                    can_create: false,
+                    can_update: false,
+                    can_delete: false,
+                };
+            });
+            setNewRolePermissions(cleared);
+        } else {
+            const selected: any = {};
+            allSidebarLinksData?.roles?.forEach((module: any) => {
+                selected[module.id] = {
+                    can_read: true,
+                    can_create: true,
+                    can_update: true,
+                    can_delete: true,
+                };
+            });
+            setNewRolePermissions(selected);
+        }
+    };
+
     return (
         <section className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] flex-1">
             <section className="p-6 lg:p-8 border-b lg:border-b-0 lg:border-r border-border">
@@ -370,9 +403,19 @@ export default function RoleManagement() {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-foreground">Default Module Access</Label>
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-foreground">Default Module Access</Label>
+                                            <Button
+                                                variant="heroOutline"
+                                                size="sm"
+                                                className="h-7 text-xs px-2"
+                                                onClick={toggleAllNewPermissions}
+                                            >
+                                                {isAllNewPermissionsSelected ? "Deselect All" : "Select All"}
+                                            </Button>
+                                        </div>
 
-                                        <div className="space-y-1 max-h-[400px] overflow-y-auto border border-border rounded-[3px] p-2 bg-muted/10">
+                                        <div className="space-y-1 border border-border rounded-[3px] p-2 bg-muted/10">
                                             {allSidebarLinksData?.roles.map((module) => (
                                                 <div
                                                     key={module.id}
@@ -441,7 +484,7 @@ export default function RoleManagement() {
                         <TableBody>
                             {!allRolesLoading && !allRolesUninitialized && !allRolesError && allRolesData?.roles.map((role: any) => (
                                 <TableRow key={role.id} className="hover:bg-primary/[0.05] border-border/40 transition-colors">
-                                    <TableCell className="font-medium text-foreground">{role.name === 'SUPER_ADMIN' ? 'SUPER ADMIN' : role.name}</TableCell>
+                                    <TableCell className="font-medium text-foreground">{role.name?.toUpperCase() === 'SUPER_ADMIN' ? 'SUPER ADMIN' : role.name?.toUpperCase()}</TableCell>
                                     <TableCell className="text-right">
                                         <Button
                                             size="sm"
@@ -477,7 +520,7 @@ export default function RoleManagement() {
                                        <p className="text-xs text-muted-foreground font-medium tracking-wide">Managing Access For</p>
                                         <div className="flex items-center gap-2">
                                             <h2 className="text-xl font-bold text-primary">
-                                                {selectedRoleName === 'SUPER_ADMIN' ? 'SUPER ADMIN' : selectedRoleName}
+                                                {selectedRoleName?.toUpperCase() === 'SUPER_ADMIN' ? 'SUPER ADMIN' : selectedRoleName?.toUpperCase()}
                                             </h2>
 
                                         {permission?.can_create && !(selectedRoleName === "SUPER_ADMIN" || selectedRoleName === "ADMIN" || selectedRoleName === "OWNER") && (

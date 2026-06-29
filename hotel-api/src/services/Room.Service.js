@@ -56,7 +56,7 @@ class RoomService {
 
             for (let roomIndex = 1; roomIndex <= roomCount; roomIndex++) {
                 const roomNoNumber =
-                    roomSerialNumber + (floorNumber * 100) + (roomIndex - 1);
+                    Number(roomSerialNumber) + ((Number(floorNumber) - 1) * 100) + (roomIndex - 1);
 
                 const roomNo = `${prefix}${roomNoNumber}`;
 

@@ -169,7 +169,7 @@ export default function PropertyRole({
                             )
                             .map((role) => (
                                 <option value={role.id} key={role.id}>
-                                    {role.name}
+                                    {role.name?.toUpperCase()}
                                 </option>
                             ))}
                     </FormSelect>

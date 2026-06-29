@@ -1,6 +1,7 @@
 create table
     if not exists public.staff (
         id bigserial primary key,
+        salutation varchar(20),
         first_name varchar(100) not null,
         middle_name varchar(100),
         last_name varchar(100) not null,
@@ -12,6 +13,13 @@ create table
         phone1 varchar(20),
         phone2 varchar(20),
         emergency_contact varchar(20),
+        emergency_contact_relation varchar(50),
+        emergency_contact_2 varchar(20),
+        emergency_contact_relation_2 varchar(50),
+        emergency_contact_name varchar(100),
+        emergency_contact_name_2 varchar(100),
+        nationality varchar(50),
+        country varchar(100),
         id_proof_type varchar(50),
         id_number varchar(100),
         id_proof bytea,

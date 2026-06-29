@@ -143,7 +143,7 @@ export function MenuItemSelect({
                                         key={itemId}
                                         value={itemLabel} 
                                         onSelect={() => {
-                                            const finalValue = (itemId !== "" && !isNaN(Number(itemId))) ? Number(itemId) : itemId;
+                                            const finalValue = (item.id !== undefined && item.id !== null) ? item.id : itemId;
                                             onSelect(finalValue);
                                             handleOpenChange(false);
                                         }}

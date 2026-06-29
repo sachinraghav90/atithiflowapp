@@ -155,6 +155,35 @@ class User {
         }
     }
 
+    async updatePassword(req, res) {
+        try {
+            const userId = req.user.user_id;
+            const { currentPassword, newPassword } = req.body;
+
+            if (!currentPassword || !newPassword) {
+                return res.status(400).json({ message: "Current and new passwords are required" });
+            }
+
+            const user = await userService.getMe(userId);
+            if (!user) {
+                return res.status(404).json({ message: "User not found" });
+            }
+
+            try {
+                await supabase.verifyPassword({ email: user.email, password: currentPassword });
+            } catch (authError) {
+                return res.status(401).json({ message: "Current password is incorrect." });
+            }
+
+            await supabase.updateUser({ authUserId: userId, password: newPassword });
+
+            return res.json({ message: "Password updated successfully" });
+        } catch (error) {
+            console.log("🚀 ~ User ~ updatePassword ~ error:", error);
+            return res.status(500).json({ message: "Error updating password" });
+        }
+    }
+
 }
 
 const user = new User();

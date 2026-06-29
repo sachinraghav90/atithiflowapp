@@ -6,7 +6,7 @@ create table
         salutation varchar(20),
         first_name varchar(100) not null,
         middle_name varchar(100),
-        last_name varchar(100) not null,
+        last_name VARCHAR(100),
         gender varchar(20),
         dob date,
         age integer,

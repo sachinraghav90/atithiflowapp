@@ -3,7 +3,8 @@ import {
     Sheet,
     SheetContent,
     SheetHeader,
-    SheetTitle
+    SheetTitle,
+    SheetClose
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -12,7 +13,7 @@ import { Switch } from "./ui/switch";
 import { MenuItemSelect } from "./MenuItemSelect";
 import { DataGrid, DataGridHeader, DataGridRow, DataGridHead, DataGridCell } from "@/components/ui/data-grid";
 import { Input } from "@/components/ui/input";
-import { Trash2, Plus, PlusCircle } from "lucide-react";
+import { Trash2, Plus, PlusCircle, X } from "lucide-react";
 import { ValidationTooltip } from "@/components/ui/validation-tooltip";
 import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
 import { NativeSelect } from "./ui/native-select";
@@ -158,15 +159,19 @@ export default function MenuMasterBulkSheet({
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent side="right" onOpenAutoFocus={(event) => event.preventDefault()} className="w-full sm:max-w-4xl flex flex-col p-0 bg-background">
-                <SheetHeader className="px-6 py-4 border-b -mb-[2px] bg-background">
+            <SheetContent side="right" onOpenAutoFocus={(event) => event.preventDefault()} className="w-full sm:max-w-4xl p-0 bg-background overflow-y-auto" hideClose>
+                <SheetHeader className="px-6 py-4 border-b -mb-[2px] bg-background sticky top-0 z-50 relative">
                     <SheetTitle className="text-xl font-bold">Add Menu Items</SheetTitle>
+                    <SheetClose className="absolute right-4 top-4 rounded-md border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none h-5 w-5 flex items-center justify-center shadow-sm">
+                        <X className="h-4 w-4 stroke-[2.5]" />
+                        <span className="sr-only">Close</span>
+                    </SheetClose>
                 </SheetHeader>
 
-                <div className="flex-1 overflow-y-auto px-3">
-                    <div className="sticky top-0 z-10 bg-background mb-4">
+                <div className="px-3">
+                    <div className="mb-4 mt-4">
                         {(isSuperAdmin || isOwner) && (
-                            <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background mb-2">
+                            <div className="w-full sm:w-64 space-y-1 mb-2">
                                 <Label>Property</Label>
                                 <NativeSelect
                                     className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"

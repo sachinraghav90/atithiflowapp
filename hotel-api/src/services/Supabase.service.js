@@ -46,6 +46,15 @@ class Supabase {
         return data
     }
 
+    async verifyPassword({ email, password }) {
+        const { data, error } = await this.client().auth.signInWithPassword({
+            email,
+            password,
+        })
+        if (error) throw error
+        return data
+    }
+
 
     async deleteUser(userId) {
         const { error } = await this.client().auth.admin.deleteUser(userId)

@@ -9,6 +9,8 @@ import user from "../src/services/user.service.js";
     const email = process.env.SUPERADMIN_EMAIL || "superadmin@atithiflow.com";
     const password = process.env.SUPERADMIN_PASSWORD || "ChangeMe@123";
 
+    let authUserId;
+
     const { data, error } = await supabase.client().auth.admin.createUser({
         email,
         password,
@@ -16,11 +18,26 @@ import user from "../src/services/user.service.js";
     });
 
     if (error) {
-        console.error("Auth user error:", error.message);
-        process.exit(1);
+        if (error.message.includes("already been registered")) {
+            console.log("Auth user already exists. Fetching existing user...");
+            const { data: listData, error: listError } = await supabase.client().auth.admin.listUsers();
+            if (listError) {
+                console.error("Error fetching users:", listError.message);
+                process.exit(1);
+            }
+            const existingUser = listData.users.find(u => u.email === email);
+            if (!existingUser) {
+                console.error("User not found in list despite existing.");
+                process.exit(1);
+            }
+            authUserId = existingUser.id;
+        } else {
+            console.error("Auth user error:", error.message);
+            process.exit(1);
+        }
+    } else {
+        authUserId = data.user.id;
     }
-
-    const authUserId = data.user.id;
 
     const db = getDb();
 

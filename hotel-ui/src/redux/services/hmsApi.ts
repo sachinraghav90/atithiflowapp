@@ -479,6 +479,16 @@ export const hmsApi = createApi({
       },
     }),
 
+    updateMyPassword: builder.mutation<unknown, { currentPassword: string, newPassword: string }>({
+      query: (payload) => {
+        return {
+          url: `/users/me/change-password`,
+          method: "PATCH",
+          body: payload,
+        };
+      },
+    }),
+
     getStaffImage: builder.query<Blob, string>({
       query: (id) => {
         ;
@@ -1991,6 +2001,7 @@ export const {
   useGetBookingGuestImageQuery,
   useDeleteBookingGuestImageMutation,
   useUpdateStaffPasswordMutation,
+  useUpdateMyPasswordMutation,
   useCreateInventoryMasterBulkMutation,
   useBulkAdjustStockMutation,
   useTodayOccupiedBookingRoomsQuery,

@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS public.laundry_order_items (
     order_id BIGINT NOT NULL,
     laundry_id BIGINT NOT NULL,
 
-    -- room_no VARCHAR(10),
+    room_no VARCHAR(10),
 
     item_count INTEGER DEFAULT 0,
     item_rate NUMERIC(10,2) DEFAULT 0,
@@ -36,5 +36,7 @@ CREATE TABLE IF NOT EXISTS public.laundry_order_items (
 CREATE INDEX IF NOT EXISTS idx_loi_order_id
 ON public.laundry_order_items(order_id);
 
--- CREATE UNIQUE INDEX IF NOT EXISTS uq_loi_order_item_room
--- ON public.laundry_order_items(order_id, laundry_id, room_no);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_loi_order_item_room
+ON public.laundry_order_items(order_id, laundry_id, room_no);
+
+CREATE INDEX IF NOT EXISTS idx_loi_order_room_no ON public.laundry_order_items(order_id, room_no);

@@ -1059,7 +1059,7 @@ export default function VendorsManagement() {
                         ) : (
                             <div className="space-y-4">
                                 {(isSuperAdmin || isOwner) && mode === "add" && (
-                                    <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background pb-1 -mt-1 -mb-2">
+                                    <div className="w-full sm:w-64 space-y-1">
                                         <Label className="text-foreground">Property</Label>
                                         <NativeSelect
                                             className="w-full h-11 rounded-[3px] border border-border/70 bg-background px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0"

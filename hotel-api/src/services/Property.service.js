@@ -297,7 +297,7 @@ class Property {
                     
                     const count = parseInt(countRes.rows[0].count, 10);
                     if (count >= limit) {
-                        const err = new Error("Property limit reached for this owner. Please increase the owner’s property limit before adding another property.");
+                        const err = new Error("Property limit exceeded, contact Admin.");
                         err.statusCode = 400;
                         throw err;
                     }
@@ -369,6 +369,7 @@ class Property {
                     room_tax_rate,
                     gst,
                     serial_number,
+                    room_number_prefix,
                     total_floors,
                     phone,
                     phone2,
@@ -397,7 +398,7 @@ class Property {
                     $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
                     $11,$12,$13,$14,$15,$16,$17,$18,
                     $19,$20,$21,$22,$23,$24,$25,$26,
-                    $27,$28,$29,$30,$31
+                    $27,$28,$29,$30,$31,$32
                 )
                 RETURNING id
                 `,
@@ -410,6 +411,7 @@ class Property {
                     Number(room_tax_rate),
                     Number(gst),
                     serial_number,
+                    payload.room_number_prefix || null,
                     total_floors ? Number(total_floors) : null,
                     phone,
                     phone2,
@@ -451,7 +453,7 @@ class Property {
                 `,
                 [
                     propertyId,
-                    address_line_1,
+                    address_line_1 || "",
                     address_line_2,
                     city,
                     state,
@@ -606,6 +608,8 @@ class Property {
                 if (key === "laundryGst") return "laundry_gst";
                 if (key === "checkinTime" || key === "checkInTime") return "checkin_time";
                 if (key === "checkoutTime" || key === "checkOutTime") return "checkout_time";
+                if (key === "serial_suffix") return "room_number_prefix";
+                if (key === "serialSuffix") return "room_number_prefix";
                 return key;
             };
 
@@ -676,7 +680,7 @@ class Property {
                 `,
                     [
                         id,
-                        propertyAddress.address_line_1,
+                        propertyAddress.address_line_1 || "",
                         propertyAddress.address_line_2,
                         propertyAddress.city,
                         propertyAddress.state,
@@ -749,7 +753,7 @@ class Property {
                     restaurant_gst: "GST Rate for Restaurant Orders",
                     laundry_gst: "GST Rate for Laundry Orders",
                     serial_number: "Serial Number",
-                    serial_suffix: "Serial Suffix",
+                    room_number_prefix: "Room Number Prefix",
                     total_floors: "Total Floors",
                     total_rooms: "Total Rooms",
                     checkin_time: "Check-in Time",

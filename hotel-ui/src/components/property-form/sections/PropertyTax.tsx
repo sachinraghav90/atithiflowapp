@@ -14,17 +14,15 @@ type PropertyTaxData = {
     gst: string | number;
     restaurant_gst?: string | number;
     laundry_gst?: string | number;
-    restaurantGst?: string | number;
-    laundryGst?: string | number;
     pan_no?: string;
-    [key: string]: string | number | boolean | null | undefined;
+    [key: string]: any;
 };
 
 type Props = {
-    value: PropertyTaxData;
-    setValue: (fn: (prev: PropertyTaxData) => PropertyTaxData) => void;
-    errors: Record<string, FormError | undefined>;
-    setErrors: (fn: (prev: Record<string, FormError | undefined>) => Record<string, FormError | undefined>) => void;
+    value: any;
+    setValue: (fn: (prev: any) => any) => void;
+    errors: Record<string, any>;
+    setErrors: (fn: (prev: any) => any) => void;
     viewMode: boolean;
 };
 
@@ -157,9 +155,9 @@ export default function PropertyTax({
                     <div className="flex gap-0">
                         <NativeSelect
                             disabled={viewMode}
-                            value={value.restaurant_gst !== undefined && value.restaurant_gst !== null ? Number(value.restaurant_gst) : (value.restaurantGst !== undefined && value.restaurantGst !== null ? Number(value.restaurantGst) : 0)}
-                            title={errors.restaurant_gst?.message || errors.restaurantGst?.message || ""}
-                            className={`w-full h-11 rounded-[3px] border px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 ${(errors.restaurant_gst || errors.restaurantGst)
+                            value={value.restaurant_gst !== undefined && value.restaurant_gst !== null ? Number(value.restaurant_gst) : 0}
+                            title={errors.restaurant_gst?.message || ""}
+                            className={`w-full h-11 rounded-[3px] border px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 ${errors.restaurant_gst
                                 ? "border-red-500 bg-background"
                                 : "border-border/70 bg-background"
                                 }`}
@@ -167,7 +165,6 @@ export default function PropertyTax({
                                 setValue((prev) => ({
                                     ...prev,
                                     restaurant_gst: Number(e.target.value),
-                                    restaurantGst: Number(e.target.value),
                                 }))
                             }
                         >
@@ -186,9 +183,9 @@ export default function PropertyTax({
                     <div className="flex gap-0">
                         <NativeSelect
                             disabled={viewMode}
-                            value={value.laundry_gst !== undefined && value.laundry_gst !== null ? Number(value.laundry_gst) : (value.laundryGst !== undefined && value.laundryGst !== null ? Number(value.laundryGst) : 0)}
-                            title={errors.laundry_gst?.message || errors.laundryGst?.message || ""}
-                            className={`w-full h-11 rounded-[3px] border px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 ${(errors.laundry_gst || errors.laundryGst)
+                            value={value.laundry_gst !== undefined && value.laundry_gst !== null ? Number(value.laundry_gst) : 0}
+                            title={errors.laundry_gst?.message || ""}
+                            className={`w-full h-11 rounded-[3px] border px-3 text-sm shadow-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-offset-0 ${errors.laundry_gst
                                 ? "border-red-500 bg-background"
                                 : "border-border/70 bg-background"
                                 }`}
@@ -196,7 +193,6 @@ export default function PropertyTax({
                                 setValue((prev) => ({
                                     ...prev,
                                     laundry_gst: Number(e.target.value),
-                                    laundryGst: Number(e.target.value),
                                 }))
                             }
                         >

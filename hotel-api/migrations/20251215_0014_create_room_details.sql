@@ -8,6 +8,8 @@ create table
         description text,
         package_id bigint,
         room_status varchar(50),
+        is_cancelled boolean default false,
+        is_changed boolean default false,
         is_active boolean default true,
         created_by uuid,
         created_on timestamptz default now (),
@@ -27,3 +29,4 @@ create index if not exists idx_room_details_room_status on public.room_details (
 
 -- create index if not exists idx_room_details_is_active on public.room_details (is_active);
 CREATE INDEX IF NOT EXISTS idx_room_booking_overlap ON public.room_details (ref_room_id) WHERE room_status IN ('BOOKED', 'CHECKED_IN');
+CREATE INDEX IF NOT EXISTS idx_room_details_active ON public.room_details (ref_room_id) WHERE is_cancelled = false;

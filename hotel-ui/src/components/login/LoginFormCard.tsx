@@ -16,9 +16,10 @@ import {
 import { Eye, EyeOff, Mail, ShieldCheck, Zap } from "lucide-react";
 import { supabase } from "../../../supabase/functions/supabase-client.ts";
 import { useDispatch } from "react-redux";
-import { loginSuccess } from "@/redux/slices/isLoggedInSlice.ts";
+import { loginSuccess, logout } from "@/redux/slices/isLoggedInSlice.ts";
 import { useGetSidebarLinksQuery } from "@/redux/services/hmsApi.ts";
 import { useAppSelector } from "@/redux/hook.ts";
+import { useToast } from "@/hooks/use-toast";
 
 const SUPPORT_EMAIL = "support@atithiflow.com";
 
@@ -37,9 +38,10 @@ const LoginFormCard = () => {
   const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
   const meLoaded = useAppSelector(state => state.isLoggedIn.meLoaded)
 
-  const { data: sidebarLinks } = useGetSidebarLinksQuery(undefined, {
+  const { data: sidebarLinks, isFetching } = useGetSidebarLinksQuery(undefined, {
     skip: !isLoggedIn || !meLoaded
   })
+
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -78,11 +80,26 @@ const LoginFormCard = () => {
     }
   };
 
+  const { toast } = useToast()
+
   useEffect(() => {
-    if (!isLoggedIn || !meLoaded || !sidebarLinks || !Array.isArray(sidebarLinks.sidebarLinks)) return
-    const redirectPath = sidebarLinks?.sidebarLinks?.[0]?.endpoint || "/AtithiFlow"
+    if (!isLoggedIn || !meLoaded || isFetching || !sidebarLinks || !Array.isArray(sidebarLinks.sidebarLinks)) return
+    
+    if (sidebarLinks.sidebarLinks.length === 0) {
+      supabase.auth.signOut().then(() => {
+        dispatch(logout())
+        toast({
+          title: "Please Contact Admin for getting access.",
+          description: "You don't have access to this application.",
+          variant: "destructive"
+        })
+      })
+      return
+    }
+
+    const redirectPath = sidebarLinks.sidebarLinks[0].endpoint
     navigate(redirectPath, { replace: true })
-  }, [isLoggedIn, meLoaded, navigate, sidebarLinks])
+  }, [isLoggedIn, meLoaded, navigate, sidebarLinks, dispatch, toast, isFetching])
 
   async function login() {
     return await supabase.auth.signInWithPassword({ email, password });

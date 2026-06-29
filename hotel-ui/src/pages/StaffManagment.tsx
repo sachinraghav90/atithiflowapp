@@ -603,13 +603,13 @@ export default function StaffManagement() {
                 "Contact": staffMember.phone || staffMember.phone1 || "-",
                 "Role": (function () {
                     if (Array.isArray(staffMember.roles) && staffMember.roles.length > 0) {
-                        return staffMember.roles.map((r: any) => typeof r === "string" ? r : r.name).filter(Boolean).join(", ");
+                        return staffMember.roles.map((r: any) => typeof r === "string" ? r?.toUpperCase() : r.name?.toUpperCase()).filter(Boolean).join(", ");
                     }
                     if (Array.isArray(staffMember.role_ids) && staffMember.role_ids.length > 0 && Array.isArray(roles?.roles)) {
-                        return staffMember.role_ids.map(id => roles.roles.find((r: any) => String(r.id) === String(id))?.name).filter(Boolean).join(", ") || "-";
+                        return staffMember.role_ids.map(id => roles.roles.find((r: any) => String(r.id) === String(id))?.name?.toUpperCase()).filter(Boolean).join(", ") || "-";
                     }
                     if ((staffMember as any).role_id && Array.isArray(roles?.roles)) {
-                        return roles.roles.find((r: any) => String(r.id) === String((staffMember as any).role_id))?.name || "-";
+                        return roles.roles.find((r: any) => String(r.id) === String((staffMember as any).role_id))?.name?.toUpperCase() || "-";
                     }
                     return "-";
                 })(),
@@ -710,7 +710,7 @@ export default function StaffManagement() {
                 // 1. Try s.roles (array of objects)
                 if (Array.isArray(s.roles) && s.roles.length > 0) {
                     return s.roles
-                        .map((r: any) => typeof r === "string" ? formatReadableLabel(r) : formatReadableLabel(r.name))
+                        .map((r: any) => typeof r === "string" ? formatReadableLabel(r)?.toUpperCase() : formatReadableLabel(r.name)?.toUpperCase())
                         .filter(Boolean)
                         .join(", ");
                 }
@@ -720,7 +720,7 @@ export default function StaffManagement() {
                     return s.role_ids
                         .map(id => {
                             const found = roles.roles.find((r: any) => String(r.id) === String(id));
-                            return found ? formatReadableLabel(found.name) : null;
+                            return found ? formatReadableLabel(found.name)?.toUpperCase() : null;
                         })
                         .filter(Boolean)
                         .join(", ") || "-";
@@ -729,7 +729,7 @@ export default function StaffManagement() {
                 // 3. Fallback to s.role_id (singular)
                 if ((s as any).role_id && Array.isArray(roles?.roles)) {
                     const found = roles.roles.find((r: any) => String(r.id) === String((s as any).role_id));
-                    if (found) return formatReadableLabel(found.name);
+                    if (found) return formatReadableLabel(found.name)?.toUpperCase();
                 }
 
                 return "-";
@@ -1226,8 +1226,8 @@ export default function StaffManagement() {
                                                 label="Role" 
                                                 value={
                                                     staff.roles?.length 
-                                                        ? staff.roles.map(r => formatReadableLabel(r.name)).join(", ") 
-                                                        : (formatReadableLabel(roles?.roles?.find((r: Role) => String(r.id) === String(staff.role_ids?.[0]))?.name) || staff.role_ids?.[0])
+                                                        ? staff.roles.map(r => formatReadableLabel(r.name)?.toUpperCase()).join(", ") 
+                                                        : (formatReadableLabel(roles?.roles?.find((r: Role) => String(r.id) === String(staff.role_ids?.[0]))?.name)?.toUpperCase() || staff.role_ids?.[0])
                                                 } 
                                             />
                                             <ViewField label="Status" value={formatReadableLabel(staff.status)} />
