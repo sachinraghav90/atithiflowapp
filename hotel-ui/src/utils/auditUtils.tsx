@@ -72,12 +72,25 @@ const getFormattedAuditChangesRaw = (details: any, customParsers?: Record<string
     if (details.before || details.after) {
         const { before, after } = details;
         if (!before || !after) {
+            const singleSource = after || before;
+            if (singleSource && typeof singleSource === 'object' && Object.keys(singleSource).length > 0) {
+                return (
+                    <div className="space-y-1 text-muted-foreground">
+                        {Object.entries(singleSource).map(([key, val], i) => (
+                            <div key={i} className="mb-1 last:mb-0">
+                                <span className="font-semibold text-foreground/80">{key}:</span> {formatAuditValue ? formatAuditValue(val) : String(val)}
+                            </div>
+                        ))}
+                    </div>
+                );
+            }
+
             if (typeof details === 'object' && Object.keys(details).length > 0) {
                 return (
                     <div className="space-y-1 text-muted-foreground">
                         {Object.entries(details).map(([key, val], i) => (
                             <div key={i} className="mb-1 last:mb-0">
-                                <span className="font-semibold text-foreground/80">{key}:</span> {String(val)}
+                                <span className="font-semibold text-foreground/80">{key}:</span> {formatAuditValue ? formatAuditValue(val) : String(val)}
                             </div>
                         ))}
                     </div>
@@ -206,6 +219,17 @@ export const getAuditChangePlainText = (details: any, customParsers?: Record<str
     if (details.before || details.after) {
         const { before, after } = details;
         if (!before || !after) {
+            const singleSource = after || before;
+            if (singleSource && typeof singleSource === 'object' && Object.keys(singleSource).length > 0) {
+                const entries = Object.entries(singleSource).filter(([key]) => !IGNORED_KEYS.has(key));
+                if (entries.length === 0) return "--";
+                return entries.map(([key, val]) => {
+                    const formattedKey = key.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+                    const displayVal = formatAuditValue(val);
+                    return `${formattedKey}: ${displayVal}`;
+                }).join(" | ");
+            }
+
             if (typeof details === 'object' && Object.keys(details).length > 0) {
                 const entries = Object.entries(details).filter(([key]) => !IGNORED_KEYS.has(key));
                 if (entries.length === 0) return "--";

@@ -214,7 +214,7 @@ export default function InventoryBulkSheet({
                                                         )}
                                                         onSelect={(id) =>
                                                             updateRow(index, {
-                                                                inventory_type_id: id,
+                                                                inventory_type_id: Number(id),
                                                                 touched: { ...row.touched, inventory_type_id: true }
                                                             })
                                                         }

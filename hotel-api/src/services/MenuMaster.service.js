@@ -58,6 +58,7 @@ class MenuMasterService {
             SELECT
                 m.id,
                 m.property_id,
+                m.menu_sequence,
                 m.item_name,
                 m.menu_item_group_id,
                 g.name AS menu_item_group,
@@ -72,7 +73,7 @@ class MenuMasterService {
             LEFT JOIN public.menu_item_groups g
                 ON g.id = m.menu_item_group_id
             ${whereClause}
-            ORDER BY m.id DESC
+            ORDER BY m.menu_sequence DESC NULLS LAST, m.id DESC
             LIMIT $${params.length + 1} OFFSET $${params.length + 2}
             `,
             [...params, limit, offset]
@@ -167,15 +168,15 @@ class MenuMasterService {
             // -----------------------------
             const seqResult = await client.query(`
                 INSERT INTO public.property_counters (property_id, counter_name, next_value)
-                VALUES ($1, 'MENU', 1)
+                VALUES ($1, 'MENU', 2)
                 ON CONFLICT (property_id, counter_name)
                 DO UPDATE SET 
                     next_value = public.property_counters.next_value + 1,
                     updated_on = now()
-                RETURNING next_value
+                RETURNING next_value - 1 AS menu_sequence
             `, [propertyId]);
             
-            const nextSeq = seqResult.rows[0].next_value;
+            const nextSeq = seqResult.rows[0].menu_sequence;
 
             const { rows } = await client.query(
                 `
@@ -450,118 +451,135 @@ class MenuMasterService {
         }
 
         const client = await this.#DB.connect();
+        let result;
 
         try {
-
             await client.query("BEGIN");
 
-            const results = [];
-
-            for (const item of items) {
-
-                const {
-                    itemName,
-                    menuItemGroupId,
-                    price,
-                    isActive = true,
-                    isVeg = false,
-                    description,
-                    prepTime,
-                    image,
-                    imageMime
-                } = item;
-
-                if (!itemName) {
-                    throw new Error("Package, Stay Duration and Guests required");
-                }
-
+            const propertyCounts = {};
+            items.forEach(i => {
+                const propId = i.propertyId ?? propertyId;
+                propertyCounts[propId] = (propertyCounts[propId] || 0) + 1;
+            });
+            
+            const propNextValues = {};
+            for (const propId of Object.keys(propertyCounts)) {
+                const count = propertyCounts[propId];
                 const seqResult = await client.query(`
                     INSERT INTO public.property_counters (property_id, counter_name, next_value)
-                    VALUES ($1, 'MENU', 1)
+                    VALUES ($1, 'MENU', 1 + $2)
                     ON CONFLICT (property_id, counter_name)
                     DO UPDATE SET 
-                        next_value = public.property_counters.next_value + 1,
+                        next_value = public.property_counters.next_value + $2,
                         updated_on = now()
                     RETURNING next_value
-                `, [propertyId]);
+                `, [propId, count]);
                 
-                const nextSeq = seqResult.rows[0].next_value;
-
-                const { rows } = await client.query(
-                    `
-                    INSERT INTO public.menu_master (
-                        property_id,
-                        menu_sequence,
-                        item_name,
-                        menu_item_group_id,
-                        price,
-                        is_active,
-                        is_veg,
-                        description,
-                        image,
-                        image_mime,
-                        prep_time,
-                        created_by
-                    )
-                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-                    RETURNING id, property_id, item_name, menu_item_group_id, price, is_active, is_veg, description, prep_time, created_on, updated_on
-                    `,
-                    [
-                        propertyId,
-                        nextSeq,
-                        itemName,
-                        menuItemGroupId ?? null,
-                        price ?? 0,
-                        isActive,
-                        isVeg,
-                        description ?? null,
-                        image ?? null,        // ✅ buffer from multer
-                        imageMime ?? null,    // ✅ mime from multer
-                        prepTime ?? null,
-                        userId
-                    ]
-                );
-
-                const created = rows[0];
-
-                await AuditService.log({
-                    client,
-                    property_id: propertyId,
-                    event_id: created.id,
-                    table_name: "menu_master",
-                    event_type: "CREATE",
-                    task_name: "Bulk Create Menu Item",
-                    comments: `Menu item created: ${created.item_name}`,
-                    details: JSON.stringify({
-                        item_name: created.item_name,
-                        price: created.price,
-                        prep_time: created.prep_time,
-                        menu_item_group_id: created.menu_item_group_id,
-                        is_active: created.is_active,
-                        is_veg: created.is_veg,
-                        description: created.description,
-                        ...(image !== undefined && image !== null ? { item_image: "Image Uploaded" } : {})
-                    }),
-                    user_id: userId
-                });
-
-                results.push(created);
+                propNextValues[propId] = seqResult.rows[0].next_value - count;
             }
+
+            const menuSequences = items.map(i => {
+                const propId = i.propertyId ?? propertyId;
+                const seq = propNextValues[propId];
+                propNextValues[propId]++;
+                return seq;
+            });
+
+            const propertyIds = items.map(i => i.propertyId ?? propertyId);
+            const itemNames = items.map(i => {
+                if (!i.itemName) throw new Error("Package, Stay Duration and Guests required");
+                return i.itemName;
+            });
+            const menuItemGroupIds = items.map(i => i.menuItemGroupId ?? null);
+            const prices = items.map(i => i.price ?? 0);
+            const isActives = items.map(i => i.isActive ?? true);
+            const isVegs = items.map(i => i.isVeg ?? false);
+            const descriptions = items.map(i => i.description ?? null);
+            const images = items.map(i => i.image ?? null);
+            const imageMimes = items.map(i => i.imageMime ?? null);
+            const prepTimes = items.map(i => i.prepTime ?? null);
+
+            const query = `
+                INSERT INTO public.menu_master (
+                    property_id,
+                    menu_sequence,
+                    item_name,
+                    menu_item_group_id,
+                    price,
+                    is_active,
+                    is_veg,
+                    description,
+                    image,
+                    image_mime,
+                    prep_time,
+                    created_by
+                )
+                SELECT
+                    unnest($1::bigint[]),
+                    unnest($2::integer[]),
+                    unnest($3::text[]),
+                    unnest($4::bigint[]),
+                    unnest($5::numeric[]),
+                    unnest($6::boolean[]),
+                    unnest($7::boolean[]),
+                    unnest($8::text[]),
+                    unnest($9::bytea[]),
+                    unnest($10::text[]),
+                    unnest($11::integer[]),
+                    $12
+                RETURNING id, property_id, item_name, menu_item_group_id, price, is_active, is_veg, description, prep_time, created_on, updated_on
+            `;
+
+            const values = [
+                propertyIds,
+                menuSequences,
+                itemNames,
+                menuItemGroupIds,
+                prices,
+                isActives,
+                isVegs,
+                descriptions,
+                images,
+                imageMimes,
+                prepTimes,
+                userId
+            ];
+
+            result = await client.query(query, values);
 
             await client.query("COMMIT");
 
-            return results;
-
         } catch (err) {
-
             await client.query("ROLLBACK");
             throw err;
-
         } finally {
-
             client.release();
-
         }
+
+        if (result.rows && result.rows.length > 0) {
+            Promise.all(result.rows.map(row => 
+                AuditService.log({
+                    property_id: row.property_id,
+                    event_id: row.id,
+                    table_name: "menu_master",
+                    event_type: "CREATE",
+                    task_name: "Bulk Create Menu Item",
+                    comments: `Menu item created: ${row.item_name}`,
+                    details: JSON.stringify({
+                        item_name: row.item_name,
+                        price: row.price,
+                        prep_time: row.prep_time,
+                        menu_item_group_id: row.menu_item_group_id,
+                        is_active: row.is_active,
+                        is_veg: row.is_veg,
+                        description: row.description
+                    }),
+                    user_id: userId
+                })
+            )).catch(e => console.error("Bulk audit log failed:", e));
+        }
+
+        return result.rows;
     }
 
 }

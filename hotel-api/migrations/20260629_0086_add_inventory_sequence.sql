@@ -18,7 +18,7 @@ WHERE i.id = ni.id AND i.inventory_sequence IS NULL;
 INSERT INTO public.property_counters (property_id, counter_name, next_value)
 SELECT 
     property_id,
-    'INVENTORY',
+    'INVENTORY_MASTER',
     COALESCE(MAX(inventory_sequence), 0) + 1
 FROM public.inventory_master
 GROUP BY property_id

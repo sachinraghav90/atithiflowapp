@@ -112,6 +112,35 @@ function roomCardColor(status: "OCCUPIED" | "FREE" | "DIRTY" | "BOOKED" | "MAINT
     }
 }
 
+const ROMAN_MAP = [
+    { value: 1000, symbol: "M" },
+    { value: 900, symbol: "CM" },
+    { value: 500, symbol: "D" },
+    { value: 400, symbol: "CD" },
+    { value: 100, symbol: "C" },
+    { value: 90, symbol: "XC" },
+    { value: 50, symbol: "L" },
+    { value: 40, symbol: "XL" },
+    { value: 10, symbol: "X" },
+    { value: 9, symbol: "IX" },
+    { value: 5, symbol: "V" },
+    { value: 4, symbol: "IV" },
+    { value: 1, symbol: "I" },
+];
+
+function getFloorName(floor: number): string {
+    if (floor === 0) return "G|F";
+    let num = floor;
+    let roman = "";
+    for (const { value, symbol } of ROMAN_MAP) {
+        while (num >= value) {
+            roman += symbol;
+            num -= value;
+        }
+    }
+    return `${roman}|F`;
+}
+
 /* ---------------- Component ---------------- */
 export default function RoomStatusBoard() {
     const [selectedDate, setSelectedDate] = useState(
@@ -187,7 +216,7 @@ export default function RoomStatusBoard() {
             });
             setDirtyStatuses(initial);
         }
-    }, [data?.rooms, isDirtySheetOpen]);
+    }, [data?.rooms]);
 
     const handleSaveDirtyStatus = async () => {
         if (!propertyId) return;
@@ -216,40 +245,8 @@ export default function RoomStatusBoard() {
             return next;
         });
     };
-    const filteredCheckIns = data?.checking_in || [];
-    const filteredCheckOuts = data?.checking_out || [];
-
-    function getFloorName(floor: number): string {
-        if (floor === 0) return "G|F";
-
-        const romanMap: { value: number; symbol: string }[] = [
-            { value: 1000, symbol: "M" },
-            { value: 900, symbol: "CM" },
-            { value: 500, symbol: "D" },
-            { value: 400, symbol: "CD" },
-            { value: 100, symbol: "C" },
-            { value: 90, symbol: "XC" },
-            { value: 50, symbol: "L" },
-            { value: 40, symbol: "XL" },
-            { value: 10, symbol: "X" },
-            { value: 9, symbol: "IX" },
-            { value: 5, symbol: "V" },
-            { value: 4, symbol: "IV" },
-            { value: 1, symbol: "I" },
-        ];
-
-        let num = floor;
-        let roman = "";
-
-        for (const { value, symbol } of romanMap) {
-            while (num >= value) {
-                roman += symbol;
-                num -= value;
-            }
-        }
-
-        return `${roman}|F`;
-    }
+    const filteredCheckIns = useMemo(() => data?.checking_in || [], [data?.checking_in]);
+    const filteredCheckOuts = useMemo(() => data?.checking_out || [], [data?.checking_out]);
 
     useEffect(() => {
         if (!propertyId && myProperties?.properties?.length > 0) {
@@ -262,8 +259,8 @@ export default function RoomStatusBoard() {
     usePermission(pathname)
     const { permission: bookingPermission } = usePermission("/bookings", { autoRedirect: false })
 
-    const currentlyDirtyRooms = data?.rooms?.filter(r => dirtyStatuses[r.ref_room_id.toString()]) || [];
-    const initialDirtyRooms = data?.rooms?.filter(r => r.dirty) || [];
+    const currentlyDirtyRooms = useMemo(() => data?.rooms?.filter(r => dirtyStatuses[r.ref_room_id.toString()]) || [], [data?.rooms, dirtyStatuses]);
+    const initialDirtyRooms = useMemo(() => data?.rooms?.filter(r => r.dirty) || [], [data?.rooms]);
 
     const hasZeroProperties = (isSuperAdmin || isOwner) && myProperties?.properties && myProperties.properties.length === 0;
 

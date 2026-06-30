@@ -79,6 +79,7 @@ class VendorService {
         SELECT
             v.id,
             v.property_id,
+            v.vendor_sequence,
             v.name,
             v.pan_no,
             v.gst_no,
@@ -167,15 +168,15 @@ class VendorService {
             // -----------------------------
             const seqResult = await client.query(`
                 INSERT INTO public.property_counters (property_id, counter_name, next_value)
-                VALUES ($1, 'VENDOR', 1)
+                VALUES ($1, 'VENDOR', 2)
                 ON CONFLICT (property_id, counter_name)
                 DO UPDATE SET 
                     next_value = public.property_counters.next_value + 1,
                     updated_on = now()
-                RETURNING next_value
+                RETURNING next_value - 1 AS vendor_sequence
             `, [property_id]);
             
-            const nextSeq = seqResult.rows[0].next_value;
+            const nextSeq = seqResult.rows[0].vendor_sequence;
 
             const { rows } = await client.query(
             `

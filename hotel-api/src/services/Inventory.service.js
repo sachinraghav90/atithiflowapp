@@ -161,7 +161,7 @@ class InventoryService {
             // -----------------------------
             const seqResult = await client.query(`
                 INSERT INTO public.property_counters (property_id, counter_name, next_value)
-                VALUES ($1, 'INVENTORY', 1)
+                VALUES ($1, 'INVENTORY_MASTER', 2)
                 ON CONFLICT (property_id, counter_name)
                 DO UPDATE SET 
                     next_value = public.property_counters.next_value + 1,
@@ -169,7 +169,7 @@ class InventoryService {
                 RETURNING next_value
             `, [payload.property_id]);
             
-            const nextSeq = seqResult.rows[0].next_value;
+            const nextSeq = seqResult.rows[0].next_value - 1;
 
             const query = `
                 INSERT INTO public.inventory_master (
@@ -236,41 +236,84 @@ class InventoryService {
             throw new Error("Items array required");
         }
 
-        const propertyIds = items.map(i => i.property_id);
-        const inventoryTypeIds = items.map(i => i.inventory_type_id);
-        const useTypes = items.map(i => i.use_type ?? null);
-        const names = items.map(i => i.name);
-        const units = items.map(i => i.unit ?? null);   // NEW
+        const client = await this.#DB.connect();
+        let result;
+        
+        try {
+            await client.query("BEGIN");
+            
+            const propertyCounts = {};
+            items.forEach(i => {
+                propertyCounts[i.property_id] = (propertyCounts[i.property_id] || 0) + 1;
+            });
+            
+            const propNextValues = {};
+            for (const propId of Object.keys(propertyCounts)) {
+                const count = propertyCounts[propId];
+                const seqResult = await client.query(`
+                    INSERT INTO public.property_counters (property_id, counter_name, next_value)
+                    VALUES ($1, 'INVENTORY_MASTER', 1 + $2)
+                    ON CONFLICT (property_id, counter_name)
+                    DO UPDATE SET 
+                        next_value = public.property_counters.next_value + $2,
+                        updated_on = now()
+                    RETURNING next_value
+                `, [propId, count]);
+                
+                propNextValues[propId] = seqResult.rows[0].next_value - count;
+            }
+            
+            const inventorySequences = items.map(i => {
+                const seq = propNextValues[i.property_id];
+                propNextValues[i.property_id]++;
+                return seq;
+            });
 
-        const query = `
-            INSERT INTO public.inventory_master (
-                property_id,
-                inventory_type_id,
-                use_type,
-                name,
-                unit,
-                created_by
-            )
-            SELECT
-                unnest($1::bigint[]),
-                unnest($2::bigint[]),
-                unnest($3::text[]),
-                unnest($4::text[]),
-                unnest($5::text[]),
-                $6
-            RETURNING *;
-        `;
+            const propertyIds = items.map(i => i.property_id);
+            const inventoryTypeIds = items.map(i => i.inventory_type_id);
+            const useTypes = items.map(i => i.use_type ?? null);
+            const names = items.map(i => i.name);
+            const units = items.map(i => i.unit ?? null);   // NEW
 
-        const values = [
-            propertyIds,
-            inventoryTypeIds,
-            useTypes,
-            names,
-            units,
-            userId
-        ];
+            const query = `
+                INSERT INTO public.inventory_master (
+                    property_id,
+                    inventory_sequence,
+                    inventory_type_id,
+                    use_type,
+                    name,
+                    unit,
+                    created_by
+                )
+                SELECT
+                    unnest($1::bigint[]),
+                    unnest($2::integer[]),
+                    unnest($3::bigint[]),
+                    unnest($4::text[]),
+                    unnest($5::text[]),
+                    unnest($6::text[]),
+                    $7
+                RETURNING *;
+            `;
 
-        const result = await this.#DB.query(query, values);
+            const values = [
+                propertyIds,
+                inventorySequences,
+                inventoryTypeIds,
+                useTypes,
+                names,
+                units,
+                userId
+            ];
+
+            result = await client.query(query, values);
+            await client.query("COMMIT");
+        } catch (e) {
+            await client.query("ROLLBACK");
+            throw e;
+        } finally {
+            client.release();
+        }
 
         if (result.rows && result.rows.length > 0) {
             Promise.all(result.rows.map(row => 

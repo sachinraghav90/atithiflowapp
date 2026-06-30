@@ -26,15 +26,18 @@ class PackageService {
             // -----------------------------
             const seqResult = await client.query(`
                 INSERT INTO public.property_counters (property_id, counter_name, next_value)
-                VALUES ($1, 'PACKAGE', 1)
+                VALUES ($1, 'PACKAGE', COALESCE((SELECT MAX(package_sequence) FROM public.packages WHERE property_id = $1), 0) + 2)
                 ON CONFLICT (property_id, counter_name)
                 DO UPDATE SET 
-                    next_value = public.property_counters.next_value + 1,
+                    next_value = GREATEST(
+                        public.property_counters.next_value + 1,
+                        COALESCE((SELECT MAX(package_sequence) FROM public.packages WHERE property_id = $1), 0) + 2
+                    ),
                     updated_on = now()
-                RETURNING next_value
+                RETURNING next_value - 1 AS package_sequence
             `, [propertyId]);
             
-            const nextSeq = seqResult.rows[0].next_value;
+            const nextSeq = seqResult.rows[0].package_sequence;
 
             const { rows } = await client.query(
             `
@@ -281,6 +284,7 @@ class PackageService {
         const dataQuery = `
             SELECT
                 id,
+                package_sequence,
                 package_name,
                 description,
                 system_generated,
@@ -288,7 +292,7 @@ class PackageService {
                 is_active
             FROM public.packages
             ${whereClause}
-            ORDER BY package_name
+            ORDER BY id DESC
             LIMIT $${i++} OFFSET $${i++}
         `;
 

@@ -968,7 +968,7 @@ export default function PackageManagement() {
                                                 ) : (
                                                     <Input
                                                         className={cn("h-10", submitted && formErrors.package_name ? "border-red-500" : "")}
-                                                        value={selectedPackage?.package_name}
+                                                        value={selectedPackage?.package_name ?? ""}
                                                         onChange={(e) => {
                                                             const next = e.target.value;
                                                             if (isWithinCharLimit(next, 50)) {
@@ -996,7 +996,7 @@ export default function PackageManagement() {
                                                     <textarea
                                                         className="w-full min-h-[100px] rounded-lg border border-border/60 bg-background px-3 py-2.5 text-sm focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-muted-foreground/30 leading-relaxed resize-none shadow-none"
                                                         placeholder="Briefly describe what this plan includes..."
-                                                        value={selectedPackage?.description}
+                                                        value={selectedPackage?.description ?? ""}
                                                         onChange={(e) => {
                                                             const next = e.target.value
                                                             if (isWithinCharLimit(next, 200)) {
@@ -1017,7 +1017,7 @@ export default function PackageManagement() {
                                                     <Input
                                                         type="text"
                                                         className={cn("h-10 pl-7 font-semibold", submitted && formErrors.base_price ? "border-red-500" : "")}
-                                                        value={selectedPackage?.base_price}
+                                                        value={selectedPackage?.base_price ?? ""}
                                                         onChange={(e) => {
                                                             setSelectedPackage(prev => ({
                                                                 ...prev,
@@ -1033,7 +1033,7 @@ export default function PackageManagement() {
                                             <div className="flex items-center gap-3 rounded-[5px] border border-primary/50 p-4 bg-accent/20">
                                                 <Switch
                                                     className="scale-90"
-                                                    checked={selectedPackage?.is_active}
+                                                    checked={!!selectedPackage?.is_active}
                                                     disabled={selectedPackage?.system_generated}
                                                     onCheckedChange={(v) =>
                                                         setSelectedPackage((prev) => ({

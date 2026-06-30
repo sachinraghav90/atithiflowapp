@@ -1325,7 +1325,7 @@ function VendorBankGrid({ form, setForm, formErrors, setFormErrors, viewMode }: 
             <div className="flex items-center gap-3">
                 <Switch
                     disabled={viewMode}
-                    checked={form.has_bank_details}
+                    checked={!!form.has_bank_details}
                     onCheckedChange={toggleHasBankDetails}
                 />
                 <Label className="text-foreground">Add Bank Details</Label>

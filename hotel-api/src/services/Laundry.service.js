@@ -59,7 +59,7 @@ class LaundryService {
             SELECT *
             FROM public.laundry
             ${whereClause}
-            ORDER BY system_generated DESC, item_name
+            ORDER BY laundry_sequence DESC NULLS LAST, id DESC
             LIMIT $${i++} OFFSET $${i++}
         `;
 
@@ -220,7 +220,9 @@ class LaundryService {
                 SET laundry_sequence = COALESCE((SELECT max_seq FROM max_seqs), 0) + nl.seq
                 FROM numbered_laundry nl
                 WHERE l.id = nl.id;
+            `, [propertyId]);
 
+            await this.#DB.query(`
                 INSERT INTO public.property_counters (property_id, counter_name, next_value)
                 SELECT property_id, 'LAUNDRY_PRICING', COALESCE(MAX(laundry_sequence), 0) + 1
                 FROM public.laundry

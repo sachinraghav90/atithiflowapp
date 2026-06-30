@@ -407,19 +407,20 @@ export function CreateOrder() {
         });
     };
 
-    const onMenuSelect = (index: number, menuId: number) => {
-        const alreadyExists = items.some((item, i) => i !== index && item.menu_item_id === menuId);
+    const onMenuSelect = (index: number, menuId: number | string) => {
+        const parsedMenuId = Number(menuId);
+        const alreadyExists = items.some((item, i) => i !== index && Number(item.menu_item_id) === parsedMenuId);
         if (alreadyExists) {
             toast.warning("This item is already added to the order.");
             return;
         }
-        const menu = menuItems.find(m => Number(m.id) === menuId);
+        const menu = menuItems.find(m => Number(m.id) === parsedMenuId);
         if (!menu) return;
         setItems(prev => {
             const updated = [...prev];
             updated[index] = {
                 ...updated[index],
-                menu_item_id: menuId,
+                menu_item_id: parsedMenuId,
                 item_name: menu.item_name,
                 unit_price: Number(menu.price),
                 item_total: updated[index].quantity * Number(menu.price),

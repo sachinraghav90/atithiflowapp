@@ -326,12 +326,16 @@ export default function MenuMaster() {
     }, [form.image]);
 
     const menuGroupOptions = useMemo(() => {
+        if (menuGroupsLight && Array.isArray(menuGroupsLight) && menuGroupsLight.length > 0) {
+            return menuGroupsLight.map((g: any) => g.name).sort((a: string, b: string) => a.localeCompare(b));
+        }
+
         const groups = Array.from(
             new Set((menuData?.data ?? []).map((item: MenuItem) => item.menu_item_group).filter(Boolean))
         );
 
         return groups.sort((a, b) => String(a).localeCompare(String(b)));
-    }, [menuData?.data]);
+    }, [menuData?.data, menuGroupsLight]);
 
     const menuRows = useMemo(() => menuData?.data ?? [], [menuData?.data]);
     
@@ -1180,7 +1184,7 @@ export default function MenuMaster() {
                                                         />
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-8 pt-2">
+                                                <div className="grid grid-cols-2 gap-4 pt-[34px]">
                                                     <div className="flex items-center gap-3">
                                                         <Switch
                                                             checked={form.is_active}

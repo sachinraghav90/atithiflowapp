@@ -12,39 +12,39 @@ import TermsOfService from "./pages/TermsOfService";
 import NotFound from "./pages/NotFound";
 import Reservation from "./pages/Reservation";
 import { supabase } from "../supabase/functions/supabase-client.ts";
-import { useEffect, useState } from "react";
-import RoleManagement from "./pages/RoleManagement.tsx";
+import { useEffect, useState, Suspense, lazy } from "react";
+const RoleManagement = lazy(() => import("./pages/RoleManagement.tsx"));
 import { ToastContainer } from 'react-toastify';
-import PropertyManagement from "./pages/PropertyManagement.tsx";
+const PropertyManagement = lazy(() => import("./pages/PropertyManagement.tsx"));
 import { LogoSpinner } from "./components/Spinner.tsx";
-import StaffManagement from "./pages/StaffManagment.tsx";
+const StaffManagement = lazy(() => import("./pages/StaffManagment.tsx"));
 import { useAuthBootstrap } from "./hooks/useAuthBootstrap.ts";
-import RoomsByFloor from "./pages/RoomsByFloor.tsx";
-import PackageManagement from "./pages/PackageManagement.tsx";
-import BookingsManagement from "./pages/BookingManagement.tsx";
-// import GuestsCreationManagement from "./pages/GuestsCreationManagement.tsx";
-// import GuestsManagement from "./pages/GuestManagement.tsx";
-import PaymentsManagement from "./pages/PaymentManagement.tsx";
-import RoomTypeBasePriceManagement from "./pages/RoomTypeBasePriceManagement.tsx";
+const RoomsByFloor = lazy(() => import("./pages/RoomsByFloor.tsx"));
+const PackageManagement = lazy(() => import("./pages/PackageManagement.tsx"));
+const BookingsManagement = lazy(() => import("./pages/BookingManagement.tsx"));
+// const GuestsCreationManagement = lazy(() => import("./pages/GuestsCreationManagement.tsx"));
+// const GuestsManagement = lazy(() => import("./pages/GuestManagement.tsx"));
+const PaymentsManagement = lazy(() => import("./pages/PaymentManagement.tsx"));
+const RoomTypeBasePriceManagement = lazy(() => import("./pages/RoomTypeBasePriceManagement.tsx"));
 import { useAutoLogout } from "./hooks/useAutoLogout.ts";
 import { useAppDispatch, useAppSelector } from "./redux/hook.ts";
 import { setApiLoaded } from "./redux/slices/isLoggedInSlice.ts";
-import RoomStatusBoard from "./pages/RoomStatusBoard.tsx";
-import VendorsManagement from "./pages/VendorsManagement.tsx";
-import LaundryPricingManagement from "./pages/LaundryPricingManagement.tsx";
-import LaundryOrdersManagement from "./pages/LaundryOrdersManagement.tsx";
-import CreateEnquiry from "./pages/EnquiryCreate.tsx";
-import EnquiriesManagement from "./pages/EnquiriesManagement.tsx";
-import MenuMaster from "./pages/MenuMaster.tsx";
-import { OrdersManagement } from "./pages/OrderManagement.tsx";
-import { CreateOrder } from "./pages/CreateOrder.tsx";
-import { RestaurantTables } from "./pages/RestaurantTable.tsx";
-import KitchenInventory from "./pages/KitchenInventory.tsx";
+const RoomStatusBoard = lazy(() => import("./pages/RoomStatusBoard.tsx"));
+const VendorsManagement = lazy(() => import("./pages/VendorsManagement.tsx"));
+const LaundryPricingManagement = lazy(() => import("./pages/LaundryPricingManagement.tsx"));
+const LaundryOrdersManagement = lazy(() => import("./pages/LaundryOrdersManagement.tsx"));
+const CreateEnquiry = lazy(() => import("./pages/EnquiryCreate.tsx"));
+const EnquiriesManagement = lazy(() => import("./pages/EnquiriesManagement.tsx"));
+const MenuMaster = lazy(() => import("./pages/MenuMaster.tsx"));
+const OrdersManagement = lazy(() => import("./pages/OrderManagement.tsx").then(module => ({ default: module.OrdersManagement })));
+const CreateOrder = lazy(() => import("./pages/CreateOrder.tsx").then(module => ({ default: module.CreateOrder })));
+const RestaurantTables = lazy(() => import("./pages/RestaurantTable.tsx").then(module => ({ default: module.RestaurantTables })));
+const KitchenInventory = lazy(() => import("./pages/KitchenInventory.tsx"));
 import { useGetSidebarLinksQuery } from "./redux/services/hmsApi.ts";
-import UnauthorizedAccessPage from "./pages/UnauthorizedAccessPage.tsx";
+const UnauthorizedAccessPage = lazy(() => import("./pages/UnauthorizedAccessPage.tsx"));
 import AppLayout from "./components/layout/AppLayout.tsx";
-import InventoryMaster from "./pages/InventoryMaster.tsx";
-import GuestsCreationManagement from "./pages/GuestsCreationManagement.tsx";
+const InventoryMaster = lazy(() => import("./pages/InventoryMaster.tsx"));
+// const GuestsCreationManagement = lazy(() => import("./pages/GuestsCreationManagement.tsx"));
 
 const queryClient = new QueryClient();
 
@@ -107,42 +107,44 @@ const App = () => {
       <TooltipProvider delayDuration={100}>
         <Toaster />
         <Sonner />
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/platform" element={<Platform />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-          <Route path="/terms-of-service" element={<TermsOfService />} />
+        <Suspense fallback={<div className="h-screen w-screen flex items-center justify-center bg-background"><LogoSpinner /></div>}>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/platform" element={<Platform />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+            <Route path="/terms-of-service" element={<TermsOfService />} />
 
-          <Route element={<AppLayout />}>
-            <Route path="/reservation" element={<Reservation />} />
-            <Route path="/roles" element={<RoleManagement />} />
-            <Route path="/properties" element={<PropertyManagement />} />
-            <Route path="/staff" element={<StaffManagement />} />
-            <Route path="/rooms" element={<RoomsByFloor />} />
-            <Route path="/plans" element={<PackageManagement />} />
-            <Route path="/bookings" element={<BookingsManagement />} />
-            <Route path="/payments" element={<PaymentsManagement />} />
-            <Route path="/room-categories" element={<RoomTypeBasePriceManagement />} />
-            <Route path="/room-status" element={<RoomStatusBoard />} />
-            <Route path="/vendors" element={<VendorsManagement />} />
-            <Route path="/laundry-pricing" element={<LaundryPricingManagement />} />
-            <Route path="/laundry-orders" element={<LaundryOrdersManagement />} />
-            <Route path="/create-enquiry" element={<CreateEnquiry />} />
-            <Route path="/enquiries" element={<EnquiriesManagement />} />
-            <Route path="/menu-items" element={<MenuMaster />} />
-            <Route path="/orders" element={<OrdersManagement />} />
-            <Route path="/create-order" element={<CreateOrder />} />
-            <Route path="/restaurant-tables" element={<RestaurantTables />} />
-            <Route path="/kitchen-inventory" element={<KitchenInventory />} />
-            <Route path="/inventory-master" element={<InventoryMaster />} />
-            {/* <Route path="/guests" element={<GuestsCreationManagement />} /> */}
-          </Route>
-          <Route path="/unauthorized-access" element={<UnauthorizedAccessPage />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+            <Route element={<AppLayout />}>
+              <Route path="/reservation" element={<Reservation />} />
+              <Route path="/roles" element={<RoleManagement />} />
+              <Route path="/properties" element={<PropertyManagement />} />
+              <Route path="/staff" element={<StaffManagement />} />
+              <Route path="/rooms" element={<RoomsByFloor />} />
+              <Route path="/plans" element={<PackageManagement />} />
+              <Route path="/bookings" element={<BookingsManagement />} />
+              <Route path="/payments" element={<PaymentsManagement />} />
+              <Route path="/room-categories" element={<RoomTypeBasePriceManagement />} />
+              <Route path="/room-status" element={<RoomStatusBoard />} />
+              <Route path="/vendors" element={<VendorsManagement />} />
+              <Route path="/laundry-pricing" element={<LaundryPricingManagement />} />
+              <Route path="/laundry-orders" element={<LaundryOrdersManagement />} />
+              <Route path="/create-enquiry" element={<CreateEnquiry />} />
+              <Route path="/enquiries" element={<EnquiriesManagement />} />
+              <Route path="/menu-items" element={<MenuMaster />} />
+              <Route path="/orders" element={<OrdersManagement />} />
+              <Route path="/create-order" element={<CreateOrder />} />
+              <Route path="/restaurant-tables" element={<RestaurantTables />} />
+              <Route path="/kitchen-inventory" element={<KitchenInventory />} />
+              <Route path="/inventory-master" element={<InventoryMaster />} />
+              {/* <Route path="/guests" element={<GuestsCreationManagement />} /> */}
+            </Route>
+            <Route path="/unauthorized-access" element={<UnauthorizedAccessPage />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
       </TooltipProvider>
     </QueryClientProvider>
   )

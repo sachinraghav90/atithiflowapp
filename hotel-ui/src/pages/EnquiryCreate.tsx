@@ -360,6 +360,7 @@ export default function EnquiryCreate() {
             // booked_by: "Front Desk",
             comment: form.comment,
             follow_up_date: form.follow_up_date || undefined,
+            offer_amount: form.offer_amount,
             quote_amount: form.quote_amount,
             is_reserved: false,
             city: form.city,
