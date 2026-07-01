@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
-import atithiflowLogo from "@/assets/atithiflow-logo.png";
+import atithiflowLogo from "@/assets/atithiflow-logo.webp";
 import { useScrollVisibility } from "@/hooks/use-scroll-visibility";
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);

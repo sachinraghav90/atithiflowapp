@@ -134,13 +134,14 @@ function SidebarLink({
         <button
             onClick={() => navigate(endpoint)}
             onMouseEnter={handleMouseEnter}
+            aria-label={label}
             className={cn(
                 "group w-full flex items-center gap-3 rounded-md",
                 "transition-all duration-200",
                 "h-10",
                 collapsed ? "px-2 justify-center" : "px-3",
                 active
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-primary text-slate-900 font-bold"
                     : "hover:bg-primary/10 text-foreground"
             )}
         >
@@ -148,7 +149,7 @@ function SidebarLink({
                 <Icon
                     className={cn(
                         "h-4 w-4",
-                        active ? "text-primary-foreground" : "text-primary"
+                        active ? "text-slate-900" : "text-primary"
                     )}
                 />
             </div>

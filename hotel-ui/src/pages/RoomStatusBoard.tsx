@@ -292,11 +292,11 @@ export default function RoomStatusBoard() {
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                             {(isSuperAdmin || isOwner) && (
                                 <div
-                                    className="w-full sm:w-[var(--property-select-width)] sm:min-w-48 sm:max-w-[min(36rem,calc(100vw-14rem))]"
-                                    style={{ "--property-select-width": `${propertySelectWidthCh}ch` } as CSSProperties}
+                                    className="w-full sm:w-64 lg:w-72"
                                 >
-                                    <Label>Property</Label>
+                                    <Label htmlFor="property-select">Property</Label>
                                     <NativeSelect
+                                        id="property-select"
                                         className="w-full h-10 rounded-[3px] border bg-background px-3 text-sm"
                                         value={propertyId}
                                         onChange={(e) => setPropertyId(e.target.value)}
@@ -313,8 +313,9 @@ export default function RoomStatusBoard() {
                             )}
 
                             <div className="w-full sm:w-40">
-                                <Label>Date</Label>
+                                <Label htmlFor="date-picker">Date</Label>
                                 <ResponsiveDatePicker
+                                    id="date-picker"
                                     className="bg-background h-10"
                                     value={parseAppDate(selectedDate)}
                                     onChange={(date) => setSelectedDate(toISODateOnly(date))}
@@ -366,8 +367,9 @@ export default function RoomStatusBoard() {
                                             roomCardColor(uiStatus)
                                         )}
                                     >
+                                        <span className="sr-only">Status: {uiStatus}</span>
                                         <div className="flex justify-between items-start">
-                                            <p className="text-xs text-muted-foreground">
+                                            <p className="text-xs text-foreground opacity-80 font-medium">
                                                 {getFloorName(room.floor_number)}
                                             </p>
                                             {room.status !== "CHECKED_IN" && room.status !== "BOOKED" && (
@@ -377,6 +379,7 @@ export default function RoomStatusBoard() {
                                                             <button
                                                                 onClick={() => openMaintenanceSheet(room)}
                                                                 className="absolute right-2 top-2 rounded-md border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none h-6 w-6 flex items-center justify-center shadow-sm"
+                                                                aria-label="Room Maintenance"
                                                             >
                                                                 <Wrench className="h-3.5 w-3.5 stroke-[2.5]" />
                                                             </button>
@@ -394,7 +397,7 @@ export default function RoomStatusBoard() {
                                             </p>
                                         </div>
 
-                                        <p className="text-xs text-muted-foreground">
+                                        <p className="text-xs text-foreground opacity-80 font-medium">
                                             {room?.bed_type_name?.split(" ")?.[0]}|{room?.room_category_name}
                                         </p>
                                     </div>
@@ -432,6 +435,7 @@ export default function RoomStatusBoard() {
                                                 type="button"
                                                 className="absolute right-2 top-2 rounded-md border-2 border-primary bg-background text-primary hover:bg-primary hover:text-white transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none h-6 w-6 flex items-center justify-center shadow-sm"
                                                 onClick={() => setIsDirtySheetOpen(true)}
+                                                aria-label="Clean Rooms"
                                             >
                                                 <Brush className="h-3.5 w-3.5 stroke-[2.5]" />
                                             </button>
@@ -502,6 +506,7 @@ export default function RoomStatusBoard() {
                                                 <Switch 
                                                     checked={!(dirtyStatuses[r.ref_room_id.toString()] ?? false)} 
                                                     onCheckedChange={(checked) => setDirtyStatuses(prev => ({...prev, [r.ref_room_id.toString()]: !checked}))} 
+                                                    aria-label={`Toggle dirty status for room ${r.room_no}`}
                                                 />
                                             </div>
                                         </div>
@@ -548,6 +553,7 @@ export default function RoomStatusBoard() {
                                         <Switch 
                                             checked={isMaintenance} 
                                             onCheckedChange={setIsMaintenance} 
+                                            aria-label={`Toggle maintenance status for room ${maintenanceSheetRoom?.room_no}`}
                                         />
                                     </div>
                                 </div>
@@ -600,9 +606,9 @@ function SummaryCard({
     return (
         <div className={cn("rounded-md border border-border px-3 py-1.5 shadow-sm flex items-center justify-between", dotColorClass)}>
             <div className="flex items-center gap-1.5 overflow-hidden mr-2">
-                <p className="text-[11px] font-bold text-muted-foreground tracking-wider truncate">{label}</p>
+                <p className="text-[11px] font-bold text-foreground opacity-80 tracking-wider truncate">{label}</p>
             </div>
-            <h3 className="text-base font-bold text-foreground">{value}</h3>
+            <p className="text-base font-bold text-foreground">{value}</p>
         </div>
     );
 }

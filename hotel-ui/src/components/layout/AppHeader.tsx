@@ -1,4 +1,4 @@
-import atithiflowLogo from "@/assets/atithiflow-logo.png";
+import atithiflowLogo from "@/assets/atithiflow-logo.webp";
 import { useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -132,6 +132,7 @@ export default function AppHeader({ collapsed, setCollapsed }: Props) {
                     variant="ghost"
                     onClick={() => setCollapsed(!collapsed)}
                     className="h-8 w-8"
+                    aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
                 >
                     {/* {collapsed ? (
                         <ChevronRight className="h-4 w-4" />
@@ -145,7 +146,9 @@ export default function AppHeader({ collapsed, setCollapsed }: Props) {
                 <img
                     src={atithiflowLogo}
                     alt="AtithiFlow"
-                    className="h-8 w-auto cursor-pointer"
+                    width="109"
+                    height="32"
+                    className="h-8 shrink-0 cursor-pointer"
                     onClick={() => navigate("/dashboard")}
                 />
             </div>
@@ -157,7 +160,7 @@ export default function AppHeader({ collapsed, setCollapsed }: Props) {
                         <span className="text-sm font-semibold text-foreground truncate">
                             {propertyAddress.brand_name}
                         </span>
-                        <span className="text-xs text-muted-foreground truncate max-w-[420px]">
+                        <span className="text-xs text-foreground opacity-90 truncate max-w-[420px]">
                             {propertyAddress?.address_line_1}, {propertyAddress.city}, {propertyAddress.state}, {propertyAddress?.postal_code}
                         </span>
                     </>
@@ -168,11 +171,12 @@ export default function AppHeader({ collapsed, setCollapsed }: Props) {
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <button className="flex items-center gap-2 rounded-full focus:outline-none">
-                        <div className="hidden sm:flex flex-col items-end leading-tight text-right">
+                        <span className="sr-only">Profile menu</span>
+                        <div className="hidden sm:flex flex-col items-end leading-tight text-right min-w-[140px]">
                             <span className="text-sm font-medium truncate max-w-[140px]">
                                 {data?.user?.staff?.first_name ?? "User"}
                             </span>
-                            <span className="text-xs text-muted-foreground truncate max-w-[140px]">
+                            <span className="text-xs text-foreground opacity-90 truncate max-w-[140px]">
                                 {data?.user?.email ?? ""}
                             </span>
                         </div>

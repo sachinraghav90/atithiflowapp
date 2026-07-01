@@ -1,6 +1,6 @@
 import * as React from "react"
 import { Calendar } from "./calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "./popover"
+import { Popover, PopoverContent, PopoverTrigger, PopoverAnchor } from "./popover"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./dialog"
 import { format, parse, isValid } from "date-fns"
 import { CalendarIcon, XCircle } from "lucide-react"
@@ -115,7 +115,7 @@ export function ResponsiveDateRangePicker({
             )}
         >
             {startLabel && (
-                <div className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center select-none flex-shrink-0">
+                <div className="px-3 bg-muted/40 text-slate-700 text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center select-none flex-shrink-0">
                     {startLabel}
                 </div>
             )}
@@ -206,7 +206,7 @@ export function ResponsiveDateRangePicker({
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>{Trigger}</PopoverTrigger>
+            <PopoverAnchor asChild>{Trigger}</PopoverAnchor>
             <PopoverContent className="w-auto p-0 z-[100] border-border bg-background shadow-xl" align="start">
                 {CalendarContent}
             </PopoverContent>

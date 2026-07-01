@@ -12,6 +12,7 @@ Since AtithiFlow is a Hotel/Property Management System (HMS/PMS), our keywords m
 *   Hotel Booking Software
 *   Cloud-based Hotel Management Software
 *   Hotel Billing and Inventory Software
+*   AtithiFlow
 
 ### Secondary / Feature-Specific Keywords
 *   Hotel front desk software

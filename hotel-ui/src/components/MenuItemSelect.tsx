@@ -12,6 +12,7 @@ type Item = {
 };
 
 type Props = {
+    id?: string
     value?: number | string
     items: Item[] | { data?: Item[] } | null | undefined
     onSelect: (id: number | string) => void
@@ -24,9 +25,11 @@ type Props = {
     isVertical?: boolean
     showFullText?: boolean
     onOpenChange?: (open: boolean) => void
+    ariaLabel?: string
 };
 
 export function MenuItemSelect({
+    id,
     value,
     items,
     disabledIds,
@@ -39,6 +42,7 @@ export function MenuItemSelect({
     isVertical = false,
     showFullText = false,
     onOpenChange,
+    ariaLabel,
 }: Props) {
     const [open, setOpen] = useState(false);
 
@@ -86,9 +90,11 @@ export function MenuItemSelect({
         <Popover open={open} onOpenChange={handleOpenChange}>
             <PopoverTrigger asChild disabled={disabled}>
                 <Button
+                    id={id}
                     variant="outline"
                     role="combobox"
                     aria-expanded={open}
+                    aria-label={ariaLabel}
                     disabled={disabled}
                     className={cn(
                         "flex h-9 w-full items-center rounded-[3px] border border-input bg-background px-2 py-1 text-sm font-normal shadow-none hover:bg-background transition-colors duration-150",

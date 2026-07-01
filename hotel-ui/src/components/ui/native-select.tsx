@@ -34,6 +34,7 @@ const NativeSelect = React.forwardRef<HTMLSelectElement, NativeSelectProps>(
     },
     ref,
   ) => {
+    const { id, ...restProps } = props;
     // Extract options from standard React <option> children
     const options = React.useMemo(() => {
       return React.Children.toArray(children)
@@ -76,6 +77,7 @@ const NativeSelect = React.forwardRef<HTMLSelectElement, NativeSelectProps>(
     return (
       <div className={cn("w-full", cleanedClassName)}>
         <MenuItemSelect
+          id={id}
           value={value as string | number}
           items={options}
           onSelect={handleSelect}
@@ -94,7 +96,7 @@ const NativeSelect = React.forwardRef<HTMLSelectElement, NativeSelectProps>(
           onChange={onChange}
           disabled={disabled}
           className="sr-only"
-          {...props}
+          {...restProps}
           tabIndex={-1}
           aria-hidden="true"
         >

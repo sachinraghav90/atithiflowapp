@@ -731,7 +731,7 @@ export default function EnquiriesManagement() {
         },
         {
             label: "City",
-            cellClassName: "text-muted-foreground whitespace-nowrap",
+            cellClassName: "text-slate-700 whitespace-nowrap",
             render: (enquiry) => getEnquiryDisplay(enquiry).cityLabel,
         },
         {
@@ -743,13 +743,13 @@ export default function EnquiriesManagement() {
         {
             label: "Check In",
             headClassName: "text-center",
-            cellClassName: "text-center text-xs text-muted-foreground whitespace-nowrap",
+            cellClassName: "text-center text-xs text-slate-700 whitespace-nowrap",
             render: (enquiry) => getEnquiryDisplay(enquiry).checkInLabel,
         },
         {
             label: "Check Out",
             headClassName: "text-center",
-            cellClassName: "text-center text-xs text-muted-foreground whitespace-nowrap",
+            cellClassName: "text-center text-xs text-slate-700 whitespace-nowrap",
             render: (enquiry) => getEnquiryDisplay(enquiry).checkOutLabel,
         },
         {
@@ -765,7 +765,7 @@ export default function EnquiriesManagement() {
         {
             label: "Follow Up",
             headClassName: "text-center",
-            cellClassName: "text-center text-xs text-muted-foreground whitespace-nowrap",
+            cellClassName: "text-center text-xs text-slate-700 whitespace-nowrap",
             render: (enquiry) => getEnquiryDisplay(enquiry).followUpLabel,
         },
     ], []);

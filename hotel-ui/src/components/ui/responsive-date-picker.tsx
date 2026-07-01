@@ -1,6 +1,6 @@
 import * as React from "react"
 import { Calendar } from "./calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "./popover"
+import { Popover, PopoverContent, PopoverTrigger, PopoverAnchor } from "./popover"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./dialog"
 import { format, parse, isValid, startOfDay } from "date-fns"
 import { CalendarIcon } from "lucide-react"
@@ -14,6 +14,7 @@ import {
 } from "@/utils/dateFormat"
 
 interface ResponsiveDatePickerProps {
+    id?: string
     value: Date | null | undefined
     onChange: (date: Date | null) => void
     placeholder?: string
@@ -27,6 +28,7 @@ interface ResponsiveDatePickerProps {
 }
 
 export function ResponsiveDatePicker({
+    id,
     value,
     onChange,
     placeholder,
@@ -100,6 +102,7 @@ export function ResponsiveDatePicker({
             className
         )}>
             <Input
+                id={id}
                 className="border-0 focus-visible:ring-0 h-full text-sm font-medium placeholder:text-muted-foreground/60 shadow-none px-3"
                 value={typedValue}
                 placeholder={inputPlaceholder}
@@ -202,7 +205,7 @@ export function ResponsiveDatePicker({
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>{Trigger}</PopoverTrigger>
+            <PopoverAnchor asChild>{Trigger}</PopoverAnchor>
             <PopoverContent className="w-auto p-0 z-[100] border-border bg-background shadow-xl" align="start">
                 {CalendarContent}
             </PopoverContent>

@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { NativeSelect } from "@/components/ui/native-select"
-import atithiflowLogo from "@/assets/atithiflow-logo.png"
+import atithiflowLogo from "@/assets/atithiflow-logo.webp"
 
 /* ------------------------------------------------------------------ */
 /*  Base Primitives                                                    */
@@ -29,7 +29,7 @@ const DataGridHeader = React.forwardRef<HTMLTableSectionElement, React.HTMLAttri
     })
 
     return (
-      <thead ref={ref} className={cn("bg-primary text-primary-foreground font-semibold border-b border-border", className)} {...props}>
+      <thead ref={ref} className={cn("bg-primary text-slate-900 font-semibold border-b border-border", className)} {...props}>
         {shouldWrapInRow ? <tr>{children}</tr> : children}
       </thead>
     )
@@ -278,6 +278,7 @@ function DataGridPagination({
                     min={1}
                     max={totalPages}
                     value={inputValue}
+                    aria-label="Page number"
                     onChange={(e) => setInputValue(e.target.value)}
                     onBlur={handleInputBlur}
                     onKeyDown={handleKeyDown}
@@ -301,7 +302,7 @@ function DataGridPagination({
             {typeof totalRecords === "number" && (
                 <>
                     <div className="h-4 w-px bg-foreground/20 ml-1 mr-1" />
-                    <span className="inline-flex items-center h-7 px-3 rounded-[3px] border border-[#5EB5C9]/50 bg-background text-[11px] font-bold text-[#2A9AB7] shadow-sm">
+                    <span className="inline-flex items-center h-7 px-3 rounded-[3px] border border-[#5EB5C9]/50 bg-background text-[11px] font-bold text-[#155A6E] shadow-sm">
                          Total {totalRecords}
                     </span>
                 </>
@@ -428,7 +429,7 @@ function AppDataGrid<T extends Record<string, unknown>>({
                                 <DataGridRow>
                                     <DataGridCell
                                         colSpan={totalCols}
-                                        className={cn("text-center text-muted-foreground", compactEmptyClassName)}
+                                        className={cn("text-center text-slate-700", compactEmptyClassName)}
                                     >
                                         {emptyText}
                                     </DataGridCell>

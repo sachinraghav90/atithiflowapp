@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -22,7 +22,7 @@ All colors MUST be HSL.
 
     /* AtithiFlow Blue #22A0BD */
     --primary: 189 69% 44%;
-    --primary-foreground: 0 0% 100%;
+    --primary-foreground: 203 12% 27%;
 
     /* AtithiFlow Green #4FCD84 */
     --secondary: 145 53% 56%;
@@ -49,7 +49,7 @@ All colors MUST be HSL.
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 203 12% 27%;
     --sidebar-primary: 189 69% 44%;
-    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-primary-foreground: 203 12% 27%;
     --sidebar-accent: 145 53% 56%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 0 0% 90%;

@@ -8,7 +8,7 @@
 
 //             {/* Logo */}
 //             <img
-//                 src="src\assets\atithiflow-logo.png"
+//                 src="src\assets\atithiflow-logo.webp"
 //                 alt="Company Logo"
 //                 className="h-8 w-8 object-contain"
 //             />
@@ -17,7 +17,7 @@
 // }
 
 import { motion } from "framer-motion";
-import atithiflowLogo from "@/assets/atithiflow-logo.png";
+import atithiflowLogo from "@/assets/atithiflow-logo.webp";
 
 export function LogoSpinner() {
     return (

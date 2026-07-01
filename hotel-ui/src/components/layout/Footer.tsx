@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Linkedin, Facebook, Instagram, Phone, Mail, ArrowUp } from "lucide-react";
-import atithiflowLogo from "@/assets/atithiflow-logo.png";
+import atithiflowLogo from "@/assets/atithiflow-logo.webp";
 import CalendlyModal from "@/components/CalendlyModal";
 
 // X (Twitter) icon - consistent with TopRibbon

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
 import { motion } from "framer-motion";
 import Sidebar from "@/components/layout/Sidebar";
 import AppHeader from "@/components/layout/AppHeader";
@@ -26,9 +26,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 
-import { pdf } from "@react-pdf/renderer";
-import BookingSummaryPDF from "@/components/pdf/BookingSummaryPDF";
-import ChangeRoomModal from "@/components/booking/ChangeRoomModal";
+const ChangeRoomModal = lazy(() => import("@/components/booking/ChangeRoomModal"));
 import { toast } from "react-toastify";
 import {
     useCancelBookingMutation,
@@ -54,13 +52,13 @@ import { selectCanManagePropertySettings, selectIsOwner, selectIsSuperAdmin } fr
 import { logout } from "@/redux/slices/isLoggedInSlice";
 import { normalizeNumberInput } from "@/utils/normalizeTextInput";
 import { useNavigate, useLocation } from "react-router-dom";
-import GuestsEmbedded from "@/components/layout/GuestsEmbedded";
-import VehiclesEmbedded from "@/components/layout/VehiclesEmbedded";
-import PaymentsEmbedded from "@/components/layout/PaymentEmbedded";
 import { formatToDDMMYY } from "@/utils/formatToDDMMYY";
-import LaundryEmbedded from "@/components/layout/LaundryEmbedded";
-import BookingLogsEmbedded from "@/components/layout/BookingLogsEmbedded";
-import RestaurantOrdersEmbedded from "@/components/layout/RestaurantOrdersEmbedded";
+const GuestsEmbedded = lazy(() => import("@/components/layout/GuestsEmbedded"));
+const VehiclesEmbedded = lazy(() => import("@/components/layout/VehiclesEmbedded"));
+const PaymentsEmbedded = lazy(() => import("@/components/layout/PaymentEmbedded"));
+const LaundryEmbedded = lazy(() => import("@/components/layout/LaundryEmbedded"));
+const BookingLogsEmbedded = lazy(() => import("@/components/layout/BookingLogsEmbedded"));
+const RestaurantOrdersEmbedded = lazy(() => import("@/components/layout/RestaurantOrdersEmbedded"));
 import { Copy, Download, Eye, FilterX, Plus, RefreshCcw, HelpCircle, Printer, CheckSquare, AlertTriangle, FileText, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getStatusColor } from "@/constants/statusColors";
@@ -70,7 +68,7 @@ import { formatAppDate, parseAppDate, toISODateOnly, formatAppDateTime } from "@
 import { formatReadableLabel } from "@/utils/formatString";
 import CardSectionView from "@/components/CardSectionView";
 import ViewField from "@/components/ViewField";
-import RichTextEditor from "@/components/ui/rich-text-editor";
+const RichTextEditor = lazy(() => import("@/components/ui/rich-text-editor"));
 import { getFormattedAuditChanges, getAuditActionBadge, getAuditChangePlainText, formatAuditActionText } from "@/utils/auditUtils";
 import { exportToExcel } from "@/utils/exportToExcel";
 
@@ -375,6 +373,9 @@ export default function BookingsManagement() {
                     ? propertyDetails
                     : fallbackProperty;
 
+            const { pdf } = await import("@react-pdf/renderer");
+            const { default: BookingSummaryPDF } = await import("@/components/pdf/BookingSummaryPDF");
+            
             const blob = await pdf(
                 <BookingSummaryPDF
                     booking={selectedBooking.booking}
@@ -1077,12 +1078,14 @@ export default function BookingsManagement() {
                 })}
                 </div>
 
-                <ChangeRoomModal
-                    open={isChangeRoomOpen}
-                    onClose={() => setIsChangeRoomOpen(false)}
-                    booking={booking}
-                    propertyId={booking?.property_id}
-                />
+                <Suspense fallback={<Loader2 className="animate-spin m-auto mt-10 w-6 h-6 text-muted-foreground" />}>
+                    <ChangeRoomModal
+                        open={isChangeRoomOpen}
+                        onClose={() => setIsChangeRoomOpen(false)}
+                        booking={booking}
+                        propertyId={booking?.property_id}
+                    />
+                </Suspense>
                 
                 {(() => {
                     const { data: logsData } = useGetLogsQuery(
@@ -1116,15 +1119,27 @@ export default function BookingsManagement() {
         );
     }
     function BookingGuestsTab({ bookingId, guestCount }: { bookingId: string, guestCount: number }) {
-        return <GuestsEmbedded bookingId={bookingId} guestCount={guestCount} />;
+        return (
+            <Suspense fallback={<Loader2 className="animate-spin m-auto mt-10 w-6 h-6 text-muted-foreground" />}>
+                <GuestsEmbedded bookingId={bookingId} guestCount={guestCount} />
+            </Suspense>
+        );
     }
 
     function BookingVehiclesTab({ bookingId, rooms }: any) {
-        return <VehiclesEmbedded bookingId={bookingId} rooms={rooms} />;
+        return (
+            <Suspense fallback={<Loader2 className="animate-spin m-auto mt-10 w-6 h-6 text-muted-foreground" />}>
+                <VehiclesEmbedded bookingId={bookingId} rooms={rooms} />
+            </Suspense>
+        );
     }
 
     function BookingPaymentsTab({ bookingId, propertyId, remainingBalance }: any) {
-        return <PaymentsEmbedded bookingId={bookingId} propertyId={propertyId} remainingBalance={remainingBalance} />;
+        return (
+            <Suspense fallback={<Loader2 className="animate-spin m-auto mt-10 w-6 h-6 text-muted-foreground" />}>
+                <PaymentsEmbedded bookingId={bookingId} propertyId={propertyId} remainingBalance={remainingBalance} />
+            </Suspense>
+        );
     }
 
     function BookingLaundryTab({ bookingId, propertyId, bookingStatus }: any) {
@@ -1135,28 +1150,36 @@ export default function BookingsManagement() {
         const guestMobile = booking?.primary_guest?.phone || "";
 
         return (
-            <LaundryEmbedded
-                bookingId={bookingId}
-                propertyId={propertyId}
-                bookingStatus={bookingStatus}
-                guestName={guestName}
-                guestMobile={guestMobile}
-            />
+            <Suspense fallback={<Loader2 className="animate-spin m-auto mt-10 w-6 h-6 text-muted-foreground" />}>
+                <LaundryEmbedded
+                    bookingId={bookingId}
+                    propertyId={propertyId}
+                    bookingStatus={bookingStatus}
+                    guestName={guestName}
+                    guestMobile={guestMobile}
+                />
+            </Suspense>
         );
     }
 
     function BookingRestaurantOrderTab({ bookingId, propertyId, bookingStatus }: any) {
         return (
-            <RestaurantOrdersEmbedded
-                bookingId={bookingId}
-                propertyId={propertyId}
-                bookingStatus={bookingStatus}
-            />
+            <Suspense fallback={<Loader2 className="animate-spin m-auto mt-10 w-6 h-6 text-muted-foreground" />}>
+                <RestaurantOrdersEmbedded
+                    bookingId={bookingId}
+                    propertyId={propertyId}
+                    bookingStatus={bookingStatus}
+                />
+            </Suspense>
         );
     }
 
     function BookingLogsTab({ bookingId, propertyId }: any) {
-        return <BookingLogsEmbedded bookingId={bookingId} propertyId={propertyId} />;
+        return (
+            <Suspense fallback={<Loader2 className="animate-spin m-auto mt-10 w-6 h-6 text-muted-foreground" />}>
+                <BookingLogsEmbedded bookingId={bookingId} propertyId={propertyId} />
+            </Suspense>
+        );
     }
 
     function ComingSoon({ label }: { label: string }) {
@@ -1178,7 +1201,7 @@ export default function BookingsManagement() {
                     {/* Left: Title */}
                     <div>
                         <h1 className="text-2xl font-bold text-foreground">Bookings</h1>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-slate-700">
                             Manage bookings and reservation details
                         </p>
                     </div>
@@ -1230,8 +1253,8 @@ export default function BookingsManagement() {
                         className={cn(
                             "px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px]",
                             mainTab === "bookings"
-                                ? "border-primary text-primary"
-                                : "border-transparent text-muted-foreground hover:text-foreground"
+                                ? "border-primary text-slate-800"
+                                : "border-transparent text-slate-700 hover:text-foreground"
                         )}
                     >
                         Bookings
@@ -1241,8 +1264,8 @@ export default function BookingsManagement() {
                         className={cn(
                             "px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px]",
                             mainTab === "audit"
-                                ? "border-primary text-primary"
-                                : "border-transparent text-muted-foreground hover:text-foreground"
+                                ? "border-primary text-slate-800"
+                                : "border-transparent text-slate-700 hover:text-foreground"
                         )}
                     >
                         History
@@ -1553,13 +1576,13 @@ export default function BookingsManagement() {
                                         {
                                             label: "User",
                                             headClassName: "w-[180px]",
-                                            cellClassName: "text-muted-foreground min-w-[180px]",
+                                            cellClassName: "text-slate-700 min-w-[180px]",
                                             render: (audit: any) => `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim() || audit.user_name || "System",
                                         },
                                         {
                                             label: "Date & Time",
-                                            headClassName: "text-white w-[180px]",
-                                            cellClassName: "text-muted-foreground min-w-[180px]",
+                                            headClassName: "w-[180px]",
+                                            cellClassName: "text-slate-700 min-w-[180px]",
                                             render: (audit: any) => formatAppDateTime(audit.created_on),
                                         },
                                     ] as ColumnDef<any>[]}
@@ -2094,12 +2117,14 @@ export default function BookingsManagement() {
                             <>
                                 <Label className="text-sm font-semibold text-foreground">Instructions</Label>
                                 <div className="relative">
-                                    <RichTextEditor
-                                        value={instructionsDraft}
-                                        onChange={setInstructionsDraft}
-                                        className="min-h-[260px]"
-                                        maxLength={1000}
-                                    />
+                                    <Suspense fallback={<Loader2 className="animate-spin m-auto mt-10 w-6 h-6 text-muted-foreground" />}>
+                                        <RichTextEditor
+                                            value={instructionsDraft}
+                                            onChange={setInstructionsDraft}
+                                            className="min-h-[260px]"
+                                            maxLength={1000}
+                                        />
+                                    </Suspense>
                                     <div className="pointer-events-none absolute bottom-2 right-3 flex items-center gap-2">
                                         {getWordCountFromHtml(instructionsDraft || "") >= BOOKING_INSTRUCTIONS_WORD_LIMIT && (
                                             <span className="text-xs font-medium text-red-500">
