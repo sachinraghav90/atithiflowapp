@@ -1,0 +1,1246 @@
+import { useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ValidationTooltip } from "@/components/ui/validation-tooltip";
+import {
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet";
+import { NativeSelect } from "@/components/ui/native-select";
+import { MenuItemSelect } from "@/components/MenuItemSelect";
+import { Switch } from "@/components/ui/switch";
+
+import { useAppSelector } from "@/redux/hook";
+import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
+import { 
+    useGetKitchenInventoryQuery, 
+    useGetLogsQuery as useGetAuditLogsQuery, 
+    useGetLogsByTableQuery,
+    useAdjustStockMutation as useUpdateKitchenInventoryMutation, 
+    useGetInventoryQuery as useGetInventoryMasterQuery, 
+    useCreateInventoryMutation as useCreateKitchenInventoryMutation,
+    useCheckDuplicateKitchenInventoryMutation
+} from "@/redux/services/hmsApi";
+import { toast } from "react-toastify";
+import { normalizeNumberInput } from "@/utils/normalizeTextInput";
+import { useLocation } from "react-router-dom";
+import { usePermission } from "@/rbac/usePermission";
+import { exportToExcel } from "@/utils/exportToExcel";
+import { 
+    Download, 
+    FilterX, 
+    RefreshCcw, 
+    Pencil, 
+    Plus, 
+    History, 
+} from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
+import { 
+    GridToolbar, 
+    GridToolbarActions, 
+    GridToolbarRow,
+    GridToolbarSearch,
+    GridToolbarSelect,
+    GridToolbarSpacer
+} from "@/components/ui/grid-toolbar";
+import { formatAppDateTime } from "@/utils/dateFormat";
+import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
+import KitchenInventoryBulkAdjustSheet from "@/components/KitchenInventoryBulkAdjustSheet";
+import { motion } from "framer-motion";
+import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
+import CardSectionView from "@/components/CardSectionView";
+import ViewField from "@/components/ViewField";
+import { cn } from "@/lib/utils";
+import { getFormattedAuditChanges, getAuditActionBadge } from "@/utils/auditUtils";
+
+/* ---------------- Types ---------------- */
+type KitchenItem = {
+    id: string;
+    kitchen_sequence?: string | number;
+    inventory_master_id: number;
+    name: string;
+    inventory_type: string;
+    quantity: number | string;
+    unit: string;
+    reorder_level: number;
+    is_active: boolean;
+    use_type?: string;
+};
+
+/* ---------------- Helpers ---------------- */
+export const formatDisplayQuantity = (quantity: any, unit: string) => {
+    if (quantity == null || quantity === "") return quantity;
+    if (unit?.toLowerCase() === "nos") {
+        return Number(quantity).toString();
+    }
+    return quantity;
+};
+
+const parseAuditDetails = (details: any) => {
+    try {
+        return typeof details === "string" ? JSON.parse(details) : details;
+    } catch {
+        return null;
+    }
+};
+
+const getAuditActionLabel = (audit: any) => {
+    const event = audit.event_type;
+    if (event === "CREATE") return "Stock Added";
+    if (event === "UPDATE") return "Stock Updated";
+    if (event === "ADJUST") return "Stock Adjusted";
+    return event;
+};
+
+const getAuditChangeText = (details: any) => {
+    if (!details) return "--";
+    const { before, after, entity } = details;
+    const unit = entity?.unit || "";
+    
+    if (!before) {
+        return (
+            <div className="text-muted-foreground">
+                <span className="font-semibold text-foreground/80">Stock:</span> Initialized with {formatDisplayQuantity(after?.quantity || 0, unit)} {unit}
+            </div>
+        );
+    }
+
+    const diff = Number(after?.quantity || 0) - Number(before?.quantity || 0);
+    const sign = diff >= 0 ? "+" : "";
+    
+    const formattedDetails = {
+        before: {
+            "Quantity": `${formatDisplayQuantity(before.quantity, unit)} ${unit}`
+        },
+        after: {
+            "Quantity": `${formatDisplayQuantity(after.quantity, unit)} ${unit} (${sign}${diff.toFixed(2)})`
+        }
+    };
+    
+    return getFormattedAuditChanges(formattedDetails);
+};
+
+/* ---------------- Component ---------------- */
+export default function KitchenInventory() {
+    const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
+    const { 
+        myProperties, 
+        isInitializing, 
+        isLoading: myPropertiesLoading,
+        isSuperAdmin,
+        isOwner 
+    } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
+
+    const [activeTab, setActiveTab] = useState<"inventory" | "audit">("inventory");
+    const [inventoryPage, setInventoryPage] = useState(1);
+    const [inventoryLimit, setInventoryLimit] = useState(10);
+    const [auditPage, setAuditPage] = useState(1);
+    const [auditLimit, setAuditLimit] = useState(10);
+
+    const [searchInput, setSearchInput] = useState("");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [stockFilter, setStockFilter] = useState("");
+    const [unitFilter, setUnitFilter] = useState("");
+    const [useTypeFilter, setUseTypeFilter] = useState("");
+
+    const [historySearchInput, setHistorySearchInput] = useState("");
+    const [historySearchQuery, setHistorySearchQuery] = useState("");
+    const [historyActionFilter, setHistoryActionFilter] = useState("");
+
+    const [sheetOpen, setSheetOpen] = useState(false);
+    const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
+    const [bulkOpen, setBulkOpen] = useState(false);
+    const [mode, setMode] = useState<"view" | "edit" | "add">("view");
+    const [stockUpdateMode, setStockUpdateMode] = useState<"update" | "add">("update");
+    const [selectedItem, setSelectedItem] = useState<KitchenItem | null>(null);
+
+    const [editForm, setEditForm] = useState({
+        quantity: 0,
+        unit: "",
+        comments: ""
+    });
+
+    const [createForm, setCreateForm] = useState({
+        inventory_master_id: null as number | null,
+        quantity: 0,
+        unit: "",
+        comments: "",
+    });
+    const [createErrors, setCreateErrors] = useState<any>({});
+
+    const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
+
+    const pathname = useLocation().pathname;
+    const { permission } = usePermission(pathname);
+
+    const { 
+        data: kitchenInventory, 
+        isLoading: kitchenInventoryLoading, 
+        isFetching: kitchenInventoryFetching, 
+        refetch: refetchInventory 
+    } = useGetKitchenInventoryQuery({ 
+        propertyId: selectedPropertyId,
+        page: 1,
+        limit: 1000
+    }, {
+        skip: !isLoggedIn || !selectedPropertyId
+    });
+
+    const {
+        data: inventoryAuditLogs,
+        isLoading: logsLoading,
+        isFetching: logsFetching,
+        refetch: refetchLogs
+    } = useGetLogsByTableQuery({
+        tableName: "kitchen_inventory",
+        propertyId: selectedPropertyId,
+        page: auditPage,
+        limit: auditLimit,
+    }, {
+        skip: !isLoggedIn || !selectedPropertyId || activeTab !== "audit"
+    });
+
+    const [itemAuditPage, setItemAuditPage] = useState(1);
+    const [itemAuditLimit, setItemAuditLimit] = useState(5);
+    const { data: auditLogs } = useGetAuditLogsQuery({
+        tableName: "kitchen_inventory",
+        eventId: selectedItem?.id,
+        page: itemAuditPage,
+        limit: itemAuditLimit,
+    }, {
+        skip: !selectedItem?.id || !sheetOpen || mode !== "view"
+    });
+
+    const { data: masterInventoryData } = useGetInventoryMasterQuery({
+        propertyId: selectedPropertyId,
+        type: "Kitchen",
+        page: 1,
+        limit: 1000
+    }, {
+        skip: !isLoggedIn || !selectedPropertyId
+    });
+
+    const masterInventory = useMemo(() => masterInventoryData?.data ?? [], [masterInventoryData]);
+
+    const [adjustStock] = useUpdateKitchenInventoryMutation();
+    const [createKitchenItem] = useCreateKitchenInventoryMutation();
+    const [checkDuplicateKitchenInventory] = useCheckDuplicateKitchenInventoryMutation();
+
+    const checkDuplicateInApi = async (inventory_master_id: number | null, unit: string) => {
+        if (!inventory_master_id || !unit) return;
+        
+        try {
+            const payload = [{
+                property_id: selectedPropertyId,
+                inventory_master_id,
+                unit
+            }];
+            const result = await checkDuplicateKitchenInventory(payload).unwrap();
+            
+            if (result?.duplicates?.[0]) {
+                setCreateErrors((prev: any) => ({ ...prev, inventory_master_id: "Item already present inside stock list" }));
+            } else {
+                setCreateErrors((prev: any) => {
+                    const next = { ...prev };
+                    if (next.inventory_master_id === "Item already present inside stock list" || next.inventory_master_id === "Inventory already exists for this item") {
+                        delete next.inventory_master_id;
+                    }
+                    return next;
+                });
+            }
+        } catch (error) {
+            console.error("Failed to check duplicate", error);
+        }
+    };
+
+    const inventoryUnitOptions = useMemo(() => {
+        const units = (kitchenInventory?.data ?? []).map((item: KitchenItem) => item.unit).filter(Boolean);
+        return Array.from(new Set(units));
+    }, [kitchenInventory]);
+
+    const inventoryUseTypeOptions = useMemo(() => {
+        const types = (kitchenInventory?.data ?? []).map((item: KitchenItem) => item.use_type).filter(Boolean);
+        return Array.from(new Set(types));
+    }, [kitchenInventory]);
+
+    const historyActionOptions = ["CREATE", "UPDATE"];
+
+    const filteredKitchenInventory = useMemo(() => {
+        let rows = kitchenInventory?.data ?? [];
+        const q = searchQuery.toLowerCase();
+        
+        if (q) {
+            rows = rows.filter((item: KitchenItem) =>
+                item.name?.toLowerCase().includes(q) ||
+                formatModuleDisplayId("kitchen", item.id).toLowerCase().includes(q)
+            );
+        }
+
+        if (stockFilter === "low_stock") {
+            rows = rows.filter((item: KitchenItem) => Number(item.quantity) <= (item.reorder_level || 0));
+        }
+
+        if (unitFilter) {
+            rows = rows.filter((item: KitchenItem) => item.unit === unitFilter);
+        }
+
+        if (useTypeFilter) {
+            rows = rows.filter((item: KitchenItem) => item.use_type === useTypeFilter);
+        }
+
+        return rows;
+    }, [kitchenInventory, searchQuery, stockFilter, unitFilter, useTypeFilter]);
+
+    const inventoryTotalRecords = filteredKitchenInventory.length;
+    const inventoryTotalPages = Math.max(1, Math.ceil(inventoryTotalRecords / inventoryLimit));
+    const paginatedKitchenInventory = useMemo(() => {
+        const start = (inventoryPage - 1) * inventoryLimit;
+        return filteredKitchenInventory.slice(start, start + inventoryLimit);
+    }, [filteredKitchenInventory, inventoryPage, inventoryLimit]);
+
+    const filteredHistoryLogs = useMemo(() => {
+        let rows = inventoryAuditLogs?.data ?? [];
+        const q = historySearchQuery.toLowerCase();
+        
+        if (q) {
+            rows = rows.filter((audit: any) => {
+                const details = parseAuditDetails(audit.details);
+                return (
+                    details?.entity?.inventory_name?.toLowerCase().includes(q) ||
+                    formatModuleDisplayId("kitchen", audit.event_id).toLowerCase().includes(q)
+                );
+            });
+        }
+        if (historyActionFilter) {
+            rows = rows.filter((audit: any) => audit.event_type === historyActionFilter);
+        }
+
+        return rows;
+    }, [inventoryAuditLogs, historySearchQuery, historyActionFilter]);
+
+    const historyTotalRecords = inventoryAuditLogs?.pagination?.totalItems ?? filteredHistoryLogs.length;
+    const historyTotalPages = inventoryAuditLogs?.pagination?.totalPages ?? 1;
+    const paginatedHistoryLogs = filteredHistoryLogs; // API paginated
+
+    const availableUnits = [
+        { id: "Nos", label: "Nos" },
+        { id: "Piece", label: "Piece" },
+        { id: "Kilo Gram", label: "Kilo Gram" },
+        { id: "Gram", label: "Gram" },
+        { id: "Litre", label: "Litre" },
+        { id: "Milliliter", label: "Milliliter" },
+        { id: "Packet", label: "Packet" },
+        { id: "Box", label: "Box" },
+    ];
+
+    const isItemUsable = useMemo(() => {
+        if (!createForm.inventory_master_id) return false;
+        const master = masterInventory.find(m => m.id === createForm.inventory_master_id);
+        return master?.use_type === "usable";
+    }, [createForm.inventory_master_id, masterInventory]);
+
+    const openManage = (item: KitchenItem, m: "view" | "edit") => {
+        setSelectedItem(item);
+        setEditForm({
+            quantity: Number(item.quantity),
+            unit: item.unit || "",
+            comments: ""
+        });
+        setMode(m);
+        setStockUpdateMode("update");
+        setSheetTab("summary");
+        setSheetOpen(true);
+    };
+
+    const saveEdit = async () => {
+        if (!selectedItem) return;
+
+        const currentStock = Number(selectedItem.quantity);
+        const inputQuantity = Number(editForm.quantity);
+        let deltaQuantity = 0;
+
+        if (stockUpdateMode === "add") {
+            if (inputQuantity <= 0) {
+                toast.error("Please enter stock quantity greater than 0.");
+                return;
+            }
+            deltaQuantity = inputQuantity;
+        } else {
+            if (inputQuantity < 0) {
+                toast.error("Quantity cannot be negative");
+                return;
+            }
+            if (inputQuantity === currentStock) {
+                toast.info("No change in stock.");
+                return;
+            }
+            deltaQuantity = inputQuantity - currentStock;
+        }
+
+        const payload = {
+            property_id: selectedPropertyId,
+            inventory_master_id: selectedItem.inventory_master_id,
+            quantity: deltaQuantity,
+            unit: editForm.unit,
+            comments: editForm.comments
+        };
+
+        const promise = adjustStock(payload).unwrap();
+        toast.promise(promise, {
+            pending: "Updating inventory...",
+            success: "Inventory updated successfully",
+            error: "Failed to update inventory"
+        });
+
+        await promise;
+        setSheetOpen(false);
+    };
+
+    const createItem = async () => {
+        // Start with existing errors to preserve API validation results
+        const errors: any = { ...createErrors };
+
+        if (!createForm.inventory_master_id) {
+            errors.inventory_master_id = "Please select an item";
+        } else {
+            // Local fallback check (with safe type coercion for BigInts returned as strings)
+            const isDuplicate = createForm.unit && (kitchenInventory?.data || []).some(
+                (item: KitchenItem) => 
+                    Number(item.inventory_master_id) === Number(createForm.inventory_master_id) && 
+                    String(item.unit || "") === String(createForm.unit || "")
+            );
+            
+            if (isDuplicate) {
+                errors.inventory_master_id = "Item already present inside stock list";
+            } else if (errors.inventory_master_id !== "Item already present inside stock list") {
+                delete errors.inventory_master_id;
+            }
+        }
+
+        if (!createForm.quantity || createForm.quantity <= 0) errors.quantity = "Enter a valid quantity";
+        else delete errors.quantity;
+
+        if (!createForm.unit) errors.unit = "Please select a unit";
+        else delete errors.unit;
+
+        if (Object.keys(errors).length > 0) {
+            setCreateErrors(errors);
+            return;
+        }
+
+        const payload = {
+            property_id: selectedPropertyId,
+            ...createForm
+        };
+
+        try {
+            await createKitchenItem(payload).unwrap();
+            toast.success("Item added successfully");
+            setSheetOpen(false);
+            setCreateForm({ inventory_master_id: null, quantity: 0, unit: "", comments: "" });
+            setCreateErrors({});
+        } catch (err: any) {
+            const msg = err?.data?.message || err?.message || "";
+            const lowerMsg = String(msg).toLowerCase();
+            const isDuplicateError = lowerMsg.includes("already exists") || lowerMsg.includes("duplicate") || lowerMsg.includes("already present");
+
+            if (isDuplicateError) {
+                setCreateErrors((prev: any) => ({ ...prev, inventory_master_id: msg || "Item already present inside stock list" }));
+            } else {
+                console.error("Create item error:", err);
+                toast.error(msg || "Failed to add item");
+            }
+        }
+    };
+
+    const resetInventoryFilters = () => {
+        setSearchInput("");
+        setSearchQuery("");
+        setStockFilter("");
+        setUnitFilter("");
+        setUseTypeFilter("");
+        setInventoryPage(1);
+    };
+
+    const resetHistoryFilters = () => {
+        setHistorySearchInput("");
+        setHistorySearchQuery("");
+        setHistoryActionFilter("");
+        setAuditPage(1);
+    };
+
+    const refreshInventoryGrid = () => {
+        if (kitchenInventoryFetching) return;
+        apiToast(refetchInventory(), "Data refreshed");
+    };
+
+    const refreshHistoryGrid = () => {
+        if (logsFetching) return;
+        apiToast(refetchLogs(), "Data refreshed");
+    };
+
+    const apiToast = (promise: any, successMsg: string) => {
+        toast.promise(promise, {
+            pending: "Processing...",
+            success: successMsg,
+            error: "Operation failed"
+        });
+    };
+
+    const exportKitchenSheet = () => {
+        if (!filteredKitchenInventory.length) return toast.info("No rows to export");
+        const formatted = filteredKitchenInventory.map((item: KitchenItem) => ({
+            "Item ID": formatModuleDisplayId("kitchen", item.kitchen_sequence || item.id),
+            "Name": item.name,
+            "Type": item.inventory_type,
+            "Stock": formatDisplayQuantity(item.quantity, item.unit || ""),
+            "Unit": item.unit || "--",
+            "Reorder": item.reorder_level || 0,
+            "Status": item.is_active ? "Active" : "Inactive",
+        }));
+        exportToExcel(formatted, "Kitchen-Inventory.xlsx");
+        toast.success("Export completed");
+    };
+
+    const exportHistoryLogs = () => {
+        if (!filteredHistoryLogs.length) return toast.info("No history rows to export");
+        const formatted = filteredHistoryLogs.map((audit: any) => {
+            const details = parseAuditDetails(audit.details);
+            return {
+                ITEM: details?.entity?.inventory_name || "--",
+                ACTION: getAuditActionLabel(audit),
+                CHANGE: getAuditChangeText(details),
+                USER: `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim(),
+                DATE: formatAppDateTime(audit.created_on),
+            };
+        });
+        exportToExcel(formatted, "Kitchen-Inventory-History.xlsx");
+        toast.success("Export completed");
+    };
+
+    /* ---------------- UI ---------------- */
+    return (
+        <div className="flex flex-col">
+            <section className="p-4 lg:p-6 space-y-4">
+                {/* Header */}
+                <div className="flex justify-between items-center shrink-0">
+                    <div>
+                        <h1 className="text-2xl font-bold">Kitchen Inventory</h1>
+                        <p className="text-sm text-muted-foreground">
+                            Stock, costing & procurement management
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        {(isSuperAdmin || isOwner) && (
+                            <div className="flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
+                                <span className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center">
+                                    Property
+                                </span>
+                                <div className="flex-1 min-w-0 h-full">
+                                    <MenuItemSelect
+                                        value={selectedPropertyId ?? ""}
+                                        items={myProperties?.properties?.map((p) => ({ id: p.id, label: p.brand_name })) || []}
+                                        onSelect={(val) => setSelectedPropertyId(Number(val) || null)}
+                                        itemName="label"
+                                        placeholder="Select Property"
+                                        extraClasses="border-0 rounded-none h-full shadow-none focus-visible:ring-0 bg-transparent px-2"
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {permission?.can_create && (
+                            <Button variant="hero" onClick={() => {
+                                setMode("add");
+                                setCreateForm({ inventory_master_id: null, quantity: 0, unit: "", comments: "" });
+                                setCreateErrors({});
+                                setSheetOpen(true);
+                            }}>
+                                <Plus className="h-4 w-4 mr-2" />Add Item
+                            </Button>
+                        )}
+                    </div>
+                </div>
+
+                {/* Tabs */}
+                <div className="border-b border-border flex">
+                    <button
+                        onClick={() => setActiveTab("inventory")}
+                        className={cn(
+                            "px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px]",
+                            activeTab === "inventory"
+                                ? "border-primary text-primary"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        Inventory
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("audit")}
+                        className={cn(
+                            "px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px]",
+                            activeTab === "audit"
+                                ? "border-primary text-primary"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        History
+                    </button>
+                </div>
+
+                {activeTab === "inventory" && (
+                    <div className="flex-1">
+                        <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
+                            <div className="w-full">
+                                <GridToolbar className="border-b-0">
+                                    <GridToolbarRow className="gap-2">
+                                        <GridToolbarSearch
+                                            value={searchInput}
+                                            onChange={setSearchInput}
+                                            onSearch={() => {
+                                                setSearchQuery(searchInput.trim());
+                                                setInventoryPage(1);
+                                            }}
+                                        />
+
+                                        <GridToolbarSelect
+                                            label="Stock"
+                                            value={stockFilter}
+                                            onChange={(value) => {
+                                                setStockFilter(value);
+                                                setInventoryPage(1);
+                                            }}
+                                            options={[
+                                                { label: "All", value: "" },
+                                                { label: "Low Stock", value: "low_stock" },
+                                            ]}
+                                        />
+
+                                        <GridToolbarSelect
+                                            label="Unit"
+                                            value={unitFilter}
+                                            onChange={(value) => {
+                                                setUnitFilter(value);
+                                                setInventoryPage(1);
+                                            }}
+                                            options={[
+                                                { label: "All", value: "" },
+                                                ...inventoryUnitOptions.map((unit) => ({
+                                                    label: String(unit),
+                                                    value: String(unit),
+                                                })),
+                                            ]}
+                                        />
+
+                                        <GridToolbarActions
+                                            className="gap-1 justify-end"
+                                            actions={[
+                                                {
+                                                    key: "export",
+                                                    label: "Export Inventory",
+                                                    icon: <Download className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: exportKitchenSheet,
+                                                },
+                                                {
+                                                    key: "reset",
+                                                    label: "Reset Filters",
+                                                    icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: resetInventoryFilters,
+                                                },
+                                                {
+                                                    key: "refresh",
+                                                    label: "Refresh Data",
+                                                    icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: refreshInventoryGrid,
+                                                    disabled: kitchenInventoryFetching,
+                                                },
+                                            ]}
+                                        />
+                                    </GridToolbarRow>
+
+                                    {/* Row 2 */}
+                                    <GridToolbarRow className="gap-2 pt-0 pb-1.5">
+                                        <GridToolbarSelect
+                                            label="Use type"
+                                            value={useTypeFilter}
+                                            onChange={(value) => {
+                                                setUseTypeFilter(value);
+                                                setInventoryPage(1);
+                                            }}
+                                            options={[
+                                                { label: "All", value: "" },
+                                                ...inventoryUseTypeOptions.map((type) => ({
+                                                    label: String(type).charAt(0).toUpperCase() + String(type).slice(1),
+                                                    value: String(type),
+                                                })),
+                                            ]}
+                                        />
+                                        <GridToolbarSpacer className="hidden md:block" />
+                                        <GridToolbarSpacer className="hidden md:block" />
+                                        <GridToolbarSpacer type="actions" className="hidden md:block" />
+                                    </GridToolbarRow>
+                                </GridToolbar>
+                            </div>
+
+                            <div className="px-2 pb-2">
+                                <AppDataGrid
+                                    density="compact"
+                                    columns={[
+                                        {
+                                            label: "Item ID",
+                                            headClassName: "text-center",
+                                            cellClassName: "text-center font-medium min-w-[90px]",
+                                            render: (item: KitchenItem) => (
+                                                <button
+                                                    type="button"
+                                                    className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
+                                                    onClick={() => openManage(item, "view")}
+                                                >
+                                                    {formatModuleDisplayId("kitchen", item.kitchen_sequence || item.id)}
+                                                </button>
+                                            ),
+                                        },
+                                        {
+                                            label: "Item",
+                                            key: "name",
+                                            cellClassName: "font-semibold text-foreground min-w-[180px]",
+                                        },
+                                        {
+                                            label: "Use Type",
+                                            cellClassName: "text-muted-foreground min-w-[100px] capitalize",
+                                            render: (item: any) => item.use_type || "—",
+                                        },
+                                        {
+                                            label: "Stock",
+                                            headClassName: "text-center",
+                                            cellClassName: "text-center font-medium min-w-[100px]",
+                                            render: (item: any) => {
+                                                const lowStock = Number(item.quantity) <= (item.reorder_level || 0);
+                                                return (
+                                                    <span className={cn("px-2 py-0.5 rounded text-xs font-bold", lowStock ? "bg-red-50 text-red-600 border border-red-100" : "bg-muted/30 text-foreground")}>
+                                                        {formatDisplayQuantity(item.quantity, item.unit || "")}
+                                                    </span>
+                                                );
+                                            },
+                                        },
+                                        {
+                                            label: "Unit",
+                                            cellClassName: "text-muted-foreground min-w-[100px]",
+                                            render: (item: any) => item.unit || "—",
+                                        },
+                                    ] as ColumnDef[]}
+                                    data={paginatedKitchenInventory}
+                                    loading={kitchenInventoryLoading || kitchenInventoryFetching || isInitializing}
+                                    emptyText="No inventory items found"
+                                    minWidth="760px"
+                                    actionLabel=""
+                                    actionClassName="text-center w-[60px]"
+                                    showActions={permission?.can_create}
+                                    actions={(item: KitchenItem) => (
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-7 w-7 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                                    onClick={() => openManage(item, "edit")}
+                                                >
+                                                    <Pencil className="w-3.5 h-3.5 mx-auto" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>Add/Update Stock</TooltipContent>
+                                        </Tooltip>
+                                    )}
+                                    enablePagination
+                                    paginationProps={{
+                                        page: inventoryPage,
+                                        totalPages: inventoryTotalPages,
+                                        setPage: setInventoryPage,
+                                        totalRecords: inventoryTotalRecords,
+                                        limit: inventoryLimit,
+                                        onLimitChange: (val) => { setInventoryLimit(val); setInventoryPage(1); },
+                                        disabled: kitchenInventoryFetching,
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === "audit" && (
+                    <div className="flex-1">
+                        <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
+                            <div className="w-full">
+                                <GridToolbar className="border-b-0">
+                                    <GridToolbarRow className="gap-2">
+                                        <GridToolbarSearch
+                                            value={historySearchInput}
+                                            onChange={setHistorySearchInput}
+                                            onSearch={() => {
+                                                setHistorySearchQuery(historySearchInput.trim());
+                                                setAuditPage(1);
+                                            }}
+                                        />
+
+                                        <GridToolbarSelect
+                                            label="Action"
+                                            value={historyActionFilter}
+                                            onChange={(value) => {
+                                                setHistoryActionFilter(value);
+                                                setAuditPage(1);
+                                            }}
+                                            options={[
+                                                { label: "All", value: "" },
+                                                ...historyActionOptions.map((action) => ({
+                                                    label: String(action),
+                                                    value: String(action),
+                                                })),
+                                            ]}
+                                        />
+
+                                        <GridToolbarActions
+                                            className="gap-1 justify-end"
+                                            actions={[
+                                                {
+                                                    key: "export",
+                                                    label: "Export History",
+                                                    icon: <Download className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: exportHistoryLogs,
+                                                },
+                                                {
+                                                    key: "reset",
+                                                    label: "Reset Filters",
+                                                    icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: resetHistoryFilters,
+                                                },
+                                                {
+                                                    key: "refresh",
+                                                    label: "Refresh Data",
+                                                    icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: refreshHistoryGrid,
+                                                    disabled: logsFetching,
+                                                },
+                                            ]}
+                                        />
+                                    </GridToolbarRow>
+                                </GridToolbar>
+                            </div>
+
+                            <div className="px-2 pb-2">
+                                <AppDataGrid
+                                    density="compact"
+                                    columns={[
+
+                                        {
+                                            label: "Item ID",
+                                            headClassName: "text-center w-[120px]",
+                                            cellClassName: "text-center font-medium text-primary min-w-[120px]",
+                                            render: (audit: any) => {
+                                                const itemId = audit.event_id || selectedItem?.id;
+                                                return itemId ? formatModuleDisplayId("kitchen", itemId) : "—";
+                                            },
+                                        },
+
+                                        {
+                                            label: "Action",
+                                            headClassName: "text-center w-[140px]",
+                                            cellClassName: "text-center font-medium min-w-[140px]",
+                                            render: (audit: any) => getAuditActionBadge(audit.event_type),
+                                        },
+                                        {
+                                            label: "Change",
+                                            headClassName: "w-[320px]",
+                                            cellClassName: "min-w-[320px] whitespace-normal text-primary/80 font-medium",
+                                            render: (audit: any) => getAuditChangeText(parseAuditDetails(audit.details)),
+                                        },
+                                        {
+                                            label: "User",
+                                            headClassName: "w-[180px]",
+                                            cellClassName: "text-muted-foreground min-w-[180px]",
+                                            render: (audit: any) => `${audit.user_first_name} ${audit.user_last_name}`,
+                                        },
+                                        {
+                                            label: "Date & Time",
+                                            headClassName: "text-white w-[180px]",
+                                            cellClassName: "text-muted-foreground min-w-[180px]",
+                                            render: (audit: any) => formatAppDateTime(audit.created_on),
+                                        },
+                                    ] as ColumnDef[]}
+                                    data={paginatedHistoryLogs}
+                                    loading={logsLoading || logsFetching || isInitializing}
+                                    emptyText="No audit logs found"
+                                    minWidth="860px"
+                                    enablePagination
+                                    paginationProps={{
+                                        page: auditPage,
+                                        totalPages: historyTotalPages,
+                                        setPage: setAuditPage,
+                                        totalRecords: historyTotalRecords,
+                                        limit: auditLimit,
+                                        onLimitChange: (val) => { setAuditLimit(val); setAuditPage(1); },
+                                        disabled: logsFetching,
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </section>
+
+            {/* SIDE SHEET */}
+            <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+                <SheetContent side="right" onOpenAutoFocus={(e) => e.preventDefault()} className={cn("w-full overflow-y-auto bg-background p-0 transition-all duration-300", sheetTab === "history" ? "sm:max-w-4xl" : mode === "edit" ? "sm:max-w-2xl" : "sm:max-w-xl")}>
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex flex-col"
+                    >
+                        <SheetHeader className="px-6 py-4 border-b">
+                            <div className="space-y-1">
+                                <SheetTitle className="text-xl font-bold">
+                                    {mode === "view" ? `Kitchen Inventory [${selectedItem?.id ? `#${formatModuleDisplayId("kitchen", selectedItem.kitchen_sequence || selectedItem.id)}` : "..."}]` : mode === "edit" ? `Update Kitchen Inventory [${selectedItem?.id ? `#${formatModuleDisplayId("kitchen", selectedItem.kitchen_sequence || selectedItem.id)}` : "..."}]` : "Add Item"}
+                                </SheetTitle>
+                                <p className="text-xs text-muted-foreground font-medium  tracking-wide">
+                                    {mode === "view" ? "Detailed stock and audit information" : "Modify stock levels and unit configuration"}
+                                </p>
+                            </div>
+                        </SheetHeader>
+
+                        <div className="px-6 pb-6 pt-4">
+                            {mode === "view" && selectedItem && (
+                                <div className="space-y-6">
+                                {/* Sheet Tabs */}
+                                <div className="border-b border-border flex">
+                                    <button
+                                        onClick={() => setSheetTab("summary")}
+                                        className={cn(
+                                            "px-4 py-2 text-xs font-bold  tracking-widest transition-all border-b-2 -mb-[2px]",
+                                            sheetTab === "summary"
+                                                ? "border-primary text-primary"
+                                                : "border-transparent text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        Summary
+                                    </button>
+                                    <button
+                                        onClick={() => setSheetTab("history")}
+                                        className={cn(
+                                            "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
+                                            sheetTab === "history"
+                                                ? "border-primary text-primary"
+                                                : "border-transparent text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        History
+                                    </button>
+                                </div>
+
+                                {sheetTab === "summary" && (
+                                    <CardSectionView title="Inventory Overview" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                        <ViewField label="Item Name" value={selectedItem.name} className="sm:col-span-2" />
+                                        <ViewField label="Category" value={selectedItem.inventory_type} />
+                                        <ViewField label="Reorder Level" value={selectedItem.reorder_level} />
+                                        <ViewField label="Current Stock" value={`${formatDisplayQuantity(selectedItem.quantity, selectedItem.unit || "")} ${selectedItem.unit || ""}`} />
+                                        <ViewField label="Status" value={selectedItem.is_active ? "Active" : "Inactive"} />
+                                    </CardSectionView>
+                                )}
+
+                                {sheetTab === "history" && (
+                                    <div className="space-y-3">
+                                      
+                                        
+                                        {!auditLogs?.data?.length ? (
+                                            <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
+                                                <p className="text-xs text-muted-foreground italic">No recent activity logs.</p>
+                                            </div>
+                                        ) : (
+                                            <div className="border border-border rounded-lg overflow-hidden bg-background shadow-sm">
+                                                <AppDataGrid
+                                                    columns={[
+
+                                                        {
+                                                            label: "Item ID",
+                                                            cellClassName: "whitespace-nowrap font-medium text-primary",
+                                                            render: (log: any) => {
+                                                                const itemId = log.event_id || selectedItem?.id;
+                                                                return itemId ? formatModuleDisplayId("kitchen", itemId) : "—";
+                                                            }
+                                                        },
+                                                        { 
+                                                            label: "Action",
+                                                            cellClassName: "whitespace-nowrap",
+                                                            render: (log: any) => getAuditActionBadge(log.event_type)
+                                                        },
+                                                        {
+                                                            label: "Updated By",
+                                                            cellClassName: "whitespace-nowrap",
+                                                            render: (log: any) => `${log.user_first_name || ""} ${log.user_last_name || ""}`.trim() || "System"
+                                                        },
+                                                        { 
+                                                            label: "Date & Time", 
+                                                            headClassName: "text-white w-[180px]", 
+                                                            cellClassName: "text-muted-foreground min-w-[180px]",
+                                                            render: (log: any) => formatAppDateTime(log.created_on) 
+                                                        },
+                                                        { 
+                                                            label: "Changes", 
+                                                            cellClassName: "min-w-[300px] py-2",
+                                                            render: (log: any) => getAuditChangeText(parseAuditDetails(log.details)) 
+                                                        }
+                                                    ] as ColumnDef[]}
+                                                    data={auditLogs.data}
+                                                    rowKey={(log: any) => log.id}
+                                                    minWidth="600px"
+                                                    enablePagination
+                                                    paginationProps={{
+                                                        page: itemAuditPage,
+                                                        totalPages: auditLogs?.pagination?.totalPages ?? 1,
+                                                        setPage: setItemAuditPage,
+                                                        totalRecords: auditLogs?.pagination?.totalItems ?? auditLogs?.data?.length ?? 0,
+                                                        limit: itemAuditLimit,
+                                                        onLimitChange: (v) => { setItemAuditLimit(v); setItemAuditPage(1); },
+                                                        disabled: !auditLogs,
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                <div className="flex justify-end gap-3 pt-6 border-t border-border">
+                                    <Button variant="heroOutline" onClick={() => setSheetOpen(false)}>Close</Button>
+                                </div>
+                                </div>
+                            )}
+
+                            {mode === "edit" && selectedItem && (
+                                <div className="space-y-5">
+                                <div className="rounded-[5px] border border-primary/50 bg-background p-5 shadow-sm space-y-5 [&>h3+*]:!mt-4">
+                                    <h3 className="text-sm font-semibold text-primary/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                        <span>{stockUpdateMode === "add" ? "Add Stock Quantity" : "Update Stock Quantity"}</span>
+                                        <div className="flex items-center gap-3 shrink-0">
+                                            <TooltipProvider delayDuration={200}>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <div>
+                                                            <Switch 
+                                                                checked={stockUpdateMode === "add"}
+                                                                onCheckedChange={(checked) => {
+                                                                    const newMode = checked ? "add" : "update";
+                                                                    setStockUpdateMode(newMode);
+                                                                    setEditForm(f => ({ ...f, quantity: newMode === "add" ? 0 : Number(selectedItem.quantity) }));
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>Toggle to Add or Update</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        </div>
+                                    </h3>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="space-y-1 sm:col-span-2 mb-2">
+                                            <Label className="text-foreground">Item Name</Label>
+                                            <div className="text-sm font-semibold text-foreground/90">{selectedItem.name}</div>
+                                            {stockUpdateMode === "add" && (
+                                                <div className="text-[11px] text-muted-foreground mt-1">Current Stock: <strong className="text-foreground">{formatDisplayQuantity(selectedItem.quantity, selectedItem.unit || "")} {selectedItem.unit || ""}</strong></div>
+                                            )}
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-foreground">{stockUpdateMode === "add" ? "Add Quantity *" : "Quantity *"}</Label>
+                                            <Input
+                                                type="text"
+                                                className="h-10 focus-visible:ring-1 focus-visible:ring-primary font-semibold"
+                                                value={editForm.quantity}
+                                                onChange={(e) => setEditForm(f => ({ ...f, quantity: +normalizeNumberInput(e.target.value) }))}
+                                            />
+                                        </div>
+                                        
+                                        <div className="space-y-2">
+                                            <Label className="text-foreground">Stock Unit *</Label>
+                                            <NativeSelect
+                                                className="w-full h-10 border border-border bg-background rounded-[3px] px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                                                value={editForm.unit}
+                                                onChange={(e) => setEditForm(f => ({ ...f, unit: e.target.value }))}
+                                            >
+                                                <option value="">-- No Unit --</option>
+                                                {availableUnits.map(u => (
+                                                    <option key={u.id} value={u.id}>{u.label}</option>
+                                                ))}
+                                            </NativeSelect>
+                                        </div>
+
+                                        <div className="space-y-2 sm:col-span-2">
+                                            <Label className="text-foreground">{stockUpdateMode === "add" ? "Comments" : "Audit Comments"}</Label>
+                                            <textarea
+                                                className="w-full min-h-[100px] border border-border bg-background rounded-[3px] p-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                                                placeholder="Explain the reason for this manual update..."
+                                                value={editForm.comments}
+                                                onChange={(e) => setEditForm(f => ({ ...f, comments: e.target.value }))}
+                                                maxLength={255}
+                                            />
+                                            <div className="text-[10px] text-right text-muted-foreground font-bold">{editForm.comments.length}/255</div>
+                                        </div>
+                                    </div>
+                                   
+                                
+                                </div>
+
+                               
+
+                                <div className="flex justify-end gap-3 pt-6 border-t border-border">
+                                    <Button variant="heroOutline" onClick={() => setSheetOpen(false)}>Cancel</Button>
+                                    <Button variant="hero" onClick={saveEdit}>{stockUpdateMode === "add" ? "Add" : "Update"}</Button>
+                                </div>
+                                </div>
+                            )}
+
+                            {mode === "add" && (
+                                <div className="space-y-4">
+                                {(isSuperAdmin || isOwner) && (
+                                    <div className="w-full sm:w-64 space-y-1 sticky top-0 z-10 bg-background">
+                                        <Label>Property</Label>
+                                        <NativeSelect
+                                            className="w-full h-10 rounded-[3px] border border-border bg-background px-3 text-sm"
+                                            value={selectedPropertyId ?? ""}
+                                            onChange={(e) => setSelectedPropertyId(Number(e.target.value) || null)}
+                                        >
+                                            <option value="" disabled>Select Property</option>
+                                            {!myPropertiesLoading &&
+                                                myProperties?.properties?.map((property) => (
+                                                    <option key={property.id} value={property.id}>
+                                                        {property.brand_name}
+                                                    </option>
+                                                ))}
+                                        </NativeSelect>
+                                    </div>
+                                )}
+
+                                <div className="rounded-[5px] border border-primary/50 bg-background p-5 shadow-sm space-y-5 [&>h3+*]:!mt-4">
+                                    <h3 className="text-sm font-semibold text-primary/90">
+                                     Stock Details
+                                    </h3>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <Label className="text-foreground">Inventory Item *</Label>
+                                            <ValidationTooltip isValid={!createErrors.inventory_master_id} message={createErrors.inventory_master_id}>
+                                                <NativeSelect
+                                                    className={`w-full h-10 rounded-[3px] px-3 border bg-background mt-1 ${createErrors.inventory_master_id ? "border-red-500" : "border-border"}`}
+                                                    value={createForm.inventory_master_id ?? ""}
+                                                    onChange={(e) => {
+                                                        const selectedId = Number(e.target.value);
+                                                        setCreateForm(f => ({ ...f, inventory_master_id: selectedId }));
+                                                        setCreateErrors((prev: any) => {
+                                                            const next = { ...prev };
+                                                            delete next.inventory_master_id;
+                                                            return next;
+                                                        });
+                                                        checkDuplicateInApi(selectedId, createForm.unit);
+                                                    }}
+                                                >
+                                                    <option value="" disabled>-- Please Select --</option>
+                                                    {masterInventory?.filter(item => item.is_active).map(item => (
+                                                        <option key={item.id} value={item.id}>{item.name}</option>
+                                                    ))}
+                                                </NativeSelect>
+                                            </ValidationTooltip>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-foreground">Quantity *</Label>
+                                                <Input
+                                                    className={`h-10 focus-visible:ring-1 focus-visible:ring-primary font-semibold ${createErrors.quantity ? "border-red-500" : ""}`}
+                                                    value={createForm.quantity}
+                                                    onChange={(e) => {
+                                                        const val = +normalizeNumberInput(e.target.value);
+                                                        setCreateForm(f => ({ ...f, quantity: val }));
+                                                        if (val > 0) {
+                                                            setCreateErrors((prev: any) => {
+                                                                const next = { ...prev };
+                                                                delete next.quantity;
+                                                                return next;
+                                                            });
+                                                        }
+                                                    }}
+                                                />
+                                                {createErrors.quantity && <p className="text-xs text-red-500 mt-1">{createErrors.quantity}</p>}
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label className="text-foreground">Stock Unit *</Label>
+                                                <NativeSelect
+                                                    className={`w-full h-10 rounded-[3px] px-2 border bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary ${createErrors.unit ? "border-red-500" : "border-border"}`}
+                                                    value={createForm.unit ?? ""}
+                                                    onChange={(e) => {
+                                                        const selectedUnit = e.target.value;
+                                                        setCreateForm(f => ({ ...f, unit: selectedUnit }));
+                                                        setCreateErrors((prev: any) => {
+                                                            const next = { ...prev };
+                                                            delete next.unit;
+                                                            return next;
+                                                        });
+                                                        checkDuplicateInApi(createForm.inventory_master_id, selectedUnit);
+                                                    }}
+                                                >
+                                                    <option value="" disabled>Select unit</option>
+                                                    {availableUnits.map(u => (
+                                                        <option key={u.id} value={u.id}>{u.label}</option>
+                                                    ))}
+                                                </NativeSelect>
+                                                {createErrors.unit && <p className="text-xs text-red-500 mt-1">{createErrors.unit}</p>}
+                                            </div>
+
+                                            <div className="space-y-2 sm:col-span-2">
+                                                <Label className="text-foreground">Comments</Label>
+                                                <textarea
+                                                    className="w-full min-h-[100px] border border-border bg-background rounded-[3px] p-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                                                    placeholder="Add any additional comments here..."
+                                                    value={createForm.comments}
+                                                    onChange={(e) => setCreateForm(f => ({ ...f, comments: e.target.value }))}
+                                                    maxLength={255}
+                                                />
+                                                <div className="text-[10px] text-right text-muted-foreground font-bold">{createForm.comments.length}/255</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="-mx-6 -mb-6 px-6 py-4 border-t border-border bg-muted/20 flex justify-end gap-3 mt-4">
+                                    <Button type="button" variant="heroOutline" onClick={() => setSheetOpen(false)}>Cancel</Button>
+                                    <Button type="button" variant="hero" onClick={createItem}>Create Item</Button>
+                                </div>
+                                </div>
+                            )}
+                        </div>
+                    </motion.div>
+                </SheetContent>
+            </Sheet>
+
+            <KitchenInventoryBulkAdjustSheet
+                open={bulkOpen}
+                onOpenChange={setBulkOpen}
+                propertyId={selectedPropertyId}
+                masterInventory={masterInventory}
+                availableUnits={availableUnits}
+                currentInventory={kitchenInventory?.data}
+                onSubmit={(rows) => {
+                    const promise = Promise.all(rows.map(r => adjustStock(r).unwrap()));
+                    toast.promise(promise, {
+                        pending: "Applying bulk adjustments...",
+                        success: "Bulk stock update successful",
+                        error: "Failed to apply bulk adjustments"
+                    });
+                    setBulkOpen(false);
+                }}
+            />
+        </div>
+    );
+}
