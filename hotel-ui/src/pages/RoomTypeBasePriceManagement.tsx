@@ -1,0 +1,1099 @@
+import { useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { NativeSelect } from "@/components/ui/native-select";
+import { useAppSelector } from "@/redux/hook";
+import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
+import { useGetMyPropertiesQuery, useGetRoomTypesQuery, useLazyExportRoomTypesQuery, useUpdateRoomTypesMutation, useGetLogsQuery as useGetAuditLogsQuery, useGetLogsByTableQuery } from "@/redux/services/hmsApi";
+import { toast } from "react-toastify";
+import { normalizeNumberInput } from "@/utils/normalizeTextInput";
+import { useLocation } from "react-router-dom";
+import { usePermission } from "@/rbac/usePermission";
+import { exportToExcel } from "@/utils/exportToExcel";
+import { Download, FilterX, RefreshCcw, Pencil } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
+import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect, GridToolbarSpacer } from "@/components/ui/grid-toolbar";
+import { useGridPagination } from "@/hooks/useGridPagination";
+import { useAutoPropertySelect } from "@/hooks/useAutoPropertySelect";
+import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
+import { cn } from "@/lib/utils";
+import {
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet";
+import { motion } from "framer-motion";
+import { formatAppDate, formatAppDateTime } from "@/utils/dateFormat";
+import CardSectionView from "@/components/CardSectionView";
+import ViewField from "@/components/ViewField";
+import { getFormattedAuditChanges, getAuditActionBadge, getAuditChangePlainText, formatAuditActionText } from "@/utils/auditUtils";
+
+/* ---------------- Types ---------------- */
+type RateRow = {
+    id: number;
+    room_category_name: string;
+    bed_type_name: string;
+    ac_type_name: string;
+    base_price: string;
+    system_generated?: boolean;
+};
+
+/* ---------------- Helpers ---------------- */
+const parseAuditDetails = (details: any) => {
+    try {
+        return typeof details === "string" ? JSON.parse(details) : details;
+    } catch {
+        return null;
+    }
+};
+
+const getAuditActionLabel = (audit: any) => {
+    return getAuditActionBadge(audit.event_type);
+};
+
+const getAuditChangeText = (details: any, audit: any) => {
+    if (audit.event_type === "CREATE") {
+        return (
+            <div className="text-muted-foreground">
+                <span className="font-semibold text-foreground/80">Room Type:</span> Created
+            </div>
+        );
+    }
+    
+    if (!details) return "--";
+
+    let parsed = details;
+    if (typeof parsed === "string") {
+        try { parsed = JSON.parse(parsed); } catch { }
+    }
+
+    return getFormattedAuditChanges(parsed, {
+        "base_price": (v: any) => `₹${String(v).replace(/^₹+/, "").trim()}`,
+        "Base Price": (v: any) => `₹${String(v).replace(/^₹+/, "").trim()}`
+    });
+};
+
+/* ---------------- Component ---------------- */
+export default function RoomTypeBasePriceManagement() {
+    const [propertyId, setPropertyId] = useState<number | null>(null);
+    const { myProperties, isMultiProperty, isInitializing } = useAutoPropertySelect(propertyId, setPropertyId);
+
+    const [rows, setRows] = useState<RateRow[]>([]);
+    const [editMode, setEditMode] = useState(false);
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [searchInput, setSearchInput] = useState("");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [filterCategory, setFilterCategory] = useState("");
+    const [filterBedType, setFilterBedType] = useState("");
+    const [filterAcType, setFilterAcType] = useState("");
+    const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
+    const isSuperAdmin = useAppSelector(selectIsSuperAdmin)
+    const isOwner = useAppSelector(selectIsOwner)
+ 
+    const [sheetOpen, setSheetOpen] = useState(false);
+    const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
+    const [mode, setMode] = useState<"view" | "edit">("view");
+
+    useEffect(() => {
+        if (sheetOpen) {
+            setSheetTab("summary");
+            setItemAuditPage(1);
+        }
+    }, [sheetOpen]);
+    const [itemAuditPage, setItemAuditPage] = useState(1);
+    const [itemAuditLimit, setItemAuditLimit] = useState(5);
+    const [selectedRow, setSelectedRow] = useState<RateRow | null>(null);
+    const [formPrice, setFormPrice] = useState("");
+    const [formCategory, setFormCategory] = useState("");
+    const [formBedType, setFormBedType] = useState("");
+    const [formAcType, setFormAcType] = useState("");
+
+    const { page, limit, setPage, resetPage, handleLimitChange } = useGridPagination({
+        initialLimit: 10,
+        resetDeps: [propertyId, filterCategory, filterBedType, filterAcType, searchQuery],
+    });
+
+    const [mainTab, setMainTab] = useState<"rates" | "audit">("rates");
+    const [mainAuditPage, setMainAuditPage] = useState(1);
+    const [mainAuditLimit, setMainAuditLimit] = useState(10);
+    const [historySearchInput, setHistorySearchInput] = useState("");
+    const [historySearchQuery, setHistorySearchQuery] = useState("");
+    const [historyActionFilter, setHistoryActionFilter] = useState("");
+
+    const {
+        data: globalAuditLogs,
+        isLoading: globalAuditLogsLoading,
+        isFetching: globalAuditLogsFetching,
+        refetch: refetchGlobalAuditLogs
+    } = useGetLogsByTableQuery({
+        tableName: "room_type_rates",
+        page: mainAuditPage,
+        limit: mainAuditLimit,
+    }, {
+        skip: !isLoggedIn || mainTab !== "audit"
+    });
+
+    const paginatedHistoryLogs = useMemo(() => {
+        let rows = globalAuditLogs?.data ?? [];
+        if (historySearchQuery) {
+            const lowerQuery = historySearchQuery.toLowerCase();
+            rows = rows.filter((r: any) =>
+                r.event_type?.toLowerCase().includes(lowerQuery) ||
+                r.user_name?.toLowerCase().includes(lowerQuery) ||
+                r.user_first_name?.toLowerCase().includes(lowerQuery) ||
+                (r.event_id && formatModuleDisplayId("room", r.event_id).toLowerCase().includes(lowerQuery))
+            );
+        }
+        if (historyActionFilter) {
+            rows = rows.filter((r: any) => r.event_type?.toUpperCase() === historyActionFilter.toUpperCase());
+        }
+        return rows;
+    }, [globalAuditLogs?.data, historySearchQuery, historyActionFilter]);
+
+    const historyTotalRecords = globalAuditLogs?.pagination?.totalItems ?? globalAuditLogs?.pagination?.total ?? 0;
+    const historyTotalPages = globalAuditLogs?.pagination?.totalPages ?? 1;
+
+    const historyActionOptions = useMemo(() => ["CREATE", "UPDATE", "DELETE"], []);
+
+    const resetHistoryFilters = () => {
+        setHistorySearchInput("");
+        setHistorySearchQuery("");
+        setHistoryActionFilter("");
+        setMainAuditPage(1);
+    };
+
+    const refreshHistoryGrid = async () => {
+        if (globalAuditLogsFetching) return;
+        const toastId = toast.loading("Refreshing data...");
+        try {
+            await refetchGlobalAuditLogs();
+            toast.dismiss(toastId);
+            toast.success("Data refreshed");
+        } catch {
+            toast.dismiss(toastId);
+            toast.error("Failed to refresh data");
+        }
+    };
+
+    const exportHistoryLogs = () => {
+        if (!paginatedHistoryLogs.length) return toast.info("No history rows to export");
+        const formatted = paginatedHistoryLogs.map((audit: any) => {
+            let details: any = null;
+            try {
+                details = typeof audit.details === "string" ? JSON.parse(audit.details) : audit.details;
+            } catch {}
+            
+            let changeText = "--";
+            if (details) {
+                changeText = getAuditChangePlainText(details, {
+                    "base_price": (v: any) => `₹${String(v).replace(/^₹+/, "").trim()}`,
+                    "Base Price": (v: any) => `₹${String(v).replace(/^₹+/, "").trim()}`
+                });
+            }
+
+            return {
+                "Category ID": formatModuleDisplayId("room", audit.event_id),
+                "Action": formatAuditActionText(audit.event_type),
+                "Change": changeText,
+                "User": `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim() || audit.user_name || "System",
+                "Date & Time": formatAppDateTime(audit.created_on),
+            };
+        });
+        exportToExcel(formatted, "Room-Categories-History.xlsx");
+        toast.success("Export completed");
+    };
+
+    const {
+        data: roomTypesData,
+        isLoading: roomTypesLoading,
+        isFetching: roomTypesFetching,
+        isUninitialized: roomTypesUninitialized,
+        refetch: refetchRoomTypes
+    } = useGetRoomTypesQuery({
+        propertyId,
+        page,
+        limit,
+        category: filterCategory || undefined,
+        bedType: filterBedType || undefined,
+        acType: filterAcType || undefined,
+        search: searchQuery
+    }, {
+        skip: !isLoggedIn || !propertyId
+    });
+
+    const { data: auditLogs, isLoading: auditLogsLoading, isFetching: auditLogsFetching } = useGetAuditLogsQuery({
+        tableName: "room_type_rates",
+        eventId: selectedRow?.id,
+        page: itemAuditPage,
+        limit: itemAuditLimit,
+    }, {
+        skip: !selectedRow?.id || !sheetOpen || sheetTab !== "history"
+    });
+
+    const [getExportData, { isFetching: isExporting }] = useLazyExportRoomTypesQuery();
+
+    /* ---------- Init ---------- */
+    useEffect(() => {
+        if (roomTypesLoading || roomTypesUninitialized) return
+        const nextRows = (roomTypesData?.data ?? []).map((row: RateRow) => ({
+            ...row,
+            base_price: row.base_price == "0.00" || row.base_price == "0" ? "" : row.base_price
+        }))
+        setRows(nextRows);
+    }, [roomTypesData, roomTypesLoading, roomTypesUninitialized]);
+
+    const [updateRoomTypes] = useUpdateRoomTypesMutation()
+
+    /* ---------- Update Price ---------- */
+    const updatePrice = (id: number, value: string) => {
+        setRows(prev =>
+            prev.map(r =>
+                r.id === id ? { ...r, base_price: value } : r
+            )
+        );
+    };
+
+    /* ---------- Detect Changes ---------- */
+    const updatedRates = useMemo(() => {
+        return rows
+            .filter((r, i) => {
+                const originalPrice = roomTypesData?.data?.[i]?.base_price;
+                const normalizedOriginal = originalPrice == "0.00" || originalPrice == "0" ? "" : String(originalPrice ?? "");
+                return r.base_price !== normalizedOriginal;
+            })
+            .map((r) => ({
+                id: r.id,
+                base_price: Number(r.base_price),
+            }));
+    }, [rows, roomTypesData]);
+
+    /* ---------- Payload ---------- */
+    const payload = useMemo(
+        () => ({
+            property_id: propertyId,
+            rates: updatedRates,
+        }),
+        [updatedRates, propertyId]
+    );
+
+    const categoryOptions = useMemo<string[]>(() => {
+        return roomTypesData?.filters?.categories ?? [];
+    }, [roomTypesData]);
+
+    const bedOptions = useMemo<string[]>(() => {
+        return roomTypesData?.filters?.bedTypes ?? [];
+    }, [roomTypesData]);
+
+    const acOptions = useMemo<string[]>(() => {
+        return roomTypesData?.filters?.acTypes ?? [];
+    }, [roomTypesData]);
+
+    const updateRoomRates = () => {
+
+        const promise = updateRoomTypes({ payload }).unwrap()
+        toast.promise(promise, {
+            pending: "Updating rates please wait...",
+            success: "Rates update successfully",
+            error: "Error updating rates"
+        })
+        setConfirmOpen(false);
+        setEditMode(false);
+    }
+
+    const handleOpenRowSheet = (row: RateRow, forceMode: "view" | "edit") => {
+        setSelectedRow(row);
+        setFormPrice(row.base_price || "0");
+        setFormCategory(row.room_category_name || "");
+        setFormBedType(row.bed_type_name || "");
+        setFormAcType(row.ac_type_name || "");
+        setMode(forceMode);
+        setSheetOpen(true);
+    };
+
+    const handleSingleRowUpdate = async () => {
+        if (!selectedRow) return;
+
+        const singlePayload = {
+            property_id: propertyId,
+            rates: [{
+                id: selectedRow.id,
+                room_category_name: formCategory,
+                bed_type_name: formBedType,
+                ac_type_name: formAcType,
+                base_price: Number(formPrice)
+            }]
+        };
+
+        const promise = updateRoomTypes({ payload: singlePayload }).unwrap();
+        toast.promise(promise, {
+            pending: "Updating room category...",
+            success: "Room category updated successfully",
+            error: "Error updating room category"
+        });
+
+        await promise;
+        setSheetOpen(false);
+    };
+
+
+    const pathname = useLocation().pathname
+    const { permission } = usePermission(pathname)
+
+    const totalRecords = roomTypesData?.pagination?.totalItems ?? roomTypesData?.pagination?.total ?? rows.length;
+    const totalPages = roomTypesData?.pagination?.totalPages ?? 1;
+
+    const paginatedRows = rows;
+
+    useEffect(() => {
+        if (page > totalPages) {
+            setPage(totalPages);
+        }
+    }, [page, totalPages]);
+
+    const resetFiltersHandler = () => {
+        setSearchInput("");
+        setSearchQuery("");
+        setFilterCategory("");
+        setFilterBedType("");
+        setFilterAcType("");
+        resetPage();
+    };
+
+    const refreshTable = async () => {
+        if (roomTypesFetching) return;
+        const toastId = toast.loading("Refreshing data...");
+        try {
+            await refetchRoomTypes();
+            toast.dismiss(toastId);
+            toast.success("Data refreshed");
+        } catch {
+            toast.dismiss(toastId);
+            toast.error("Failed to refresh data");
+        }
+    };
+
+    const formatted = rows.map((r: RateRow) => ({
+        // ID: r.id,
+        // Property: r.property_id,
+        Category: r.room_category_name,
+        Bed: r.bed_type_name,
+        AC: r.ac_type_name,
+        Price: r.base_price,
+        CreatedAt: formatAppDate(r.created_at),
+        // UpdatedAt: r.updated_at,
+    }));
+
+    // exportToExcel(formatted, "room-categories.xlsx");
+
+    const exportDataSheet = async () => {
+        if (isExporting) return;
+        const toastId = toast.loading("Preparing room categories export...");
+        try {
+            const res = await getExportData({
+                propertyId,
+                category: filterCategory || undefined,
+                bedType: filterBedType || undefined,
+                acType: filterAcType || undefined,
+                search: searchQuery
+            }).unwrap();
+
+            if (!res?.data?.length) {
+                toast.dismiss(toastId);
+                toast.info("No data to export");
+                return;
+            }
+
+            const formattedExport = res.data.map((r: RateRow) => ({
+                Category: r.room_category_name,
+                Bed: r.bed_type_name,
+                AC: r.ac_type_name,
+                Price: r.base_price,
+                CreatedAt: formatAppDate(r.created_at),
+            }));
+
+            exportToExcel(formattedExport, "room-categories.xlsx", "Room Categories");
+            toast.dismiss(toastId);
+            toast.success("Export completed");
+        } catch {
+            toast.dismiss(toastId);
+            toast.error("Failed to export room categories");
+        }
+    };
+
+    /* ---------- UI ---------- */
+    return (
+        <div className="flex flex-col">
+            <section className="p-4 lg:p-6 space-y-4">
+                {/* Header */}
+                <div className="flex items-center justify-between w-full">
+                    {/* Left: Title */}
+                    <div className="flex flex-col">
+                        <h1 className="text-2xl font-bold leading-tight">Room Categories</h1>
+                        <p className="text-sm text-muted-foreground">
+                            Manage base pricing per room configuration
+                        </p>
+                    </div>
+
+                    {/* Right: Actions */}
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                        {/* PROPERTY */}
+                        {isMultiProperty && (
+                            <div className="flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
+                                <span className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center">
+                                    Property
+                                </span>
+                                <NativeSelect
+                                    className="flex-1 bg-transparent px-2 focus:outline-none focus:ring-0 text-sm h-full truncate cursor-pointer"
+                                    value={propertyId ?? ""}
+                                    onChange={(e) => {
+                                        setPropertyId(+e.target.value);
+                                        resetPage();
+                                    }}
+                                >
+                                    <option value="" disabled>Select Property</option>
+                                    {myProperties?.properties?.map((property: { id: number; brand_name: string }) => (
+                                        <option key={property.id} value={property.id}>
+                                            {property.brand_name}
+                                        </option>
+                                    ))}
+                                </NativeSelect>
+                            </div>
+                        )}
+
+                        {editMode ? (
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="heroOutline"
+                                    className="h-10 px-6"
+                                    onClick={() => {
+                                        setRows(
+                                            (roomTypesData?.data ?? []).map((row: RateRow) => ({
+                                                ...row,
+                                                base_price: row.base_price == "0.00" || row.base_price == "0" ? "" : row.base_price
+                                            }))
+                                        );
+                                        setEditMode(false);
+                                    }}
+                                >
+                                    Cancel
+                                </Button>
+ 
+                                <Button
+                                    variant="hero"
+                                    className="h-10 px-6"
+                                    disabled={updatedRates.length === 0}
+                                    onClick={() => setConfirmOpen(true)}
+                                >
+                                    Update
+                                </Button>
+                            </div>
+                        ) : (
+                            permission?.can_create && (
+                                <Button
+                                    variant="hero"
+                                    className="h-10 px-6 font-semibold"
+                                    onClick={() => setEditMode(true)}
+                                >
+                                    Edit Prices
+                                </Button>
+                            )
+                        )}
+                    </div>
+                </div>
+
+                <div className="border-b border-border flex">
+                    <button
+                        onClick={() => setMainTab("rates")}
+                        className={cn(
+                            "px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px]",
+                            mainTab === "rates"
+                                ? "border-primary text-primary"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        Categories
+                    </button>
+                    <button
+                        onClick={() => setMainTab("audit")}
+                        className={cn(
+                            "px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px]",
+                            mainTab === "audit"
+                                ? "border-primary text-primary"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        History
+                    </button>
+                </div>
+
+                {mainTab === "rates" && (
+                <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
+                    <div className="w-full">
+                        <GridToolbar className="flex flex-col border-b-0">
+                            <GridToolbarRow className="gap-2">
+                                <GridToolbarSearch
+                                    value={searchInput}
+                                    onChange={(val) => {
+                                        setSearchInput(val);
+                                        if (val.trim() === "") {
+                                            setSearchQuery("");
+                                            resetPage();
+                                        }
+                                    }}
+                                    onSearch={() => {
+                                        setSearchQuery(searchInput.trim());
+                                        resetPage();
+                                    }}
+                                />
+
+                                <GridToolbarSelect
+                                    label="Category"
+                                    value={filterCategory}
+                                    onChange={(value) => {
+                                        setFilterCategory(value);
+                                        resetPage();
+                                    }}
+                                    options={[
+                                        { label: "All", value: "" },
+                                        ...categoryOptions.map(v => ({ label: v, value: v }))
+                                    ]}
+                                />
+
+                                <GridToolbarSelect
+                                    label="Bed Type"
+                                    value={filterBedType}
+                                    onChange={(value) => {
+                                        setFilterBedType(value);
+                                        resetPage();
+                                    }}
+                                    options={[
+                                        { label: "All", value: "" },
+                                        ...bedOptions.map(v => ({ label: v, value: v }))
+                                    ]}
+                                />
+
+                                <GridToolbarActions
+                                    className="gap-1 justify-end"
+                                    actions={[
+                                        {
+                                            key: "export",
+                                            label: "Export Rates",
+                                            icon: <Download className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: exportDataSheet,
+                                        },
+                                        {
+                                            key: "reset",
+                                            label: "Reset Filters",
+                                            icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: resetFiltersHandler,
+                                        },
+                                        {
+                                            key: "refresh",
+                                            label: "Refresh Data",
+                                            icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: refreshTable,
+                                            disabled: roomTypesFetching,
+                                        },
+                                    ]}
+                                />
+                            </GridToolbarRow>
+
+                            <GridToolbarRow className="gap-2">
+                                <GridToolbarSelect
+                                    label="AC Type"
+                                    value={filterAcType}
+                                    onChange={(value) => {
+                                        setFilterAcType(value);
+                                        resetPage();
+                                    }}
+                                    options={[
+                                        { label: "All", value: "" },
+                                        ...acOptions.map(v => ({ label: v, value: v }))
+                                    ]}
+                                />
+
+                                <GridToolbarSpacer />
+                                <GridToolbarSpacer />
+                                <GridToolbarSpacer type="actions" />
+                            </GridToolbarRow>
+                        </GridToolbar>
+                    </div>
+
+                    <div className="px-2 pb-2">
+                    <AppDataGrid
+                        density="compact"
+                    columns={[
+                        {
+                            label: "Room Category ID",
+                            headClassName: "text-center w-[140px]",
+                            cellClassName: "text-center font-medium w-[140px]",
+                            render: (r: RateRow) => (
+                                <button
+                                    type="button"
+                                    className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
+                                    onClick={() => handleOpenRowSheet(r, "view")}
+                                >
+                                    {formatModuleDisplayId("room", r.id)}
+                                </button>
+                            ),
+                        },
+                        {
+                            label: "Room Category",
+                            key: "room_category_name",
+                            cellClassName: "font-semibold text-foreground",
+                        },
+                        {
+                            label: "AC Type",
+                            key: "ac_type_name",
+                            cellClassName: "text-muted-foreground",
+                        },
+                        {
+                            label: "Bed Type",
+                            key: "bed_type_name",
+                            cellClassName: "text-muted-foreground",
+                        },
+                        {
+                            label: "Base Price",
+                            headClassName: "text-center",
+                            cellClassName: "text-center font-medium",
+                            render: (r: RateRow) =>
+                                !editMode ? (
+                                    <span className="px-2 py-1 bg-muted/50 rounded text-sm text-foreground">{r.base_price || 0}</span>
+                                ) : (
+                                    <Input
+                                        type="text"
+                                        min={0}
+                                        className="h-8 max-w-[120px] mx-auto text-center font-semibold focus-visible:ring-1 focus-visible:ring-primary"
+                                        value={r.base_price || 0}
+                                        onChange={(e) =>
+                                            updatePrice(
+                                                r.id,
+                                                normalizeNumberInput(e.target.value).toString()
+                                            )
+                                        }
+                                    />
+                                ),
+                        },
+                    ] as ColumnDef[]}
+                    data={paginatedRows}
+                    loading={roomTypesLoading || roomTypesFetching || isInitializing}
+                    emptyText="No room categories found"
+                    minWidth="760px"
+                    actionLabel=""
+                    actionClassName="text-center w-[60px]"
+                    showActions={!editMode && permission?.can_create}
+                    actions={(r: RateRow) => (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                    aria-label={`Edit price for ${r.room_category_name}`}
+                                    onClick={() => handleOpenRowSheet(r, "edit")}
+                                >
+                                    <Pencil className="w-3.5 h-3.5 mx-auto" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Edit Price</TooltipContent>
+                        </Tooltip>
+                    )}
+                    enablePagination
+                    paginationProps={{
+                        page,
+                        totalPages,
+                        setPage,
+                        totalRecords,
+                        limit,
+                        onLimitChange: handleLimitChange,
+                        disabled: roomTypesLoading || roomTypesFetching,
+                    }}
+                />
+                    </div>
+                </div>
+                )}
+
+                {mainTab === "audit" && (
+                    <div className="flex-1">
+                        <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
+                            <div className="w-full">
+                                <GridToolbar className="border-b-0">
+                                    <GridToolbarRow className="gap-2">
+                                        <GridToolbarSearch
+                                            value={historySearchInput}
+                                            onChange={setHistorySearchInput}
+                                            onSearch={() => {
+                                                setHistorySearchQuery(historySearchInput.trim());
+                                                setMainAuditPage(1);
+                                            }}
+
+                                        />
+
+                                        <GridToolbarSelect
+                                            label="Action"
+                                            value={historyActionFilter}
+                                            onChange={(value) => {
+                                                setHistoryActionFilter(value);
+                                                setMainAuditPage(1);
+                                            }}
+                                            options={[
+                                                { label: "All", value: "" },
+                                                ...historyActionOptions.map((action) => ({
+                                                    label: action,
+                                                    value: action,
+                                                })),
+                                            ]}
+                                        />
+
+                                        <GridToolbarActions
+                                            className="gap-1 justify-end"
+                                            actions={[
+                                                {
+                                                    key: "export",
+                                                    label: "Export History",
+                                                    icon: <Download className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: exportHistoryLogs,
+                                                },
+                                                {
+                                                    key: "reset",
+                                                    label: "Reset Filters",
+                                                    icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: resetHistoryFilters,
+                                                },
+                                                {
+                                                    key: "refresh",
+                                                    label: "Refresh Data",
+                                                    icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: refreshHistoryGrid,
+                                                    disabled: globalAuditLogsFetching,
+                                                },
+                                            ]}
+                                        />
+                                    </GridToolbarRow>
+                                </GridToolbar>
+                            </div>
+                            <div className="px-2 pb-2">
+                                <AppDataGrid
+                                    data={paginatedHistoryLogs}
+                                    loading={globalAuditLogsLoading || globalAuditLogsFetching}
+                                    rowKey={(audit: any) => audit.id}
+                                    emptyText="No history logs found."
+                                    showActions={false}
+                                    enablePagination={true}
+                                    paginationProps={{
+                                        page: mainAuditPage,
+                                        setPage: setMainAuditPage,
+                                        totalPages: historyTotalPages,
+                                        disabled: globalAuditLogsFetching,
+                                        totalRecords: historyTotalRecords,
+                                        limit: mainAuditLimit,
+                                        onLimitChange: (limit) => {
+                                            setMainAuditLimit(limit);
+                                            setMainAuditPage(1);
+                                        }
+                                    }}
+                                    columns={[
+                                        {
+                                            label: "Category ID",
+                                            headClassName: "text-center w-[120px]",
+                                            cellClassName: "text-center font-medium text-primary min-w-[120px]",
+                                            render: (audit: any) => audit.event_id ? formatModuleDisplayId("room", audit.event_id) : "—",
+                                        },
+                                        {
+                                            label: "Action",
+                                            headClassName: "text-center w-[140px]",
+                                            cellClassName: "text-center font-medium min-w-[140px]",
+                                            render: (audit: any) => getAuditActionBadge(audit.event_type),
+                                        },
+                                        {
+                                            label: "Change",
+                                            headClassName: "w-[320px]",
+                                            cellClassName: "min-w-[320px] whitespace-normal text-primary/80 font-medium",
+                                            render: (audit: any) => {
+                                                let parsed = audit.details;
+                                                if (typeof parsed === 'string') {
+                                                    try { parsed = JSON.parse(parsed); } catch { }
+                                                }
+                                                return getFormattedAuditChanges(parsed, {
+                                                    "base_price": (v: any) => `₹${String(v).replace(/^₹+/, "").trim()}`,
+                                                    "Base Price": (v: any) => `₹${String(v).replace(/^₹+/, "").trim()}`
+                                                });
+                                            },
+                                        },
+                                        {
+                                            label: "User",
+                                            headClassName: "w-[180px]",
+                                            cellClassName: "text-muted-foreground min-w-[180px]",
+                                            render: (audit: any) => `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim() || audit.user_name || "System",
+                                        },
+                                        {
+                                            label: "Date & Time",
+                                            headClassName: "text-white w-[180px]",
+                                            cellClassName: "text-muted-foreground min-w-[180px]",
+                                            render: (audit: any) => formatAppDateTime(audit.created_on),
+                                        },
+                                    ] as ColumnDef<any>[]}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </section>
+
+            <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+                <SheetContent side="right" className={cn("w-full overflow-y-auto bg-background p-0 transition-all duration-300", sheetTab === "history" ? "sm:max-w-4xl" : "sm:max-w-xl")}>
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex flex-col h-full"
+                    >
+                        <SheetHeader className="px-6 py-4 border-b border-border relative">
+                            <div className="space-y-1">
+                                <SheetTitle className="text-xl font-bold">
+                                    {mode === "view" ? `Room Category [#${selectedRow?.id ? formatModuleDisplayId("room", selectedRow.id) : "..."}]` : "Edit Configuration"}
+                                </SheetTitle>
+                               <p className="text-xs text-muted-foreground font-medium tracking-wide">
+                                    {mode === "view" ? "Room category details and pricing" : "Modify base price and room details"}
+                                </p>
+                            </div>
+                        </SheetHeader>
+
+
+                        <div className="px-6 pb-6 pt-4">
+                        {mode === "view" ? (
+                            <div className="space-y-4">
+                                {/* Sheet Tabs */}
+                                <div className="border-b border-border flex">
+                                    <button
+                                        onClick={() => setSheetTab("summary")}
+                                        className={cn(
+                                            "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
+                                            sheetTab === "summary"
+                                                ? "border-primary text-primary"
+                                                : "border-transparent text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        Summary
+                                    </button>
+                                    <button
+                                        onClick={() => setSheetTab("history")}
+                                        className={cn(
+                                            "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
+                                            sheetTab === "history"
+                                                ? "border-primary text-primary"
+                                                : "border-transparent text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        History
+                                    </button>
+                                </div>
+
+                                {sheetTab === "summary" && (
+                                    <div className="space-y-4">
+                                <CardSectionView title="Category Information" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                    <ViewField label="Room Category Name" value={selectedRow?.room_category_name} />
+                                    <ViewField label="Bed Type" value={selectedRow?.bed_type_name} />
+                                    <ViewField label="AC Type" value={selectedRow?.ac_type_name} />
+                                </CardSectionView>
+
+                                <CardSectionView title="Pricing Details" titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal" className="grid grid-cols-1 gap-x-8 gap-y-4">
+                                    <ViewField label="Base Price" value={`₹ ${selectedRow?.base_price || "0.00"}`} />
+                                </CardSectionView>
+                                    </div>
+                                )}
+
+                                {sheetTab === "history" && (
+                                    <div className="space-y-3">
+                                        {!auditLogs?.data?.length ? (
+                                            <div className="p-8 text-center rounded-lg border border-dashed border-border bg-muted/20">
+                                                <p className="text-xs text-muted-foreground italic">No recent activity logs.</p>
+                                            </div>
+                                        ) : (
+                                            <div className="border border-border rounded-lg overflow-hidden bg-background shadow-sm">
+                                                <AppDataGrid
+                                                    columns={[
+
+                                                        { 
+                                                            label: "Action", 
+                                                            cellClassName: "whitespace-nowrap min-w-[120px]",
+                                                            render: (log: any) => getAuditActionBadge(log.event_type)
+                                                        },
+                                                        { 
+                                                            label: "Updated By", 
+                                                            cellClassName: "whitespace-nowrap",
+                                                            render: (log: any) => `${log.user_first_name || ""} ${log.user_last_name || ""}`.trim() || "System"
+                                                        },
+                                                        { 
+                                                            label: "Date & Time", 
+                                                            headClassName: "text-white w-[180px]", 
+                                                            cellClassName: "text-muted-foreground min-w-[180px]",
+                                                            render: (log: any) => formatAppDateTime(log.created_on) 
+                                                        },
+                                                        { 
+                                                            label: "Changes", 
+                                                            cellClassName: "min-w-[300px] py-2",
+                                                            render: (log: any) => getAuditChangeText(parseAuditDetails(log.details), log) 
+                                                        }
+                                                    ] as ColumnDef[]}
+                                                    data={auditLogs.data}
+                                                    rowKey={(log: any) => log.id}
+                                                    loading={auditLogsLoading || auditLogsFetching}
+                                                    minWidth="600px"
+                                                    enablePagination
+                                                    paginationProps={{
+                                                        page: itemAuditPage,
+                                                        totalPages: auditLogs?.pagination?.totalPages ?? 1,
+                                                        setPage: setItemAuditPage,
+                                                        totalRecords: auditLogs?.pagination?.totalItems ?? auditLogs?.data?.length ?? 0,
+                                                        limit: itemAuditLimit,
+                                                        onLimitChange: (v) => { setItemAuditLimit(v); setItemAuditPage(1); },
+                                                        disabled: !auditLogs,
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                <div className="rounded-[5px] border border-primary/50 bg-background p-5 shadow-sm space-y-5 [&>h3+*]:!mt-4">
+                                    <h3 className="text-sm font-semibold text-primary/90">
+                                        Room Details
+                                    </h3>
+
+                                    <div className="space-y-1.5">
+                                        <Label className="text-foreground">Room Category Name</Label>
+                                        {selectedRow?.system_generated ? (
+                                            <p className="text-sm font-semibold text-foreground py-1 px-0.5">
+                                                {selectedRow?.room_category_name || "—"}
+                                            </p>
+                                        ) : (
+                                            <Input
+                                                className="h-9 focus-visible:ring-1 focus-visible:ring-primary"
+                                                value={formCategory}
+                                                onChange={(e) => setFormCategory(e.target.value)}
+                                            />
+                                        )}
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div className="space-y-1.5">
+                                            <Label className="text-foreground">Bed Type</Label>
+                                            {selectedRow?.system_generated ? (
+                                                <p className="text-sm font-semibold text-foreground py-1 px-0.5">
+                                                    {selectedRow?.bed_type_name || "—"}
+                                                </p>
+                                            ) : (
+                                                <NativeSelect
+                                                    className="h-9 w-full border border-border bg-background rounded-[3px] px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                                                    value={formBedType}
+                                                    onChange={(e) => setFormBedType(e.target.value)}
+                                                >
+                                                    <option value="" disabled>Select Bed Type</option>
+                                                    {bedOptions.map(opt => (
+                                                        <option key={opt} value={opt}>{opt}</option>
+                                                    ))}
+                                                </NativeSelect>
+                                            )}
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label className="text-foreground">AC Type</Label>
+                                            {selectedRow?.system_generated ? (
+                                                <p className="text-sm font-semibold text-foreground py-1 px-0.5">
+                                                    {selectedRow?.ac_type_name || "—"}
+                                                </p>
+                                            ) : (
+                                                <NativeSelect
+                                                    className="h-9 w-full border border-border bg-background rounded-[3px] px-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                                                    value={formAcType}
+                                                    onChange={(e) => setFormAcType(e.target.value)}
+                                                >
+                                                    <option value="" disabled>Select AC Type</option>
+                                                    {acOptions.map(opt => (
+                                                        <option key={opt} value={opt}>{opt}</option>
+                                                    ))}
+                                                </NativeSelect>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2 pt-4 border-t border-border">
+                                        <Label className="text-foreground">Base Price</Label>
+                                        <Input
+                                            type="text"
+                                            className="h-10 w-full rounded focus-visible:ring-1 focus-visible:ring-primary"
+                                            value={formPrice}
+                                            onChange={(e) => setFormPrice(normalizeNumberInput(e.target.value).toString())}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="-mx-6 -mb-6 px-6 py-4 border-t border-border bg-muted/20 flex justify-end gap-3 mt-4">
+                            <Button
+                                variant="heroOutline"
+                                onClick={() => setSheetOpen(false)}
+                            >
+                                {mode === "view" ? "Close" : "Cancel"}
+                            </Button>
+
+                            {mode === "edit" && (
+                                <Button
+                                    variant="hero"
+                                    onClick={handleSingleRowUpdate}
+                                >
+                                    Update
+                                </Button>
+                            )}
+                        </div>
+                        </div>
+                    </motion.div>
+                </SheetContent>
+            </Sheet>
+
+            {/* Confirm Update */}
+            <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Confirm Price Update</DialogTitle>
+                    </DialogHeader>
+
+                    <div className="space-y-4 text-sm">
+                        <p>
+                            You are about to update{" "}
+                            <strong>{updatedRates.length}</strong> room
+                            configuration(s).
+                        </p>
+
+                        <div className="flex justify-end gap-3">
+                            <Button
+                                variant="heroOutline"
+                                onClick={() => setConfirmOpen(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="hero"
+                                onClick={updateRoomRates}
+                            >
+                                Confirm Update
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+        </div>
+    );
+}
+
