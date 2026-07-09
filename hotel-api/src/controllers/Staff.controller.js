@@ -2,6 +2,7 @@ import { roles } from "../../utils/roles.js";
 import propertyService from "../services/Property.service.js";
 import StaffService from "../services/Staff.service.js";
 import StaffOnboardingService from "../services/StaffOnboarding.service.js";
+import roleService from "../services/Role.service.js";
 
 class StaffController {
 
@@ -123,9 +124,15 @@ class StaffController {
             const files = req.files
             const staffId = req.params.id
 
-            const userRoles = req.roles || [];
+            let userRoles = req.roles;
+            if (!userRoles) {
+                userRoles = await roleService.getUserRoleNamesByUserId({ userId: req.user.user_id });
+            }
+
             if (!userRoles.includes("SUPER_ADMIN")) {
                 delete payload.property_limit;
+            } else if (payload.property_limit === "") {
+                payload.property_limit = null;
             }
 
             await StaffOnboardingService.updateStaffWithUser({ files, payload, staffId, updatedBy });

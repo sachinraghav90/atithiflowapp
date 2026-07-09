@@ -305,11 +305,22 @@ export const validateStaff = (
         };
     }
 
-    if ((!staff.property_ids || staff.property_ids.length === 0) && !(isSuperAdmin || staffIsOwner))
+    if ((!staff.property_ids || staff.property_ids.length === 0) && !(isSuperAdmin || staffIsOwner)) {
         errors.property_ids = {
             type: "required",
             message: "Property is required"
         };
+    } else if (staff.property_ids && staff.property_limit !== null && staff.property_limit !== undefined && staff.property_limit !== "") {
+        const limit = Number(staff.property_limit);
+        if (staff.property_ids.length > limit) {
+            errors.property_ids = {
+                type: "invalid",
+                message: limit === 0 
+                    ? "This user has 0 as the property limit." 
+                    : `This user has ${limit} property limit only.`
+            };
+        }
+    }
 
     if (!staff.role_ids || staff.role_ids.length === 0)
         errors.role_ids = {
