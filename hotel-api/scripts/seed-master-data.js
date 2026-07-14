@@ -1,4 +1,4 @@
-import { generateRefRoomTypes } from "../utils/generateRefRoomTypes.js";
+import { generateRefRoomTypes } from "../utils/generate-ref-room-types.js";
 import { getDb } from "../utils/getDb.js";
 
 (async function seedMasterData() {

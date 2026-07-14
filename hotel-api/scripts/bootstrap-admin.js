@@ -1,8 +1,8 @@
 import { getDb } from "../utils/getDb.js";
 import { roles } from "../utils/roles.js";
-import supabase from "../src/services/Supabase.service.js";
-import role from "../src/services/Role.service.js";
-import user from "../src/services/user.service.js";
+import supabase from "../src/services/supabase-service.js";
+import role from "../src/services/role-service.js";
+import user from "../src/services/user-service.js";
 
 (async function () {
 

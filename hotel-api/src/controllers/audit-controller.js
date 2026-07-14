@@ -1,0 +1,55 @@
+import AuditService from "../services/audit-service.js";
+import { sendErrorResponse } from "../utils/send-error-response.js";
+
+class AuditController {
+    async getByEventAndTable(req, res) {
+        try {
+            const { eventId, tableName, page } = req.query;
+            if (!eventId || eventId === "undefined" || !tableName) {
+                return res.status(400).json({ message: "eventId & tableName are required" });
+            }
+
+            if (isNaN(Number(eventId))) {
+                return res.status(400).json({ message: "eventId must be a valid number" });
+            }
+
+            const logs = await AuditService.getByEventAndTable({ eventId, tableName, page });
+            return res.json(logs);
+        } catch (error) {
+            return sendErrorResponse(res, error, {
+                fallbackMessage: "Unable to fetch history right now.",
+                logLabel: "AuditController.getByEventAndTable error",
+            });
+        }
+    }
+
+    async getByTable(req, res) {
+        try {
+            const { tableName } = req.params;
+            const { limit, page, propertyId, search, action } = req.query;
+
+            if (!tableName) {
+                return res.status(400).json({ message: "tableName is required" });
+            }
+
+            const logs = await AuditService.getByTableName({ 
+                tableName, 
+                limit, 
+                page, 
+                propertyId,
+                search,
+                action
+            });
+            return res.json(logs);
+        } catch (error) {
+            return sendErrorResponse(res, error, {
+                fallbackMessage: "Unable to fetch history right now.",
+                logLabel: "AuditController.getByTable error",
+            });
+        }
+    }
+}
+
+export default Object.freeze(new AuditController());
+
+

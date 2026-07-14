@@ -1,0 +1,502 @@
+import { getDb } from "../../utils/getDb.js";
+import AuditService from "./audit-service.js";
+
+class RestaurantOrderService {
+    #DB;
+
+    constructor() {
+        this.#DB = getDb();
+    }
+
+    /* ===========================
+       GET ORDERS (PAGINATED)
+    =========================== */
+    async getByProperty({
+        propertyId,
+        page = 1,
+        limit = 10,
+        status,
+        paymentStatus,
+        search = "",
+        exportRows = false
+    }) {
+
+        const offset = (page - 1) * limit;
+        const normalizedSearch = search.trim();
+
+        const filters = [];
+        const values = [propertyId];
+        let i = 2;
+
+        if (status) {
+            filters.push(`ro.order_status = $${i++}`);
+            values.push(status);
+        }
+
+        if (paymentStatus) {
+            filters.push(`ro.payment_status = $${i++}`);
+            values.push(paymentStatus);
+        }
+
+        if (normalizedSearch) {
+            const formattedIdMatch = normalizedSearch.match(/^OR0*(\d+)$/i);
+            const isNumericIdSearch = /^\d+$/.test(normalizedSearch);
+
+            if (formattedIdMatch || isNumericIdSearch) {
+                const rawId = formattedIdMatch ? formattedIdMatch[1] : normalizedSearch;
+                const orderId = Number(rawId);
+
+                filters.push(`(
+                    ro.id = $${i}
+                    OR COALESCE(ro.guest_name, '') ILIKE $${i + 1}
+                    OR COALESCE(r.room_no, '') ILIKE $${i + 1}
+                    OR COALESCE(ro.table_no, '') ILIKE $${i + 1}
+                    OR COALESCE(ro.order_status, '') ILIKE $${i + 1}
+                    OR COALESCE(ro.payment_status, '') ILIKE $${i + 1}
+                    OR TO_CHAR(ro.order_date, 'DD/MM/YYYY') ILIKE $${i + 1}
+                )`);
+                values.push(orderId, `%${normalizedSearch}%`);
+                i += 2;
+            } else {
+                filters.push(`(
+                    COALESCE(ro.guest_name, '') ILIKE $${i}
+                    OR COALESCE(r.room_no, '') ILIKE $${i}
+                    OR COALESCE(ro.table_no, '') ILIKE $${i}
+                    OR COALESCE(ro.order_status, '') ILIKE $${i}
+                    OR COALESCE(ro.payment_status, '') ILIKE $${i}
+                    OR TO_CHAR(ro.order_date, 'DD/MM/YYYY') ILIKE $${i}
+                )`);
+                values.push(`%${normalizedSearch}%`);
+                i += 1;
+            }
+        }
+
+        const whereClause = `
+        ro.property_id = $1
+        ${filters.length ? "AND " + filters.join(" AND ") : ""}
+    `;
+
+        const { rows } = await this.#DB.query(
+            `
+            SELECT
+                ro.*,
+                r.room_no,
+                dp.name AS delivery_partner_name
+            FROM public.restaurant_orders ro
+            LEFT JOIN public.ref_rooms r
+                ON r.id = ro.room_id
+            LEFT JOIN public.delivery_partners dp
+                ON dp.id = ro.delivery_partner_id
+            WHERE ${whereClause}
+            ORDER BY ro.order_date DESC
+            ${exportRows ? "" : `LIMIT $${i} OFFSET $${i + 1}`}
+            `,
+            exportRows ? values : [...values, limit, offset]
+        );
+
+        const { rows: countRows } = await this.#DB.query(
+            `
+        SELECT COUNT(*)::int AS total
+        FROM public.restaurant_orders ro
+        LEFT JOIN public.ref_rooms r
+            ON r.id = ro.room_id
+        WHERE ${whereClause}
+        `,
+            values
+        );
+
+        return {
+            data: rows,
+            pagination: {
+                page,
+                limit,
+                total: countRows[0].total,
+                totalPages: Math.ceil(countRows[0].total / limit),
+            },
+        };
+    }
+
+    /**
+   * Get restaurant orders by booking ID
+   * @param {bigint} bookingId
+   */
+    async getOrdersByBookingId(bookingId) {
+        if (!bookingId) {
+            throw new Error("bookingId is required");
+        }
+
+        const query = `
+        SELECT
+            ro.id,
+            ro.property_id,
+            ro.order_sequence,
+            ro.table_no,
+            ro.room_id,
+            ro.booking_id,
+            ro.order_date,
+            ro.total_amount,
+            ro.order_status,
+            ro.payment_status,
+            ro.waiter_staff_id,
+            ro.expected_delivery_time,
+            ro.order_type,
+
+            -- denormalized guest data
+            ro.guest_name,
+            ro.guest_mobile,
+
+            -- room
+            r.room_no AS room_no,
+
+            dp.name AS delivery_partner_name
+
+        FROM public.restaurant_orders ro
+        LEFT JOIN public.ref_rooms r
+            ON r.id = ro.room_id
+        LEFT JOIN public.delivery_partners dp
+            ON dp.id = ro.delivery_partner_id
+
+        WHERE ro.booking_id = $1
+        ORDER BY ro.order_date DESC
+    `;
+
+        const { rows } = await this.#DB.query(query, [bookingId]);
+
+        return rows;
+    }
+
+
+    /* ===========================
+       CREATE ORDER + ITEMS (TX)
+    =========================== */
+    async createOrderWithItems({
+        order,
+        items,
+        userId,
+    }) {
+        const client = await this.#DB.connect();
+
+        try {
+            await client.query("BEGIN");
+
+            // Calculate subtotal from items
+            let subtotal = 0;
+            for (const item of items) {
+                const qty = Number(item.quantity) || 0;
+                const price = Number(item.unit_price) || 0;
+                subtotal += qty * price;
+            }
+            subtotal = Number(subtotal.toFixed(2));
+
+            // Fetch property's restaurant_gst
+            const propRes = await client.query(
+                `SELECT restaurant_gst FROM public.properties WHERE id = $1`,
+                [order.property_id]
+            );
+            const restaurant_gst = propRes.rows[0]?.restaurant_gst !== null ? Number(propRes.rows[0]?.restaurant_gst) : 0;
+
+            const gst_rate = restaurant_gst;
+            const cgst_rate = Number((gst_rate / 2).toFixed(2));
+            const sgst_rate = Number((gst_rate / 2).toFixed(2));
+            const cgst_amount = Number((subtotal * cgst_rate / 100).toFixed(2));
+            const sgst_amount = Number((subtotal * sgst_rate / 100).toFixed(2));
+            const grand_total_amount = Math.round(subtotal + cgst_amount + sgst_amount);
+            const finalTotal = grand_total_amount;
+
+            // Generate order_sequence using property_counters
+            const counterRes = await client.query(
+                `
+                INSERT INTO public.property_counters (
+                  property_id,
+                  counter_name,
+                  next_value
+                )
+                VALUES (
+                  $1,
+                  'RESTAURANT_ORDER',
+                  2
+                )
+                ON CONFLICT (property_id, counter_name)
+                DO UPDATE SET
+                  next_value = public.property_counters.next_value + 1,
+                  updated_on = now()
+                RETURNING next_value - 1 AS generated_sequence;
+                `,
+                [order.property_id]
+            );
+            const order_sequence = counterRes.rows[0].generated_sequence;
+
+            // 1. Create order
+            const { rows: orderRows } = await client.query(
+                `
+                INSERT INTO restaurant_orders (
+                    property_id,
+                    table_no,
+                    room_id,
+                    booking_id,
+
+                    -- denormalized guest data
+                    guest_name,
+                    guest_mobile,
+
+                    total_amount,
+                    order_status,
+                    payment_status,
+                    waiter_staff_id,
+                    expected_delivery_time,
+                    created_by,
+                    delivery_partner_id,
+                    order_type,
+                    notes,
+
+                    subtotal_amount,
+                    gst_rate,
+                    cgst_rate,
+                    sgst_rate,
+                    cgst_amount,
+                    sgst_amount,
+                    grand_total_amount,
+                    order_sequence
+                )
+                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
+                RETURNING *
+                `,
+                [
+                    order.property_id,
+                    order.table_no,
+                    order.room_id || null,
+                    order.booking_id,
+                    order.guest_name,
+                    order.guest_mobile,
+                    finalTotal,
+                    order.order_status || "New",
+                    order.payment_status || "Pending",
+                    order.waiter_staff_id,
+                    order.expected_delivery_time,
+                    userId,
+                    order.delivery_partner_id || null,
+                    order.order_type,
+                    order.notes || null,
+
+                    subtotal,
+                    gst_rate,
+                    cgst_rate,
+                    sgst_rate,
+                    cgst_amount,
+                    sgst_amount,
+                    grand_total_amount,
+                    order_sequence
+                ]
+            );
+
+            const createdOrder = orderRows[0];
+
+            // 2. Insert items
+            for (const item of items) {
+                await client.query(
+                    `
+                    INSERT INTO restaurant_order_items (
+                        order_id,
+                        menu_item_id,
+                        quantity,
+                        unit_price,
+                        item_total,
+                        notes
+                    )
+                    VALUES ($1,$2,$3,$4,$5,$6)
+                    `,
+                    [
+                        createdOrder.id,
+                        item.menu_item_id,
+                        item.quantity,
+                        item.unit_price,
+                        item.item_total,
+                        item.notes || null,
+                    ]
+                );
+            }
+
+            await client.query("COMMIT");
+
+            /* ---------- AUDIT ---------- */
+            await AuditService.log({
+                property_id: order.property_id,
+                event_id: createdOrder.id,
+                table_name: "restaurant_orders",
+                event_type: "CREATE",
+                task_name: "Create Restaurant Order",
+                comments: "New restaurant order created",
+                details: JSON.stringify({
+                    order_id: createdOrder.id,
+                    order_sequence: createdOrder.order_sequence,
+                    property_id: order.property_id,
+                    total_amount: order.total_amount,
+                    items_count: items.length,
+                    order_status: createdOrder.order_status,
+                    payment_status: createdOrder.payment_status,
+                    table_no: order.table_no,
+                    room_id: order.room_id,
+                    booking_id: order.booking_id,
+                    guest_name: order.guest_name,
+                    guest_mobile: order.guest_mobile,
+                    delivery_partner_id: order.delivery_partner_id,
+                    order_type: order.order_type,
+                    notes: order.notes
+                }),
+                user_id: userId
+            });
+
+            return createdOrder;
+        } catch (err) {
+            await client.query("ROLLBACK");
+            throw err;
+        } finally {
+            client.release();
+        }
+    }
+
+
+    /* ===========================
+       GET SINGLE ORDER + ITEMS
+    =========================== */
+    async getOrderWithItems(orderId) {
+        const { rows: orders } = await this.#DB.query(
+            `
+            SELECT
+                ro.*,
+                r.room_no,
+                dp.name AS delivery_partner_name
+            FROM restaurant_orders ro
+            LEFT JOIN public.ref_rooms r
+                ON r.id = ro.room_id
+            LEFT JOIN public.delivery_partners dp
+                ON dp.id = ro.delivery_partner_id
+            WHERE ro.id = $1
+            `,
+            [orderId]
+        );
+
+        if (!orders.length) return null;
+
+        const { rows: items } = await this.#DB.query(
+            `
+            SELECT
+                roi.*,
+                mm.item_name
+            FROM restaurant_order_items roi
+            JOIN menu_master mm
+                ON mm.id = roi.menu_item_id
+            WHERE roi.order_id = $1
+            `,
+            [orderId]
+        );
+
+        return {
+            ...orders[0],
+            items,
+        };
+    }
+
+    /* ===========================
+       UPDATE ORDER STATUS
+    =========================== */
+    async updateOrderStatus(id, status, userId) {
+        const { rows: existingRows } = await this.#DB.query(
+            `SELECT order_status FROM restaurant_orders WHERE id = $1`,
+            [id]
+        );
+        const oldStatus = existingRows[0]?.order_status;
+
+        const { rows } = await this.#DB.query(
+            `
+            UPDATE restaurant_orders
+            SET
+                order_status = $1,
+                updated_by = $2,
+                updated_on = NOW()
+            WHERE id = $3
+            RETURNING *
+            `,
+            [status, userId, id]
+        );
+
+        const order = rows[0];
+
+        if (order && oldStatus !== status) {
+            await AuditService.log({
+                property_id: order.property_id,
+                event_id: id,
+                table_name: "restaurant_orders",
+                event_type: "Update",
+                task_name: "Update Order Status",
+                comments: "Restaurant order status updated",
+                details: JSON.stringify({
+                    before: { order_status: oldStatus },
+                    after: { order_status: status }
+                }),
+                user_id: userId
+            });
+        }
+
+        return order;
+    }
+
+    /* ===========================
+       UPDATE PAYMENT STATUS
+    =========================== */
+    async updatePaymentStatus(id, status, userId) {
+        const { rows: existingRows } = await this.#DB.query(
+            `SELECT payment_status FROM restaurant_orders WHERE id = $1`,
+            [id]
+        );
+        const oldStatus = existingRows[0]?.payment_status;
+
+        const { rows } = await this.#DB.query(
+            `
+            UPDATE restaurant_orders
+            SET
+                payment_status = $1,
+                updated_by = $2,
+                updated_on = NOW()
+            WHERE id = $3
+            RETURNING *
+            `,
+            [status, userId, id]
+        );
+
+        const order = rows[0];
+
+        if (order && oldStatus !== status) {
+            await AuditService.log({
+                property_id: order.property_id,
+                event_id: id,
+                table_name: "restaurant_orders",
+                event_type: "Update",
+                task_name: "Update Payment Status",
+                comments: "Restaurant payment status updated",
+                details: JSON.stringify({
+                    before: { payment_status: oldStatus },
+                    after: { payment_status: status }
+                }),
+                user_id: userId
+            });
+        }
+
+        return order;
+    }
+
+    /* ===========================
+       DELETE ORDER
+    =========================== */
+    async deleteOrder(id) {
+        const { rowCount } = await this.#DB.query(
+            `DELETE FROM restaurant_orders WHERE id = $1`,
+            [id]
+        );
+
+        return rowCount > 0;
+    }
+}
+
+export default Object.freeze(new RestaurantOrderService());
+
