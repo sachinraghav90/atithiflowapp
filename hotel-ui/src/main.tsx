@@ -1,6 +1,6 @@
 import { createRoot } from "react-dom/client";
 import { HelmetProvider } from "react-helmet-async";
-import App from "./App.tsx";
+import App from "./app";
 import "./index.css";
 import { Provider } from "react-redux";
 import { store } from "./redux/store.ts";
