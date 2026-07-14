@@ -6,15 +6,15 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { useAppSelector } from "@/redux/hook";
-import { extractApiErrorMessage } from "@/utils/apiError";
-import { formatModuleDisplayId } from "@/utils/moduleDisplayId";
+import { extractApiErrorMessage } from "@/utils/api-error";
+import { formatModuleDisplayId } from "@/utils/module-display-id";
 import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
-import { useAddGuestsByBookingMutation, useAvailableRoomsQuery, useCreateBookingMutation, useGetMyPropertiesQuery, useGetPackageByIdQuery, useGetPackagesByPropertyQuery, useGetPropertyTaxQuery, useGetRoomTypesQuery, useUpdateEnquiryMutation, useLazyGetGuestByPhoneQuery } from "@/redux/services/hmsApi";
-import { normalizeNumberInput, normalizeTextInput } from "@/utils/normalizeTextInput";
+import { useAddGuestsByBookingMutation, useAvailableRoomsQuery, useCreateBookingMutation, useGetMyPropertiesQuery, useGetPackageByIdQuery, useGetPackagesByPropertyQuery, useGetPropertyTaxQuery, useGetRoomTypesQuery, useUpdateEnquiryMutation, useLazyGetGuestByPhoneQuery } from "@/redux/services/hms-api";
+import { normalizeNumberInput, normalizeTextInput } from "@/utils/normalize-text-input";
 import { toast } from "react-toastify";
 import { useLocation, useNavigate } from "react-router-dom";
 import countries from '../utils/countries.json'
-import { usePermission } from "@/rbac/usePermission";
+import { usePermission } from "@/rbac/use-permission";
 import {
     Popover,
     PopoverContent,
@@ -37,11 +37,11 @@ import {
 } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { motion } from "framer-motion";
-import FormInput from "@/components/forms/FormInput";
-import FormDatePicker from "@/components/forms/FormDatePicker";
-import FormSelect from "@/components/forms/FormSelect";
-import PhonePrefixSelect from "@/components/forms/PhonePrefixSelect";
-import { parseAppDate, toISODateOnly } from "@/utils/dateFormat";
+import FormInput from "@/components/forms/form-input";
+import FormDatePicker from "@/components/forms/form-date-picker";
+import FormSelect from "@/components/forms/form-select";
+import PhonePrefixSelect from "@/components/forms/phone-prefix-select";
+import { parseAppDate, toISODateOnly } from "@/utils/date-format";
 import {
     Dialog,
     DialogContent,
@@ -50,7 +50,7 @@ import {
     DialogFooter,
     DialogDescription
 } from "@/components/ui/dialog";
-import GuestsEmbedded from "@/components/layout/GuestsEmbedded";
+import GuestsEmbedded from "@/components/layout/guests-embedded";
 
 /* -------------------- Types -------------------- */
 type AvailableRoom = {

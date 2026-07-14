@@ -1,8 +1,8 @@
 import { configureStore, type Middleware, type Action } from '@reduxjs/toolkit'
 import { setupListeners } from '@reduxjs/toolkit/query'
-import { hmsApi } from './services/hmsApi'
-import isLoggedInSlice from './slices/isLoggedInSlice'
-import { logout } from './slices/isLoggedInSlice'
+import { hmsApi } from './services/hms-api'
+import isLoggedInSlice from './slices/is-logged-in-slice'
+import { logout } from './slices/is-logged-in-slice'
 
 const resetApiOnLogoutMiddleware: Middleware = ({ dispatch }) => (next) => (action) => {
     const result = next(action)

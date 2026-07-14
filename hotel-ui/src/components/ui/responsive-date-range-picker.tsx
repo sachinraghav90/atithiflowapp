@@ -9,7 +9,7 @@ import { Input } from "./input"
 import {
     APP_DATE_DISPLAY_FORMAT,
     APP_DATE_INPUT_PLACEHOLDER,
-} from "@/utils/dateFormat"
+} from "@/utils/date-format"
 
 interface ResponsiveDateRangePickerProps {
     startDate: Date | null | undefined
