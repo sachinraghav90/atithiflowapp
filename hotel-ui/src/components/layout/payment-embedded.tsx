@@ -216,7 +216,7 @@ export default function PaymentsEmbedded({
                 {remainingBalance !== undefined && (
                     <div className="flex flex-col items-end">
                         <p className="text-[12px] font-semibold text-muted-foreground mb-0.5">Remaining Balance</p>
-                        <p className="text-base font-bold text-primary">₹ {remainingBalance}</p>
+                        <p className="text-base font-bold text-primary">₹ {Number(remainingBalance).toFixed(2)}</p>
                     </div>
                 )}
             </div>

@@ -220,13 +220,13 @@ class Booking {
             const bookingId = this.#validateBookingId(req.params.id);
             if (!bookingId) return res.status(400).json({ message: "Invalid booking id" });
             const result = await BookingService.getGuestImage({ bookingId, userId: req.user.user_id });
-            if (!result) return res.status(404).json({ message: "Guest image not found" });
+            if (!result) return res.status(204).send();
             res.setHeader("Content-Type", result.mime);
             res.setHeader("Cache-Control", "private, max-age=3600");
             return res.send(result.buffer);
         } catch (error) {
             if (this.#isGuestImageSchemaMissing(error)) {
-                return res.status(404).json({ message: "Guest image feature is not available yet. Please run latest migrations." });
+                return res.status(204).send();
             }
             return res.status(400).json({ message: error.message || "Failed to fetch guest image" });
         }

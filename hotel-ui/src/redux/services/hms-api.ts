@@ -935,7 +935,7 @@ export const hmsApi = createApi({
           },
           validateStatus: (response) => response.ok || response.status === 404,
           responseHandler: async (response) => {
-            if (response.status === 404) {
+            if (response.status === 404 || response.status === 204) {
               return null;
             }
             const contentType = response.headers.get("content-type") || "";

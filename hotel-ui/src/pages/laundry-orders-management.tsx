@@ -117,13 +117,15 @@ type LaundryItemRow = {
     };
 };
 function formatDate(date?: Date | null) {
-    return date ? date.toISOString() : "";
+    if (!date || isNaN(date.getTime())) return "";
+    return date.toISOString();
 }
 
 function parseDate(value?: string | Date | null) {
     if (!value) return null;
-    if (value instanceof Date) return value;
-    return new Date(value);
+    if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
+    const parsed = new Date(value);
+    return isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function formatDateTime(value?: string | null) {

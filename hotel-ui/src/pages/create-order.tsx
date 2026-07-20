@@ -548,6 +548,7 @@ export function CreateOrder() {
       ${formErrors.order_type ? "border-red-500" : "border-input"}
     `}
                             value={order.order_type}
+                            disabled={location.state?.source === "booking-module"}
                             onChange={(e) => {
                                 setSelectedRoomNo("");
                                 setOrder(o => ({

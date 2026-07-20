@@ -587,12 +587,12 @@ export default function BookingSummaryPDF({
 
         {/* Side-by-Side Booking & Rooms */}
       
-        <View style={[styles.gridRow, { alignItems: "flex-start" }]}>
+        <View style={[styles.gridRow, { alignItems: "stretch" }]}>
           {/* Booking Info */}
           <View style={!booking?.has_guest_image ? { width: "100%" } : { flex: 1, marginRight: 16 }}>
             <View style={styles.sectionContainer}>
               <Text style={styles.sectionTitle}>Booking Information</Text>
-              <View style={[styles.infoCard, styles.sideBySideCardCompact, { minHeight: 110, height: (booking?.pickup_time || booking?.pickup_location || booking?.drop_time || booking?.drop_location) ? "auto" : 110 }]}>
+              <View style={[styles.infoCard, styles.sideBySideCardCompact]}>
               <View style={styles.infoRow}>
                 <View style={styles.infoItem}>
                   <Text style={styles.infoLabel}>Primary Guest</Text>
@@ -685,9 +685,9 @@ export default function BookingSummaryPDF({
           {/* Guest Photo */}
           {booking?.has_guest_image && (
           <View style={{ width: 120 }}>
-            <View style={styles.sectionContainer}>
+            <View style={[styles.sectionContainer, { flex: 1 }]}>
               <Text style={[styles.sectionTitle, { textAlign: "center" }]}>Photo</Text>
-              <View style={[styles.infoCard, { padding: 0, overflow: "hidden", minHeight: 0, height: 150}]}>
+              <View style={[styles.infoCard, { padding: 0, overflow: "hidden", flex: 1 }]}>
                 <Image 
                   src={{
                     uri: `${import.meta.env.VITE_API_URL}/bookings/${booking.id}/guest-image`,
