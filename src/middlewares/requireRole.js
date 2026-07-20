@@ -1,5 +1,5 @@
 import { roles } from "../../utils/roles.js";
-import role from "../services/Role.service.js";
+import role from "../services/role-service.js";
 
 export function requireRole(...allowedRoles) {
     return async (req, res, next) => {

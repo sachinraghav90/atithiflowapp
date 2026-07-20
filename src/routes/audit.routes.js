@@ -1,6 +1,6 @@
 import express from 'express'
 import { supabaseAuth } from '../middlewares/supabaseAuth.js'
-import AuditController from '../controllers/Audit.controller.js'
+import AuditController from '../controllers/audit-controller.js'
 
 const router = express.Router()
 

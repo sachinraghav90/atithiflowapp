@@ -1,6 +1,6 @@
 import express from 'express'
 import { roles } from "../../utils/roles.js";
-import EnquiryController from "../controllers/Enquiry.controller.js";
+import EnquiryController from "../controllers/enquiry-controller.js";
 import { requireRole } from "../middlewares/requireRole.js";
 import { supabaseAuth } from '../middlewares/supabaseAuth.js';
 

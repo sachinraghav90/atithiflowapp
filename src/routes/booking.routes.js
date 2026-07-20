@@ -2,10 +2,10 @@ import express from 'express'
 import { supabaseAuth } from '../middlewares/supabaseAuth.js'
 import { requireRole } from '../middlewares/requireRole.js'
 import { roles } from '../../utils/roles.js'
-import BookingController from '../controllers/Booking.controller.js'
-import GuestsController from '../controllers/Guests.controller.js'
+import BookingController from '../controllers/booking-controller.js'
+import GuestsController from '../controllers/guests-controller.js'
 import { upload } from '../middlewares/upload.js'
-import VehicleController from '../controllers/Vehicle.controller.js'
+import VehicleController from '../controllers/vehicle-controller.js'
 
 const router = express.Router()
 

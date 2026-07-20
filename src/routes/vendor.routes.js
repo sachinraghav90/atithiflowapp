@@ -2,7 +2,7 @@ import express from "express";
 import { supabaseAuth } from "../middlewares/supabaseAuth.js";
 import { requireRole } from "../middlewares/requireRole.js";
 import { roles } from "../../utils/roles.js";
-import VendorController from "../controllers/Vendor.controller.js";
+import VendorController from "../controllers/vendor-controller.js";
 
 const router = express.Router();
 

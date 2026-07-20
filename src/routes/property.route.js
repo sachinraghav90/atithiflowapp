@@ -1,6 +1,6 @@
 import express from "express"
 import { supabaseAuth } from "../middlewares/supabaseAuth.js"
-import property from "../controllers/Property.controller.js"
+import property from "../controllers/property-controller.js"
 import { requireRole } from "../middlewares/requireRole.js"
 import { roles } from "../../utils/roles.js"
 import { upload } from "../middlewares/upload.js"

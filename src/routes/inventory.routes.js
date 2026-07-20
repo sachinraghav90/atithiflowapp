@@ -1,5 +1,5 @@
 import express from 'express'
-import InventoryController from '../controllers/Inventory.controller.js';
+import InventoryController from '../controllers/inventory-controller.js';
 import { supabaseAuth } from '../middlewares/supabaseAuth.js';
 
 const router = express.Router()

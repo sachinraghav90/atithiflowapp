@@ -1,5 +1,5 @@
+import "dotenv/config.js";
 import express from "express";
-import { config } from "dotenv";
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -38,7 +38,6 @@ import deliveryPartnersRoutes from "./src/routes/delivery-partner-route.js";
 import invoiceRoutes from "./src/routes/invoice-route.js";
 import { normalizeRequestKeys } from "./src/middlewares/normalize-request-keys.js";
 
-config()
 
 const requiredEnvVars = ["SUPABASE_URL", "DATABASE_URL"];
 const missingVars = requiredEnvVars.filter(envVar => !process.env[envVar]);

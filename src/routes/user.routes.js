@@ -1,5 +1,5 @@
 import express from "express";
-import user from "../controllers/User.controller.js";
+import user from "../controllers/user-controller.js";
 import { supabaseAuth } from "../middlewares/supabaseAuth.js";
 import { requireRole } from "../middlewares/requireRole.js";
 import { roles } from "../../utils/roles.js";

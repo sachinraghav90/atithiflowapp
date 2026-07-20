@@ -1,6 +1,6 @@
 import express from "express";
-import LaundryController from "../controllers/Laundry.controller.js";
-import LaundryOrderController from "../controllers/LaundryOrder.controller.js";
+import LaundryController from "../controllers/laundry-controller.js";
+import LaundryOrderController from "../controllers/laundry-order-controller.js";
 import { supabaseAuth } from "../middlewares/supabaseAuth.js";
 import { requireRole } from "../middlewares/requireRole.js";
 import { roles } from "../../utils/roles.js";

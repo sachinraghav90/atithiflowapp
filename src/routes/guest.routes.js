@@ -2,7 +2,7 @@ import express from 'express'
 import { supabaseAuth } from '../middlewares/supabaseAuth.js'
 import { requireRole } from '../middlewares/requireRole.js'
 import { roles } from '../../utils/roles.js'
-import GuestsController from '../controllers/Guests.controller.js'
+import GuestsController from '../controllers/guests-controller.js'
 
 const router = express.Router()
 

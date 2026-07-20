@@ -1,5 +1,5 @@
 import express from "express";
-import StaffController from "../controllers/Staff.controller.js";
+import StaffController from "../controllers/staff-controller.js";
 import { supabaseAuth } from "../middlewares/supabaseAuth.js";
 import { upload } from "../middlewares/upload.js";
 import { requireRole } from "../middlewares/requireRole.js";
