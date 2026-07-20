@@ -1,4 +1,4 @@
-import { generateRefRoomTypes } from "../utils/generateRefRoomTypes.js";
+import { generateRefRoomTypes } from "../utils/generate-ref-room-types.js";
 import { getDb } from "../utils/getDb.js";
 
 (async function seedMasterData() {
@@ -194,7 +194,7 @@ import { getDb } from "../utils/getDb.js";
                         r.id,
                         s.id,
                         true,
-                        true,
+                        true,s
                         true,
                         true
                     FROM public.roles r
