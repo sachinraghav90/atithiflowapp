@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useLocation, Link } from "react-router-dom";
-import CalendlyModal from "@/components/CalendlyModal";
-import TopRibbon from "@/components/layout/TopRibbon";
-import Header from "@/components/layout/Header";
-import Footer from "@/components/layout/Footer";
+import CalendlyModal from "@/components/calendly-modal";
+import TopRibbon from "@/components/layout/top-ribbon";
+import Header from "@/components/layout/header";
+import Footer from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
 import {
   ArrowRight,

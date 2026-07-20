@@ -1,7 +1,7 @@
 import { Helmet } from "react-helmet-async";
-import Header from "@/components/layout/Header";
-import LoginBrandPanel from "@/components/login/LoginBrandPanel";
-import LoginFormCard from "@/components/login/LoginFormCard";
+import Header from "@/components/layout/header";
+import LoginBrandPanel from "@/components/login/login-brand-panel";
+import LoginFormCard from "@/components/login/login-form-card";
 
 const Login = () => {
   return (

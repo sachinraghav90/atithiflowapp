@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Search, Calendar as CalendarIcon, Download, FilterX, Pencil, Plus, RefreshCcw, X } from "lucide-react";
-import { MenuItemSelect } from "@/components/MenuItemSelect";
+import { MenuItemSelect } from "@/components/menu-item-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -10,10 +10,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
-import { normalizeTextInput } from "@/utils/normalizeTextInput";
-import { formatReadableLabel } from "@/utils/formatString";
+import { normalizeTextInput } from "@/utils/normalize-text-input";
+import { formatReadableLabel } from "@/utils/format-string";
 import { useId, type ReactNode } from "react";
-import { APP_DATE_INPUT_PLACEHOLDER } from "@/utils/dateFormat";
+import { APP_DATE_INPUT_PLACEHOLDER } from "@/utils/date-format";
 
 function formatToolbarDate(date: Date | null) {
   if (!date) return "";

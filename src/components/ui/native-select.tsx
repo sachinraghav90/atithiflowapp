@@ -1,6 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { MenuItemSelect } from "@/components/MenuItemSelect";
+import { MenuItemSelect } from "@/components/menu-item-select";
 
 const DEFAULT_SELECT_PLACEHOLDER = "--Please Select--";
 

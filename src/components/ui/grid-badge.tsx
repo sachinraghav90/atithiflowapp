@@ -1,9 +1,9 @@
 import * as React from "react";
 
 import { Badge } from "@/components/ui/badge";
-import { type StatusColorType, getStatusColor } from "@/constants/statusColors";
+import { type StatusColorType, getStatusColor } from "@/constants/status-colors";
 import { cn } from "@/lib/utils";
-import { formatReadableLabel } from "@/utils/formatString";
+import { formatReadableLabel } from "@/utils/format-string";
 
 type GridBadgeTone = "neutral" | "info" | "success" | "warning" | "danger" | "accent";
 

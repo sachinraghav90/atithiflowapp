@@ -3,7 +3,7 @@ import { Menu, ChevronRight, ChevronLeft } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from '../ui/button';
 import { cn } from "@/lib/utils";
-import { useLazyGetSidebarLinksQuery } from '@/redux/services/hmsApi';
+import { useLazyGetSidebarLinksQuery } from '@/redux/services/hms-api';
 import { useAppSelector } from '@/redux/hook';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -12,9 +12,9 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { SIDEBAR_ICON_MAP } from "./sidebarIconMap";
-import { hmsApi } from '@/redux/services/hmsApi';
-import { useAutoPropertySelect } from '@/hooks/useAutoPropertySelect';
+import { SIDEBAR_ICON_MAP } from "./sidebar-icon-map";
+import { hmsApi } from '@/redux/services/hms-api';
+import { useAutoPropertySelect } from '@/hooks/use-auto-property-select';
 import { px, rgba } from 'framer-motion';
 
 export default function Sidebar({

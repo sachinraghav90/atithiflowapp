@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "react-router-dom";
-import TopRibbon from "@/components/layout/TopRibbon";
-import Header from "@/components/layout/Header";
-import Footer from "@/components/layout/Footer";
+import TopRibbon from "@/components/layout/top-ribbon";
+import Header from "@/components/layout/header";
+import Footer from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

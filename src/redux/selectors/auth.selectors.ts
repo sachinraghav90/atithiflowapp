@@ -1,5 +1,5 @@
 import { RootState } from "../store";
-import { hmsApi } from "../services/hmsApi";
+import { hmsApi } from "../services/hms-api";
 import { hasFeaturePermission, type FeatureName, type UserRole } from "@/rbac/permission.utils";
 
 export const selectMeResult =

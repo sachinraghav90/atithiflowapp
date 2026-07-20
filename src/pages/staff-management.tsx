@@ -1,0 +1,1467 @@
+import { useEffect, useMemo, useState } from "react";
+import { NativeSelect } from "@/components/ui/native-select";
+import { MenuItemSelect } from "@/components/menu-item-select";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet";
+import { AppDataGrid, type ColumnDef } from "@/components/ui/data-grid";
+import { GridToolbar, GridToolbarActions, GridToolbarRow, GridToolbarSearch, GridToolbarSelect } from "@/components/ui/grid-toolbar";
+import { FilterX, Download, Image as ImageIcon, KeyRound, Pencil, Phone, RefreshCcw } from "lucide-react";
+import { useAddStaffMutation, useCreateUserMutation, useGetAllRolesQuery, useGetMyPropertiesQuery, useGetStaffByPropertyQuery, useLazyGetStaffByPropertyQuery, useLazyGetStaffByIdQuery, useUpdateStaffMutation, useUpdateStaffPasswordMutation, useGetPropertyAddressByUserQuery, useGetLogsQuery as useGetAuditLogsQuery, useGetLogsByTableQuery } from "@/redux/services/hms-api";
+import { useAutoPropertySelect } from "@/hooks/use-auto-property-select";
+import { toast } from "react-toastify";
+import { useAppSelector } from "@/redux/hook";
+import { validateStaff } from "@/utils/validators";
+import { selectIsOwner, selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
+import DatePicker from "react-datepicker";
+import countries from '../utils/countries.json'
+import { useLocation } from "react-router-dom";
+
+import PersonalDetails from "@/components/staff-form/sections/personal-details";
+import ContactLogin from "@/components/staff-form/sections/contact-login";
+import PropertyRoleAssignment from "@/components/staff-form/sections/property-role-assignment";
+import IdentificationDocuments from "@/components/staff-form/sections/identification-documents";
+
+
+import { usePermission } from "@/rbac/use-permission";
+import EmergencyContacts from "@/components/staff-form/sections/emergency-contacts";
+import { formatReadableLabel } from "@/utils/format-string";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { apiToast } from "@/utils/api-toast-promise";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatModuleDisplayId } from "@/utils/module-display-id";
+import { getFormattedAuditChanges, getAuditActionBadge, getAuditChangePlainText, formatAuditActionText } from "@/utils/audit-utils";
+import { cn } from "@/lib/utils";
+import { getStatusColor } from "@/constants/status-colors";
+import { GridBadge } from "@/components/ui/grid-badge";
+import { useGridPagination } from "@/hooks/use-grid-pagination";
+import { exportToExcel } from "@/utils/export-to-excel";
+
+import CardSectionView from "@/components/card-section-view";
+import ViewField from "@/components/view-field";
+import { formatAppDate, formatAppDateTime } from "@/utils/date-format";
+
+/* -------------------- Types -------------------- */
+type Property = {
+    id: string | number;
+    brand_name: string;
+};
+
+type Role = {
+    id: string | number;
+    name: string;
+};
+
+type Staff = {
+    id?: string;
+    user_id?: string;
+    salutation: string;
+    first_name: string;
+    middle_name?: string;
+    last_name: string;
+    email: string;
+    phone1: string;
+    phone2?: string;
+    designation: string;
+    department: string;
+    status: string;
+    image?: File | string | null;
+    id_proof?: File | string | null;
+    role_ids: string[];
+    address?: string;
+    gender?: string;
+    marital_status?: string;
+    employment_type?: string;
+    hire_date?: string;
+    dob?: string;
+    emergency_contact?: string;
+    emergency_contact_name?: string;
+    emergency_contact_2?: string;
+    emergency_contact_name_2?: string;
+    emergency_contact_relation?: string;
+    emergency_contact_relation_2?: string;
+    leave_days?: string;
+    shift_pattern?: string;
+    blood_group?: string;
+    id_proof_type?: string;
+    id_number?: string;
+    visa_number?: string;
+    visa_issue_date?: string;
+    visa_expiry_date?: string;
+    other_id_proof?: string;
+    nationality?: string;
+    country?: string;
+    property_id?: string | number;
+    property_ids?: (string | number)[];
+    assigned_properties?: any[];
+    properties?: Property[];
+    roles?: Role[];
+    phone?: string;
+    password?: string;
+};
+
+const STAFF_STATUSES = ["active", "inactive"];
+
+const STAFF_INITIAL_VALUE: Staff = {
+    first_name: "",
+    salutation: "Mr.",
+    middle_name: "",
+    last_name: "",
+    password: "",
+    role_ids: [],
+    address: "",
+    gender: "",
+    marital_status: "",
+    employment_type: "",
+    email: "",
+    phone1: "",
+    phone2: "",
+    emergency_contact: "",
+    emergency_contact_name: "",
+    emergency_contact_2: "",
+    emergency_contact_name_2: "",
+    emergency_contact_relation: "",
+    emergency_contact_relation_2: "",
+    designation: "",
+    department: "",
+    hire_date: "",
+    dob: "",
+    leave_days: "",
+    shift_pattern: "",
+    status: "active",
+    blood_group: "",
+    id_proof_type: "Aadhaar",
+    id_number: "",
+    image: null,
+    id_proof: null,
+    user_id: "",
+    property_id: "",
+    property_ids: [],
+    // visa fields (for foreigner)
+    visa_number: "",
+    visa_issue_date: "",
+    visa_expiry_date: "",
+
+    // for ID proof type "Other"
+    other_id_proof: "",
+    nationality: "",
+    country: ""
+}
+
+type FormError = {
+    type: "required" | "invalid";
+    message: string;
+};
+
+const stripIndiaCountryCode = (value?: string | null) => {
+    if (!value) return "";
+    const digits = String(value).replace(/\D/g, "");
+
+    if (digits.length === 12 && digits.startsWith("91")) {
+        return digits.slice(2);
+    }
+
+    if (digits.length === 10) {
+        return digits;
+    }
+
+    return digits;
+};
+
+export default function StaffManagement() {
+    const [sheetOpen, setSheetOpen] = useState(false);
+    const [mode, setMode] = useState<"add" | "edit" | "view">("add");
+    const [sheetTab, setSheetTab] = useState<"summary" | "history">("summary");
+
+    const [searchInput, setSearchInput] = useState("");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [selectedPropertyId, setSelectedPropertyId] = useState("");
+
+    const [statusFilter, setStatusFilter] = useState("");
+
+    const [staff, setStaff] = useState<Staff>(STAFF_INITIAL_VALUE);
+    const [idProofMode, setIdProofMode] = useState<"select" | "other">("select");
+    const [staffImageExists, setStaffImageExists] = useState(false);
+    const [staffIdProofExists, setStaffIdProofExists] = useState<boolean | null>(null);
+    const [formErrors, setFormErrors] = useState<Record<string, FormError>>({});
+    const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+    const [passwordStaffId, setPasswordStaffId] = useState<string | null>(null);
+    const [newPassword, setNewPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+
+
+    const viewMode = mode === "view";
+
+    const { page, limit, setPage, resetPage, handleLimitChange } = useGridPagination({
+        initialLimit: 10,
+        resetDeps: [selectedPropertyId, statusFilter, searchQuery],
+    });
+    const isLoggedIn = useAppSelector(state => state.isLoggedIn.value)
+    const { 
+        myProperties, 
+        staffProperty,
+        isMultiProperty, 
+        isSuperAdmin, 
+        isOwner,
+        isInitializing,
+        isLoading: myPropertiesLoading
+    } = useAutoPropertySelect(selectedPropertyId, setSelectedPropertyId);
+
+    const { data: staffData, isLoading, isFetching, refetch: refetchStaff } = useGetStaffByPropertyQuery({
+        property_id: selectedPropertyId,
+        page,
+        limit,
+        search: searchQuery,
+        department: "",
+        status: statusFilter,
+    }, {
+        skip: !isLoggedIn || !selectedPropertyId
+    });
+
+    const [createStaff, { isLoading: creating }] = useAddStaffMutation();
+    const [updateStaff, { isLoading: updating }] = useUpdateStaffMutation();
+    const [updateStaffPassword] = useUpdateStaffPasswordMutation()
+    const [getStaffById] = useLazyGetStaffByIdQuery();
+    const { data: roles } = useGetAllRolesQuery(undefined, {
+        skip: !isLoggedIn
+    })
+
+    const [itemAuditPage, setItemAuditPage] = useState(1);
+    const [itemAuditLimit, setItemAuditLimit] = useState(10);
+    const { data: staffAuditData, isLoading: staffAuditLoading, isFetching: staffAuditFetching } = useGetAuditLogsQuery(
+        { tableName: "staff", eventId: staff?.id, page: itemAuditPage, limit: itemAuditLimit },
+        { skip: !staff?.id || sheetTab !== "history" }
+    );
+
+    const [activeTab, setActiveTab] = useState<"staff" | "audit">("staff");
+
+    // Main History Tab State
+    const [mainAuditPage, setMainAuditPage] = useState(1);
+    const [mainAuditLimit, setMainAuditLimit] = useState(10);
+    const [historySearchInput, setHistorySearchInput] = useState("");
+    const [historySearchQuery, setHistorySearchQuery] = useState("");
+    const [historyActionFilter, setHistoryActionFilter] = useState("");
+
+    const {
+        data: globalAuditLogs,
+        isLoading: globalAuditLogsLoading,
+        isFetching: globalAuditLogsFetching,
+        refetch: refetchGlobalAuditLogs
+    } = useGetLogsByTableQuery({
+        tableName: "staff",
+        page: mainAuditPage,
+        limit: mainAuditLimit,
+    }, {
+        skip: !isLoggedIn || activeTab !== "audit"
+    });
+
+    const paginatedHistoryLogs = useMemo(() => {
+        let rows = globalAuditLogs?.data ?? [];
+        if (historySearchQuery) {
+            const lowerQuery = historySearchQuery.toLowerCase();
+            rows = rows.filter((r: any) =>
+                r.event_type?.toLowerCase().includes(lowerQuery) ||
+                r.user_name?.toLowerCase().includes(lowerQuery) ||
+                r.user_first_name?.toLowerCase().includes(lowerQuery) ||
+                (r.event_id && formatModuleDisplayId("staff", r.event_id).toLowerCase().includes(lowerQuery))
+            );
+        }
+        if (historyActionFilter) {
+            rows = rows.filter((r: any) => r.event_type?.toUpperCase() === historyActionFilter.toUpperCase());
+        }
+        return rows;
+    }, [globalAuditLogs?.data, historySearchQuery, historyActionFilter]);
+
+    const historyTotalRecords = globalAuditLogs?.pagination?.totalItems ?? globalAuditLogs?.pagination?.total ?? 0;
+    const historyTotalPages = globalAuditLogs?.pagination?.totalPages ?? 1;
+
+    const historyActionOptions = useMemo(() => {
+        return ["CREATE", "UPDATE", "DELETE"];
+    }, []);
+
+    const resetHistoryFilters = () => {
+        setHistorySearchInput("");
+        setHistorySearchQuery("");
+        setHistoryActionFilter("");
+        setMainAuditPage(1);
+    };
+
+    const refreshHistoryGrid = async () => {
+        if (globalAuditLogsFetching) return;
+        const toastId = toast.loading("Refreshing data...");
+        try {
+            await refetchGlobalAuditLogs();
+            toast.dismiss(toastId);
+            toast.success("Data refreshed");
+        } catch {
+            toast.dismiss(toastId);
+            toast.error("Failed to refresh data");
+        }
+    };
+
+    const exportHistoryLogs = () => {
+        if (!paginatedHistoryLogs.length) return toast.info("No history rows to export");
+        const formatted = paginatedHistoryLogs.map((audit: any) => {
+            let details: any = null;
+            try {
+                details = typeof audit.details === "string" ? JSON.parse(audit.details) : audit.details;
+            } catch {}
+            
+            let changeText = "--";
+            if (details) {
+                changeText = getAuditChangePlainText(details);
+            }
+
+            return {
+                "Staff ID": formatModuleDisplayId("staff", audit.event_id),
+                "Action": formatAuditActionText(audit.event_type),
+                "Change": changeText,
+                "User": `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim() || audit.user_name || "System",
+                "Date & Time": formatAppDateTime(audit.created_on),
+            };
+        });
+        exportToExcel(formatted, "Staff-History.xlsx");
+        toast.success("Export completed");
+    };
+
+    useEffect(() => {
+        if (sheetOpen) return
+        setStaff(STAFF_INITIAL_VALUE)
+        setFormErrors({})
+    }, [sheetOpen])
+
+    // Hook handles all initialization logic now
+
+    useEffect(() => {
+        if (mode === "edit" && staff.id) {
+            const img = new Image();
+            img.src = `${import.meta.env.VITE_API_URL}/staff/${staff.id}/image`;
+
+            img.onload = () => setStaffImageExists(true);
+            img.onerror = () => setStaffImageExists(false);
+        } else {
+            setStaffImageExists(false);
+        }
+    }, [mode, staff.id]);
+
+    useEffect(() => {
+        if (mode === "edit" && staff.id) {
+            const img = new Image();
+            img.src = `${import.meta.env.VITE_API_URL}/staff/${staff.id}/id-proof`;
+
+            img.onload = () => setStaffIdProofExists(true);
+            img.onerror = () => setStaffIdProofExists(false);
+        } else {
+            setStaffIdProofExists(false);
+        }
+    }, [mode, staff.id]);
+
+    const downloadImage = async (url: string, filename = "staff-image.jpg") => {
+        try {
+            const res = await fetch(url);
+            const blob = await res.blob();
+
+            const blobUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = blobUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(blobUrl);
+        } catch (err) {
+            console.error("Image download failed", err);
+            toast.error("Failed to download image");
+        }
+    };
+
+    const handleSubmit = async () => {
+        try {
+            if (mode === "view") return;
+
+            const errors = validateStaff(
+                staff,
+                mode,
+                staffIdProofExists,
+                roles?.roles || [],
+                isSuperAdmin
+            );
+
+            setFormErrors(errors);
+
+            const hasErrors = Object.keys(errors).length > 0;
+            if (hasErrors) {
+                toast.error("Please fill all the fields correctly"); // show first error
+                return;
+            }
+
+            if (mode === "add" && staff.role_ids.length === 0) {
+                toast.error("Please select a role")
+                return
+            }
+
+            const fd = new FormData()
+
+            Object.entries(staff).forEach(([key, value]) => {
+                if (
+                    value === null ||
+                    value === "" ||
+                    key === "id" ||
+                    key === "image" ||
+                    key === "id_proof" ||
+                    key === "roles" ||
+                    key === "phone" ||
+                    key === "phone1" ||
+                    key === "phone2" ||
+                    key === "emergency_contact" ||
+                    key === "emergency_contact_2" ||
+                    key === "phone1_country_code" ||
+                    key === "phone2_country_code" ||
+                    key === "emergency_contact_country_code" ||
+                    key === "emergency_contact_2_country_code" ||
+                    key === "phone_country_code"
+                ) {
+                    return
+                }
+
+                if (Array.isArray(value)) {
+                    value.forEach((v) => fd.append(`${key}[]`, String(v)))
+                } else {
+                    fd.append(key, String(value))
+                }
+            })
+
+            if (staff.image instanceof File) {
+                fd.append("image", staff.image)
+                fd.append("image_mime", staff.image.type)
+            }
+
+            if (staff.id_proof instanceof File) {
+                fd.append("id_proof", staff.id_proof)
+                fd.append("id_proof_mime", staff.id_proof.type)
+            }
+
+            // Manually append phone numbers with their respective country codes
+            if (staff.phone1?.trim()) {
+                fd.append("phone1", `${staff.phone1_country_code || "+91"} ${staff.phone1.trim()}`);
+            }
+            if (staff.phone?.trim()) {
+                fd.append("phone", `${staff.phone_country_code || "+91"} ${staff.phone.trim()}`);
+            }
+            if (staff.phone2?.trim()) {
+                fd.append("phone2", `${staff.phone2_country_code || "+91"} ${staff.phone2.trim()}`);
+            }
+            if (staff.emergency_contact?.trim()) {
+                fd.append("emergency_contact", `${staff.emergency_contact_country_code || "+91"} ${staff.emergency_contact.trim()}`);
+            }
+            if (staff.emergency_contact_2?.trim()) {
+                fd.append("emergency_contact_2", `${staff.emergency_contact_2_country_code || "+91"} ${staff.emergency_contact_2.trim()}`);
+            }
+
+            const promise =
+                mode === "add"
+                    ? createStaff(fd).unwrap()
+                    : updateStaff({ id: staff.id, payload: fd }).unwrap()
+
+            await toast.promise(promise, {
+                pending:
+                    mode === "add"
+                        ? "Creating user & staff..."
+                        : "Updating staff...",
+                success:
+                    mode === "add"
+                        ? "Staff created successfully"
+                        : "Staff updated successfully",
+                error: "Something went wrong",
+            })
+
+            setSheetOpen(false)
+        } catch (err) {
+            console.error("Staff submit failed", err)
+        }
+    }
+
+    const excludedRoles = isSuperAdmin ? ["SUPER_ADMIN"]
+        : isOwner
+            ? ["SUPER_ADMIN", "OWNER"]
+            : ["SUPER_ADMIN", "OWNER", "ADMIN"];
+
+    const toDateInput = (value?: string) =>
+        value ? value.split("T")[0] : "";
+
+    const parseDate = (value?: string) =>
+        value ? new Date(value) : null;
+
+    const formatDate = (date: Date | null) => {
+        if (!date) return "";
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, "0");
+        const d = String(date.getDate()).padStart(2, "0");
+        return `${y}-${m}-${d}`;   // local timezone safe
+    };
+
+    const openPasswordModal = (staffMember: Staff) => {
+        setPasswordStaffId(staffMember.user_id || null);
+        setPasswordModalOpen(true);
+    };
+
+    const handlePasswordUpdate = async () => {
+
+        if (newPassword.length < 6) {
+            toast.error("Password must be at least 6 characters long")
+            return
+        }
+
+        if (newPassword !== confirmPassword) {
+            toast.error("Passwords do not match");
+            return;
+        }
+
+        const payload = {
+            password: newPassword,
+            user_id: passwordStaffId
+        }
+
+        await apiToast(
+            updateStaffPassword(payload).unwrap(),
+            "Password Updated Successfully"
+        )
+
+        setPasswordModalOpen(false);
+        setNewPassword("");
+        setConfirmPassword("");
+    };
+
+
+    const location = useLocation();
+    const { permission } = usePermission(location.pathname);
+    const staffRows = useMemo(() => staffData?.data ?? [], [staffData?.data]);
+    const hasStaffSearchOrFilter = Boolean(searchInput.trim() || searchQuery.trim() || statusFilter);
+    const staffEmptyText = hasStaffSearchOrFilter
+        ? "No staff found for this search"
+        : "No staff added yet";
+
+    const resetFiltersHandler = () => {
+        setSearchInput("");
+        setSearchQuery("");
+        setStatusFilter("");
+        resetPage();
+    };
+
+    const refreshTable = async () => {
+        if (isFetching) return;
+        const toastId = toast.loading("Refreshing data...");
+
+        try {
+            await refetchStaff();
+            toast.dismiss(toastId);
+            toast.success("Data refreshed");
+        } catch {
+            toast.dismiss(toastId);
+            toast.error("Failed to refresh data");
+        }
+    };
+
+    const [getStaffForExport, { isFetching: exportingStaff }] = useLazyGetStaffByPropertyQuery();
+
+    const exportStaffSheet = async () => {
+        if (exportingStaff) return;
+        const totalRecords = staffData?.pagination?.totalItems ?? staffData?.pagination?.total ?? staffRows.length;
+        if (!totalRecords) {
+            toast.info("No staff items to export");
+            return;
+        }
+        const toastId = toast.loading("Preparing staff export...");
+
+        try {
+            const res = await getStaffForExport({
+                property_id: selectedPropertyId,
+                search: searchQuery.trim(),
+                status: statusFilter,
+                export: true
+            }).unwrap();
+
+            if (!res?.data?.length) {
+                toast.dismiss(toastId);
+                toast.info("No staff items to export");
+                return;
+            }
+
+            const formatted = res.data.map((staffMember: Staff) => ({
+                "Staff ID": formatModuleDisplayId("staff", staffMember.id),
+                "Name": `${staffMember.first_name || ""} ${staffMember.last_name || ""}`.trim() || "-",
+                "Contact": staffMember.phone || staffMember.phone1 || "-",
+                "Role": (function () {
+                    if (Array.isArray(staffMember.roles) && staffMember.roles.length > 0) {
+                        return staffMember.roles.map((r: any) => typeof r === "string" ? r?.toUpperCase() : r.name?.toUpperCase()).filter(Boolean).join(", ");
+                    }
+                    if (Array.isArray(staffMember.role_ids) && staffMember.role_ids.length > 0 && Array.isArray(roles?.roles)) {
+                        return staffMember.role_ids.map(id => roles.roles.find((r: any) => String(r.id) === String(id))?.name?.toUpperCase()).filter(Boolean).join(", ") || "-";
+                    }
+                    if ((staffMember as any).role_id && Array.isArray(roles?.roles)) {
+                        return roles.roles.find((r: any) => String(r.id) === String((staffMember as any).role_id))?.name?.toUpperCase() || "-";
+                    }
+                    return "-";
+                })(),
+                "Joining Date": formatAppDate(staffMember.hire_date),
+                "Status": staffMember.status || "-",
+            }));
+
+            exportToExcel(formatted, "Staff.xlsx");
+            toast.dismiss(toastId);
+            toast.success("Export completed");
+        } catch (error) {
+            toast.dismiss(toastId);
+            toast.error("Failed to export staff");
+        }
+    };
+
+    const openStaffDetails = async (staffMember: Staff, forceMode: "view" | "edit" = "view") => {
+        try {
+            setMode(forceMode);
+            setSheetTab("summary");
+            setSheetOpen(true);
+
+            const data = await getStaffById(staffMember.id!).unwrap();
+            const fullStaff = data?.data;
+
+            setStaff({
+                ...STAFF_INITIAL_VALUE,
+                ...fullStaff,
+                phone: stripIndiaCountryCode(fullStaff.phone || fullStaff.phone1),
+                phone1: stripIndiaCountryCode(fullStaff.phone1),
+                phone2: stripIndiaCountryCode(fullStaff.phone2),
+                emergency_contact: stripIndiaCountryCode(fullStaff.emergency_contact),
+                emergency_contact_2: stripIndiaCountryCode(fullStaff.emergency_contact_2),
+                role_ids: fullStaff.roles?.length
+                    ? [String(fullStaff.roles[0].id)]
+                    : [],
+                property_ids: fullStaff.assigned_properties?.length 
+                    ? fullStaff.assigned_properties.map((p: any) => p.id) 
+                    : (fullStaff.property_id ? [fullStaff.property_id] : []),
+                hire_date: toDateInput(fullStaff.hire_date),
+                dob: toDateInput(fullStaff.dob),
+                image: null,
+                id_proof: null,
+            });
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const staffColumns = useMemo<ColumnDef<Staff>[]>(() => [
+        {
+            label: "Staff ID",
+            headClassName: "text-center",
+            cellClassName: "text-center font-medium min-w-[90px]",
+            render: (s) => (
+                <button
+                    type="button"
+                    className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-sm"
+                    onClick={() => openStaffDetails(s, "view")}
+                    aria-label={`Open summary view for staff ${formatModuleDisplayId("staff", s.id)}`}
+                >
+                    {formatModuleDisplayId("staff", s.id)}
+                </button>
+            ),
+        },
+        {
+            label: "Name",
+            cellClassName: "font-medium",
+            render: (s) => (
+                <div className="flex items-center gap-3">
+                    <Avatar className="h-8 w-8 rounded-[3px] border border-border">
+                        <AvatarImage src={typeof s.image === "string" ? s.image : ""} />
+                        <AvatarFallback className="rounded-[3px] bg-primary/10 text-primary font-bold text-[10px]">
+                            {s.first_name?.[0]}{s.last_name?.[0]}
+                        </AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col">
+                        <span className="text-sm font-semibold whitespace-nowrap">{s.first_name} {s.last_name}</span>
+                        <span className="text-xs text-muted-foreground leading-none">{s.email || "No email"}</span>
+                    </div>
+                </div>
+            ),
+        },
+        {
+            label: "Contact",
+            cellClassName: "text-muted-foreground text-sm whitespace-nowrap",
+            render: (s) => (
+                <div className="inline-flex items-center gap-1.5 text-muted-foreground">
+                    <Phone className="h-3.5 w-3.5" />
+                    <span>{s.phone || s.phone1 || "-"}</span>
+                </div>
+            ),
+        },
+        {
+            label: "Role",
+            cellClassName: "text-muted-foreground text-sm",
+            render: (s) => {
+                // 1. Try s.roles (array of objects)
+                if (Array.isArray(s.roles) && s.roles.length > 0) {
+                    return s.roles
+                        .map((r: any) => typeof r === "string" ? formatReadableLabel(r)?.toUpperCase() : formatReadableLabel(r.name)?.toUpperCase())
+                        .filter(Boolean)
+                        .join(", ");
+                }
+
+                // 2. Try s.role_ids (array of IDs) mapping against master roles
+                if (Array.isArray(s.role_ids) && s.role_ids.length > 0 && Array.isArray(roles?.roles)) {
+                    return s.role_ids
+                        .map(id => {
+                            const found = roles.roles.find((r: any) => String(r.id) === String(id));
+                            return found ? formatReadableLabel(found.name)?.toUpperCase() : null;
+                        })
+                        .filter(Boolean)
+                        .join(", ") || "-";
+                }
+
+                // 3. Fallback to s.role_id (singular)
+                if ((s as any).role_id && Array.isArray(roles?.roles)) {
+                    const found = roles.roles.find((r: any) => String(r.id) === String((s as any).role_id));
+                    if (found) return formatReadableLabel(found.name)?.toUpperCase();
+                }
+
+                return "-";
+            },
+        },
+        {
+            label: "Joining Date",
+            cellClassName: "text-muted-foreground text-sm",
+            render: (s) => formatAppDate(s.hire_date),
+        },
+        {
+            label: "Status",
+            headClassName: "text-center",
+            cellClassName: "text-center whitespace-nowrap",
+            render: (s) => (
+                <GridBadge status={s.status} statusType="staff" className="min-w-[88px]">
+                    {s.status}
+                </GridBadge>
+            ),
+        },
+    ], [roles?.roles]);
+
+    const auditColumns: ColumnDef<any>[] = useMemo(() => [
+
+        {
+            label: "Action",
+            cellClassName: "whitespace-nowrap",
+            render: (row) => getAuditActionBadge(row.event_type)
+        },
+        {
+            label: "Updated By",
+            render: (row) => `${row.user_first_name || ""} ${row.user_last_name || ""}`.trim() || "--",
+            cellClassName: "whitespace-nowrap"
+        },
+        {
+            label: "Date & Time",
+            headClassName: "text-white",
+            render: (row) => formatAppDate(row.created_on, true),
+            cellClassName: "text-muted-foreground whitespace-nowrap"
+        },
+        {
+            label: "Changes",
+            cellClassName: "py-2",
+            render: (row) => {
+                let parsed = row.details;
+                if (typeof parsed === 'string') {
+                    try { parsed = JSON.parse(parsed); } catch { }
+                }
+                return (
+                    <div className="max-w-[400px] whitespace-normal">
+                        {getFormattedAuditChanges(parsed)}
+                    </div>
+                );
+            }
+        }
+    ], [itemAuditPage, itemAuditLimit, staff?.id]);
+
+    return (
+        <div className="flex flex-col">
+            <section className="p-4 lg:p-6 space-y-4">
+                <div className="flex items-center justify-between w-full">
+                    <div className="flex flex-col">
+                        <h1 className="text-2xl font-bold leading-tight">Staff</h1>
+                        <p className="text-sm text-muted-foreground">
+                            Manage your hotel staff and their roles
+                        </p>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        {isMultiProperty && (
+                            <div className="flex items-center h-10 border border-border bg-background rounded-[3px] text-sm overflow-hidden shadow-sm min-w-[240px]">
+                                <span className="px-3 bg-muted/40 text-muted-foreground text-[11px] font-bold tracking-wide whitespace-nowrap flex items-center border-r border-border h-full min-w-[70px] justify-center">
+                                    Property
+                                </span>
+                                <div className="flex-1 min-w-0 h-full">
+                                    <MenuItemSelect
+                                        value={selectedPropertyId}
+                                        items={myProperties?.properties?.map((p: Property) => ({ id: p.id, label: p.brand_name })) || []}
+                                        onSelect={(val) => {
+                                            setSelectedPropertyId(val as string);
+                                            resetPage();
+                                        }}
+                                        itemName="label"
+                                        placeholder="Select Property"
+                                        extraClasses="border-0 rounded-none h-full shadow-none focus-visible:ring-0 bg-transparent px-2"
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {permission?.can_create && (
+                            <Button
+                                variant="hero"
+                                className="h-10"
+                                onClick={() => {
+                                    setMode("add");
+                                    setSheetTab("summary");
+                                    setStaff({ ...STAFF_INITIAL_VALUE, property_id: selectedPropertyId || "", property_ids: selectedPropertyId ? [selectedPropertyId] : [] });
+                                    setFormErrors({});
+                                    setSheetOpen(true);
+                                }}
+                            >
+                                Add Staff
+                            </Button>
+                        )}
+                    </div>
+                </div>
+
+                <div className="border-b border-border flex">
+                    <button
+                        onClick={() => setActiveTab("staff")}
+                        className={cn(
+                            "px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px]",
+                            activeTab === "staff"
+                                ? "border-primary text-primary"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        Staff
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("audit")}
+                        className={cn(
+                            "px-6 py-3 text-sm font-semibold transition-all border-b-2 -mb-[2px]",
+                            activeTab === "audit"
+                                ? "border-primary text-primary"
+                                : "border-transparent text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        History
+                    </button>
+                </div>
+
+                {activeTab === "staff" && (
+                <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
+                    <div className="w-full">
+                        <GridToolbar className="border-b-0">
+                            <GridToolbarRow className="gap-2">
+                                <GridToolbarSearch
+                                    value={searchInput}
+                                    onChange={(value) => {
+                                        setSearchInput(value);
+                                        if (!value.trim()) {
+                                            setSearchQuery("");
+                                            resetPage();
+                                        }
+                                    }}
+                                    onSearch={() => {
+                                        setSearchQuery(searchInput.trim());
+                                        resetPage();
+                                    }}
+                                />
+
+                                <GridToolbarSelect
+                                    label="Status"
+                                    value={statusFilter}
+                                    onChange={(value) => {
+                                        setStatusFilter(value);
+                                        resetPage();
+                                    }}
+                                    options={[
+                                        { label: "All", value: "" },
+                                        ...STAFF_STATUSES.map((s) => ({ 
+                                            label: s, 
+                                            value: s 
+                                        })),
+                                    ]}
+                                />
+
+                                <GridToolbarActions
+                                    className="gap-1 justify-end"
+                                    actions={[
+                                        {
+                                            key: "export",
+                                            label: "Export Staff",
+                                            icon: <Download className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: exportStaffSheet,
+                                        },
+                                        {
+                                            key: "reset",
+                                            label: "Reset Filters",
+                                            icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: resetFiltersHandler,
+                                        },
+                                        {
+                                            key: "refresh",
+                                            label: "Refresh Data",
+                                            icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                            onClick: refreshTable,
+                                            disabled: isFetching,
+                                        },
+                                    ]}
+                                />
+                            </GridToolbarRow>
+                        </GridToolbar>
+                    </div>
+
+                    <div className="px-2 pb-2">
+                        <AppDataGrid
+                            density="compact"
+                            columns={staffColumns}
+                            data={staffRows}
+                            loading={isLoading || isFetching || isInitializing}
+                            emptyText={staffEmptyText}
+                            minWidth="700px"
+                            rowKey={(s: Staff) => s.id || ""}
+                            actionLabel=""
+                            actionClassName="text-center w-[96px]"
+                             showActions={permission?.can_create}
+                            actions={(s: Staff) => (
+                                <div className="flex justify-center gap-2">
+                                    {permission?.can_create && (
+                                        <>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="h-7 w-7 bg-primary hover:bg-primary/80 text-white transition-all focus-visible:ring-2 rounded-[3px] shadow-md"
+                                                        aria-label={`View and edit details for ${s.first_name} ${s.last_name}`}
+                                                        onClick={() => openStaffDetails(s, "edit")}
+                                                    >
+                                                        <Pencil className="w-3.5 h-3.5 mx-auto" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>View / Edit Details</TooltipContent>
+                                            </Tooltip>
+
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        size="icon"
+                                                        variant="outline"
+                                                        className="h-7 w-7 rounded-[3px] shadow-sm"
+                                                        onClick={() => openPasswordModal(s)}
+                                                        aria-label={`Update password for ${s.first_name} ${s.last_name}`}
+                                                    >
+                                                        <KeyRound className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>Update Password</TooltipContent>
+                                            </Tooltip>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                            enablePagination={!!staffData?.pagination}
+                            paginationProps={{
+                                page,
+                                totalPages: staffData?.pagination?.totalPages ?? 1,
+                                setPage,
+                                disabled: isFetching || !staffData,
+                                totalRecords: staffData?.pagination?.totalItems ?? staffData?.pagination?.total ?? staffData?.data?.length ?? 0,
+                                limit,
+                                onLimitChange: handleLimitChange,
+                            }}
+                        />
+                    </div>
+                </div>
+                )}
+
+                {activeTab === "audit" && (
+                    <div className="flex-1">
+                        <div className="grid-header border border-border rounded-[3px] overflow-x-auto bg-background flex flex-col min-h-0">
+                            <div className="w-full">
+                                <GridToolbar className="border-b-0">
+                                    <GridToolbarRow className="gap-2">
+                                        <GridToolbarSearch
+                                            value={historySearchInput}
+                                            onChange={setHistorySearchInput}
+                                            onSearch={() => {
+                                                setHistorySearchQuery(historySearchInput.trim());
+                                                setMainAuditPage(1);
+                                            }}
+
+                                        />
+
+                                        <GridToolbarSelect
+                                            label="Action"
+                                            value={historyActionFilter}
+                                            onChange={(value) => {
+                                                setHistoryActionFilter(value);
+                                                setMainAuditPage(1);
+                                            }}
+                                            options={[
+                                                { label: "All", value: "" },
+                                                ...historyActionOptions.map((action) => ({
+                                                    label: action,
+                                                    value: action,
+                                                })),
+                                            ]}
+                                        />
+
+                                        <GridToolbarActions
+                                            className="gap-1 justify-end"
+                                            actions={[
+                                                {
+                                                    key: "export",
+                                                    label: "Export History",
+                                                    icon: <Download className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: exportHistoryLogs,
+                                                },
+                                                {
+                                                    key: "reset",
+                                                    label: "Reset Filters",
+                                                    icon: <FilterX className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: resetHistoryFilters,
+                                                },
+                                                {
+                                                    key: "refresh",
+                                                    label: "Refresh Data",
+                                                    icon: <RefreshCcw className="w-4 h-4 text-foreground/80 hover:text-foreground" />,
+                                                    onClick: refreshHistoryGrid,
+                                                    disabled: globalAuditLogsFetching,
+                                                },
+                                            ]}
+                                        />
+                                    </GridToolbarRow>
+                                </GridToolbar>
+                            </div>
+                            <div className="px-2 pb-2">
+                                <AppDataGrid
+                                    data={paginatedHistoryLogs}
+                                    loading={globalAuditLogsLoading || globalAuditLogsFetching}
+                                    rowKey={(audit: any) => audit.id}
+                                    emptyText="No history logs found."
+                                    showActions={false}
+                                    enablePagination={true}
+                                    paginationProps={{
+                                        page: mainAuditPage,
+                                        setPage: setMainAuditPage,
+                                        totalPages: historyTotalPages,
+                                        disabled: globalAuditLogsFetching,
+                                        totalRecords: historyTotalRecords,
+                                        limit: mainAuditLimit,
+                                        onLimitChange: (limit) => {
+                                            setMainAuditLimit(limit);
+                                            setMainAuditPage(1);
+                                        }
+                                    }}
+                                    columns={[
+                                        {
+                                            label: "Staff ID",
+                                            headClassName: "text-center w-[120px]",
+                                            cellClassName: "text-center font-medium text-primary min-w-[120px]",
+                                            render: (audit: any) => audit.event_id ? formatModuleDisplayId("staff", audit.event_id) : "—",
+                                        },
+                                        {
+                                            label: "Action",
+                                            headClassName: "text-center w-[140px]",
+                                            cellClassName: "text-center font-medium min-w-[140px]",
+                                            render: (audit: any) => getAuditActionBadge(audit.event_type),
+                                        },
+                                        {
+                                            label: "Change",
+                                            headClassName: "w-[320px]",
+                                            cellClassName: "min-w-[320px] whitespace-normal text-primary/80 font-medium",
+                                            render: (audit: any) => {
+                                                let parsed = audit.details;
+                                                if (typeof parsed === 'string') {
+                                                    try { parsed = JSON.parse(parsed); } catch { }
+                                                }
+                                                return getFormattedAuditChanges(parsed);
+                                            },
+                                        },
+                                        {
+                                            label: "User",
+                                            headClassName: "w-[180px]",
+                                            cellClassName: "text-muted-foreground min-w-[180px]",
+                                            render: (audit: any) => `${audit.user_first_name || ""} ${audit.user_last_name || ""}`.trim() || audit.user_name || "System",
+                                        },
+                                        {
+                                            label: "Date & Time",
+                                            headClassName: "text-white w-[180px]",
+                                            cellClassName: "text-muted-foreground min-w-[180px]",
+                                            render: (audit: any) => formatAppDateTime(audit.created_on),
+                                        },
+                                    ] as ColumnDef[]}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+            </section>
+    <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+                <SheetContent side="right" className="w-full lg:max-w-5xl sm:max-w-4xl overflow-y-auto bg-background p-0">
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex flex-col h-full"
+                    >
+                        <SheetHeader className="px-6 py-4 border-b border-border relative">
+                            <div className="space-y-1">
+                                <SheetTitle className="text-xl font-bold">
+                                    {mode === "add" ? "Register New Staff" : mode === "edit" ? `Update Staff Member ${staff?.id ? `[#${formatModuleDisplayId("staff", staff.id)}]` : "..."}` : `Staff ${staff?.id ? `[#${formatModuleDisplayId("staff", staff.id)}]` : "..."}`}
+                                </SheetTitle>
+                              <p className="text-xs text-muted-foreground font-medium tracking-wide">
+                                    {mode === "add" ? "Create new profile for hotel personnel" : mode === "edit" ? "Modify existing staff member information" : "Detailed profile information of staff member"}
+                                </p>
+                            </div>
+                        </SheetHeader>
+
+                        <div className="px-6 pb-6 pt-4 flex-1 space-y-5">
+                        {viewMode ? (
+
+                            <div className="space-y-4">
+                                <div className="border-b border-border flex">
+                                    <button
+                                        onClick={() => setSheetTab("summary")}
+                                        className={cn(
+                                            "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
+                                            sheetTab === "summary"
+                                                ? "border-primary text-primary"
+                                                : "border-transparent text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        Summary
+                                    </button>
+                                    <button
+                                        onClick={() => setSheetTab("history")}
+                                        className={cn(
+                                            "px-4 py-2 text-xs font-bold tracking-widest transition-all border-b-2 -mb-[2px]",
+                                            sheetTab === "history"
+                                                ? "border-primary text-primary"
+                                                : "border-transparent text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        History
+                                    </button>
+                                </div>
+
+                                {sheetTab === "summary" && (
+                                    <div className="space-y-4">
+                                        <CardSectionView 
+                                            title="Personal Details" 
+                                            titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal"
+                                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4"
+                                        >
+                                            <ViewField label="First Name" value={staff.first_name} />
+                                            <ViewField label="Middle Name" value={staff.middle_name} />
+                                            <ViewField label="Last Name" value={staff.last_name} />
+                                            <ViewField label="Gender" value={staff.gender} />
+                                            <ViewField label="Marital Status" value={staff.marital_status} />
+                                            <ViewField 
+                                                label="DOB" 
+                                                value={formatAppDate(staff.dob)} 
+                                            />
+                                            <ViewField label="Nationality" value={staff.nationality} />
+                                            <ViewField label="Blood Group" value={staff.blood_group} />
+                                        </CardSectionView>
+
+                                        <CardSectionView 
+                                            title="Contact & Login" 
+                                            titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal"
+                                            className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-4"
+                                        >
+                                            <ViewField label="Email" value={staff.email} />
+                                            <ViewField label="Phone" value={staff.phone1} />
+                                            <ViewField label="Alternate Phone" value={staff.phone2} />                          
+                                            <ViewField label="Address" value={staff.address} className="sm:col-span-2" />
+                                            <ViewField label="Country" value={staff.country} />
+                                        </CardSectionView>
+
+                                        <CardSectionView 
+                                            title="Property & Role" 
+                                            titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal"
+                                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4"
+                                        >
+                                            <ViewField 
+                                                label="Property" 
+                                                className="col-span-full"
+                                                value={
+                                                    <div className="flex flex-wrap gap-2 p-2.5 bg-background rounded-[3px] border border-border/50 max-h-32 overflow-y-auto w-full">
+                                                        {staff.assigned_properties && staff.assigned_properties.length > 0
+                                                            ? staff.assigned_properties.map((p: any, idx: number) => (
+                                                                <GridBadge key={idx} tone="neutral" className="font-medium px-2 py-0.5 h-auto">
+                                                                    {p.name || p.brand_name}
+                                                                </GridBadge>
+                                                            ))
+                                                            : staff.property_ids && staff.property_ids.length > 0
+                                                                ? staff.property_ids.map((id, idx) => (
+                                                                    <GridBadge key={idx} tone="neutral" className="font-medium px-2 py-0.5 h-auto">
+                                                                        {myProperties?.properties?.find((p: Property) => String(p.id) === String(id))?.brand_name || id}
+                                                                    </GridBadge>
+                                                                ))
+                                                                : "-"}
+                                                    </div>
+                                                } 
+                                            />
+                                            <ViewField label="Department" value={staff.department} />
+                                            <ViewField label="Designation" value={staff.designation} />
+                                            <ViewField 
+                                                label="Role" 
+                                                value={
+                                                    staff.roles?.length 
+                                                        ? staff.roles.map(r => formatReadableLabel(r.name)?.toUpperCase()).join(", ") 
+                                                        : (formatReadableLabel(roles?.roles?.find((r: Role) => String(r.id) === String(staff.role_ids?.[0]))?.name)?.toUpperCase() || staff.role_ids?.[0])
+                                                } 
+                                            />
+                                            <ViewField label="Status" value={formatReadableLabel(staff.status)} />
+                                            <ViewField label="Shift Pattern" value={staff.shift_pattern || "General"} />
+                                            <ViewField label="Employment Type" value={staff.employment_type} />
+                                            <ViewField label="Joining Date" value={formatAppDate(staff.hire_date)} />
+                                            {String(roles?.roles?.find((r: Role) => String(r.id) === String(staff.role_ids?.[0]))?.name).toLowerCase() === "owner" && (
+                                                <ViewField label="Property Limit" value={staff.property_limit === null || staff.property_limit === "" ? "Unlimited" : staff.property_limit} />
+                                            )}
+                                        </CardSectionView>
+
+                                        <CardSectionView 
+                                            title="Emergency Contacts" 
+                                            titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal"
+                                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4"
+                                        >
+                                            <div className="space-y-4 p-3 bg-background rounded-[3px] border border-border/50">
+                                                <p className="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal">Primary Contact</p>
+                                                <ViewField label="Name" value={staff.emergency_contact_name} />
+                                                <ViewField label="Relation" value={staff.emergency_contact_relation} />
+                                                <ViewField label="Phone" value={staff.emergency_contact} />
+                                            </div>
+                                            <div className="space-y-4 p-3 bg-background rounded-[3px] border border-border/50">
+                                                <p className="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal">Secondary Contact</p>
+                                                <ViewField label="Name" value={staff.emergency_contact_name_2} />
+                                                <ViewField label="Relation" value={staff.emergency_contact_relation_2} />
+                                                <ViewField label="Phone" value={staff.emergency_contact_2} />
+                                            </div>
+                                        </CardSectionView>
+
+                                        <CardSectionView 
+                                            title="Identification" 
+                                            titleClassName="text-sm font-semibold text-primary/90 border-b-0 pb-0 mb-4 tracking-normal"
+                                            className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-4 items-end"
+                                        >
+                                            <ViewField label="ID Proof Type" value={staff.id_proof_type} />
+                                            <ViewField label="ID Number" value={staff.id_number} />
+                                            {staffIdProofExists && (
+                                                <Button 
+                                                    variant="heroOutline" 
+                                                    size="sm" 
+                                                    className="h-8 text-[10px]"
+                                                    onClick={() => downloadImage(staff.id!, "id-proof")}
+                                                >
+                                                    Download ID Proof
+                                                </Button>
+                                            )}
+                                        </CardSectionView>
+                                    </div>
+                                )}
+
+                                {sheetTab === "history" && (
+                                    <div className="border border-border rounded-lg overflow-hidden bg-background shadow-sm">
+                                        <AppDataGrid
+                                            columns={auditColumns}
+                                            data={staffAuditData?.data || []}
+                                            loading={staffAuditLoading || staffAuditFetching}
+                                            enablePagination={!!staffAuditData?.pagination}
+                                            paginationProps={{
+                                                page: itemAuditPage,
+                                                totalPages: staffAuditData?.pagination?.totalPages || 1,
+                                                setPage: setItemAuditPage,
+                                                disabled: staffAuditLoading || staffAuditFetching || !staffAuditData,
+                                                totalRecords: staffAuditData?.pagination?.total || 0,
+                                                limit: itemAuditLimit,
+                                                onLimitChange: (l) => {
+                                                    setItemAuditLimit(l);
+                                                    setItemAuditPage(1);
+                                                },
+                                            }}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                        ) : (
+                            <>
+                                {/* ================= PERSONAL DETAILS ================= */}
+
+                                <PersonalDetails
+                                    value={staff}
+                                    setValue={setStaff}
+                                    errors={formErrors}
+                                    setErrors={setFormErrors}
+                                    viewMode={viewMode}
+                                    mode={mode}
+                                    staffImageExists={staffImageExists}
+                                />
+
+                                {/* ================= CONTACT & LOGIN ================= */}
+
+                                <ContactLogin
+                                    value={staff}
+                                    setValue={setStaff}
+                                    errors={formErrors}
+                                    setErrors={setFormErrors}
+                                    viewMode={viewMode}
+                                    mode={mode}
+                                />
+
+                                {/* ================= PROPERTY & ROLE ================= */}
+
+                                <PropertyRoleAssignment
+                                    value={staff}
+                                    setValue={setStaff}
+                                    errors={formErrors}
+                                    setErrors={setFormErrors}
+                                    viewMode={viewMode}
+                                    roles={roles?.roles}
+                                    excludedRoles={excludedRoles}
+                                    properties={myProperties?.properties}
+                                    isSuperAdmin={isSuperAdmin}
+                                    myPropertiesLoading={myPropertiesLoading}
+                                    isPrivilegeUser={isSuperAdmin || isOwner}
+                                />
+
+                                {/* ================= EMERGENCY CONTACTS ================= */}
+
+                                <EmergencyContacts
+                                    value={staff}
+                                    setValue={setStaff}
+                                    errors={formErrors}
+                                    setErrors={setFormErrors}
+                                    viewMode={viewMode}
+                                />
+
+                                {/* ================= IDENTIFICATION ================= */}
+
+                                <IdentificationDocuments
+                                    value={staff}
+                                    setValue={setStaff}
+                                    errors={formErrors}
+                                    setErrors={setFormErrors}
+                                    viewMode={viewMode}
+                                    mode={mode}
+                                    idProofMode={idProofMode}
+                                    setIdProofMode={setIdProofMode}
+                                    staffIdProofExists={staffIdProofExists}
+                                    downloadImage={downloadImage}
+                                />
+                            </>
+
+                        )}
+
+                        <div className="-mx-6 -mb-6 px-6 py-4 border-t border-border bg-muted/20 flex justify-end gap-3 mt-4">
+
+                            <Button
+                                variant="heroOutline"
+                                onClick={() => setSheetOpen(false)}
+                            >
+                                {viewMode ? "Close" : "Cancel"}
+                            </Button>
+
+
+                            {/* CREATE */}
+                            {mode === "add" && permission?.can_create && (
+                                <Button
+                                    variant="hero"
+                                    disabled={creating || updating}
+                                    onClick={handleSubmit}
+                                >
+                                    Create Staff
+                                </Button>
+                            )}
+
+                            {/* UPDATE */}
+                            {mode === "edit" && permission?.can_create && (
+                                <Button
+                                    variant="hero"
+                                    disabled={creating || updating}
+                                    onClick={handleSubmit}
+                                >
+                                    Update
+                                </Button>
+                            )}
+
+                        </div>
+                        </div>
+                    </motion.div>
+                </SheetContent>
+            </Sheet>
+
+            <Dialog open={passwordModalOpen} onOpenChange={setPasswordModalOpen}>
+                <DialogContent>
+
+                    <DialogHeader>
+                        <DialogTitle>Update Password</DialogTitle>
+                    </DialogHeader>
+
+                    <div className="space-y-4">
+
+                        <div>
+                            <Label className="text-foreground">New Password</Label>
+                            <Input
+                                type="password"
+                                autoComplete="new-password"
+                                value={newPassword}
+                                className="h-11 rounded-[3px] border-border/70"
+                                onChange={(e) => setNewPassword(e.target.value)}
+                            />
+                        </div>
+
+                        <div>
+                            <Label className="text-foreground">Confirm Password</Label>
+                            <Input
+                                type="password"
+                                autoComplete="new-password"
+                                value={confirmPassword}
+                                className="h-11 rounded-[3px] border-border/70"
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="flex justify-end gap-2">
+                            <Button
+                                variant="heroOutline"
+                                onClick={() => setPasswordModalOpen(false)}
+                            >
+                                Cancel
+                            </Button>
+
+                            <Button
+                                variant="hero"
+                                onClick={handlePasswordUpdate}
+                            >
+                                Update Password
+                            </Button>
+                        </div>
+
+                    </div>
+
+                </DialogContent>
+            </Dialog>
+
+        </div>
+    );
+}

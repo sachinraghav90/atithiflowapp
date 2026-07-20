@@ -1,4 +1,4 @@
-import { hmsApi } from "@/redux/services/hmsApi";
+import { hmsApi } from "@/redux/services/hms-api";
 
 /**
  * Select permission object by endpoint from RTK Query cache
