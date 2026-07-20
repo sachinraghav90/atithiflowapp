@@ -1,7 +1,7 @@
 import { getDb } from "../utils/getDb.js"
 import role from "./services/Role.service.js"
 import StaffService from "./services/Staff.service.js"
-import supabase from "./services/Supabase.service.js"
+import supabase from "./services/supabase-service.js"
 import userService from "./services/user.service.js"
 
 class StaffOnboardingService {

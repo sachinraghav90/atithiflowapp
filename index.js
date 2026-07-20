@@ -49,6 +49,10 @@ if (missingVars.length > 0) {
 
 const app = express();
 
+if (process.env.NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
+
 // ==========================================
 // PRODUCTION SECURITY & PERFORMANCE LAYER
 // ==========================================
@@ -137,6 +141,11 @@ app.get("/health", (_req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+// Suppress 404s for common non-critical paths
+app.get("/", (_req, res) => res.status(200).send("AtithiFlow API"));
+app.head("/", (_req, res) => res.status(200).end());
+app.get("/favicon.ico", (_req, res) => res.status(204).end());
 
 // Global error handler
 app.use((err, req, res, next) => {

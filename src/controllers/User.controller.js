@@ -1,7 +1,7 @@
 import { roles } from "../../utils/roles.js";
 import propertyService from "../services/Property.service.js";
 import role from "../services/Role.service.js";
-import supabase from "../services/Supabase.service.js";
+import supabase from "../services/supabase-service.js";
 import userService from "../services/user.service.js";
 
 class User {

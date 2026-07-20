@@ -62,7 +62,7 @@ export async function supabaseAuth(req, res, next) {
 
 
 // import { getDb } from "../../utils/getDb.js";
-// import supabase from "../services/Supabase.service.js";
+// import supabase from "../services/supabase-service.js";
 // import user from "../services/user.service.js";
 
 // export async function supabaseAuth(req, res, next) {

@@ -1,7 +1,5 @@
 import { Pool } from "pg";
-import dotenv from "dotenv";
 
-dotenv.config();
 
 // Runtime app traffic must use DATABASE_URL.
 // DIRECT_URL may be used by one-off tools (e.g. migrations) separately.
