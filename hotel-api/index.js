@@ -57,7 +57,7 @@ app.use(cors({
 }))
 
 // 2. HTTP Security Headers
-app.use(helmet());
+app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
 
 // 3. GZIP Payload Compression
 app.use(compression());

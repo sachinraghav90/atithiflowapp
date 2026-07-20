@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from "react";
 import {
   Document,
@@ -8,7 +9,7 @@ import {
   Font,
   Image
 } from "@react-pdf/renderer";
-import { formatAppDate } from "@/utils/dateUtils";
+
 
 // Helper Functions
 const safeText = (value: any) => {
@@ -586,7 +587,7 @@ export default function BookingSummaryPDF({
 
         {/* Side-by-Side Booking & Rooms */}
       
-        <View style={styles.gridRow}>
+        <View style={[styles.gridRow, { alignItems: "flex-start" }]}>
           {/* Booking Info */}
           <View style={!booking?.has_guest_image ? { width: "100%" } : { flex: 1, marginRight: 16 }}>
             <View style={styles.sectionContainer}>
@@ -683,10 +684,10 @@ export default function BookingSummaryPDF({
 
           {/* Guest Photo */}
           {booking?.has_guest_image && (
-          <View style={{ width: 95 }}>
+          <View style={{ width: 120 }}>
             <View style={styles.sectionContainer}>
               <Text style={[styles.sectionTitle, { textAlign: "center" }]}>Photo</Text>
-              <View style={[styles.infoCard, { padding: 0, overflow: "hidden", minHeight: 0, height: 110 }]}>
+              <View style={[styles.infoCard, { padding: 0, overflow: "hidden", minHeight: 0, height: 150}]}>
                 <Image 
                   src={{
                     uri: `${import.meta.env.VITE_API_URL}/bookings/${booking.id}/guest-image`,

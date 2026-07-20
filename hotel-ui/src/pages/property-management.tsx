@@ -501,6 +501,15 @@ export default function PropertyManagement() {
     };
 
     const viewMode = mode === "view";
+    const mediaPropertyId = newProperty?.id ?? selectedProperty?.id ?? null;
+    const propertyImageUrl = useMemo(() => {
+        if (!mediaPropertyId) return "";
+        return `${import.meta.env.VITE_API_URL}/properties/${mediaPropertyId}/image`;
+    }, [mediaPropertyId]);
+    const propertyLogoUrl = useMemo(() => {
+        if (!mediaPropertyId) return "";
+        return `${import.meta.env.VITE_API_URL}/properties/${mediaPropertyId}/logo`;
+    }, [mediaPropertyId]);
     const propertyRows = useMemo(
         () =>
             (!propertiesLoading && !propertyUninitialized && !propertiesError)
@@ -810,10 +819,10 @@ export default function PropertyManagement() {
         try {
             const { id } = await promise
 
-            if (hasBankDetails) {
+            if (hasBankDetails || deletedBankIds.length > 0) {
                 await upsertPropertyBank({
                     propertyId: id,
-                    accounts: bankAccounts,
+                    accounts: hasBankDetails ? bankAccounts : [],
                     deletedIds: deletedBankIds,
                 }).unwrap();
             }
@@ -1421,12 +1430,20 @@ export default function PropertyManagement() {
                                         >
                                             {/* Left: Property Image Only */}
                                             <div>
-                                                {!imageError ? (
+                                                {!imageError && mediaPropertyId ? (
                                                     <div className="w-full aspect-video rounded-[5px] overflow-hidden bg-muted/60 border border-border/40">
                                                         <img
-                                                            src={`${import.meta.env.VITE_API_URL}/properties/${newProperty.id}/image`}
+                                                            src={propertyImageUrl}
                                                             className="w-full h-full object-cover"
-                                                            onError={() => setImageError(true)}
+                                                            alt="Property image"
+                                                            onError={(event) => {
+                                                                console.error("Property image load failed", {
+                                                                    id: mediaPropertyId,
+                                                                    url: propertyImageUrl,
+                                                                    error: event,
+                                                                });
+                                                                setImageError(true);
+                                                            }}
                                                         />
                                                     </div>
                                                 ) : (
@@ -1438,12 +1455,20 @@ export default function PropertyManagement() {
 
                                             {/* Right: Logo Above Property Details */}
                                             <div className="flex flex-col items-start gap-3">
-                                                {!logoError ? (
+                                                {!logoError && mediaPropertyId ? (
                                                     <div className="w-20 aspect-square rounded-[5px] overflow-hidden bg-muted/60 border border-border/40 flex items-center justify-center">
                                                         <img
-                                                            src={`${import.meta.env.VITE_API_URL}/properties/${newProperty.id}/logo`}
+                                                            src={propertyLogoUrl}
                                                             className="w-full h-full object-contain"
-                                                            onError={() => setLogoError(true)}
+                                                            alt="Property logo"
+                                                            onError={(event) => {
+                                                                console.error("Property logo load failed", {
+                                                                    id: mediaPropertyId,
+                                                                    url: propertyLogoUrl,
+                                                                    error: event,
+                                                                });
+                                                                setLogoError(true);
+                                                            }}
                                                         />
                                                     </div>
                                                 ) : (
@@ -1640,6 +1665,7 @@ export default function PropertyManagement() {
                                     errors={propertyErrors}
                                     setErrors={setPropertyErrors}
                                     viewMode={false}
+                                    mode={mode}
                                     imagePreview={imagePreview}
                                     setImagePreview={setImagePreview}
                                     selectedImageFile={selectedImageFile}

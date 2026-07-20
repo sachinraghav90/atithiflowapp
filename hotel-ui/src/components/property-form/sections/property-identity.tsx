@@ -1,6 +1,9 @@
 import { Label } from "@/components/ui/label";
 import { Image as ImageIcon } from "lucide-react";
 import FormInput from "@/components/forms/form-input";
+import { Switch } from "@/components/ui/switch";
+import { useAppSelector } from "@/redux/hook";
+import { selectIsSuperAdmin } from "@/redux/selectors/auth.selectors";
 
 type Props = {
     value: any;
@@ -10,6 +13,7 @@ type Props = {
     setErrors: (fn: (prev: any) => any) => void;
 
     viewMode: boolean;
+    mode?: "add" | "edit" | "view";
 
     imagePreview: string | null;
     setImagePreview: (v: string | null) => void;
@@ -32,6 +36,7 @@ export default function PropertyIdentity({
     errors,
     setErrors,
     viewMode,
+    mode,
 
     imagePreview,
     setImagePreview,
@@ -47,6 +52,8 @@ export default function PropertyIdentity({
     logoError,
     setLogoError,
 }: Props) {
+
+    const isSuperAdmin = useAppSelector(selectIsSuperAdmin);
 
     return (
         <div className="rounded-[5px] border border-border/40 bg-background p-4 shadow-sm">
@@ -71,6 +78,22 @@ export default function PropertyIdentity({
                         maxLength={150}
                     />
 
+                    {isSuperAdmin && mode === "edit" && !viewMode && (
+                        <div className="flex items-center gap-3 mt-2">
+                            <Label className="text-sm font-semibold">Status: </Label>
+                            <div className="flex items-center gap-2">
+                                <Switch
+                                    checked={value.is_active ?? true}
+                                    onCheckedChange={(checked) => {
+                                        setValue((prev: any) => ({ ...prev, is_active: checked }));
+                                    }}
+                                />
+                                <span className="text-sm text-muted-foreground font-medium">
+                                    {value.is_active ?? true ? "Active" : "Inactive"}
+                                </span>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* ================= RIGHT MEDIA ================= */}

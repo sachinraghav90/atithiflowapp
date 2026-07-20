@@ -38,7 +38,8 @@ export const hmsApi = createApi({
     "DeliveryPartners",
     "Audits",
     "RoomStatus",
-    "TodayInHouse"
+    "TodayInHouse",
+    "PropertyBanks"
   ],
   endpoints: (builder) => ({
 
@@ -731,7 +732,8 @@ export const hmsApi = createApi({
           url: `/property-banks/property/${propertyId}`,
           method: "GET",
         }
-      }
+      },
+      providesTags: (result, error, id) => [{ type: "PropertyBanks", id }]
     }),
 
     upsertPropertyBanks: builder.mutation({
@@ -741,7 +743,8 @@ export const hmsApi = createApi({
           method: "POST",
           body: { accounts, deletedIds }
         }
-      }
+      },
+      invalidatesTags: (result, error, { propertyId }) => [{ type: "PropertyBanks", id: propertyId }]
     }),
 
     getBookings: builder.query({

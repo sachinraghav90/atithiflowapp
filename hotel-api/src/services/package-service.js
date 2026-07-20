@@ -118,8 +118,7 @@ class PackageService {
             true AS system_generated,
             $2 AS created_by
         FROM public.ref_packages rp
-        ON CONFLICT (property_id, LOWER(package_name))
-        DO NOTHING
+        ON CONFLICT DO NOTHING
         `,
             [propertyId, userId]
         );
@@ -191,8 +190,7 @@ class PackageService {
             $1 AS created_by
         FROM public.properties p
         CROSS JOIN public.ref_packages rp
-        ON CONFLICT (property_id, LOWER(package_name))
-        DO NOTHING
+        ON CONFLICT DO NOTHING
         `,
             [userId]
         );

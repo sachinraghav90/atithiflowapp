@@ -87,7 +87,11 @@ class Property {
       });
 
       const id = property.id
-      await packageService.generatePackagesForProperty(id, userId)
+      try {
+        await packageService.generatePackagesForProperty(id, userId)
+      } catch (pkgErr) {
+        console.error("Failed to generate packages for property:", pkgErr);
+      }
 
       return res.status(201).json(property);
     } catch (err) {
@@ -95,7 +99,7 @@ class Property {
       if (err.statusCode === 400) {
         return res.status(400).json({ success: false, message: err.message });
       }
-      return res.status(500).json({ error: "Failed to create property" });
+      return res.status(500).json({ error: "Failed to create property: " + err.message });
     }
   }
 
@@ -115,9 +119,18 @@ class Property {
       const payload = {
         ...req.body,
       };
-      if (req.file) {
-        payload.image = req.file.buffer;
-        payload.image_mime = req.file.mimetype;
+
+      const imageFile = req.files?.image?.[0] ?? null;
+      const logoFile = req.files?.logo?.[0] ?? null;
+
+      if (imageFile) {
+        payload.image = imageFile.buffer;
+        payload.image_mime = imageFile.mimetype;
+      }
+
+      if (logoFile) {
+        payload.logo = logoFile.buffer;
+        payload.logo_mime = logoFile.mimetype;
       }
 
       const updated = await propertyService.update({
@@ -140,9 +153,17 @@ class Property {
   async getImage(req, res) {
     try {
       const id = req.params.id
-      if (!id || id == "null") return res.send()
-      const { image, image_mime } = await propertyService.getImage({ id })
-      res.setHeader('Content-Type', image_mime)
+      if (!id || id == "null") return res.status(404).end()
+      const result = await propertyService.getImage({ id })
+      const image = result?.image ?? null;
+      const imageMime = result?.image_mime || "application/octet-stream";
+      const hasImage = image != null && image !== "" && (typeof image === "string" ? image.length > 0 : image.length > 0);
+
+      if (!hasImage) {
+        return res.status(404).end();
+      }
+
+      res.setHeader('Content-Type', imageMime)
       return res.send(image)
     } catch (error) {
       console.log("🚀 ~ Property ~ getImage ~ error:", error)
@@ -153,13 +174,21 @@ class Property {
   async getLogo(req, res) {
     try {
       const id = req.params.id
-      if (!id || id == "null") return res.send()
-      const { logo, logo_mime } = await propertyService.getLogo({ id })
-      res.setHeader('Content-Type', logo_mime)
+      if (!id || id == "null") return res.status(404).end()
+      const result = await propertyService.getLogo({ id })
+      const logo = result?.logo ?? null;
+      const logoMime = result?.logo_mime || "application/octet-stream";
+      const hasLogo = logo != null && logo !== "" && (typeof logo === "string" ? logo.length > 0 : logo.length > 0);
+
+      if (!hasLogo) {
+        return res.status(404).end();
+      }
+
+      res.setHeader('Content-Type', logoMime)
       return res.send(logo)
     } catch (error) {
-      console.log("🚀 ~ Property ~ getImage ~ error:", error)
-      return res.status(500).json({ error: "Failed to get image" });
+      console.log("🚀 ~ Property ~ getLogo ~ error:", error)
+      return res.status(500).json({ error: "Failed to get logo" });
     }
   }
 
