@@ -1,4 +1,4 @@
-import supabase from "../src/services/Supabase.service.js";
+import supabase from "../src/services/supabase-service.js";
 
 export async function verifySupabaseJwt(token) {
     const { data, error } = await supabase.client().auth.getUser(token);

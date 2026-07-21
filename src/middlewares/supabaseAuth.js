@@ -1,5 +1,5 @@
 import { verifySupabaseJwt } from "../../utils/verifySupabaseJwt.js";
-import user from "../services/user.service.js";
+import user from "../services/user-service.js";
 import { LRUCache } from 'lru-cache';
 
 const userCache = new LRUCache({
