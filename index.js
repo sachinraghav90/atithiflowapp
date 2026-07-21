@@ -40,9 +40,13 @@ import { normalizeRequestKeys } from "./src/middlewares/normalize-request-keys.j
 
 
 const requiredEnvVars = ["SUPABASE_URL", "DATABASE_URL"];
+const hasApiKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 const missingVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
-if (missingVars.length > 0) {
-    console.error(`Fatal Error: Missing required environment variables: ${missingVars.join(", ")}`);
+if (missingVars.length > 0 || !hasApiKey) {
+    const errorMsg = missingVars.length > 0 
+        ? `Missing required environment variables: ${missingVars.join(", ")}` 
+        : `Missing Supabase API Key (Provide SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY)`;
+    console.error(`Fatal Error: ${errorMsg}`);
     process.exit(1);
 }
 
