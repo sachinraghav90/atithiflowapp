@@ -107,6 +107,12 @@ type Staff = {
     roles?: Role[];
     phone?: string;
     password?: string;
+    phone1_country_code?: string;
+    phone_country_code?: string;
+    phone2_country_code?: string;
+    emergency_contact_country_code?: string;
+    emergency_contact_2_country_code?: string;
+    property_limit?: number | string | null;
 };
 
 const STAFF_STATUSES = ["active", "inactive"];
